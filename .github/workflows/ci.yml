@@ -61,3 +61,6 @@ jobs:
 
       - name: Run team-activation validator
         run: ./scripts/validate-team-activation.sh
+
+      - name: Run task-packets validator
+        run: ./scripts/validate-task-packets.sh

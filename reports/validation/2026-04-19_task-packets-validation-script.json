@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level task packet generation",
+      "status": "PASS",
+      "detail": "Deterministic helper-level task packet generation checks passed."
+    },
+    {
+      "name": "2. task packet schema and policy sanity",
+      "status": "PASS",
+      "detail": "Schema and packet policy sanity checks passed."
+    },
+    {
+      "name": "3. task-packets extension TypeScript compile",
+      "status": "PASS",
+      "detail": "task-packets.ts compiled successfully with its extension dependencies."
+    },
+    {
+      "name": "4. live generate_task_packet tool probe",
+      "status": "PASS",
+      "detail": "Live probe observed generate_task_packet and the expected packet ID prefix."
+    }
+  ]
+}

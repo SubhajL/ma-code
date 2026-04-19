@@ -42,6 +42,7 @@ Implemented here:
   - `task_update`
 - validation runbook and validation script
 - executable team-activation resolver and activation policy
+- executable task-packet generator, packet policy, and packet schema
 - validation reports and file map
 
 Not yet implemented:
@@ -97,6 +98,7 @@ Current GitHub workflow surfaces:
   - skill-routing validator
   - harness-routing validator
   - team-activation validator
+  - task-packets validator
 - Security: `.github/workflows/security.yml`
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript
