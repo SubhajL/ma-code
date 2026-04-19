@@ -43,6 +43,7 @@ Implemented here:
 - validation runbook and validation script
 - executable team-activation resolver and activation policy
 - executable task-packet generator, packet policy, and packet schema
+- executable handoff generator, handoff policy, and handoff schema
 - validation reports and file map
 
 Not yet implemented:
@@ -99,6 +100,7 @@ Current GitHub workflow surfaces:
   - harness-routing validator
   - team-activation validator
   - task-packets validator
+  - handoffs validator
 - Security: `.github/workflows/security.yml`
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript

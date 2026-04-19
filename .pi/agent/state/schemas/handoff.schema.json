@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StructuredHandoff",
+  "type": "object",
+  "required": [
+    "version",
+    "handoffId",
+    "handoffType",
+    "sourcePacketId",
+    "sourceGoalId",
+    "fromRole",
+    "toRole",
+    "requiredHeaders",
+    "preservedPacket",
+    "details"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "handoffId": { "type": "string" },
+    "handoffType": {
+      "type": "string",
+      "enum": [
+        "build_to_worker",
+        "worker_to_quality",
+        "quality_to_reviewer",
+        "quality_to_validator",
+        "recovery_to_orchestrator_or_lead"
+      ]
+    },
+    "sourcePacketId": { "type": "string" },
+    "sourceGoalId": { "type": "string" },
+    "fromRole": { "type": "string" },
+    "toRole": { "type": "string" },
+    "requiredHeaders": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "preservedPacket": {
+      "type": "object",
+      "required": [
+        "packetId",
+        "title",
+        "scope",
+        "domains",
+        "discoverySummary",
+        "allowedPaths",
+        "disallowedPaths",
+        "acceptanceCriteria",
+        "evidenceExpectations",
+        "validationExpectations",
+        "wiringChecks",
+        "escalationInstructions",
+        "modelOverride"
+      ],
+      "properties": {
+        "packetId": { "type": "string" },
+        "title": { "type": "string" },
+        "scope": { "type": "string" },
+        "domains": { "type": "array", "items": { "type": "string" } },
+        "discoverySummary": { "type": "array", "items": { "type": "string" } },
+        "allowedPaths": { "type": "array", "items": { "type": "string" } },
+        "disallowedPaths": { "type": "array", "items": { "type": "string" } },
+        "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+        "evidenceExpectations": { "type": "array", "items": { "type": "string" } },
+        "validationExpectations": { "type": "array", "items": { "type": "string" } },
+        "wiringChecks": { "type": "array", "items": { "type": "string" } },
+        "escalationInstructions": { "type": "array", "items": { "type": "string" } },
+        "modelOverride": { "type": ["string", "null"] }
+      }
+    },
+    "details": {
+      "type": "object",
+      "required": [
+        "changedFiles",
+        "unchangedInspected",
+        "acceptanceCoverage",
+        "evidence",
+        "commandsRun",
+        "wiringVerification",
+        "knownGaps",
+        "blockers",
+        "reviewScope",
+        "claimedCompletionStatus",
+        "filesToInspect",
+        "risksToChallenge",
+        "questionsForReviewer",
+        "validationScope",
+        "expectedProof",
+        "openQuestions",
+        "failureType",
+        "likelyCauses",
+        "recoveryOptions",
+        "recommendedAction",
+        "stopThreshold"
+      ],
+      "properties": {
+        "changedFiles": { "type": "array", "items": { "type": "string" } },
+        "unchangedInspected": { "type": "array", "items": { "type": "string" } },
+        "acceptanceCoverage": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "commandsRun": { "type": "array", "items": { "type": "string" } },
+        "wiringVerification": { "type": "array", "items": { "type": "string" } },
+        "knownGaps": { "type": "array", "items": { "type": "string" } },
+        "blockers": { "type": "array", "items": { "type": "string" } },
+        "reviewScope": { "type": "array", "items": { "type": "string" } },
+        "claimedCompletionStatus": { "type": ["string", "null"] },
+        "filesToInspect": { "type": "array", "items": { "type": "string" } },
+        "risksToChallenge": { "type": "array", "items": { "type": "string" } },
+        "questionsForReviewer": { "type": "array", "items": { "type": "string" } },
+        "validationScope": { "type": "array", "items": { "type": "string" } },
+        "expectedProof": { "type": "array", "items": { "type": "string" } },
+        "openQuestions": { "type": "array", "items": { "type": "string" } },
+        "failureType": { "type": ["string", "null"] },
+        "likelyCauses": { "type": "array", "items": { "type": "string" } },
+        "recoveryOptions": { "type": "array", "items": { "type": "string" } },
+        "recommendedAction": { "type": ["string", "null"] },
+        "stopThreshold": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

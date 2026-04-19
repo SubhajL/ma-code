@@ -122,6 +122,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
 - `scripts/validate-task-packets.sh`
+- `scripts/validate-handoffs.sh`
 
 ### Supporting docs
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -148,6 +149,9 @@ Run the validator script when:
 - changing `.pi/agent/extensions/task-packets.ts`
 - changing `.pi/agent/packets/packet-policy.json`
 - changing `.pi/agent/state/schemas/task-packet.schema.json`
+- changing `.pi/agent/extensions/handoffs.ts`
+- changing `.pi/agent/handoffs/handoff-policy.json`
+- changing `.pi/agent/state/schemas/handoff.schema.json`
 - changing audit logging behavior or expectations
 - before calling a bounded phase complete
 
@@ -157,6 +161,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
 - use `./scripts/validate-task-packets.sh` for executable task-packet changes
+- use `./scripts/validate-handoffs.sh` for executable handoff changes
 
 ## Minimum completion evidence for this harness slice
 A bounded change is not complete unless you can show:

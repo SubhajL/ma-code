@@ -64,3 +64,6 @@ jobs:
 
       - name: Run task-packets validator
         run: ./scripts/validate-task-packets.sh
+
+      - name: Run handoffs validator
+        run: ./scripts/validate-handoffs.sh

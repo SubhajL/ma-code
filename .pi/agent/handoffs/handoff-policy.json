@@ -1,0 +1,99 @@
+{
+  "notes": [
+    "Machine-readable HARNESS-022 handoff policy for the repo-local Pi harness.",
+    "This policy preserves HARNESS-021 task packet scope and evidence expectations.",
+    "It is intentionally narrower than queue-driven dispatch or long-running autonomy runtime."
+  ],
+  "defaults": {
+    "preserve_packet_scope": true,
+    "preserve_evidence_expectations": true,
+    "preserve_escalation_instructions": true,
+    "default_none_token": "none"
+  },
+  "handoff_rules": {
+    "build_to_worker": {
+      "from_roles": ["build_lead"],
+      "to_roles": ["frontend_worker", "backend_worker", "infra_worker"],
+      "required_headers": [
+        "## Worker Assignment",
+        "## Scope Boundaries",
+        "## Discovery Summary",
+        "## Acceptance Criteria",
+        "## Evidence Expectations",
+        "## Wiring Checks",
+        "## Escalations"
+      ],
+      "required_detail_fields": []
+    },
+    "worker_to_quality": {
+      "from_roles": ["research_worker", "frontend_worker", "backend_worker", "infra_worker", "docs_worker"],
+      "to_roles": ["quality_lead"],
+      "required_headers": [
+        "## Work Summary",
+        "## Acceptance Coverage",
+        "## Evidence",
+        "## Validation Commands",
+        "## Wiring Verification",
+        "## Known Gaps",
+        "## Blockers"
+      ],
+      "required_detail_fields": [
+        "changed_files",
+        "acceptance_coverage",
+        "evidence"
+      ]
+    },
+    "quality_to_reviewer": {
+      "from_roles": ["quality_lead"],
+      "to_roles": ["reviewer_worker"],
+      "required_headers": [
+        "## Review Scope",
+        "## Claimed Completion Status",
+        "## Files To Inspect",
+        "## Risks To Challenge",
+        "## Questions For Reviewer"
+      ],
+      "required_detail_fields": [
+        "review_scope",
+        "claimed_completion_status",
+        "files_to_inspect",
+        "risks_to_challenge",
+        "questions_for_reviewer"
+      ]
+    },
+    "quality_to_validator": {
+      "from_roles": ["quality_lead"],
+      "to_roles": ["validator_worker"],
+      "required_headers": [
+        "## Validation Scope",
+        "## Acceptance Criteria",
+        "## Expected Proof",
+        "## Open Questions",
+        "## Risks"
+      ],
+      "required_detail_fields": [
+        "validation_scope",
+        "expected_proof",
+        "open_questions"
+      ]
+    },
+    "recovery_to_orchestrator_or_lead": {
+      "from_roles": ["recovery_worker"],
+      "to_roles": ["orchestrator", "planning_lead", "build_lead", "quality_lead"],
+      "required_headers": [
+        "## Failure Type",
+        "## Likely Causes",
+        "## Recovery Options",
+        "## Recommended Action",
+        "## Stop Threshold"
+      ],
+      "required_detail_fields": [
+        "failure_type",
+        "likely_causes",
+        "recovery_options",
+        "recommended_action",
+        "stop_threshold"
+      ]
+    }
+  }
+}
