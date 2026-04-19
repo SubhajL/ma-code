@@ -162,8 +162,17 @@ For the current repo-local slice, executable task packet generation now lives at
 - packet policy source: `.pi/agent/packets/packet-policy.json`
 - packet schema source: `.pi/agent/state/schemas/task-packet.schema.json`
 
-This is intentionally narrower than HARNESS-022 handoff formats or a queue-driven orchestration runtime.
-It gives the orchestrator and build lead a deterministic packet-generation surface without yet implementing full multi-step handoff routing.
+It gives the orchestrator and build lead a deterministic packet-generation surface.
+
+## Current executable handoff surface
+For the current repo-local slice, executable handoff generation now lives at:
+- `.pi/agent/extensions/handoffs.ts`
+- tool: `generate_handoff`
+- handoff policy source: `.pi/agent/handoffs/handoff-policy.json`
+- handoff schema source: `.pi/agent/state/schemas/handoff.schema.json`
+
+This is intentionally narrower than queue-driven orchestration runtime.
+It gives build, quality, and recovery lanes deterministic handoff generation without yet implying worker dispatch or queue automation.
 
 ## Team activation rules
 
@@ -387,6 +396,18 @@ Must include:
 - retry options
 - recommended action
 - stop/escalation threshold if applicable
+
+## Current executable handoff contract
+The current repo-local executable handoff contract is enforced by:
+- `.pi/agent/extensions/handoffs.ts`
+- `.pi/agent/handoffs/handoff-policy.json`
+- `.pi/agent/state/schemas/handoff.schema.json`
+- `scripts/validate-handoffs.sh`
+
+The generator validates:
+- role-pair correctness for each supported handoff type
+- preservation of packet scope, acceptance, evidence expectations, and escalation instructions
+- role-specific required sections before a handoff is emitted
 
 ## Recommended handoff templates
 

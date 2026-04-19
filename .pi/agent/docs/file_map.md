@@ -27,6 +27,10 @@
 - `.pi/agent/packets/*.json`
 - `.pi/agent/state/schemas/task-packet.schema.json`
 
+## Update handoff structure and policy
+- `.pi/agent/handoffs/*.json`
+- `.pi/agent/state/schemas/handoff.schema.json`
+
 ## Update task/queue structure
 - `.pi/agent/state/schemas/*.json`
 - `.pi/agent/state/runtime/*.json`
@@ -52,6 +56,7 @@
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
 - `scripts/validate-task-packets.sh`
+- `scripts/validate-handoffs.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 

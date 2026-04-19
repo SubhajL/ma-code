@@ -202,6 +202,19 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect executable task packet generation or its policy/schema rules.
 
+### Dedicated handoffs validator
+Current dedicated handoffs script:
+- `scripts/validate-handoffs.sh`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/extensions/handoffs.ts`
+- machine-readable handoff policy in `.pi/agent/handoffs/handoff-policy.json`
+- handoff schema in `.pi/agent/state/schemas/handoff.schema.json`
+- deterministic multi-step handoff generation for the supported role transitions
+- optional bounded live tool probe for `generate_handoff`
+
+It should be used when changes affect executable handoff generation or its policy/schema rules.
+
 ### Manual validator path
 Primary manual reference:
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -308,11 +321,10 @@ At minimum, completion evidence should still include:
 Validation reports are therefore one part of completion evidence, not a substitute for all of it.
 
 ## Current architecture boundary
-The current architecture validates the implemented Phase A/B foundation plus bounded executable routing, activation, and packet-generation slices that were attached later.
+The current architecture validates the implemented Phase A/B foundation plus bounded executable routing, activation, packet-generation, and handoff-generation slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
 - queue execution
-- full team dispatch and orchestration runtime beyond deterministic activation and packet generation
-- HARNESS-022+ multi-step handoff formats as executable runtime behavior
+- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, and handoff generation
 - UI widgets or TUI-specific behaviors
 - long-running autonomy or recovery loops beyond the current slice
 
@@ -374,7 +386,7 @@ If a future phase introduces richer artifacts such as logs, screenshots, traces,
 ## Recommended future expansion points
 When later phases are implemented, likely attachment points include:
 - a dedicated validator for queue and task-runner behavior
-- a validator for full multi-worker orchestration and handoff boundaries beyond the current activation + packet resolvers
+- a validator for full multi-worker orchestration boundaries beyond the current activation + packet + handoff resolvers
 - a validator for TUI or interface-level interactions if those become part of the repo-local harness contract
 - optional fast-check validators for frequent iteration alongside the fuller regression script
 
