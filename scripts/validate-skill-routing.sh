@@ -12,6 +12,7 @@ DEFAULT_SUMMARY_JSON="$REPORT_DIR/${DATE_STAMP}_skill-routing-validation-script.
 PI_BIN="${PI_BIN:-pi}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 KEEP_TEMP=0
+SKIP_LIVE=0
 REPORT_PATH="$DEFAULT_REPORT"
 SUMMARY_JSON_PATH="$DEFAULT_SUMMARY_JSON"
 
@@ -28,6 +29,7 @@ Usage: $(basename "$0") [options]
 Options:
   --report <path>          Write markdown report to a custom path
   --summary-json <path>    Write JSON summary to a custom path
+  --skip-live              Skip provider-backed live Pi probes and run helper/compile checks only
   --keep-temp              Keep temporary validation directories and files
   -h, --help               Show this help text
 
@@ -46,6 +48,10 @@ while [[ $# -gt 0 ]]; do
     --summary-json)
       SUMMARY_JSON_PATH="$2"
       shift 2
+      ;;
+    --skip-live)
+      SKIP_LIVE=1
+      shift
       ;;
     --keep-temp)
       KEEP_TEMP=1
@@ -125,7 +131,7 @@ write_header() {
 - Repo root: $REPO_ROOT
 - Pi binary: $PI_BIN
 - Python binary: $PYTHON_BIN
-- Live probe mode: repo-default Pi runtime
+- Live probe mode: $( [[ $SKIP_LIVE -eq 1 ]] && echo skipped || echo "repo-default Pi runtime" )
 - Temporary root: $TMP_ROOT
 
 ## Summary Table
@@ -305,6 +311,13 @@ run_live_probe() {
 
 check_3_live_planning() {
   local name="3. live planning route"
+  if [[ $SKIP_LIVE -eq 1 ]]; then
+    local detail="Live planning probe skipped by option."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run without \`--skip-live\` when one bounded live proof is needed"
+    return
+  fi
   local out="$TMP_ROOT/check_3_live_planning.txt"
   local prompt="plan a docs-only clarification task and return only the required top-level section headers exactly."
   local cmd="$PI_BIN --tools read,grep,find,ls --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts $(build_skill_args) --print \"$prompt\""
@@ -333,6 +346,13 @@ check_3_live_planning() {
 
 check_4_live_coding() {
   local name="4. live coding route"
+  if [[ $SKIP_LIVE -eq 1 ]]; then
+    local detail="Live coding probe skipped by option."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run without \`--skip-live\` when one bounded live proof is needed"
+    return
+  fi
   local out="$TMP_ROOT/check_4_live_coding.txt"
   local prompt="implement a docs-only clarification task and return only the required top-level section headers exactly."
   local cmd="$PI_BIN --tools read,grep,find,ls --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts $(build_skill_args) --print \"$prompt\""
@@ -361,6 +381,13 @@ check_4_live_coding() {
 
 check_5_live_review_architecture() {
   local name="5. live architecture review route"
+  if [[ $SKIP_LIVE -eq 1 ]]; then
+    local detail="Live architecture review probe skipped by option."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run without \`--skip-live\` when one bounded live proof is needed"
+    return
+  fi
   local out="$TMP_ROOT/check_5_live_review_architecture.txt"
   local prompt="review architecture and return only the required top-level section headers exactly."
   local cmd="$PI_BIN --tools read,grep,find,ls --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts $(build_skill_args) --print \"$prompt\""
@@ -389,6 +416,13 @@ check_5_live_review_architecture() {
 
 check_6_live_explicit_skill() {
   local name="6. live explicit skill preservation"
+  if [[ $SKIP_LIVE -eq 1 ]]; then
+    local detail="Live explicit skill probe skipped by option."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run without \`--skip-live\` when one bounded live proof is needed"
+    return
+  fi
   local out="$TMP_ROOT/check_6_live_explicit_skill.txt"
   local prompt="/skill:g-coding implement a docs-only clarification task and return only the required top-level section headers exactly."
   local cmd="$PI_BIN --tools read,grep,find,ls --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts $(build_skill_args) --print \"$prompt\""
