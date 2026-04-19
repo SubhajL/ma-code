@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "JobQueue",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "id",
+      "goal",
+      "priority",
+      "status"
+    ],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "goal": {
+        "type": "string"
+      },
+      "priority": {
+        "type": "string",
+        "enum": [
+          "low",
+          "medium",
+          "high"
+        ]
+      },
+      "scope": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "blocked",
+          "done",
+          "failed"
+        ]
+      },
+      "team": {
+        "type": "string"
+      },
+      "budget": {
+        "type": "object"
+      },
+      "stop_conditions": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "dependencies": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

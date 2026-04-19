@@ -1,0 +1,332 @@
+{
+  "notes": [
+    "Internal harness routing map for this repo.",
+    "This file is not Pi's provider registry models.json.",
+    "Exact provider and model IDs below were verified against `pi --list-models`.",
+    "HARNESS-017 executable routing reads this file as the machine-readable routing policy source."
+  ],
+  "routing_policy": {
+    "critical_roles": [
+      "orchestrator",
+      "planning_lead",
+      "quality_lead",
+      "infra_worker",
+      "reviewer_worker",
+      "validator_worker",
+      "recovery_worker"
+    ],
+    "override_reasons": {
+      "default": {
+        "allowed_roles": [
+          "*"
+        ],
+        "blocked_roles": [],
+        "may_use_fallback_order": true,
+        "may_use_budget_overrides": false,
+        "prefer_stronger_override": false
+      },
+      "task_simpler": {
+        "allowed_roles": [
+          "research_worker",
+          "docs_worker",
+          "frontend_worker",
+          "backend_worker"
+        ],
+        "blocked_roles": [
+          "orchestrator",
+          "planning_lead",
+          "build_lead",
+          "quality_lead",
+          "infra_worker",
+          "reviewer_worker",
+          "validator_worker",
+          "recovery_worker"
+        ],
+        "may_use_fallback_order": false,
+        "may_use_budget_overrides": true,
+        "prefer_stronger_override": false
+      },
+      "task_harder": {
+        "allowed_roles": [
+          "*"
+        ],
+        "blocked_roles": [],
+        "may_use_fallback_order": true,
+        "may_use_budget_overrides": false,
+        "prefer_stronger_override": true
+      },
+      "provider_failure": {
+        "allowed_roles": [
+          "*"
+        ],
+        "blocked_roles": [],
+        "may_use_fallback_order": true,
+        "may_use_budget_overrides": false,
+        "prefer_stronger_override": false
+      },
+      "budget_pressure": {
+        "allowed_roles": [
+          "research_worker",
+          "docs_worker",
+          "frontend_worker",
+          "backend_worker"
+        ],
+        "blocked_roles": [
+          "orchestrator",
+          "planning_lead",
+          "build_lead",
+          "quality_lead",
+          "infra_worker",
+          "reviewer_worker",
+          "validator_worker",
+          "recovery_worker"
+        ],
+        "may_use_fallback_order": false,
+        "may_use_budget_overrides": true,
+        "prefer_stronger_override": false
+      },
+      "recovery_recommendation": {
+        "allowed_roles": [
+          "*"
+        ],
+        "blocked_roles": [],
+        "may_use_fallback_order": true,
+        "may_use_budget_overrides": false,
+        "prefer_stronger_override": false
+      },
+      "human_override": {
+        "allowed_roles": [
+          "*"
+        ],
+        "blocked_roles": [],
+        "may_use_fallback_order": true,
+        "may_use_budget_overrides": true,
+        "prefer_stronger_override": false
+      }
+    },
+    "budget_modes": {
+      "default": {
+        "allow_budget_overrides": false,
+        "prefer_stronger_override": false
+      },
+      "balanced": {
+        "allow_budget_overrides": false,
+        "prefer_stronger_override": false
+      },
+      "conserve": {
+        "allow_budget_overrides": true,
+        "prefer_stronger_override": false
+      },
+      "high": {
+        "allow_budget_overrides": false,
+        "prefer_stronger_override": true
+      }
+    }
+  },
+  "routing_defaults": {
+    "orchestrator": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    },
+    "planning_lead": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    },
+    "build_lead": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "medium",
+      "allowed_overrides": [
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "medium_high"
+    },
+    "quality_lead": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    },
+    "research_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4-mini",
+      "thinking": "low",
+      "allowed_overrides": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4-mini",
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "low"
+    },
+    "frontend_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "medium",
+      "allowed_overrides": [
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
+      ],
+      "budget_overrides": [
+        "openai-codex/gpt-5.4-mini"
+      ],
+      "budget_guidance": "medium"
+    },
+    "backend_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "medium",
+      "allowed_overrides": [
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
+      ],
+      "budget_overrides": [
+        "openai-codex/gpt-5.4-mini"
+      ],
+      "budget_guidance": "medium_high"
+    },
+    "infra_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    },
+    "reviewer_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    },
+    "validator_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    },
+    "docs_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4-mini",
+      "thinking": "low",
+      "allowed_overrides": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4-mini",
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "low"
+    },
+    "recovery_worker": {
+      "provider": "openai-codex",
+      "default_model": "gpt-5.4",
+      "thinking": "high",
+      "allowed_overrides": [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "fallback_order": [
+        "openai-codex/gpt-5.4",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
+      ],
+      "budget_overrides": [],
+      "budget_guidance": "high"
+    }
+  },
+  "task_handling_architecture": {
+    "interaction_layer": "tool-driven",
+    "persistence_layer": "file-backed JSON",
+    "notes": [
+      "Normal task mutation should happen through a task tool such as task_update.",
+      "Direct raw JSON edits are a fallback or maintenance path, not the normal operating path."
+    ]
+  }
+}

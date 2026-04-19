@@ -1,0 +1,66 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. Pi startup returns OK",
+      "status": "PASS",
+      "detail": "Pi returned exact OK."
+    },
+    {
+      "name": "2. Project prompt and skill discovery",
+      "status": "PASS",
+      "detail": "Prompt templates and project skills discovered through RPC get_commands."
+    },
+    {
+      "name": "3. task_update tool available in live Pi session",
+      "status": "PASS",
+      "detail": "task_update executed and returned empty baseline task state."
+    },
+    {
+      "name": "4. TypeScript compile check for runtime extensions",
+      "status": "PASS",
+      "detail": "Temporary isolated compile sandbox passed."
+    },
+    {
+      "name": "5. safe-bash allows safe pwd command",
+      "status": "PASS",
+      "detail": "pwd executed successfully through bash tool."
+    },
+    {
+      "name": "6. safe-bash blocks .env write through write tool",
+      "status": "PASS",
+      "detail": "Direct .env write was blocked by safe-bash."
+    },
+    {
+      "name": "7. safe-bash blocks .env write through bash",
+      "status": "PASS",
+      "detail": "Bash redirect into .env was blocked by safe-bash."
+    },
+    {
+      "name": "8. safe-bash blocks destructive git reset on non-main branch",
+      "status": "PASS",
+      "detail": "Destructive git reset was blocked on disposable sandbox branch."
+    },
+    {
+      "name": "9. till-done blocks direct mutation without task",
+      "status": "PASS",
+      "detail": "Direct write without task was blocked."
+    },
+    {
+      "name": "10. till-done rejects done without evidence",
+      "status": "PASS",
+      "detail": "done without evidence was rejected."
+    },
+    {
+      "name": "11. Optional full-stack interaction with both runtime controls",
+      "status": "SKIP",
+      "detail": "Full-stack check skipped by default."
+    },
+    {
+      "name": "12. Cleanup and runtime state reset",
+      "status": "PASS",
+      "detail": "Cleanup removed validation artifacts and reset tasks runtime state."
+    }
+  ]
+}

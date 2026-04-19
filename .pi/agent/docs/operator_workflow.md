@@ -1,0 +1,191 @@
+# Operator Workflow — Phase A/B Harness
+
+This workflow explains how to operate the current Pi harness safely and consistently.
+
+## Scope
+This workflow covers the current implemented harness slice:
+- Pi-native repo wiring
+- repo policy and role contracts
+- `safe-bash.ts`
+- `till-done.ts`
+- bounded runtime validation
+
+It does not assume:
+- a queue runner
+- UI widgets
+- full team orchestration runtime
+
+## Core operating loop
+
+### 1. Start from the repo root
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+```
+
+### 2. Work on a bounded branch or worktree
+Follow `AGENTS.md`:
+- never work directly on `main`
+- prefer small bounded changes
+- keep scope explicit
+
+### 3. Make or review one bounded change set
+Examples:
+- config wiring
+- schema adjustment
+- one runtime extension change
+- one validator change
+
+### 4. Run validator before claiming completion
+Preferred command:
+```bash
+./scripts/validate-phase-a-b.sh
+```
+
+Useful variants:
+```bash
+./scripts/validate-phase-a-b.sh --skip-compile
+./scripts/validate-phase-a-b.sh --include-fullstack
+```
+
+### 5. Save evidence
+Record evidence in:
+- coding log: `logs/coding/...`
+- planning log: `reports/planning/...`
+- validation reports: `reports/validation/...`
+- runtime audit log when relevant: `logs/harness-actions.jsonl`
+
+## Cross-phase working patterns
+These patterns should now guide planning, implementation, and review even before later phases are fully implemented.
+
+### Codebase discovery
+- use Auggie MCP first when it is available and non-blocking
+- if Auggie is unavailable, errors, or cannot be bounded safely, fall back immediately to local tools
+- local fallback means targeted `read`, `grep`/`rg`, `find`, and direct file inspection
+- record which discovery path was used when it matters to planning or validation evidence
+
+### Planning discipline
+For medium- or high-risk work, planning should make these explicit:
+- goal and non-goals
+- files to inspect or modify
+- validation ideas
+- important edge cases
+- wiring or registration checks for new runtime components
+- whether second-model planning synthesis was used or fell back to single-model planning
+
+### Implementation discipline
+When relevant, implementation evidence should include:
+- smallest relevant validation or test commands
+- failing/pass evidence when practical
+- changed files
+- wiring verification for new runtime components
+- known gaps instead of hidden assumptions
+
+### Review discipline
+Review and validation outputs should prefer:
+- severity-ordered findings
+- exact file references when possible
+- concrete fix direction
+- named tests or validation still needed
+
+## What the validator script is for
+The validator script is not part of the runtime agent loop.
+It serves the operator and validator workflow by providing:
+- repeatable regression checks
+- pass/fail proof for core runtime controls
+- cleanup after validation
+- machine-readable validation summary
+
+## Validation cost guardrails
+Not all validation has the same cost.
+For this repo, use this default order:
+- cheap/local checks first
+  - readback
+  - `rg`/`find`
+  - compile/typecheck/lint
+  - deterministic helper-level tests
+- then one live provider-backed validator run only when local evidence is not enough
+
+Repeated live `pi ...` validator reruns are not the default.
+Use them only when:
+- a human explicitly approves the extra spend, or
+- there is a clearly stated flake investigation need and cheaper checks cannot answer it
+
+When a repeated live rerun is used, record:
+- why one run was insufficient
+- why local evidence was insufficient
+- what scope was rerun
+
+## Validation assets
+### Primary validators
+- `scripts/validate-phase-a-b.sh`
+- `scripts/validate-skill-routing.sh`
+- `scripts/validate-harness-routing.sh`
+
+### Supporting docs
+- `.pi/agent/docs/runtime_validation_runbook.md`
+- this file: `.pi/agent/docs/operator_workflow.md`
+
+### Outputs
+- markdown report: `reports/validation/*.md`
+- JSON summary: `reports/validation/*.json`
+
+## When to run validation
+Run the validator script when:
+- changing `.pi/settings.json`
+- changing `.pi/SYSTEM.md`
+- changing `AGENTS.md`
+- changing task schema or runtime task state shape
+- changing `safe-bash.ts`
+- changing `till-done.ts`
+- changing `.pi/agent/extensions/g-skill-auto-route.ts`
+- changing `.pi/agent/extensions/harness-routing.ts`
+- changing `.pi/agent/models.json` routing policy
+- changing audit logging behavior or expectations
+- before calling a bounded phase complete
+
+Choose the validator that matches the change:
+- use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
+- use `./scripts/validate-skill-routing.sh` for skill-routing changes
+- use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
+
+## Minimum completion evidence for this harness slice
+A bounded change is not complete unless you can show:
+- changed files
+- validator or test evidence
+- short explanation of what changed
+- unresolved risks or caveats
+
+## Recommended decision rule
+### Use the script when:
+- you want repeatable confidence
+- you touched runtime logic
+- you want a pass/fail artifact
+- one live run is enough for the current proof target
+
+### Use the runbook manually when:
+- one validator check failed
+- you want to isolate a single case
+- you are debugging model behavior vs tool behavior
+
+## Practical workflow example
+### Example: editing `safe-bash.ts`
+1. update the file
+2. run:
+   ```bash
+   ./scripts/validate-phase-a-b.sh
+   ```
+3. inspect:
+   - `reports/validation/...-script.md`
+   - `reports/validation/...-script.json`
+4. summarize evidence in current coding log
+5. note any gaps instead of hiding them
+
+## Current boundaries
+This workflow currently validates only the implemented Phase A/B slice.
+It does not validate future items like:
+- queue execution
+- team dispatch
+- UI widgets
+- long-running autonomy
+
+When those exist, they should add new validation scripts or extend the current validator in bounded ways.

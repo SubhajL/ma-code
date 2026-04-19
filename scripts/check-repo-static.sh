@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+required_files=(
+  "AGENTS.md"
+  "README.md"
+  "SYSTEM.md"
+  ".pi/agent/models.json"
+  ".pi/agent/state/schemas/tasks.schema.json"
+  "scripts/validate-phase-a-b.sh"
+  "scripts/validate-skill-routing.sh"
+  "scripts/validate-harness-routing.sh"
+  ".github/workflows/ci.yml"
+  ".github/workflows/security.yml"
+  ".github/dependabot.yml"
+  ".github/CODEOWNERS"
+  ".github/pull_request_template.md"
+)
+
+for path in "${required_files[@]}"; do
+  if [[ ! -f "$REPO_ROOT/$path" ]]; then
+    echo "Missing required file: $path" >&2
+    exit 1
+  fi
+done
+
+bash -n "$REPO_ROOT"/scripts/*.sh
+
+"${PYTHON_BIN:-python3}" - <<'PY' "$REPO_ROOT"
+import json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+for rel in [
+    ".pi/agent/models.json",
+    ".pi/agent/state/schemas/tasks.schema.json",
+    "packages/pi-g-skills/package.json",
+]:
+    with (root / rel).open("r", encoding="utf-8") as f:
+        json.load(f)
+print("repo-static-checks-ok")
+PY

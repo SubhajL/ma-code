@@ -1,0 +1,12 @@
+name: quality
+lead: quality_lead
+workers:
+  - reviewer_worker
+  - validator_worker
+  - docs_worker
+when_to_use:
+  - after implementation
+  - before completion
+notes:
+  - acceptance depends on evidence
+  - validator should not trust self-reports

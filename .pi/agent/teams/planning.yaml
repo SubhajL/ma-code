@@ -1,0 +1,12 @@
+name: planning
+lead: planning_lead
+workers:
+  - research_worker
+  - docs_worker
+when_to_use:
+  - new feature planning
+  - repo discovery
+  - unclear requirements
+notes:
+  - read-heavy team
+  - should not mutate application code

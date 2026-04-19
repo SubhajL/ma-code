@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level route classification",
+      "status": "PASS",
+      "detail": "All required route cases matched expected skill selection, including explicit /skill preservation and bare-review non-match guard."
+    },
+    {
+      "name": "2. routing extension TypeScript compile",
+      "status": "PASS",
+      "detail": "g-skill-auto-route.ts compiled successfully."
+    },
+    {
+      "name": "3. live planning route",
+      "status": "PASS",
+      "detail": "Raw planning prompt routed to g-planning-shaped output."
+    },
+    {
+      "name": "4. live coding route",
+      "status": "PASS",
+      "detail": "Raw coding prompt routed to g-coding-shaped output."
+    },
+    {
+      "name": "5. live architecture review route",
+      "status": "PASS",
+      "detail": "Raw architecture review prompt routed to g-review-shaped output."
+    },
+    {
+      "name": "6. live explicit skill preservation",
+      "status": "PASS",
+      "detail": "Explicit /skill:g-coding prompt remained g-coding-shaped under the routing extension."
+    }
+  ]
+}

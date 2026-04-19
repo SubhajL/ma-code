@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level harness route resolution",
+      "status": "PASS",
+      "detail": "Deterministic helper-level route checks passed."
+    },
+    {
+      "name": "2. harness-routing extension TypeScript compile",
+      "status": "PASS",
+      "detail": "harness-routing.ts compiled successfully."
+    },
+    {
+      "name": "3. live resolve_harness_route tool probe",
+      "status": "SKIP",
+      "detail": "Live probe skipped by default to avoid unnecessary provider-backed validation spend."
+    }
+  ]
+}

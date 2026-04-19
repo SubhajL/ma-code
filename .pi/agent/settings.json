@@ -1,0 +1,20 @@
+{
+  "notes": [
+    "Repo-local GPT-5.4-first Pi project settings.",
+    "UI widgets are not implemented yet.",
+    "Register real extensions when safe-bash.ts and till-done.ts exist."
+  ],
+  "installedPackages": [],
+  "promptTemplates": [
+    ".pi/agent/prompts/templates"
+  ],
+  "ui_status": {
+    "implemented": false,
+    "planned": [
+      "task widget",
+      "status/footer",
+      "blocked-action notifications",
+      "queue/job display"
+    ]
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskState",
+  "type": "object",
+  "required": [
+    "version",
+    "activeTaskId",
+    "tasks"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "activeTaskId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "owner",
+          "status",
+          "acceptance",
+          "evidence",
+          "dependencies",
+          "retryCount",
+          "notes",
+          "timestamps"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "owner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "in_progress",
+              "review",
+              "blocked",
+              "done",
+              "failed"
+            ]
+          },
+          "acceptance": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "retryCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamps": {
+            "type": "object",
+            "required": [
+              "createdAt",
+              "updatedAt"
+            ],
+            "properties": {
+              "createdAt": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string"
+              },
+              "completedAt": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

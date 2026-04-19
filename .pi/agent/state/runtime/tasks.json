@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "activeTaskId": "task-1776571018255",
+  "tasks": [
+    {
+      "id": "task-1776570384142",
+      "title": "review gate red check",
+      "owner": "assistant",
+      "status": "done",
+      "acceptance": [
+        "Task can only be completed after review state transition."
+      ],
+      "evidence": [
+        "Changed files: demo.txt"
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-19T03:46:24.142Z",
+        "updatedAt": "2026-04-19T03:46:31.691Z",
+        "startedAt": "2026-04-19T03:46:27.604Z",
+        "completedAt": "2026-04-19T03:46:31.691Z"
+      }
+    },
+    {
+      "id": "task-1776571018255",
+      "title": "review gate check",
+      "owner": "assistant",
+      "status": "in_progress",
+      "acceptance": [
+        "Task can only be completed through proper review flow."
+      ],
+      "evidence": [
+        "Changed files: demo.txt"
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-19T03:56:58.255Z",
+        "updatedAt": "2026-04-19T03:57:07.200Z",
+        "startedAt": "2026-04-19T03:57:03.730Z"
+      }
+    }
+  ]
+}

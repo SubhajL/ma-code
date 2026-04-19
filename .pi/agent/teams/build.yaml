@@ -1,0 +1,12 @@
+name: build
+lead: build_lead
+workers:
+  - frontend_worker
+  - backend_worker
+  - infra_worker
+when_to_use:
+  - implementation work
+  - scoped code changes
+notes:
+  - workers should stay within domain boundaries
+  - worktree isolation is recommended

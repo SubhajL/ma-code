@@ -1,0 +1,10 @@
+name: recovery
+lead: quality_lead
+workers:
+  - recovery_worker
+when_to_use:
+  - failed runs
+  - contradictory evidence
+  - retry or rollback decisions
+notes:
+  - recovery should prefer stability over endless retries

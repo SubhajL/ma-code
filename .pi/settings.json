@@ -1,0 +1,32 @@
+{
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.4",
+  "defaultThinkingLevel": "medium",
+  "enabledModels": [
+    "openai-codex/gpt-5.4",
+    "openai-codex/gpt-5.4-mini",
+    "anthropic/claude-opus-4-5",
+    "anthropic/claude-sonnet-4-6"
+  ],
+  "extensions": [
+    "agent/extensions"
+  ],
+  "skills": [
+    "agent/skills"
+  ],
+  "prompts": [
+    "agent/prompts/templates"
+  ],
+  "enableSkillCommands": true,
+  "retry": {
+    "enabled": true,
+    "maxRetries": 2,
+    "baseDelayMs": 1500,
+    "maxDelayMs": 15000
+  },
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 20000
+  }
+}
