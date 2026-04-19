@@ -1,0 +1,58 @@
+{
+  "notes": [
+    "Machine-readable HARNESS-021 task-packet policy for the repo-local Pi harness.",
+    "This policy complements team definitions and executable routing/activation rules.",
+    "It is intentionally narrower than HARNESS-022 handoff formats or a queue-runner runtime."
+  ],
+  "defaults": {
+    "disallowed_paths": [
+      ".env*",
+      ".git/",
+      "node_modules/",
+      ".pi/agent/state/runtime/"
+    ],
+    "discovery_summary": [
+      "No additional discovery summary was provided; inspect the allowed paths and referenced docs before mutation."
+    ],
+    "cross_model_planning_note": "No second-model planning note was provided.",
+    "evidence_expectations": [
+      "List changed files.",
+      "Record the smallest relevant validation or test output.",
+      "Note unresolved risks or known gaps explicitly."
+    ],
+    "escalation_instructions": [
+      "Escalate if the packet objective is unclear.",
+      "Escalate if file/domain boundaries would overlap with another worker.",
+      "Escalate if evidence is weak or contradictory.",
+      "Escalate if provider/model behavior becomes unreliable."
+    ]
+  },
+  "team_validation_expectations": {
+    "planning": [
+      "Record inspected files and the discovery path used.",
+      "Keep scope bounded and avoid hidden assumptions."
+    ],
+    "build": [
+      "Run the smallest relevant local validation before handoff.",
+      "Prefer cheap/local evidence before live provider-backed proof."
+    ],
+    "quality": [
+      "Check acceptance criteria against actual evidence.",
+      "Do not trust self-reports without proof."
+    ],
+    "recovery": [
+      "State failure type and likely cause.",
+      "Recommend retry, reroute, rollback, stop, or escalate explicitly."
+    ]
+  },
+  "team_wiring_checks": {
+    "planning": [],
+    "build": [
+      "Verify non-test wiring or registration for any new runtime component touched by the packet."
+    ],
+    "quality": [
+      "Verify the claimed wiring proof is backed by concrete evidence."
+    ],
+    "recovery": []
+  }
+}

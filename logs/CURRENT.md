@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-04-19_harness-020-team-activation.md`
+- `logs/coding/2026-04-19_harness-021-task-packets.md`
 
 ## Current planning log
-- `reports/planning/2026-04-19_harness-020-team-activation-plan.md`
+- `reports/planning/2026-04-19_harness-021-task-packets-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the current bounded HARNESS-020 team-activation workstream and its implementation evidence.
+- These files capture the current bounded HARNESS-021 task-packet workstream and its implementation evidence.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

@@ -153,8 +153,17 @@ For the current repo-local slice, executable team activation now lives at:
 - activation policy source: `.pi/agent/teams/activation-policy.json`
 - team membership source: `.pi/agent/teams/*.yaml`
 
-This is intentionally narrower than HARNESS-021 task packet generation or a queue-driven orchestration runtime.
 It gives the orchestrator a deterministic activation/sequence/overlap surface without yet implying full multi-agent dispatch.
+
+## Current executable task packet surface
+For the current repo-local slice, executable task packet generation now lives at:
+- `.pi/agent/extensions/task-packets.ts`
+- tool: `generate_task_packet`
+- packet policy source: `.pi/agent/packets/packet-policy.json`
+- packet schema source: `.pi/agent/state/schemas/task-packet.schema.json`
+
+This is intentionally narrower than HARNESS-022 handoff formats or a queue-driven orchestration runtime.
+It gives the orchestrator and build lead a deterministic packet-generation surface without yet implementing full multi-step handoff routing.
 
 ## Team activation rules
 
@@ -261,6 +270,19 @@ Each packet should include:
 ### Packet quality rule
 A packet is valid only if it is executable without hidden assumptions.
 If a worker must infer the real objective, the packet is not good enough.
+
+### Current executable packet contract
+The current repo-local executable packet contract is enforced by:
+- `.pi/agent/extensions/task-packets.ts`
+- `.pi/agent/packets/packet-policy.json`
+- `.pi/agent/state/schemas/task-packet.schema.json`
+- `scripts/validate-task-packets.sh`
+
+The generator validates:
+- assigned role/team alignment
+- presence of scope boundaries via allowed paths or domains
+- required acceptance/evidence/escalation sections
+- optional model override attachment through executable routing policy when needed
 
 ### Recommended packet template
 ```md

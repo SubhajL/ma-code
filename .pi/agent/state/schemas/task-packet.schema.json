@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskPacket",
+  "type": "object",
+  "required": [
+    "version",
+    "packetId",
+    "source",
+    "assignedTeam",
+    "assignedRole",
+    "title",
+    "scope",
+    "workType",
+    "domains",
+    "discoverySummary",
+    "crossModelPlanningNote",
+    "allowedPaths",
+    "disallowedPaths",
+    "acceptanceCriteria",
+    "evidenceExpectations",
+    "validationExpectations",
+    "wiringChecks",
+    "escalationInstructions",
+    "dependencies",
+    "modelOverride",
+    "routing"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "packetId": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "goalId",
+        "parentTaskId",
+        "parentPacketId",
+        "generatedAt"
+      ],
+      "properties": {
+        "goalId": {
+          "type": "string"
+        },
+        "parentTaskId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "parentPacketId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "generatedAt": {
+          "type": "string"
+        }
+      }
+    },
+    "assignedTeam": {
+      "type": "string",
+      "enum": [
+        "planning",
+        "build",
+        "quality",
+        "recovery"
+      ]
+    },
+    "assignedRole": {
+      "type": "string",
+      "enum": [
+        "orchestrator",
+        "planning_lead",
+        "build_lead",
+        "quality_lead",
+        "research_worker",
+        "frontend_worker",
+        "backend_worker",
+        "infra_worker",
+        "reviewer_worker",
+        "validator_worker",
+        "docs_worker",
+        "recovery_worker"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "workType": {
+      "type": "string",
+      "enum": [
+        "implementation",
+        "docs_only",
+        "research_only",
+        "review_only",
+        "mixed"
+      ]
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "frontend",
+          "backend",
+          "infra",
+          "docs",
+          "research"
+        ]
+      }
+    },
+    "discoverySummary": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "crossModelPlanningNote": {
+      "type": "string"
+    },
+    "allowedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "disallowedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "evidenceExpectations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "validationExpectations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "wiringChecks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "escalationInstructions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "modelOverride": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "routing": {
+      "type": "object",
+      "required": [
+        "reason",
+        "budgetMode",
+        "selectedModelId",
+        "selectedProvider",
+        "selectedModel",
+        "source"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string"
+        },
+        "budgetMode": {
+          "type": "string"
+        },
+        "selectedModelId": {
+          "type": "string"
+        },
+        "selectedProvider": {
+          "type": "string"
+        },
+        "selectedModel": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
