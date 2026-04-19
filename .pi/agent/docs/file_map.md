@@ -21,6 +21,7 @@
 
 ## Update team definitions
 - `.pi/agent/teams/*.yaml`
+- `.pi/agent/teams/*.json`
 
 ## Update task/queue structure
 - `.pi/agent/state/schemas/*.json`
@@ -45,6 +46,7 @@
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
+- `scripts/validate-team-activation.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 

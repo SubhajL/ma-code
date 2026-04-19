@@ -10,10 +10,12 @@ required_files=(
   "README.md"
   "SYSTEM.md"
   ".pi/agent/models.json"
+  ".pi/agent/teams/activation-policy.json"
   ".pi/agent/state/schemas/tasks.schema.json"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-skill-routing.sh"
   "scripts/validate-harness-routing.sh"
+  "scripts/validate-team-activation.sh"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
   ".github/dependabot.yml"
@@ -35,6 +37,7 @@ import json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 for rel in [
     ".pi/agent/models.json",
+    ".pi/agent/teams/activation-policy.json",
     ".pi/agent/state/schemas/tasks.schema.json",
     "packages/pi-g-skills/package.json",
 ]:

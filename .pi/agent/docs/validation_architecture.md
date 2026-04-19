@@ -176,6 +176,19 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect executable harness routing or its policy rules.
 
+### Dedicated team-activation validator
+Current dedicated team-activation script:
+- `scripts/validate-team-activation.sh`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/extensions/team-activation.ts`
+- machine-readable activation policy in `.pi/agent/teams/activation-policy.json`
+- team membership parsing from `.pi/agent/teams/*.yaml`
+- deterministic planning/build/quality/recovery activation resolution
+- optional bounded live tool probe for `resolve_team_activation`
+
+It should be used when changes affect executable team activation or its policy rules.
+
 ### Manual validator path
 Primary manual reference:
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -282,10 +295,10 @@ At minimum, completion evidence should still include:
 Validation reports are therefore one part of completion evidence, not a substitute for all of it.
 
 ## Current architecture boundary
-The current architecture validates the implemented Phase A/B foundation.
+The current architecture validates the implemented Phase A/B foundation plus bounded executable routing/activation slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
 - queue execution
-- team dispatch and orchestration runtime
+- full team dispatch and orchestration runtime beyond deterministic activation resolution
 - UI widgets or TUI-specific behaviors
 - long-running autonomy or recovery loops beyond the current slice
 
@@ -347,7 +360,7 @@ If a future phase introduces richer artifacts such as logs, screenshots, traces,
 ## Recommended future expansion points
 When later phases are implemented, likely attachment points include:
 - a dedicated validator for queue and task-runner behavior
-- a validator for team routing and multi-worker orchestration boundaries
+- a validator for full multi-worker orchestration boundaries beyond the current activation resolver
 - a validator for TUI or interface-level interactions if those become part of the repo-local harness contract
 - optional fast-check validators for frequent iteration alongside the fuller regression script
 

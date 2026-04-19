@@ -120,6 +120,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
+- `scripts/validate-team-activation.sh`
 
 ### Supporting docs
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -140,6 +141,9 @@ Run the validator script when:
 - changing `.pi/agent/extensions/g-skill-auto-route.ts`
 - changing `.pi/agent/extensions/harness-routing.ts`
 - changing `.pi/agent/models.json` routing policy
+- changing `.pi/agent/extensions/team-activation.ts`
+- changing `.pi/agent/teams/activation-policy.json`
+- changing team membership definitions under `.pi/agent/teams/*.yaml`
 - changing audit logging behavior or expectations
 - before calling a bounded phase complete
 
@@ -147,6 +151,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
+- use `./scripts/validate-team-activation.sh` for executable team-activation changes
 
 ## Minimum completion evidence for this harness slice
 A bounded change is not complete unless you can show:

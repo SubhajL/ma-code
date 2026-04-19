@@ -144,8 +144,17 @@ For the current repo-local slice, executable model/provider routing now lives at
 - tool: `resolve_harness_route`
 - policy source: `.pi/agent/models.json`
 
-This is intentionally narrower than full team activation.
-It gives the orchestrator and later orchestration layers a deterministic route-resolution surface without yet implementing HARNESS-020 team-activation logic.
+This remains the provider/model lane resolver used by the orchestrator and later orchestration layers.
+
+## Current executable team activation surface
+For the current repo-local slice, executable team activation now lives at:
+- `.pi/agent/extensions/team-activation.ts`
+- tool: `resolve_team_activation`
+- activation policy source: `.pi/agent/teams/activation-policy.json`
+- team membership source: `.pi/agent/teams/*.yaml`
+
+This is intentionally narrower than HARNESS-021 task packet generation or a queue-driven orchestration runtime.
+It gives the orchestrator a deterministic activation/sequence/overlap surface without yet implying full multi-agent dispatch.
 
 ## Team activation rules
 
