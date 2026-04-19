@@ -180,3 +180,119 @@ LOW
 
 ### Review Verdict
 - no_required_fixes
+
+## Follow-up — GitHub Actions dependency bumps (2026-04-19 15:36:00 +0700)
+
+### Goal
+- Consolidate the open Dependabot GitHub Actions bumps into one bounded change set and verify the combined CI/security workflow state before merging.
+
+### Files changed and why
+- `.github/workflows/ci.yml`
+  - bump `actions/checkout` from `v4` to `v6`
+  - bump `actions/setup-python` from `v5` to `v6`
+  - bump `actions/setup-node` from `v4` to `v6`
+- `.github/workflows/security.yml`
+  - bump `actions/checkout` from `v4` to `v6`
+  - bump `github/codeql-action/init` from `v3` to `v4`
+  - bump `github/codeql-action/analyze` from `v3` to `v4`
+- `logs/coding/2026-04-19_github-setup.md`
+  - record discovery, local validation, and merge rationale
+
+### Discovery path
+- reviewed open GitHub PRs with `gh pr list -R SubhajL/ma-code --limit 20`
+- inspected bot comments with `gh pr view <n> -R SubhajL/ma-code --comments`
+- inspected PR checks with `gh pr checks <n> -R SubhajL/ma-code`
+- confirmed the repo is still Phase A/B foundation via:
+  - `README.md`
+  - `.pi/agent/docs/harness_phase_capability_map.md`
+  - `.pi/agent/docs/operator_workflow.md`
+
+### Tests added or changed
+- none
+- reason: this is a bounded workflow dependency-bump change; existing repo validators already cover the touched workflow/script wiring
+
+### RED evidence
+- no new RED run was practical for this change set
+- reason: the open Dependabot PRs already provided the minimal failing/superseded baseline for this exact surface, and the local repo on `main` was otherwise healthy before the version bumps
+
+### GREEN evidence
+- local combined validation run 1:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/github-actions-bumps && ./scripts/check-repo-static.sh && ./scripts/check-foundation-extension-compile.sh && ./scripts/validate-skill-routing.sh --skip-live && ./scripts/validate-harness-routing.sh && ruby -e 'require "yaml"; Dir[".github/**/*.yml", ".github/**/*.yaml"].sort.each { |f| YAML.load_file(f); puts "yaml-ok #{f}" }'`
+- local combined validation run 2:
+  - same command as run 1
+- local combined validation run 3:
+  - same command as run 1
+- result each run:
+  - `repo-static-checks-ok`
+  - `foundation-extension-compile-ok`
+  - `Skill-routing validation PASS`
+  - `Harness-routing validation PASS`
+  - YAML parse ok for `.github/dependabot.yml`, `.github/workflows/ci.yml`, `.github/workflows/security.yml`
+
+### Other validation commands
+- `gh pr view 1 -R SubhajL/ma-code --json number,title,mergeable,mergeStateStatus`
+- `gh pr view 2 -R SubhajL/ma-code --json number,title,mergeable,mergeStateStatus`
+- `gh pr view 3 -R SubhajL/ma-code --json number,title,mergeable,mergeStateStatus`
+- `gh pr view 4 -R SubhajL/ma-code --json number,title,mergeable,mergeStateStatus`
+
+### Wiring verification evidence
+- `.github/workflows/ci.yml` still points only to existing local scripts:
+  - `./scripts/check-repo-static.sh`
+  - `./scripts/check-foundation-extension-compile.sh`
+  - `./scripts/validate-skill-routing.sh --skip-live`
+  - `./scripts/validate-harness-routing.sh`
+- `.github/workflows/security.yml` still uses the official GitHub-maintained security actions:
+  - `actions/dependency-review-action`
+  - `github/codeql-action/init`
+  - `github/codeql-action/analyze`
+- open bot comments were informational dependency-review/license/scorecard notes on upstream action packages, not failing repo gates
+
+### Behavior changes and risk notes
+- no harness runtime behavior changes
+- only GitHub workflow action versions were updated
+- remaining bot comment themes (unknown licenses / upstream scorecard notes) are not locally actionable in this repo without widening scope beyond the requested bumps
+
+### Follow-ups / known gaps
+- remote PR creation/merge evidence will be captured in session output
+- if GitHub reports any post-merge workflow regression, create a new bounded fix branch rather than editing `main` directly
+
+## Review (2026-04-19 15:39:00 +0700) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/github-actions-bumps`
+- Branch: `chore/github-actions-bumps`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status --porcelain=v1`
+  - `git diff --name-only`
+  - `git diff --stat`
+  - `git diff -- .github/workflows/ci.yml`
+  - `git diff -- .github/workflows/security.yml`
+  - local validation commands recorded above
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- consider pinning GitHub Actions by full commit SHA in a future hardening pass if you want stronger supply-chain immutability than major-tag tracking
+  - Why it matters: commit SHA pinning reduces mutable-tag risk
+  - Fix direction: convert workflow `uses:` entries to `owner/repo@<sha>` and let Dependabot maintain the digests
+  - Validation still needed: rerun the same local validators plus one GitHub Actions round-trip after pinning
+
+### Open Questions / Assumptions
+- assumed it is acceptable to consolidate the four open Dependabot workflow bumps into one bounded human PR for easier validation/merge, then close the superseded bot PRs
+
+### Recommended Tests / Validation
+- create one bounded PR and wait for GitHub `CI` and `Security` to pass on the combined diff
+- verify post-merge `main` push runs stay green
+
+### Rollout Notes
+- no runtime behavior change is expected; only workflow runner action versions change
+- informational dependency-review comments about upstream action metadata may still appear and are not repo-local blockers
