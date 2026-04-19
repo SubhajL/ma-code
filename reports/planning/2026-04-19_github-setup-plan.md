@@ -2,7 +2,7 @@
 
 - Date: 2026-04-19
 - Scope: Set up GitHub for `ma-code` with an adapted repo-specific baseline inspired by `zrl`, including repo creation, CI/security workflows, and GitHub settings.
-- Status: in_progress
+- Status: complete
 - Related coding log: `logs/coding/2026-04-19_github-setup.md`
 
 ## Discovery Path
@@ -109,6 +109,13 @@
 - some GitHub protection/security features may differ by plan or require the repo/default branch/workflow runs to exist first
 - local repo currently appears uninitialized, so git bootstrap may need careful hygiene
 - required status checks may need a second pass after first workflow run establishes check names
+
+## Completion Note
+- Completed for the current bounded GitHub bootstrap slice.
+- GitHub repo created: `https://github.com/SubhajL/ma-code`
+- Default branch: `main`
+- Branch protection applied with required checks for CI/static/security gates.
+- Local validation passed before repo/bootstrap and settings application.
 
 ## Pi Log Update
 - planning log: `reports/planning/2026-04-19_github-setup-plan.md`

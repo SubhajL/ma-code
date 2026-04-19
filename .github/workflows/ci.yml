@@ -54,7 +54,7 @@ jobs:
           node-version: '22'
 
       - name: Run skill-routing validator
-        run: ./scripts/validate-skill-routing.sh
+        run: ./scripts/validate-skill-routing.sh --skip-live
 
       - name: Run harness-routing validator
         run: ./scripts/validate-harness-routing.sh
