@@ -1,0 +1,105 @@
+{
+  "notes": [
+    "Machine-readable HARNESS-020 team-activation policy for the repo-local Pi harness.",
+    "This policy complements team membership YAML files under .pi/agent/teams/.",
+    "It is intentionally narrower than HARNESS-021 task packets or a queue-runner runtime."
+  ],
+  "activation_defaults": {
+    "quality_waits_for_all_builders": true,
+    "light_quality_for_non_mutating_work": true,
+    "recovery_stops_normal_flow": true
+  },
+  "planning_triggers": {
+    "human_asked_for_design": true,
+    "requirements_clarity": [
+      "ambiguous"
+    ],
+    "scope_clarity": [
+      "unclear",
+      "moving"
+    ],
+    "acceptance_criteria": [
+      "missing"
+    ],
+    "repo_impact": [
+      "unclear"
+    ],
+    "multi_domain_threshold": 2
+  },
+  "build_triggers": {
+    "work_types": [
+      "implementation",
+      "mixed"
+    ],
+    "scope_clarity": [
+      "bounded"
+    ],
+    "acceptance_criteria": [
+      "explicit"
+    ]
+  },
+  "quality_triggers": {
+    "work_types": [
+      "implementation",
+      "mixed",
+      "review_only"
+    ],
+    "activate_on_code_or_config_changed": true,
+    "activate_on_validation_states": [
+      "needed",
+      "fail",
+      "contradictory"
+    ],
+    "light_for_work_types": [
+      "docs_only",
+      "research_only"
+    ]
+  },
+  "recovery_triggers": {
+    "validation_states": [
+      "fail",
+      "contradictory"
+    ],
+    "blocked_count_gte": 2,
+    "provider_reliability": [
+      "unreliable"
+    ]
+  },
+  "overlap_rules": {
+    "planning_build_requires": {
+      "scope_clarity": [
+        "bounded"
+      ],
+      "requirements_clarity": [
+        "clear"
+      ],
+      "acceptance_criteria": [
+        "explicit"
+      ],
+      "repo_impact": [
+        "known"
+      ]
+    },
+    "multiple_build_workers_allow_when": {
+      "build_files_overlap": [
+        "none"
+      ],
+      "worktree_isolation": [
+        "available"
+      ]
+    },
+    "quality_build_requires_early_checkpoint": true,
+    "recovery_parallel_allowed": false
+  },
+  "sequence_defaults": {
+    "planning_then": [
+      "build",
+      "quality"
+    ],
+    "build_then": [
+      "quality"
+    ],
+    "quality_then": [],
+    "recovery_then": []
+  }
+}

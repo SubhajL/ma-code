@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level team activation resolution",
+      "status": "PASS",
+      "detail": "Deterministic helper-level team activation checks passed."
+    },
+    {
+      "name": "2. team-activation extension TypeScript compile",
+      "status": "PASS",
+      "detail": "team-activation.ts compiled successfully."
+    },
+    {
+      "name": "3. live resolve_team_activation tool probe",
+      "status": "PASS",
+      "detail": "Live probe observed resolve_team_activation and the expected initial team."
+    }
+  ]
+}

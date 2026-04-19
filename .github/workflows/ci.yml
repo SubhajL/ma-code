@@ -58,3 +58,6 @@ jobs:
 
       - name: Run harness-routing validator
         run: ./scripts/validate-harness-routing.sh
+
+      - name: Run team-activation validator
+        run: ./scripts/validate-team-activation.sh
