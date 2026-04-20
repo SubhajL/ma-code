@@ -85,6 +85,13 @@ cd /Users/subhajlimanond/dev/ma-code
 ./scripts/validate-phase-a-b.sh
 ```
 
+Use the queue-semantics validator when queue schema/docs/runtime shape change:
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+./scripts/validate-queue-semantics.sh
+```
+
 Key outputs:
 - runbook: `.pi/agent/docs/runtime_validation_runbook.md`
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
@@ -98,6 +105,7 @@ Current GitHub workflow surfaces:
 - CI: `.github/workflows/ci.yml`
   - repo static checks
   - foundation extension compile check
+  - queue-semantics validator
   - skill-routing validator
   - harness-routing validator
   - team-activation validator

@@ -15,9 +15,11 @@ required_files=(
   ".pi/agent/handoffs/handoff-policy.json"
   ".pi/agent/validation/completion-gate-policy.json"
   ".pi/agent/state/schemas/tasks.schema.json"
+  ".pi/agent/state/schemas/queue.schema.json"
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
   "scripts/validate-phase-a-b.sh"
+  "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
   "scripts/validate-harness-routing.sh"
   "scripts/validate-team-activation.sh"
@@ -50,6 +52,7 @@ for rel in [
     ".pi/agent/handoffs/handoff-policy.json",
     ".pi/agent/validation/completion-gate-policy.json",
     ".pi/agent/state/schemas/tasks.schema.json",
+    ".pi/agent/state/schemas/queue.schema.json",
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
     "packages/pi-g-skills/package.json",

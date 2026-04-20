@@ -53,6 +53,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Run queue-semantics validator
+        run: ./scripts/validate-queue-semantics.sh
+
       - name: Run skill-routing validator
         run: ./scripts/validate-skill-routing.sh --skip-live
 

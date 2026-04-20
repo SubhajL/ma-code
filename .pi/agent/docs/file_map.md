@@ -55,6 +55,7 @@
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/validate-phase-a-b.sh`
+- `scripts/validate-queue-semantics.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`

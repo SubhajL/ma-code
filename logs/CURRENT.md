@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-04-20_harness-027-028-validation-gates.md`
+- `logs/coding/2026-04-20_harness-009-queue-semantics.md`
 
 ## Current planning log
-- `reports/planning/2026-04-20_harness-027-028-validation-gates-plan.md`
+- `reports/planning/2026-04-20_harness-009-queue-semantics-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the current bounded HARNESS-027/028 validation-gates workstream and its implementation evidence.
+- These files capture the current bounded HARNESS-009 queue-semantics workstream and its implementation evidence.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

@@ -14,12 +14,14 @@ Its job is to represent:
 - what work is blocked or failed
 - what work is complete
 - what should run next
+- whether queue pickup is currently paused
 
 The queue is not the same thing as the task state.
 A queue job is a higher-level unit of work that may create or drive one or more tasks.
 
 ## Scope
 This document defines:
+- queue-level fields and meanings
 - queue job fields and meanings
 - queue lifecycle states
 - scheduling and ordering rules
@@ -27,6 +29,7 @@ This document defines:
 - priority semantics
 - blocked vs failed behavior
 - budget and stop-condition intent
+- who may create jobs
 
 It does not define:
 - the full live queue runner implementation
@@ -34,28 +37,48 @@ It does not define:
 - UI rendering
 - multi-machine dispatch
 
-## Current schema shape
-Current queue shape is a top-level array:
+## Current queue shape
+Current queue shape is a versioned top-level object:
 
 ```json
-[
-  {
-    "id": "job-001",
-    "goal": "Document queue semantics",
-    "priority": "high",
-    "status": "queued"
-  }
-]
+{
+  "version": 1,
+  "paused": false,
+  "activeJobId": null,
+  "jobs": [
+    {
+      "id": "harness-009-queue-semantics",
+      "goal": "Finalize queue semantics",
+      "priority": "high",
+      "status": "queued"
+    }
+  ]
+}
 ```
 
-Optional fields currently include:
-- `scope`
-- `team`
-- `budget`
-- `stop_conditions`
-- `dependencies`
+## Queue-level fields
+
+### `version`
+- schema/state version for the queue contract
+- current value is `1`
+- future structural changes should increment this intentionally
+
+### `paused`
+- whether new queue pickup is currently paused
+- `true` means no new job should move from `queued` to `running`
+- `false` means normal eligibility rules decide pickup
+
+### `activeJobId`
+- queue-level pointer to the currently active job
+- should be `null` when no job is running
+- if non-null, it should refer to one job in `jobs` whose `status` is `running`
+
+### `jobs`
+- ordered list of queue jobs
+- order is part of deterministic selection when priority and eligibility tie
 
 ## Queue model
+
 ### Queue job
 A queue job is a bounded assignment for the orchestrator.
 It should be small enough to:
@@ -87,6 +110,20 @@ One job may:
 - route through planning first and then create downstream tasks
 
 But the queue should remain the top-level assignment list.
+
+## Who may create jobs
+For the current bounded harness slice, queue-job creation should be limited to:
+- human/operator input
+- orchestrator-generated follow-up work that stays within approved scope
+- future queue-runner maintenance or migration tools explicitly designed for queue state
+
+Normal worker lanes should not silently create arbitrary new top-level jobs.
+If a worker discovers out-of-scope work, it should surface:
+- a note
+- a blocker
+- a handoff or escalation recommendation
+
+This keeps top-level queue growth reviewable instead of improvised.
 
 ## Per-job fields
 
@@ -144,7 +181,7 @@ Example:
 
 ### `team`
 - optional preferred starting team
-- should usually be one of:
+- one of:
   - `planning`
   - `build`
   - `quality`
@@ -152,19 +189,13 @@ Example:
 - may be omitted when the orchestrator should choose based on the job description
 
 ### `budget`
-- optional budget object
-- reserved for bounded autonomy controls
-- current schema leaves this open, but intended uses include:
-  - max time
-  - max retries
-  - max cost
-  - max files changed
-
-Recommended version 1 budget keys:
-- `maxRetries`
-- `maxRuntimeMinutes`
-- `maxCostUsd`
-- `maxFilesChanged`
+- optional bounded budget object
+- intended keys in version 1:
+  - `maxRetries`
+  - `maxRuntimeMinutes`
+  - `maxCostUsd`
+  - `maxFilesChanged`
+- values should be conservative and reviewable
 
 ### `stop_conditions`
 - optional list of conditions that should force stop, pause, or escalation
@@ -187,7 +218,7 @@ A job in `queued` is waiting for selection.
 It may still be ineligible to run if:
 - dependencies are unresolved
 - required approval is missing
-- the operator has paused queue execution
+- the queue is paused
 
 ### `running`
 A job in `running` is the current active queue job.
@@ -221,7 +252,7 @@ Use `failed` when:
 - validation definitively rejected the outcome
 - the job cannot proceed within budget or stop conditions
 
-Failed is not the same as blocked.
+Blocked is not the same as failed.
 Blocked means waiting.
 Failed means the attempt ended badly.
 
@@ -244,18 +275,27 @@ Failed means the attempt ended badly.
 | `failed` | `running` | yes | explicit retry start |
 | `failed` | `done` | no | requires retry/revalidation first |
 
+## Queue-level invariants
+The queue should remain structurally coherent.
+Recommended invariants for version 1:
+- `activeJobId` is `null` or names one job in `jobs`
+- if `activeJobId` is non-null, exactly one job should be `running`
+- if the queue is `paused`, no new pickup should occur until unpaused
+- completed jobs stay visible until intentionally pruned by a future maintenance policy
+
 ## Scheduling and ordering rules
 
 ### Deterministic selection rule
 When multiple jobs are eligible, the queue should select jobs by:
 1. highest priority first
-2. oldest eligible job first within the same priority
-3. original queue order as the tie-breaker if timestamps are not yet available
+2. oldest eligible job first within the same priority when timestamps exist
+3. existing queue order as the tie-breaker when timestamps do not exist yet
 
 This avoids ad hoc job selection.
 
 ### Eligibility rule
 A job is eligible to run only when:
+- queue `paused` is `false`
 - `status` is `queued`
 - dependencies are satisfied or explicitly waived
 - no stop condition precludes starting
@@ -356,8 +396,8 @@ Queue completion should rely on downstream evidence such as:
 Queue status is higher-level than task status, but it should still be evidence-backed.
 
 ## Recommended notes for future implementation
-The current schema does not yet include explicit notes or timestamps for jobs.
-That is acceptable for the minimal version, but future implementation may need:
+Version 1 deliberately keeps the queue minimal.
+Likely later additions include:
 - `createdAt`
 - `updatedAt`
 - `startedAt`
@@ -365,6 +405,7 @@ That is acceptable for the minimal version, but future implementation may need:
 - `notes`
 - `retryCount`
 - linkage to generated task IDs
+- approval metadata
 
 Those additions should be introduced intentionally, not ad hoc.
 
@@ -373,33 +414,49 @@ Those additions should be introduced intentionally, not ad hoc.
 ### Valid queued job
 ```json
 {
-  "id": "harness-009-queue-semantics",
-  "goal": "Define queue blocked vs failed semantics",
-  "priority": "high",
-  "scope": "docs only under .pi/agent/docs",
-  "status": "queued",
-  "team": "planning",
-  "budget": {
-    "maxRetries": 1,
-    "maxRuntimeMinutes": 30
-  },
-  "stop_conditions": [
-    "stop if schema changes are required outside docs"
-  ],
-  "dependencies": []
+  "version": 1,
+  "paused": false,
+  "activeJobId": null,
+  "jobs": [
+    {
+      "id": "harness-009-queue-semantics",
+      "goal": "Define queue blocked vs failed semantics",
+      "priority": "high",
+      "scope": "docs only under .pi/agent/docs",
+      "status": "queued",
+      "team": "planning",
+      "budget": {
+        "maxRetries": 1,
+        "maxRuntimeMinutes": 30
+      },
+      "stop_conditions": [
+        "stop if schema changes are required outside docs"
+      ],
+      "dependencies": []
+    }
+  ]
 }
 ```
 
 ### Valid blocked job
 ```json
 {
-  "id": "queue-job-approval-needed",
-  "goal": "Implement queue runner",
-  "priority": "medium",
-  "scope": "runtime behavior under .pi/agent and scripts",
-  "status": "blocked",
-  "team": "build",
-  "dependencies": ["harness-009-queue-semantics"]
+  "version": 1,
+  "paused": false,
+  "activeJobId": "queue-job-approval-needed",
+  "jobs": [
+    {
+      "id": "queue-job-approval-needed",
+      "goal": "Implement queue runner",
+      "priority": "medium",
+      "scope": "runtime behavior under .pi/agent and scripts",
+      "status": "blocked",
+      "team": "build",
+      "dependencies": [
+        "harness-009-queue-semantics"
+      ]
+    }
+  ]
 }
 ```
 
@@ -407,20 +464,34 @@ Those additions should be introduced intentionally, not ad hoc.
 Invalid because `priority` is unsupported:
 ```json
 {
-  "id": "bad-job",
-  "goal": "Do something",
-  "priority": "urgent",
-  "status": "queued"
+  "version": 1,
+  "paused": false,
+  "activeJobId": null,
+  "jobs": [
+    {
+      "id": "bad-job",
+      "goal": "Do something",
+      "priority": "urgent",
+      "status": "queued"
+    }
+  ]
 }
 ```
 
 Invalid because `done` lacks actual execution path semantics:
 ```json
 {
-  "id": "bad-done-job",
-  "goal": "Skipped work but marked done",
-  "priority": "low",
-  "status": "done"
+  "version": 1,
+  "paused": false,
+  "activeJobId": null,
+  "jobs": [
+    {
+      "id": "bad-done-job",
+      "goal": "Skipped work but marked done",
+      "priority": "low",
+      "status": "done"
+    }
+  ]
 }
 ```
 
