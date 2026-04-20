@@ -61,6 +61,7 @@
 - `scripts/validate-queue-semantics.sh`
 - `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-recovery-policy.sh`
+- `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`

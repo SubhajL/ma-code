@@ -519,8 +519,10 @@ The current repo-local slice now implements a bounded portion of Phase H by atta
 - task-class-aware validation checklist logic in `.pi/agent/extensions/till-done.ts`
 - machine-readable recovery policy in `.pi/agent/recovery/recovery-policy.json`
 - executable failure classification / retry-eligibility / escalation assessment in `.pi/agent/extensions/recovery-policy.ts`
+- executable runtime retry / rollback / stop decision resolution in `.pi/agent/extensions/recovery-runtime.ts`
 - proof-based completion gating, rejection flow, and manual override coverage in `scripts/validate-phase-a-b.sh`
 - bounded recovery-policy validation coverage in `scripts/validate-recovery-policy.sh`
+- bounded recovery-runtime validation coverage in `scripts/validate-recovery-runtime.sh`
 
 Future Phase H implementation should extend that foundation rather than replace it casually.
 
@@ -530,7 +532,7 @@ Likely next implementation attachments:
 - richer validator/reviewer provenance fields if task state needs stronger auditability
 - recovery reports tied to failure taxonomy codes
 - queue-aware retry and stop-condition enforcement
-- rollback execution rules and approval plumbing from HARNESS-031
+- rollback execution rules and approval plumbing beyond the current bounded recommendation layer
 
 Those should preserve the central rule:
 - completion requires proof

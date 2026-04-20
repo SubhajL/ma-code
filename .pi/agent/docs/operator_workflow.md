@@ -128,6 +128,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-queue-semantics.sh`
 - `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-recovery-policy.sh`
+- `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
@@ -155,6 +156,7 @@ Run the validator script when:
 - changing `.pi/agent/validation/completion-gate-policy.json`
 - changing `.pi/agent/extensions/g-skill-auto-route.ts`
 - changing `.pi/agent/extensions/recovery-policy.ts`
+- changing `.pi/agent/extensions/recovery-runtime.ts`
 - changing `.pi/agent/recovery/recovery-policy.json`
 - changing `.pi/agent/extensions/harness-routing.ts`
 - changing `.pi/agent/models.json` routing policy
@@ -176,6 +178,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes
 - use `./scripts/validate-extension-unit-tests.sh` for extension unit-test coverage across safety/task-discipline/orchestration helper surfaces
 - use `./scripts/validate-recovery-policy.sh` for failure taxonomy / provider-failure / retry-eligibility recovery policy changes
+- use `./scripts/validate-recovery-runtime.sh` for explicit retry / rollback / stop runtime decision changes
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes

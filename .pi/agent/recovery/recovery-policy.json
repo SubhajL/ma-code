@@ -1,8 +1,9 @@
 {
   "version": 1,
   "notes": [
-    "Machine-readable bounded recovery policy for HARNESS-018 and HARNESS-029.",
-    "This slice is intentionally limited to failure classification, retry eligibility, and escalation decisions.",
+    "Machine-readable recovery policy foundation for HARNESS-018 through HARNESS-031.",
+    "HARNESS-018/029 keep failure classification, retry eligibility, and escalation deterministic.",
+    "HARNESS-030/031 add bounded runtime-decision rules for retry, rollback recommendation, and autonomy-halting stop decisions.",
     "Retry execution and rollback execution remain later-phase work."
   ],
   "failure_classes": {
@@ -103,6 +104,91 @@
     "switch_provider_max": 1,
     "total_without_human_max": 2
   },
+  "role_retry_limits": {
+    "orchestrator": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "planning_lead": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "build_lead": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "quality_lead": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "research_worker": {
+      "retry_same_lane_max": 1,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 2
+    },
+    "frontend_worker": {
+      "retry_same_lane_max": 1,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 2
+    },
+    "backend_worker": {
+      "retry_same_lane_max": 1,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 2
+    },
+    "infra_worker": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "reviewer_worker": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "validator_worker": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    },
+    "docs_worker": {
+      "retry_same_lane_max": 1,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 2
+    },
+    "recovery_worker": {
+      "retry_same_lane_max": 0,
+      "retry_stronger_model_max": 1,
+      "switch_provider_max": 1,
+      "total_without_human_max": 1
+    }
+  },
+  "provider_retry_limits": {
+    "default_max": 1,
+    "per_provider": {
+      "openai-codex": 1,
+      "anthropic": 1
+    },
+    "notes": [
+      "A single provider should not consume repeated retries for the same bounded decision surface without switching or stopping.",
+      "Provider retry counts may be supplied by later queue telemetry; until then the caller can pass bounded provider counts explicitly."
+    ]
+  },
   "provider_failure_rules": {
     "same_provider_stronger_model_states": [
       "transient_api_error",
@@ -111,7 +197,8 @@
     "switch_provider_states": [
       "rate_limited",
       "auth_failed",
-      "provider_down"
+      "provider_down",
+      "model_unavailable"
     ],
     "notes": [
       "Same-provider stronger-model retry is only useful when the provider path itself still appears viable.",
@@ -138,6 +225,46 @@
     "retry_budget_exhausted": true,
     "notes": [
       "These conditions stop blind retries and force a human-visible decision path."
+    ]
+  },
+  "rollback_policy": {
+    "repeated_validation_failure_retry_gte": 1,
+    "repo_state_values": [
+      "unsafe",
+      "conflicted"
+    ],
+    "conflicting_changes_trigger": true,
+    "safety_regression_trigger": true,
+    "reviewer_rejects_current_lane_trigger": true,
+    "scope_by_reason": {
+      "repeated_validation_failure": "current_task_lane",
+      "repo_state_failure": "current_worktree",
+      "conflicting_changes": "current_worktree",
+      "safety_regression": "last_bounded_change",
+      "reviewer_rejects_current_lane": "current_task_lane"
+    },
+    "approval_required_scopes": [
+      "current_worktree",
+      "last_bounded_change"
+    ],
+    "notes": [
+      "Rollback recommendations must remain bounded and evidence-backed.",
+      "Human approval is still required before destructive rollback execution."
+    ]
+  },
+  "stop_conditions": {
+    "approval_required": true,
+    "ambiguous_requirements": true,
+    "tool_state_values": [
+      "degraded",
+      "unavailable"
+    ],
+    "evidence_state_values": [
+      "contradictory"
+    ],
+    "notes": [
+      "Stop means autonomous retry should halt and wait for a human-visible decision.",
+      "This is intentionally stronger than advisory escalation so HARNESS-032 does not become a blind loop."
     ]
   }
 }

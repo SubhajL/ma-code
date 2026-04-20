@@ -61,12 +61,16 @@ export interface FailureClassPolicy {
   notes: string[];
 }
 
+export const ROLLBACK_SCOPES = ["current_task_lane", "current_worktree", "last_bounded_change"] as const;
+
 export interface RetryLimits {
   retry_same_lane_max: number;
   retry_stronger_model_max: number;
   switch_provider_max: number;
   total_without_human_max: number;
 }
+
+export type RollbackScope = (typeof ROLLBACK_SCOPES)[number];
 
 export interface ProviderFailureRules {
   same_provider_stronger_model_states: ProviderFailureState[];
@@ -85,13 +89,48 @@ export interface EscalationConditions {
   notes: string[];
 }
 
+export interface ProviderRetryLimits {
+  default_max: number;
+  per_provider: Record<string, number>;
+  notes: string[];
+}
+
+export interface RollbackPolicy {
+  repeated_validation_failure_retry_gte: number;
+  repo_state_values: RepoState[];
+  conflicting_changes_trigger: boolean;
+  safety_regression_trigger: boolean;
+  reviewer_rejects_current_lane_trigger: boolean;
+  scope_by_reason: {
+    repeated_validation_failure: RollbackScope;
+    repo_state_failure: RollbackScope;
+    conflicting_changes: RollbackScope;
+    safety_regression: RollbackScope;
+    reviewer_rejects_current_lane: RollbackScope;
+  };
+  approval_required_scopes: RollbackScope[];
+  notes: string[];
+}
+
+export interface StopConditions {
+  approval_required: boolean;
+  ambiguous_requirements: boolean;
+  tool_state_values: ToolState[];
+  evidence_state_values: EvidenceState[];
+  notes: string[];
+}
+
 export interface RecoveryPolicy {
   version: 1;
   notes: string[];
   failure_classes: Record<FailureClass, FailureClassPolicy>;
   retry_limits: RetryLimits;
+  role_retry_limits: Record<HarnessRole, RetryLimits>;
+  provider_retry_limits: ProviderRetryLimits;
   provider_failure_rules: ProviderFailureRules;
   escalation_conditions: EscalationConditions;
+  rollback_policy: RollbackPolicy;
+  stop_conditions: StopConditions;
 }
 
 export interface RetryCounts {
@@ -199,6 +238,38 @@ function parseInteger(raw: unknown, fieldName: string): number {
   return raw;
 }
 
+function parseRetryLimits(raw: unknown, fieldName: string): RetryLimits {
+  if (!isRecord(raw)) {
+    throw new Error(`${fieldName} must be an object.`);
+  }
+  return {
+    retry_same_lane_max: parseInteger(raw.retry_same_lane_max, `${fieldName}.retry_same_lane_max`),
+    retry_stronger_model_max: parseInteger(raw.retry_stronger_model_max, `${fieldName}.retry_stronger_model_max`),
+    switch_provider_max: parseInteger(raw.switch_provider_max, `${fieldName}.switch_provider_max`),
+    total_without_human_max: parseInteger(raw.total_without_human_max, `${fieldName}.total_without_human_max`),
+  };
+}
+
+function parseIntegerRecord(raw: unknown, fieldName: string): Record<string, number> {
+  if (!isRecord(raw)) {
+    throw new Error(`${fieldName} must be an object.`);
+  }
+
+  const parsed: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    parsed[parseString(key, `${fieldName}.key`)] = parseInteger(value, `${fieldName}.${key}`);
+  }
+  return parsed;
+}
+
+function parseRollbackScope(raw: unknown, fieldName: string): RollbackScope {
+  const value = parseString(raw, fieldName);
+  if (!ROLLBACK_SCOPES.includes(value as RollbackScope)) {
+    throw new Error(`${fieldName} must be one of: ${ROLLBACK_SCOPES.join(", ")}.`);
+  }
+  return value as RollbackScope;
+}
+
 function parseEnumArray<T extends string>(raw: unknown, allowed: readonly T[], fieldName: string): T[] {
   const values = uniqueStrings(parseStringArray(raw)).filter((value): value is T => allowed.includes(value as T));
   if (values.length === 0) {
@@ -214,10 +285,23 @@ export function parseRecoveryPolicy(raw: unknown): RecoveryPolicy {
 
   const failureClassesRaw = raw.failure_classes;
   const retryLimitsRaw = raw.retry_limits;
+  const roleRetryLimitsRaw = raw.role_retry_limits;
+  const providerRetryLimitsRaw = raw.provider_retry_limits;
   const providerFailureRulesRaw = raw.provider_failure_rules;
   const escalationConditionsRaw = raw.escalation_conditions;
+  const rollbackPolicyRaw = raw.rollback_policy;
+  const stopConditionsRaw = raw.stop_conditions;
 
-  if (!isRecord(failureClassesRaw) || !isRecord(retryLimitsRaw) || !isRecord(providerFailureRulesRaw) || !isRecord(escalationConditionsRaw)) {
+  if (
+    !isRecord(failureClassesRaw) ||
+    !isRecord(retryLimitsRaw) ||
+    !isRecord(roleRetryLimitsRaw) ||
+    !isRecord(providerRetryLimitsRaw) ||
+    !isRecord(providerFailureRulesRaw) ||
+    !isRecord(escalationConditionsRaw) ||
+    !isRecord(rollbackPolicyRaw) ||
+    !isRecord(stopConditionsRaw)
+  ) {
     throw new Error("Recovery policy is missing required top-level sections.");
   }
 
@@ -237,11 +321,17 @@ export function parseRecoveryPolicy(raw: unknown): RecoveryPolicy {
     };
   }
 
-  const retry_limits: RetryLimits = {
-    retry_same_lane_max: parseInteger(retryLimitsRaw.retry_same_lane_max, "retry_limits.retry_same_lane_max"),
-    retry_stronger_model_max: parseInteger(retryLimitsRaw.retry_stronger_model_max, "retry_limits.retry_stronger_model_max"),
-    switch_provider_max: parseInteger(retryLimitsRaw.switch_provider_max, "retry_limits.switch_provider_max"),
-    total_without_human_max: parseInteger(retryLimitsRaw.total_without_human_max, "retry_limits.total_without_human_max"),
+  const retry_limits = parseRetryLimits(retryLimitsRaw, "retry_limits");
+
+  const role_retry_limits = {} as Record<HarnessRole, RetryLimits>;
+  for (const role of ROLE_IDS) {
+    role_retry_limits[role] = parseRetryLimits(roleRetryLimitsRaw[role], `role_retry_limits.${role}`);
+  }
+
+  const provider_retry_limits: ProviderRetryLimits = {
+    default_max: parseInteger(providerRetryLimitsRaw.default_max, "provider_retry_limits.default_max"),
+    per_provider: parseIntegerRecord(providerRetryLimitsRaw.per_provider, "provider_retry_limits.per_provider"),
+    notes: uniqueStrings(parseStringArray(providerRetryLimitsRaw.notes)),
   };
 
   const provider_failure_rules: ProviderFailureRules = {
@@ -269,13 +359,72 @@ export function parseRecoveryPolicy(raw: unknown): RecoveryPolicy {
     notes: uniqueStrings(parseStringArray(escalationConditionsRaw.notes)),
   };
 
+  const rollbackScopeByReasonRaw = rollbackPolicyRaw.scope_by_reason;
+  if (!isRecord(rollbackScopeByReasonRaw)) {
+    throw new Error("rollback_policy.scope_by_reason must be an object.");
+  }
+
+  const rollback_policy: RollbackPolicy = {
+    repeated_validation_failure_retry_gte: parseInteger(
+      rollbackPolicyRaw.repeated_validation_failure_retry_gte,
+      "rollback_policy.repeated_validation_failure_retry_gte",
+    ),
+    repo_state_values: parseEnumArray(rollbackPolicyRaw.repo_state_values, REPO_STATES, "rollback_policy.repo_state_values"),
+    conflicting_changes_trigger: parseBoolean(rollbackPolicyRaw.conflicting_changes_trigger, "rollback_policy.conflicting_changes_trigger"),
+    safety_regression_trigger: parseBoolean(rollbackPolicyRaw.safety_regression_trigger, "rollback_policy.safety_regression_trigger"),
+    reviewer_rejects_current_lane_trigger: parseBoolean(
+      rollbackPolicyRaw.reviewer_rejects_current_lane_trigger,
+      "rollback_policy.reviewer_rejects_current_lane_trigger",
+    ),
+    scope_by_reason: {
+      repeated_validation_failure: parseRollbackScope(
+        rollbackScopeByReasonRaw.repeated_validation_failure,
+        "rollback_policy.scope_by_reason.repeated_validation_failure",
+      ),
+      repo_state_failure: parseRollbackScope(
+        rollbackScopeByReasonRaw.repo_state_failure,
+        "rollback_policy.scope_by_reason.repo_state_failure",
+      ),
+      conflicting_changes: parseRollbackScope(
+        rollbackScopeByReasonRaw.conflicting_changes,
+        "rollback_policy.scope_by_reason.conflicting_changes",
+      ),
+      safety_regression: parseRollbackScope(
+        rollbackScopeByReasonRaw.safety_regression,
+        "rollback_policy.scope_by_reason.safety_regression",
+      ),
+      reviewer_rejects_current_lane: parseRollbackScope(
+        rollbackScopeByReasonRaw.reviewer_rejects_current_lane,
+        "rollback_policy.scope_by_reason.reviewer_rejects_current_lane",
+      ),
+    },
+    approval_required_scopes: parseEnumArray(
+      rollbackPolicyRaw.approval_required_scopes,
+      ROLLBACK_SCOPES,
+      "rollback_policy.approval_required_scopes",
+    ),
+    notes: uniqueStrings(parseStringArray(rollbackPolicyRaw.notes)),
+  };
+
+  const stop_conditions: StopConditions = {
+    approval_required: parseBoolean(stopConditionsRaw.approval_required, "stop_conditions.approval_required"),
+    ambiguous_requirements: parseBoolean(stopConditionsRaw.ambiguous_requirements, "stop_conditions.ambiguous_requirements"),
+    tool_state_values: parseEnumArray(stopConditionsRaw.tool_state_values, TOOL_STATES, "stop_conditions.tool_state_values"),
+    evidence_state_values: parseEnumArray(stopConditionsRaw.evidence_state_values, EVIDENCE_STATES, "stop_conditions.evidence_state_values"),
+    notes: uniqueStrings(parseStringArray(stopConditionsRaw.notes)),
+  };
+
   return {
     version: 1,
     notes: uniqueStrings(parseStringArray(raw.notes)),
     failure_classes,
     retry_limits,
+    role_retry_limits,
+    provider_retry_limits,
     provider_failure_rules,
     escalation_conditions,
+    rollback_policy,
+    stop_conditions,
   };
 }
 

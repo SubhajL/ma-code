@@ -73,6 +73,9 @@ jobs:
       - name: Run recovery-policy validator
         run: ./scripts/validate-recovery-policy.sh
 
+      - name: Run recovery-runtime validator
+        run: ./scripts/validate-recovery-runtime.sh
+
       - name: Run skill-routing validator
         run: ./scripts/validate-skill-routing.sh --skip-live
 

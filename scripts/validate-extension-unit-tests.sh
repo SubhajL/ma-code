@@ -179,6 +179,7 @@ setup_temp_runtime() {
     "$workdir/.pi/agent/packets" \
     "$workdir/.pi/agent/handoffs" \
     "$workdir/.pi/agent/validation" \
+    "$workdir/.pi/agent/recovery" \
     "$workdir/tests/extension-units"
 
   cat > "$workdir/package.json" <<'JSON'
@@ -197,13 +198,14 @@ setup_temp_runtime() {
 }
 JSON
 
-  cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime}.ts "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
   cp "$REPO_ROOT/.pi/agent/packets/packet-policy.json" "$workdir/.pi/agent/packets/packet-policy.json"
   cp "$REPO_ROOT/.pi/agent/handoffs/handoff-policy.json" "$workdir/.pi/agent/handoffs/handoff-policy.json"
   cp "$REPO_ROOT/.pi/agent/validation/completion-gate-policy.json" "$workdir/.pi/agent/validation/completion-gate-policy.json"
+  cp "$REPO_ROOT/.pi/agent/recovery/recovery-policy.json" "$workdir/.pi/agent/recovery/recovery-policy.json"
   cp "$REPO_ROOT/tests/extension-units/"*.ts "$workdir/tests/extension-units/"
 
   (

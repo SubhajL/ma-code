@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level recovery runtime resolution",
+      "status": "PASS",
+      "detail": "Deterministic runtime decision helper checks passed, including task-state-derived evidence."
+    },
+    {
+      "name": "2. recovery-runtime extension TypeScript compile",
+      "status": "PASS",
+      "detail": "recovery-runtime.ts compiled successfully."
+    },
+    {
+      "name": "3. live resolve_recovery_runtime_decision tool probe",
+      "status": "SKIP",
+      "detail": "Live probe skipped by default to avoid unnecessary provider-backed validation spend."
+    }
+  ]
+}

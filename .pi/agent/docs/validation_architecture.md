@@ -338,10 +338,10 @@ At minimum, completion evidence should still include:
 Validation reports are therefore one part of completion evidence, not a substitute for all of it.
 
 ## Current architecture boundary
-The current architecture validates the implemented Phase A/B foundation plus bounded Phase H-style completion-gate behavior and the executable routing, activation, packet-generation, handoff-generation, recovery-policy, and same-runtime-probe slices that were attached later.
+The current architecture validates the implemented Phase A/B foundation plus bounded Phase H-style completion-gate behavior and the executable routing, activation, packet-generation, handoff-generation, recovery-policy, recovery-runtime-decision, and same-runtime-probe slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
 - queue execution
-- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, bounded recovery-policy assessment, and same-runtime probes
+- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, bounded recovery-policy assessment, bounded recovery-runtime decisions, and same-runtime probes
 - UI widgets or TUI-specific behaviors
 - long-running autonomy or recovery loops beyond the current slice
 
