@@ -584,7 +584,11 @@ Use:
 - **Priority:** P1
 - **Difficulty:** M
 - **Owner:** Pi-Builder
-- **Depends on:** HARNESS-023
+- **Depends on:** HARNESS-023, HARNESS-032
+
+### Status note
+- deferred until after the single-runner HARNESS-032 path is implemented and validated
+- if near-term work explicitly requires parallel queue lanes, re-open this item earlier with that narrower scope called out
 
 ### Scripts
 - create worktree
@@ -596,6 +600,7 @@ Use:
 ### Acceptance criteria
 - worktree operations are easy and repeatable
 - humans and agents do not need to improvise them
+- implementation starts only after the single-runner-first queue path exists, unless parallel queue lanes become near-term work
 
 ---
 

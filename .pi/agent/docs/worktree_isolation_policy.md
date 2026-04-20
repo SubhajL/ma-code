@@ -231,6 +231,9 @@ The worktree policy reinforces these rules:
 If any helper later automates worktree creation, it should hard-fail or loudly block operations that would route mutation onto `main`.
 
 ## Recommended helper capabilities
+While queue execution remains single-runner-first, worktree helper scripts are intentionally deferred.
+They become worth implementing after the single-runner queue path exists or if near-term parallel queue lanes make the manual workflow too risky or repetitive.
+
 When worktree helper scripts are added later, they should support:
 - create worktree
 - cleanup worktree
@@ -287,7 +290,7 @@ It is especially important before:
 For the current repo-local harness slice, this document is the canonical worktree policy.
 That means:
 - the decision rules above are final enough to govern planning, review, and future worker routing
-- helper scripts are a later convenience layer, not a blocker for policy completeness
+- helper scripts remain a later convenience layer and are deferred while queue execution stays single-runner-first
 - if a case is not clearly allowed here, escalate instead of improvising
 
 ## Future evolution notes
