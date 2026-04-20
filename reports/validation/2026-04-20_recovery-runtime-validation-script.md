@@ -1,12 +1,12 @@
 # Automated Validation Report — Recovery Runtime
 
 - Date: 2026-04-20
-- Generated at: 2026-04-20T19:09:33+0700
-- Repo root: /Users/subhajlimanond/dev/ma-code-worktrees/harness-030-031-runtime-decision
+- Generated at: 2026-04-20T21:59:55+0700
+- Repo root: /Users/subhajlimanond/dev/ma-code
 - Pi binary: pi
 - Python binary: python3
 - Live probe enabled: no
-- Temporary root: /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.4is2oXzadR
+- Temporary root: /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.295NTnHjo9
 
 ## Summary Table
 
@@ -22,7 +22,7 @@
 
 ### Command
 ```bash
-cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.4is2oXzadR/recovery-runtime && npx tsx /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.4is2oXzadR/check_1_helper_resolution.mts
+cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.295NTnHjo9/recovery-runtime && npx tsx /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.295NTnHjo9/check_1_helper_resolution.mts
 ```
 
 ### Key Evidence
@@ -41,7 +41,7 @@ cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.4is2oXzadR/recovery-runt
 
 ### Command
 ```bash
-cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.4is2oXzadR/recovery-runtime && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/harness-routing.ts src/recovery-policy.ts src/recovery-runtime.ts
+cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.295NTnHjo9/recovery-runtime && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/harness-routing.ts src/recovery-policy.ts src/recovery-runtime.ts
 ```
 
 ### Key Evidence
@@ -52,7 +52,7 @@ cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.4is2oXzadR/recovery-runt
 
 ### Command
 ```bash
-pi --mode json --no-session --no-extensions -e /Users/subhajlimanond/dev/ma-code-worktrees/harness-030-031-runtime-decision/.pi/agent/extensions/recovery-policy.ts -e /Users/subhajlimanond/dev/ma-code-worktrees/harness-030-031-runtime-decision/.pi/agent/extensions/recovery-runtime.ts -e /Users/subhajlimanond/dev/ma-code-worktrees/harness-030-031-runtime-decision/.pi/agent/extensions/harness-routing.ts "Use resolve_recovery_runtime_decision for role backend_worker with currentModelId openai-codex/gpt-5.4, approvalRequired true, and a failed implementation task with retryCount 0, validation fail, and evidence path reports/validation/failure.md. Report the exact recommended action and whether autonomy should halt in one sentence."
+pi --mode json --no-session --no-extensions -e /Users/subhajlimanond/dev/ma-code/.pi/agent/extensions/recovery-policy.ts -e /Users/subhajlimanond/dev/ma-code/.pi/agent/extensions/recovery-runtime.ts -e /Users/subhajlimanond/dev/ma-code/.pi/agent/extensions/harness-routing.ts "Use resolve_recovery_runtime_decision for role backend_worker with currentModelId openai-codex/gpt-5.4, approvalRequired true, and a failed implementation task with retryCount 0, validation fail, and evidence path reports/validation/failure.md. Report the exact recommended action and whether autonomy should halt in one sentence."
 ```
 
 ### Key Evidence

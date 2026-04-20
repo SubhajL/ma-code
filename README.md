@@ -44,19 +44,16 @@ Implemented here:
 - executable team-activation resolver and activation policy
 - executable task-packet generator, packet policy, and packet schema
 - executable handoff generator, handoff policy, and handoff schema
+- executable recovery policy and runtime decision surfaces for bounded retry/rollback/stop recommendations before queue automation
 - same-runtime probe bridge for shared model/account-path child sessions
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
-- machine-readable recovery policy with executable failure classification, retry eligibility, and escalation decisions
-- bounded recovery runtime decision surface for explicit retry / rollback / stop recommendations before queue execution
-- extension unit-test suite for safety/task-discipline/orchestration helper surfaces
 - validation reports and file map
 
 Not yet implemented:
 - live queue runner
 - team orchestration runtime
-- rollback execution runtime and full retry executor beyond the bounded recovery runtime decision surface
 - UI widgets / status components
-- broader integration / end-to-end automated test suite beyond bounded runtime validation and extension unit tests
+- broader automated test suite beyond bounded runtime validation
 
 ## Roadmap status
 Current implementation is best understood as the **first validated Phase A/B foundation slice**.
@@ -89,34 +86,6 @@ cd /Users/subhajlimanond/dev/ma-code
 ./scripts/validate-phase-a-b.sh
 ```
 
-Use the queue-semantics validator when queue schema/docs/runtime shape change:
-
-```bash
-cd /Users/subhajlimanond/dev/ma-code
-./scripts/validate-queue-semantics.sh
-```
-
-Use the extension unit-test validator when changing extension behavior or shared helper logic:
-
-```bash
-cd /Users/subhajlimanond/dev/ma-code
-./scripts/validate-extension-unit-tests.sh
-```
-
-Use the recovery-policy validator when changing failure taxonomy, provider-failure rules, or the bounded recovery assessment surface:
-
-```bash
-cd /Users/subhajlimanond/dev/ma-code
-./scripts/validate-recovery-policy.sh
-```
-
-Use the recovery-runtime validator when changing explicit retry / rollback / stop runtime decisions before queue execution:
-
-```bash
-cd /Users/subhajlimanond/dev/ma-code
-./scripts/validate-recovery-runtime.sh
-```
-
 Key outputs:
 - runbook: `.pi/agent/docs/runtime_validation_runbook.md`
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
@@ -130,16 +99,14 @@ Current GitHub workflow surfaces:
 - CI: `.github/workflows/ci.yml`
   - repo static checks
   - foundation extension compile check
-  - queue-semantics validator
-  - extension unit-test validator
-  - recovery-policy validator
-  - recovery-runtime validator
   - skill-routing validator
   - harness-routing validator
   - team-activation validator
   - task-packets validator
   - handoffs validator
   - same-runtime bridge validator
+  - recovery-policy validator
+  - recovery-runtime validator
 - Security: `.github/workflows/security.yml`
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript

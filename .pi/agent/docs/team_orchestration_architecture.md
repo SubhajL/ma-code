@@ -174,6 +174,15 @@ For the current repo-local slice, executable handoff generation now lives at:
 This is intentionally narrower than queue-driven orchestration runtime.
 It gives build, quality, and recovery lanes deterministic handoff generation without yet implying worker dispatch or queue automation.
 
+## Current executable recovery decision surface
+For the current repo-local slice, executable recovery decisioning now lives at:
+- policy tool: `.pi/agent/extensions/recovery-policy.ts` via `resolve_recovery_policy`
+- runtime decision tool: `.pi/agent/extensions/recovery-runtime.ts` via `resolve_recovery_runtime_decision`
+- policy source: `.pi/agent/recovery/recovery-policy.json`
+- validators: `scripts/validate-recovery-policy.sh`, `scripts/validate-recovery-runtime.sh`
+
+It gives recovery and orchestration layers one bounded decision surface for retry, stronger-model retry, provider switch, rollback recommendation, stop, or escalation recommendations using existing validation/failure evidence before queue execution is added.
+
 ## Team activation rules
 
 ### Rule 1: start with planning when uncertainty is material

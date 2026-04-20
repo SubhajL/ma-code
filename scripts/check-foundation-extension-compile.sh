@@ -11,6 +11,9 @@ WORKDIR="$TMP_ROOT/compile"
 mkdir -p "$WORKDIR/src"
 cp "$REPO_ROOT/.pi/agent/extensions/safe-bash.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/till-done.ts" "$WORKDIR/src/"
+cp "$REPO_ROOT/.pi/agent/extensions/harness-routing.ts" "$WORKDIR/src/"
+cp "$REPO_ROOT/.pi/agent/extensions/recovery-policy.ts" "$WORKDIR/src/"
+cp "$REPO_ROOT/.pi/agent/extensions/recovery-runtime.ts" "$WORKDIR/src/"
 
 cat > "$WORKDIR/package.json" <<'JSON'
 {
@@ -30,7 +33,7 @@ JSON
 (
   cd "$WORKDIR"
   npm install --silent >/dev/null 2>&1
-  npx tsc --noEmit --skipLibCheck --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/safe-bash.ts src/till-done.ts
+  npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/safe-bash.ts src/till-done.ts src/harness-routing.ts src/recovery-policy.ts src/recovery-runtime.ts
 )
 
 echo "foundation-extension-compile-ok"

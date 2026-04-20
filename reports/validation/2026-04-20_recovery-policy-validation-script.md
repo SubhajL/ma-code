@@ -1,12 +1,12 @@
 # Automated Validation Report — Recovery Policy
 
 - Date: 2026-04-20
-- Generated at: 2026-04-20T18:33:03+0700
-- Repo root: /Users/subhajlimanond/dev/ma-code-worktrees/harness-018-029-recovery-policy
+- Generated at: 2026-04-20T22:00:42+0700
+- Repo root: /Users/subhajlimanond/dev/ma-code
 - Pi binary: pi
 - Python binary: python3
 - Live probe enabled: no
-- Temporary root: /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF
+- Temporary root: /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.JUen788YJJ
 
 ## Summary Table
 
@@ -21,7 +21,7 @@
 
 ### Command
 ```bash
-cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF/recovery-runtime && npx tsx /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF/check_1_helper_resolution.mts
+cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.JUen788YJJ/recovery-runtime && npx tsx /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.JUen788YJJ/check_1_helper_resolution.mts
 ```
 
 ### Key Evidence
@@ -35,7 +35,7 @@ cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF/recovery-runt
     "failureClass": "provider_failure",
     "recommendedAction": "retry_stronger_model",
     "strongerModelCandidate": "openai-codex/gpt-5.4",
-    "providerSwitchCandidate": null,
+    "providerSwitchCandidate": "anthropic/claude-sonnet-4-6",
     "escalationRequired": false
   },
   {
@@ -78,7 +78,7 @@ cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF/recovery-runt
 
 ### Command
 ```bash
-cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF/recovery-runtime && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/harness-routing.ts src/recovery-policy.ts
+cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.JUen788YJJ/recovery-runtime && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/harness-routing.ts src/recovery-policy.ts
 ```
 
 ### Key Evidence
@@ -98,4 +98,4 @@ cd /var/folders/mp/3ghkj_pn7kz5nb25brmtq8000000gn/T/tmp.Zu5I2jAMKF/recovery-runt
 ## Final Decision
 - Overall status: PASS
 - Failed checks: 0
-- Summary JSON: reports/validation/2026-04-20_recovery-policy-validation-script.json
+- Summary JSON: /Users/subhajlimanond/dev/ma-code/reports/validation/2026-04-20_recovery-policy-validation-script.json
