@@ -56,12 +56,14 @@
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-queue-semantics.sh`
+- `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
 - `scripts/validate-task-packets.sh`
 - `scripts/validate-handoffs.sh`
 - `scripts/validate-same-runtime-bridge.sh`
+- `tests/extension-units/*.test.ts`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 
