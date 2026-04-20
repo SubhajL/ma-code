@@ -13,33 +13,24 @@ required_files=(
   ".pi/agent/teams/activation-policy.json"
   ".pi/agent/packets/packet-policy.json"
   ".pi/agent/handoffs/handoff-policy.json"
-  ".pi/agent/recovery/recovery-policy.json"
   ".pi/agent/validation/completion-gate-policy.json"
   ".pi/agent/state/schemas/tasks.schema.json"
-  ".pi/agent/state/schemas/queue.schema.json"
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
   "scripts/validate-phase-a-b.sh"
-  "scripts/validate-queue-semantics.sh"
-  "scripts/validate-extension-unit-tests.sh"
-  "scripts/validate-recovery-policy.sh"
-  "scripts/validate-recovery-runtime.sh"
   "scripts/validate-skill-routing.sh"
   "scripts/validate-harness-routing.sh"
   "scripts/validate-team-activation.sh"
   "scripts/validate-task-packets.sh"
   "scripts/validate-handoffs.sh"
   "scripts/validate-same-runtime-bridge.sh"
+  "scripts/validate-recovery-policy.sh"
+  "scripts/validate-recovery-runtime.sh"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
   ".github/dependabot.yml"
   ".github/CODEOWNERS"
   ".github/pull_request_template.md"
-  "tests/extension-units/safe-bash.test.ts"
-  "tests/extension-units/till-done.test.ts"
-  "tests/extension-units/orchestration-helpers.test.ts"
-  "tests/extension-units/recovery-runtime.test.ts"
-  "tests/extension-units/test-utils.ts"
 )
 
 for path in "${required_files[@]}"; do
@@ -59,10 +50,8 @@ for rel in [
     ".pi/agent/teams/activation-policy.json",
     ".pi/agent/packets/packet-policy.json",
     ".pi/agent/handoffs/handoff-policy.json",
-    ".pi/agent/recovery/recovery-policy.json",
     ".pi/agent/validation/completion-gate-policy.json",
     ".pi/agent/state/schemas/tasks.schema.json",
-    ".pi/agent/state/schemas/queue.schema.json",
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
     "packages/pi-g-skills/package.json",

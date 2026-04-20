@@ -31,9 +31,6 @@
 - `.pi/agent/handoffs/*.json`
 - `.pi/agent/state/schemas/handoff.schema.json`
 
-## Update recovery policy
-- `.pi/agent/recovery/*.json`
-
 ## Update task/queue structure
 - `.pi/agent/state/schemas/*.json`
 - `.pi/agent/state/runtime/*.json`
@@ -58,17 +55,14 @@
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/validate-phase-a-b.sh`
-- `scripts/validate-queue-semantics.sh`
-- `scripts/validate-extension-unit-tests.sh`
-- `scripts/validate-recovery-policy.sh`
-- `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
 - `scripts/validate-task-packets.sh`
 - `scripts/validate-handoffs.sh`
 - `scripts/validate-same-runtime-bridge.sh`
-- `tests/extension-units/*.test.ts`
+- `scripts/validate-recovery-policy.sh`
+- `scripts/validate-recovery-runtime.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 
