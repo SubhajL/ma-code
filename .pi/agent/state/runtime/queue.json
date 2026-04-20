@@ -1,1 +1,6 @@
-[]
+{
+  "version": 1,
+  "paused": false,
+  "activeJobId": null,
+  "jobs": []
+}

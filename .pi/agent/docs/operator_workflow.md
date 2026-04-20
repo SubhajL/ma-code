@@ -125,6 +125,7 @@ When a repeated live rerun is used, record:
 ## Validation assets
 ### Primary validators
 - `scripts/validate-phase-a-b.sh`
+- `scripts/validate-queue-semantics.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
@@ -146,6 +147,7 @@ Run the validator script when:
 - changing `.pi/SYSTEM.md`
 - changing `AGENTS.md`
 - changing task schema or runtime task state shape
+- changing queue schema or runtime queue state shape
 - changing `safe-bash.ts`
 - changing `till-done.ts`
 - changing `.pi/agent/validation/completion-gate-policy.json`
@@ -167,6 +169,7 @@ Run the validator script when:
 
 Choose the validator that matches the change:
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
+- use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
