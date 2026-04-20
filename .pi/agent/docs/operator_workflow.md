@@ -123,6 +123,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-team-activation.sh`
 - `scripts/validate-task-packets.sh`
 - `scripts/validate-handoffs.sh`
+- `scripts/validate-same-runtime-bridge.sh`
 
 ### Supporting docs
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -152,6 +153,7 @@ Run the validator script when:
 - changing `.pi/agent/extensions/handoffs.ts`
 - changing `.pi/agent/handoffs/handoff-policy.json`
 - changing `.pi/agent/state/schemas/handoff.schema.json`
+- changing `.pi/agent/extensions/same-runtime-bridge.ts`
 - changing audit logging behavior or expectations
 - before calling a bounded phase complete
 
@@ -162,6 +164,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
 - use `./scripts/validate-task-packets.sh` for executable task-packet changes
 - use `./scripts/validate-handoffs.sh` for executable handoff changes
+- use `./scripts/validate-same-runtime-bridge.sh` for same-runtime probe bridge changes
 
 ## Minimum completion evidence for this harness slice
 A bounded change is not complete unless you can show:

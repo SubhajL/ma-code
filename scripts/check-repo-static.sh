@@ -22,6 +22,7 @@ required_files=(
   "scripts/validate-team-activation.sh"
   "scripts/validate-task-packets.sh"
   "scripts/validate-handoffs.sh"
+  "scripts/validate-same-runtime-bridge.sh"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
   ".github/dependabot.yml"

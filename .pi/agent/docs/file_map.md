@@ -44,6 +44,7 @@
 - `.pi/agent/docs/auggie_mcp_integration_contract.md`
 - `.pi/agent/docs/second_model_planning_contract.md`
 - `.pi/agent/docs/auggie_and_second_model_usage.md`
+- `.pi/agent/docs/same_runtime_bridge_architecture.md`
 
 ## Update validation workflow
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -57,6 +58,7 @@
 - `scripts/validate-team-activation.sh`
 - `scripts/validate-task-packets.sh`
 - `scripts/validate-handoffs.sh`
+- `scripts/validate-same-runtime-bridge.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 
