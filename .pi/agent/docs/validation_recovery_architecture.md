@@ -306,7 +306,21 @@ Typical response:
 - switch provider if repeated
 - tighten packet or prompt if needed
 
-### 3. Tool failure
+### 3. Provider failure
+Meaning:
+- the provider or model endpoint is unstable, rate-limited, unavailable, or otherwise unreliable for the current lane
+
+Examples:
+- API rate limit prevents bounded completion
+- provider outage or auth failure interrupts the lane
+- selected model becomes unavailable for the current provider path
+
+Typical response:
+- prefer a same-provider stronger-model retry only when the provider path still looks viable
+- switch provider when the provider path itself is the problem and an approved alternate exists
+- escalate when retry budgets are exhausted or no approved candidate remains
+
+### 4. Tool failure
 Meaning:
 - tools or tool wrappers prevented expected execution
 
@@ -320,7 +334,7 @@ Typical response:
 - avoid blaming the worker first
 - block or escalate if the tool path is unreliable
 
-### 4. Repo-state failure
+### 5. Repo-state failure
 Meaning:
 - git/worktree/file state made normal execution unsafe or contradictory
 
@@ -334,7 +348,7 @@ Typical response:
 - requeue after repo is stable
 - escalate if multiple lanes collide
 
-### 5. Validation failure
+### 6. Validation failure
 Meaning:
 - the implementation ran, but proof or outcomes did not satisfy acceptance
 
@@ -347,7 +361,7 @@ Typical response:
 - route back for bounded fixes if the path is clear
 - send to recovery if the cause is unclear or repeated
 
-### 6. Ambiguity failure
+### 7. Ambiguity failure
 Meaning:
 - the system cannot proceed because the requirement itself is unclear
 
@@ -503,7 +517,10 @@ Current Phase A/B validator assets remain useful as the foundation:
 The current repo-local slice now implements a bounded portion of Phase H by attaching:
 - machine-readable completion-gate policy in `.pi/agent/validation/completion-gate-policy.json`
 - task-class-aware validation checklist logic in `.pi/agent/extensions/till-done.ts`
+- machine-readable recovery policy in `.pi/agent/recovery/recovery-policy.json`
+- executable failure classification / retry-eligibility / escalation assessment in `.pi/agent/extensions/recovery-policy.ts`
 - proof-based completion gating, rejection flow, and manual override coverage in `scripts/validate-phase-a-b.sh`
+- bounded recovery-policy validation coverage in `scripts/validate-recovery-policy.sh`
 
 Future Phase H implementation should extend that foundation rather than replace it casually.
 
@@ -513,6 +530,7 @@ Likely next implementation attachments:
 - richer validator/reviewer provenance fields if task state needs stronger auditability
 - recovery reports tied to failure taxonomy codes
 - queue-aware retry and stop-condition enforcement
+- rollback execution rules and approval plumbing from HARNESS-031
 
 Those should preserve the central rule:
 - completion requires proof

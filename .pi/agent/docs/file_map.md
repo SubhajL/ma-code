@@ -31,6 +31,9 @@
 - `.pi/agent/handoffs/*.json`
 - `.pi/agent/state/schemas/handoff.schema.json`
 
+## Update recovery policy
+- `.pi/agent/recovery/*.json`
+
 ## Update task/queue structure
 - `.pi/agent/state/schemas/*.json`
 - `.pi/agent/state/runtime/*.json`
@@ -57,6 +60,7 @@
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-queue-semantics.sh`
 - `scripts/validate-extension-unit-tests.sh`
+- `scripts/validate-recovery-policy.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`

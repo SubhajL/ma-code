@@ -70,6 +70,9 @@ jobs:
       - name: Run queue-semantics validator
         run: ./scripts/validate-queue-semantics.sh
 
+      - name: Run recovery-policy validator
+        run: ./scripts/validate-recovery-policy.sh
+
       - name: Run skill-routing validator
         run: ./scripts/validate-skill-routing.sh --skip-live
 
