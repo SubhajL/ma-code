@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "notes": [
+    "Machine-readable bounded recovery policy for HARNESS-018 and HARNESS-029.",
+    "This slice is intentionally limited to failure classification, retry eligibility, and escalation decisions.",
+    "Retry execution and rollback execution remain later-phase work."
+  ],
+  "failure_classes": {
+    "plan_failure": {
+      "description": "The packet or plan is insufficient, contradictory, or missing required constraints.",
+      "preferred_actions": [
+        "escalate"
+      ],
+      "allow_retry_same_lane": false,
+      "allow_retry_stronger_model": false,
+      "allow_switch_provider": false,
+      "notes": [
+        "Plan defects should be revised, not blindly retried."
+      ]
+    },
+    "model_failure": {
+      "description": "The chosen model appears to have produced weak reasoning or repeated misunderstanding.",
+      "preferred_actions": [
+        "retry_stronger_model",
+        "retry_same_lane",
+        "escalate"
+      ],
+      "allow_retry_same_lane": true,
+      "allow_retry_stronger_model": true,
+      "allow_switch_provider": false,
+      "notes": [
+        "Prefer a stronger model before escalating when the task remains bounded and evidence is not contradictory."
+      ]
+    },
+    "provider_failure": {
+      "description": "The provider or model endpoint appears unstable, unavailable, rate-limited, or otherwise unable to serve the lane reliably.",
+      "preferred_actions": [
+        "retry_stronger_model",
+        "switch_provider",
+        "escalate"
+      ],
+      "allow_retry_same_lane": false,
+      "allow_retry_stronger_model": true,
+      "allow_switch_provider": true,
+      "notes": [
+        "Provider failure handling should prefer deterministic routing candidates rather than ad hoc overrides."
+      ]
+    },
+    "tool_failure": {
+      "description": "The tool path or runtime wrapper prevented normal execution or validation.",
+      "preferred_actions": [
+        "escalate"
+      ],
+      "allow_retry_same_lane": false,
+      "allow_retry_stronger_model": false,
+      "allow_switch_provider": false,
+      "notes": [
+        "Do not blame the worker before the tool path is shown to be healthy."
+      ]
+    },
+    "repo_state_failure": {
+      "description": "The repo/worktree/file state made execution unsafe or contradictory.",
+      "preferred_actions": [
+        "escalate"
+      ],
+      "allow_retry_same_lane": false,
+      "allow_retry_stronger_model": false,
+      "allow_switch_provider": false,
+      "notes": [
+        "Repo-state problems require stabilization before retry."
+      ]
+    },
+    "validation_failure": {
+      "description": "Implementation output failed validation or lacked sufficient proof.",
+      "preferred_actions": [
+        "retry_same_lane",
+        "retry_stronger_model",
+        "escalate"
+      ],
+      "allow_retry_same_lane": true,
+      "allow_retry_stronger_model": true,
+      "allow_switch_provider": false,
+      "notes": [
+        "Prefer bounded fixes first when the failure is understood and evidence is not contradictory."
+      ]
+    },
+    "ambiguity_failure": {
+      "description": "The requirement itself is too ambiguous to justify a bounded retry.",
+      "preferred_actions": [
+        "escalate"
+      ],
+      "allow_retry_same_lane": false,
+      "allow_retry_stronger_model": false,
+      "allow_switch_provider": false,
+      "notes": [
+        "Clarification beats improvisation."
+      ]
+    }
+  },
+  "retry_limits": {
+    "retry_same_lane_max": 1,
+    "retry_stronger_model_max": 1,
+    "switch_provider_max": 1,
+    "total_without_human_max": 2
+  },
+  "provider_failure_rules": {
+    "same_provider_stronger_model_states": [
+      "transient_api_error",
+      "model_unavailable"
+    ],
+    "switch_provider_states": [
+      "rate_limited",
+      "auth_failed",
+      "provider_down"
+    ],
+    "notes": [
+      "Same-provider stronger-model retry is only useful when the provider path itself still appears viable.",
+      "Provider switch should use approved routing candidates rather than arbitrary overrides."
+    ]
+  },
+  "escalation_conditions": {
+    "approval_required": true,
+    "ambiguous_requirements": true,
+    "repo_state_values": [
+      "unsafe",
+      "conflicted"
+    ],
+    "tool_state_values": [
+      "unavailable"
+    ],
+    "validation_state_values": [
+      "blocked",
+      "contradictory"
+    ],
+    "evidence_state_values": [
+      "contradictory"
+    ],
+    "retry_budget_exhausted": true,
+    "notes": [
+      "These conditions stop blind retries and force a human-visible decision path."
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level recovery policy resolution",
+      "status": "PASS",
+      "detail": "Deterministic helper-level recovery classification and retry eligibility checks passed."
+    },
+    {
+      "name": "2. recovery-policy extension TypeScript compile",
+      "status": "PASS",
+      "detail": "recovery-policy.ts compiled successfully."
+    },
+    {
+      "name": "3. live resolve_recovery_policy tool probe",
+      "status": "SKIP",
+      "detail": "Live probe skipped by default to avoid unnecessary provider-backed validation spend."
+    }
+  ]
+}

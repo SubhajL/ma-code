@@ -46,12 +46,14 @@ Implemented here:
 - executable handoff generator, handoff policy, and handoff schema
 - same-runtime probe bridge for shared model/account-path child sessions
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
+- machine-readable recovery policy with executable failure classification, retry eligibility, and escalation decisions
 - extension unit-test suite for safety/task-discipline/orchestration helper surfaces
 - validation reports and file map
 
 Not yet implemented:
 - live queue runner
 - team orchestration runtime
+- rollback execution runtime and full retry executor beyond bounded recovery-policy assessment
 - UI widgets / status components
 - broader integration / end-to-end automated test suite beyond bounded runtime validation and extension unit tests
 
@@ -100,6 +102,13 @@ cd /Users/subhajlimanond/dev/ma-code
 ./scripts/validate-extension-unit-tests.sh
 ```
 
+Use the recovery-policy validator when changing failure taxonomy, provider-failure rules, or the bounded recovery decision surface:
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+./scripts/validate-recovery-policy.sh
+```
+
 Key outputs:
 - runbook: `.pi/agent/docs/runtime_validation_runbook.md`
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
@@ -115,6 +124,7 @@ Current GitHub workflow surfaces:
   - foundation extension compile check
   - queue-semantics validator
   - extension unit-test validator
+  - recovery-policy validator
   - skill-routing validator
   - harness-routing validator
   - team-activation validator
