@@ -27,10 +27,12 @@
           "title",
           "owner",
           "status",
+          "taskClass",
           "acceptance",
           "evidence",
           "dependencies",
           "retryCount",
+          "validation",
           "notes",
           "timestamps"
         ],
@@ -58,6 +60,15 @@
               "failed"
             ]
           },
+          "taskClass": {
+            "type": "string",
+            "enum": [
+              "research",
+              "docs",
+              "implementation",
+              "runtime_safety"
+            ]
+          },
           "acceptance": {
             "type": "array",
             "items": {
@@ -80,6 +91,111 @@
           "retryCount": {
             "type": "integer",
             "minimum": 0
+          },
+          "validation": {
+            "type": "object",
+            "required": [
+              "tier",
+              "decision",
+              "source",
+              "checklist",
+              "approvalRef",
+              "updatedAt"
+            ],
+            "properties": {
+              "tier": {
+                "type": "string",
+                "enum": [
+                  "lightweight",
+                  "standard",
+                  "strict"
+                ]
+              },
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "pass",
+                  "fail",
+                  "blocked",
+                  "overridden"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "review",
+                  "validator",
+                  "override",
+                  null
+                ]
+              },
+              "checklist": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "required": [
+                  "acceptance",
+                  "tests",
+                  "diff_review",
+                  "evidence"
+                ],
+                "properties": {
+                  "acceptance": {
+                    "type": "string",
+                    "enum": [
+                      "met",
+                      "partial",
+                      "not_met",
+                      "not_applicable"
+                    ]
+                  },
+                  "tests": {
+                    "type": "string",
+                    "enum": [
+                      "met",
+                      "partial",
+                      "not_met",
+                      "not_applicable"
+                    ]
+                  },
+                  "diff_review": {
+                    "type": "string",
+                    "enum": [
+                      "met",
+                      "partial",
+                      "not_met",
+                      "not_applicable"
+                    ]
+                  },
+                  "evidence": {
+                    "type": "string",
+                    "enum": [
+                      "met",
+                      "partial",
+                      "not_met",
+                      "not_applicable"
+                    ]
+                  }
+                }
+              },
+              "approvalRef": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "updatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           },
           "notes": {
             "type": "array",

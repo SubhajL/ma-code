@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "checklist_categories": [
+    "acceptance",
+    "tests",
+    "diff_review",
+    "evidence"
+  ],
+  "validation_tiers": {
+    "lightweight": {
+      "description": "Docs/research class tasks require lighter validation and may mark tests/diff review as not applicable when visible evidence exists."
+    },
+    "standard": {
+      "description": "Normal implementation/config changes require validator-backed proof for acceptance, tests, diff review, and evidence."
+    },
+    "strict": {
+      "description": "Safety/autonomy-sensitive tasks require validator-backed proof plus the same explicit checklist coverage, with manual override remaining visible and exceptional."
+    }
+  },
+  "task_classes": {
+    "research": {
+      "tier": "lightweight",
+      "allowed_validation_sources": [
+        "review",
+        "validator"
+      ],
+      "required_categories": [
+        "acceptance",
+        "evidence"
+      ],
+      "allow_not_applicable": [
+        "tests",
+        "diff_review"
+      ],
+      "override_requires_approval": true,
+      "notes": [
+        "lighter validation is allowed because runtime tests are often not relevant",
+        "visible evidence is still required"
+      ]
+    },
+    "docs": {
+      "tier": "lightweight",
+      "allowed_validation_sources": [
+        "review",
+        "validator"
+      ],
+      "required_categories": [
+        "acceptance",
+        "evidence"
+      ],
+      "allow_not_applicable": [
+        "tests",
+        "diff_review"
+      ],
+      "override_requires_approval": true,
+      "notes": [
+        "docs-only work may use reviewer-backed validation instead of validator-worker proof",
+        "tests and diff review may be marked not_applicable when justified"
+      ]
+    },
+    "implementation": {
+      "tier": "standard",
+      "allowed_validation_sources": [
+        "validator"
+      ],
+      "required_categories": [
+        "acceptance",
+        "tests",
+        "diff_review",
+        "evidence"
+      ],
+      "allow_not_applicable": [],
+      "override_requires_approval": true,
+      "notes": [
+        "normal code/config changes require validator-backed proof before done"
+      ]
+    },
+    "runtime_safety": {
+      "tier": "strict",
+      "allowed_validation_sources": [
+        "validator"
+      ],
+      "required_categories": [
+        "acceptance",
+        "tests",
+        "diff_review",
+        "evidence"
+      ],
+      "allow_not_applicable": [],
+      "override_requires_approval": true,
+      "notes": [
+        "runtime safety or autonomy-sensitive changes require the strict tier",
+        "manual override should remain exceptional and explicit"
+      ]
+    }
+  }
+}

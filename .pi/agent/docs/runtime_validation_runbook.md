@@ -251,21 +251,69 @@ Expected:
 - audit log records a `requeue` action and resulting `queued` status
 - final response reports queued state
 
-## 15. Optional full-stack check with both extensions loaded
+## 15. `till-done.ts` — validation-before-done enforced
 
 ```bash
 cd /Users/subhajlimanond/dev/ma-code
-pi --mode json --no-session "Use task_update to create a task, claim it, start it, write a temporary validation file, add evidence, move the task to review, and mark the task done."
+pi --no-session --no-extensions -e ./.pi/agent/extensions/till-done.ts --mode json "Use task_update to create a task titled 'validation gate check' with taskClass implementation and one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: demo.txt', move it to review, and then immediately try to mark it done without any validation step. Report the exact result."
+```
+
+Expected:
+- create/claim/start/evidence/review succeeds
+- `done` is rejected with:
+  - `Task cannot be completed until validation passes for task class implementation.`
+
+## 16. `till-done.ts` — docs/research lightweight validation path
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+pi --no-session --no-extensions -e ./.pi/agent/extensions/till-done.ts --mode json "Use task_update to create a task titled 'docs validation check' with taskClass docs and one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: docs.md', move it to review, validate it with validationSource review and validationDecision pass using validationChecklist {acceptance: met, tests: not_applicable, diff_review: not_applicable, evidence: met}, then mark it done and report the exact result."
+```
+
+Expected:
+- docs task uses lighter validation source `review`
+- tests and diff review may be `not_applicable`
+- task reaches `done`
+
+## 17. `till-done.ts` — validation rejection flow
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+pi --no-session --no-extensions -e ./.pi/agent/extensions/till-done.ts --mode json "First use task_update to create task id impl-fail titled 'implementation validation fail' with one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: impl.ts', move it to review, and validate it with validationSource validator, validationDecision fail, validationChecklist {acceptance: met, tests: not_met, diff_review: met, evidence: met}, and note 'tests failed'. Then create task id impl-block titled 'implementation validation block' with one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: impl.ts', move it to review, and validate it with validationSource validator, validationDecision blocked, validationChecklist {acceptance: met, tests: partial, diff_review: partial, evidence: met}, and note 'provider unavailable'. Finally use task_update with action show and report the exact statuses of impl-fail and impl-block."
+```
+
+Expected:
+- failed validation moves the task to `failed`
+- blocked validation moves the task to `blocked`
+- both outcomes remain visible in `show`
+
+## 18. `till-done.ts` — manual override path
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+pi --no-session --no-extensions -e ./.pi/agent/extensions/till-done.ts --mode json "Use task_update to create a task titled 'manual override check' with taskClass runtime_safety and one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: guard.ts', move it to review, validate it with validationSource validator, validationDecision blocked, validationChecklist {acceptance: met, tests: partial, diff_review: met, evidence: met}, and note 'external validator unavailable'. Then use task_update with action override, note 'Human approved bounded override', approvalRef 'human-approval-001', and evidence ['Approval ref: human-approval-001']. Then use task_update with action done and report the exact result."
+```
+
+Expected:
+- blocked validation alone is not enough for completion
+- override requires explicit approval metadata
+- `done` succeeds only after override is recorded
+
+## 19. Optional full-stack check with both extensions loaded
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+pi --mode json --no-session --no-extensions -e ./.pi/agent/extensions/safe-bash.ts -e ./.pi/agent/extensions/till-done.ts "Use task_update to create a task titled 'full stack validation artifact' with taskClass implementation, claim it for owner assistant, start it, write validation-artifact.txt containing exactly hello, attach evidence mentioning the changed file and write success, move it to review, validate it with validationSource validator and validationDecision pass using validationChecklist {acceptance: met, tests: met, diff_review: met, evidence: met} plus evidence ['Validator report: PASS'], then mark the task done and summarize the result."
 ```
 
 Expected:
 - `task_update` is used
 - write succeeds only after task start
 - evidence is attached
-- task moves through review before done
+- task moves through review and validation before done
 - task can transition to done
 
-## 16. Cleanup
+## 20. Cleanup
 
 After validation, restore clean runtime state:
 

@@ -500,12 +500,17 @@ Current Phase A/B validator assets remain useful as the foundation:
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
 
+The current repo-local slice now implements a bounded portion of Phase H by attaching:
+- machine-readable completion-gate policy in `.pi/agent/validation/completion-gate-policy.json`
+- task-class-aware validation checklist logic in `.pi/agent/extensions/till-done.ts`
+- proof-based completion gating, rejection flow, and manual override coverage in `scripts/validate-phase-a-b.sh`
+
 Future Phase H implementation should extend that foundation rather than replace it casually.
 
 ## Future evolution notes
 Likely next implementation attachments:
 - explicit tier selection rules in task packets
-- reusable validator checklists by task class
+- richer validator/reviewer provenance fields if task state needs stronger auditability
 - recovery reports tied to failure taxonomy codes
 - queue-aware retry and stop-condition enforcement
 

@@ -148,6 +148,10 @@ Current checks include:
 - explicit main-branch mutation protection checks
 - `till-done.ts` task-discipline checks
 - review-before-done task transition checks
+- validation-before-done completion-gate checks
+- lighter docs/research validation-path checks
+- validator fail/blocked rejection-flow checks
+- explicit manual override checks
 - compact audit-log field checks
 - cleanup and runtime state reset
 - optional full-stack interaction when explicitly enabled
@@ -334,7 +338,7 @@ At minimum, completion evidence should still include:
 Validation reports are therefore one part of completion evidence, not a substitute for all of it.
 
 ## Current architecture boundary
-The current architecture validates the implemented Phase A/B foundation plus bounded executable routing, activation, packet-generation, handoff-generation, and same-runtime-probe slices that were attached later.
+The current architecture validates the implemented Phase A/B foundation plus bounded Phase H-style completion-gate behavior and the executable routing, activation, packet-generation, handoff-generation, and same-runtime-probe slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
 - queue execution
 - full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, and same-runtime probes

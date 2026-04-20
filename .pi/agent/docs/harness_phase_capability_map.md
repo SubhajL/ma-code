@@ -171,6 +171,11 @@ Meaning:
 - the system can respond to failure in structured ways
 - the quality loop becomes much more real
 
+Current repo-local attachment in this slice:
+- task-class-aware validation checklist logic and proof-based completion gates exist in `till-done.ts`
+- docs/research tasks have lighter validation paths, while implementation/runtime-safety tasks require stronger proof
+- manual override remains explicit and visible rather than silent
+
 This is a major prerequisite for operator-light behavior.
 Without it, “autonomy” would mostly mean faster mistakes.
 

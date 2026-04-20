@@ -1,0 +1,106 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. Pi startup returns OK",
+      "status": "PASS",
+      "detail": "Pi returned exact OK."
+    },
+    {
+      "name": "2. Project prompt and skill discovery",
+      "status": "PASS",
+      "detail": "Prompt templates and project skills discovered through RPC get_commands."
+    },
+    {
+      "name": "3. task_update tool available in live Pi session",
+      "status": "PASS",
+      "detail": "task_update executed in a live Pi session."
+    },
+    {
+      "name": "4. TypeScript compile check for runtime extensions",
+      "status": "PASS",
+      "detail": "Temporary isolated compile sandbox passed."
+    },
+    {
+      "name": "5. safe-bash allows safe pwd command",
+      "status": "PASS",
+      "detail": "pwd executed successfully through bash tool."
+    },
+    {
+      "name": "6. safe-bash blocks .env write through write tool",
+      "status": "PASS",
+      "detail": "Direct .env write was blocked by safe-bash."
+    },
+    {
+      "name": "7. safe-bash blocks .env write through bash",
+      "status": "PASS",
+      "detail": "Bash redirect into .env was blocked by safe-bash."
+    },
+    {
+      "name": "8. safe-bash blocks destructive git reset on non-main branch",
+      "status": "PASS",
+      "detail": "Destructive git reset was blocked on disposable sandbox branch."
+    },
+    {
+      "name": "9. till-done blocks direct mutation without task",
+      "status": "PASS",
+      "detail": "Direct write without task was blocked."
+    },
+    {
+      "name": "10. till-done rejects done without evidence",
+      "status": "PASS",
+      "detail": "Done without evidence was rejected after review handoff."
+    },
+    {
+      "name": "11. safe-bash blocks write tool mutation on main",
+      "status": "PASS",
+      "detail": "Direct write on main was blocked and audit log recorded the main-branch context."
+    },
+    {
+      "name": "12. safe-bash blocks mutating bash on main",
+      "status": "PASS",
+      "detail": "Mutating bash on main was blocked and audit log recorded the main-branch context."
+    },
+    {
+      "name": "13. till-done requires review before done",
+      "status": "PASS",
+      "detail": "Direct in_progress to done was rejected as expected."
+    },
+    {
+      "name": "14. till-done requeue and retry audit fields",
+      "status": "PASS",
+      "detail": "Retry count and requeue audit fields were recorded as expected."
+    },
+    {
+      "name": "15. till-done requires validation before done",
+      "status": "PASS",
+      "detail": "Done without validation proof was rejected for the default implementation task class."
+    },
+    {
+      "name": "16. till-done allows lightweight docs validation path",
+      "status": "PASS",
+      "detail": "Docs task completed after lightweight review validation with not_applicable tests/diff review."
+    },
+    {
+      "name": "17. till-done routes validation fail and blocked into visible rejection states",
+      "status": "PASS",
+      "detail": "Validation fail/block outcomes produced visible failed/blocked task states."
+    },
+    {
+      "name": "18. till-done manual override path is explicit and completion-enabling",
+      "status": "PASS",
+      "detail": "Manual override recorded approval metadata and enabled bounded completion."
+    },
+    {
+      "name": "19. Optional full-stack interaction with both runtime controls",
+      "status": "SKIP",
+      "detail": "Full-stack check skipped by default. A separate one-off bounded full-stack pass was observed and recorded in the coding log."
+    },
+    {
+      "name": "20. Cleanup and runtime state reset",
+      "status": "PASS",
+      "detail": "Cleanup removed validation artifacts and reset tasks runtime state."
+    }
+  ]
+}
