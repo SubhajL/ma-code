@@ -45,6 +45,7 @@ Implemented here:
 - executable task-packet generator, packet policy, and packet schema
 - executable handoff generator, handoff policy, and handoff schema
 - same-runtime probe bridge for shared model/account-path child sessions
+- task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
 - validation reports and file map
 
 Not yet implemented:

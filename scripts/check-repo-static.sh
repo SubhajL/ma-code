@@ -13,6 +13,7 @@ required_files=(
   ".pi/agent/teams/activation-policy.json"
   ".pi/agent/packets/packet-policy.json"
   ".pi/agent/handoffs/handoff-policy.json"
+  ".pi/agent/validation/completion-gate-policy.json"
   ".pi/agent/state/schemas/tasks.schema.json"
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
@@ -47,6 +48,7 @@ for rel in [
     ".pi/agent/teams/activation-policy.json",
     ".pi/agent/packets/packet-policy.json",
     ".pi/agent/handoffs/handoff-policy.json",
+    ".pi/agent/validation/completion-gate-policy.json",
     ".pi/agent/state/schemas/tasks.schema.json",
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",

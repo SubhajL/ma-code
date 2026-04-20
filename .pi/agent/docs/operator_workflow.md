@@ -8,6 +8,7 @@ This workflow covers the current implemented harness slice:
 - repo policy and role contracts
 - `safe-bash.ts`
 - `till-done.ts`
+- machine-readable completion-gate policy
 - bounded runtime validation
 
 It does not assume:
@@ -40,6 +41,12 @@ Preferred command:
 ```bash
 ./scripts/validate-phase-a-b.sh
 ```
+
+For `till-done.ts` / completion-gate changes, the validator now covers:
+- validation-before-done enforcement
+- lighter docs/research validation path
+- validator `fail` / `blocked` rejection flow
+- explicit manual override path
 
 Useful variants:
 ```bash
@@ -141,6 +148,7 @@ Run the validator script when:
 - changing task schema or runtime task state shape
 - changing `safe-bash.ts`
 - changing `till-done.ts`
+- changing `.pi/agent/validation/completion-gate-policy.json`
 - changing `.pi/agent/extensions/g-skill-auto-route.ts`
 - changing `.pi/agent/extensions/harness-routing.ts`
 - changing `.pi/agent/models.json` routing policy
@@ -172,6 +180,12 @@ A bounded change is not complete unless you can show:
 - validator or test evidence
 - short explanation of what changed
 - unresolved risks or caveats
+
+For tasks completed through `task_update`, the current completion gate also expects:
+- task status reaches `review` before `done`
+- validation result is recorded as `pass` or explicit `overridden`
+- docs/research tasks use the lighter allowed validation path rather than skipping proof
+- manual overrides retain approval metadata in task state/evidence
 
 ## Recommended decision rule
 ### Use the script when:

@@ -4,18 +4,59 @@ import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
+type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
+type ValidationTier = "lightweight" | "standard" | "strict";
+type ValidationSource = "review" | "validator" | "override";
+type ValidationDecision = "pending" | "pass" | "fail" | "blocked" | "overridden";
+type ChecklistStatus = "met" | "partial" | "not_met" | "not_applicable";
+type ChecklistCategory = "acceptance" | "tests" | "diff_review" | "evidence";
+
+interface ValidationChecklist {
+  acceptance: ChecklistStatus;
+  tests: ChecklistStatus;
+  diff_review: ChecklistStatus;
+  evidence: ChecklistStatus;
+}
+
+interface ValidationState {
+  tier: ValidationTier;
+  decision: ValidationDecision;
+  source: ValidationSource | null;
+  checklist: ValidationChecklist | null;
+  approvalRef: string | null;
+  updatedAt: string | null;
+}
+
+interface CompletionGateTaskClassPolicy {
+  tier: ValidationTier;
+  allowed_validation_sources: ValidationSource[];
+  required_categories: ChecklistCategory[];
+  allow_not_applicable: ChecklistCategory[];
+  override_requires_approval: boolean;
+  notes: string[];
+}
+
+interface CompletionGatePolicy {
+  version: 1;
+  checklist_categories: ChecklistCategory[];
+  validation_tiers: Record<ValidationTier, { description: string }>;
+  task_classes: Record<TaskClass, CompletionGateTaskClassPolicy>;
+}
 
 interface TaskRecord {
   id: string;
   title: string;
   owner: string | null;
   status: TaskStatus;
+  taskClass: TaskClass;
   acceptance: string[];
   evidence: string[];
   dependencies?: string[];
   retryCount?: number;
+  validation: ValidationState;
   notes: string[];
   timestamps: {
     createdAt: string;
@@ -33,6 +74,18 @@ interface TaskState {
 
 const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
 const AUDIT_LOG = "logs/harness-actions.jsonl";
+const COMPLETION_GATE_POLICY_FILE = ".pi/agent/validation/completion-gate-policy.json";
+const TASK_CLASSES = ["research", "docs", "implementation", "runtime_safety"] as const;
+const VALIDATION_SOURCES = ["review", "validator", "override"] as const;
+const VALIDATION_DECISIONS = ["pass", "fail", "blocked"] as const;
+const CHECKLIST_STATUSES = ["met", "partial", "not_met", "not_applicable"] as const;
+
+const ValidationChecklistSchema = Type.Object({
+  acceptance: StringEnum(CHECKLIST_STATUSES),
+  tests: StringEnum(CHECKLIST_STATUSES),
+  diff_review: StringEnum(CHECKLIST_STATUSES),
+  evidence: StringEnum(CHECKLIST_STATUSES),
+});
 
 const TaskUpdateSchema = Type.Object({
   action: StringEnum([
@@ -43,6 +96,8 @@ const TaskUpdateSchema = Type.Object({
     "note",
     "evidence",
     "review",
+    "validate",
+    "override",
     "requeue",
     "block",
     "done",
@@ -51,10 +106,15 @@ const TaskUpdateSchema = Type.Object({
   id: Type.Optional(Type.String()),
   title: Type.Optional(Type.String()),
   owner: Type.Optional(Type.String()),
+  taskClass: Type.Optional(StringEnum(TASK_CLASSES)),
   acceptance: Type.Optional(Type.Array(Type.String())),
   dependencies: Type.Optional(Type.Array(Type.String())),
   evidence: Type.Optional(Type.Array(Type.String())),
   note: Type.Optional(Type.String()),
+  validationSource: Type.Optional(StringEnum(VALIDATION_SOURCES)),
+  validationDecision: Type.Optional(StringEnum(VALIDATION_DECISIONS)),
+  validationChecklist: Type.Optional(ValidationChecklistSchema),
+  approvalRef: Type.Optional(Type.String()),
 });
 
 function nowIso(): string {
@@ -63,6 +123,116 @@ function nowIso(): string {
 
 function makeTaskId(): string {
   return `task-${Date.now()}`;
+}
+
+function defaultValidationChecklist(): ValidationChecklist {
+  return {
+    acceptance: "not_met",
+    tests: "not_met",
+    diff_review: "not_met",
+    evidence: "not_met",
+  };
+}
+
+function defaultValidationState(taskClass: TaskClass, policy: CompletionGatePolicy): ValidationState {
+  return {
+    tier: policy.task_classes[taskClass].tier,
+    decision: "pending",
+    source: null,
+    checklist: null,
+    approvalRef: null,
+    updatedAt: null,
+  };
+}
+
+async function loadCompletionGatePolicy(cwd: string): Promise<CompletionGatePolicy> {
+  const fallbackPath = fileURLToPath(new URL("../validation/completion-gate-policy.json", import.meta.url));
+  const candidates = [resolve(cwd, COMPLETION_GATE_POLICY_FILE), fallbackPath];
+
+  for (const candidate of candidates) {
+    try {
+      const raw = await readFile(candidate, "utf8");
+      return JSON.parse(raw) as CompletionGatePolicy;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  throw new Error(`Unable to load completion-gate policy from ${COMPLETION_GATE_POLICY_FILE}`);
+}
+
+function normalizeValidationState(taskClass: TaskClass, validation: Partial<ValidationState> | undefined, policy: CompletionGatePolicy): ValidationState {
+  const fallback = defaultValidationState(taskClass, policy);
+  const checklist = validation?.checklist
+    ? {
+        acceptance: validation.checklist.acceptance ?? defaultValidationChecklist().acceptance,
+        tests: validation.checklist.tests ?? defaultValidationChecklist().tests,
+        diff_review: validation.checklist.diff_review ?? defaultValidationChecklist().diff_review,
+        evidence: validation.checklist.evidence ?? defaultValidationChecklist().evidence,
+      }
+    : null;
+
+  return {
+    tier: validation?.tier ?? fallback.tier,
+    decision: validation?.decision ?? fallback.decision,
+    source: validation?.source ?? fallback.source,
+    checklist,
+    approvalRef: validation?.approvalRef ?? null,
+    updatedAt: validation?.updatedAt ?? null,
+  };
+}
+
+function normalizeTaskRecord(task: TaskRecord, policy: CompletionGatePolicy): TaskRecord {
+  const taskClass = task.taskClass ?? "implementation";
+  return {
+    ...task,
+    taskClass,
+    dependencies: task.dependencies ?? [],
+    retryCount: task.retryCount ?? 0,
+    validation: normalizeValidationState(taskClass, task.validation, policy),
+  };
+}
+
+function normalizeState(state: TaskState, policy: CompletionGatePolicy): void {
+  state.tasks = state.tasks.map((task) => normalizeTaskRecord(task, policy));
+}
+
+function validationBlockReason(task: TaskRecord): string {
+  return `Task cannot be completed until validation passes for task class ${task.taskClass}.`;
+}
+
+function assertChecklistSatisfied(task: TaskRecord, checklist: ValidationChecklist, policy: CompletionGatePolicy): string[] {
+  const taskPolicy = policy.task_classes[task.taskClass];
+  const problems: string[] = [];
+  const entries: Array<[ChecklistCategory, ChecklistStatus]> = [
+    ["acceptance", checklist.acceptance],
+    ["tests", checklist.tests],
+    ["diff_review", checklist.diff_review],
+    ["evidence", checklist.evidence],
+  ];
+
+  for (const [category, status] of entries) {
+    const required = taskPolicy.required_categories.includes(category);
+    const allowNotApplicable = taskPolicy.allow_not_applicable.includes(category);
+
+    if (!required) continue;
+    if (status === "met") continue;
+    if (status === "not_applicable" && allowNotApplicable) continue;
+
+    problems.push(`${category} must be met${allowNotApplicable ? " or not_applicable" : ""} for task class ${task.taskClass}.`);
+  }
+
+  return problems;
+}
+
+function isAllowedValidationSource(task: TaskRecord, source: ValidationSource, policy: CompletionGatePolicy): boolean {
+  return policy.task_classes[task.taskClass].allowed_validation_sources.includes(source);
+}
+
+function transitionToTerminalReviewOutcome(task: TaskRecord, decision: "fail" | "blocked", note: string): void {
+  task.status = decision === "fail" ? "failed" : "blocked";
+  task.notes.push(note);
+  task.timestamps.updatedAt = nowIso();
 }
 
 function isMutatingBash(command: string): boolean {
@@ -192,10 +362,12 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "task_update",
     label: "Task Update",
-    description: "Create, claim, start, update, and complete tasks using file-backed JSON state.",
+    description: "Create, claim, start, validate, and complete tasks using file-backed JSON state.",
     parameters: TaskUpdateSchema,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const completionGatePolicy = await loadCompletionGatePolicy(ctx.cwd);
       const result = await mutateState(ctx.cwd, async (state) => {
+        normalizeState(state, completionGatePolicy);
         const action = params.action;
 
         if (action === "show") {
@@ -232,15 +404,18 @@ export default function (pi: ExtensionAPI) {
             };
           }
 
+          const taskClass: TaskClass = params.taskClass ?? "implementation";
           const task: TaskRecord = {
             id: params.id ?? makeTaskId(),
             title: params.title,
             owner: params.owner ?? null,
             status: "queued",
+            taskClass,
             acceptance: params.acceptance,
             evidence: [],
             dependencies: params.dependencies ?? [],
             retryCount: 0,
+            validation: defaultValidationState(taskClass, completionGatePolicy),
             notes: [],
             timestamps: {
               createdAt: nowIso(),
@@ -342,6 +517,7 @@ export default function (pi: ExtensionAPI) {
 
           const previousStatus = task.status;
           task.status = "in_progress";
+          task.validation = defaultValidationState(task.taskClass, completionGatePolicy);
           task.timestamps.startedAt = task.timestamps.startedAt ?? nowIso();
           task.timestamps.updatedAt = nowIso();
           if (previousStatus === "failed") {
@@ -412,6 +588,132 @@ export default function (pi: ExtensionAPI) {
           return {
             content: [{ type: "text" as const, text: `Moved ${task.id} to review` }],
             details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
+          };
+        }
+
+        if (action === "validate") {
+          if (task.status !== "review") {
+            return {
+              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> validate` }],
+              details: { ok: false },
+            };
+          }
+
+          if (!params.validationDecision || !params.validationSource || !params.validationChecklist) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: "validate requires `validationDecision`, `validationSource`, and `validationChecklist`.",
+                },
+              ],
+              details: { ok: false },
+            };
+          }
+
+          if (!isAllowedValidationSource(task, params.validationSource, completionGatePolicy)) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Validation source ${params.validationSource} is not allowed for task class ${task.taskClass}.`,
+                },
+              ],
+              details: { ok: false },
+            };
+          }
+
+          const checklistProblems = assertChecklistSatisfied(task, params.validationChecklist, completionGatePolicy);
+          if (params.validationDecision === "pass" && checklistProblems.length > 0) {
+            return {
+              content: [{ type: "text" as const, text: checklistProblems.join(" ") }],
+              details: { ok: false, checklistProblems },
+            };
+          }
+
+          if ((params.validationDecision === "fail" || params.validationDecision === "blocked") && !params.note) {
+            return {
+              content: [{ type: "text" as const, text: "validate requires `note` for fail or blocked outcomes." }],
+              details: { ok: false },
+            };
+          }
+
+          task.validation = {
+            tier: completionGatePolicy.task_classes[task.taskClass].tier,
+            decision: params.validationDecision,
+            source: params.validationSource,
+            checklist: params.validationChecklist,
+            approvalRef: null,
+            updatedAt: nowIso(),
+          };
+          if (params.evidence && params.evidence.length > 0) {
+            task.evidence.push(...params.evidence);
+          }
+          task.timestamps.updatedAt = nowIso();
+
+          if (params.validationDecision === "pass") {
+            return {
+              content: [{ type: "text" as const, text: `Validation passed for ${task.id}` }],
+              details: { ok: true, task, validationDecision: task.validation.decision },
+            };
+          }
+
+          transitionToTerminalReviewOutcome(task, params.validationDecision, params.note!);
+          if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text:
+                  params.validationDecision === "fail"
+                    ? `Validation failed for ${task.id}`
+                    : `Validation blocked ${task.id}`,
+              },
+            ],
+            details: { ok: true, task, validationDecision: task.validation.decision, activeTaskId: state.activeTaskId },
+          };
+        }
+
+        if (action === "override") {
+          if (task.status !== "review" && task.status !== "blocked") {
+            return {
+              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> override` }],
+              details: { ok: false },
+            };
+          }
+
+          const taskPolicy = completionGatePolicy.task_classes[task.taskClass];
+          if (taskPolicy.override_requires_approval && (!params.approvalRef || !params.note)) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: "override requires `approvalRef` and `note` for manual completion-gate bypass.",
+                },
+              ],
+              details: { ok: false },
+            };
+          }
+
+          task.status = "review";
+          task.validation = {
+            tier: taskPolicy.tier,
+            decision: "overridden",
+            source: "override",
+            checklist: task.validation.checklist,
+            approvalRef: params.approvalRef ?? null,
+            updatedAt: nowIso(),
+          };
+          task.notes.push(params.note!);
+          if (params.evidence && params.evidence.length > 0) {
+            task.evidence.push(...params.evidence);
+          }
+          task.timestamps.updatedAt = nowIso();
+
+          return {
+            content: [{ type: "text" as const, text: `Override recorded for ${task.id}` }],
+            details: { ok: true, task, validationDecision: task.validation.decision },
           };
         }
 
@@ -499,6 +801,13 @@ export default function (pi: ExtensionAPI) {
             };
           }
 
+          if (task.validation.decision !== "pass" && task.validation.decision !== "overridden") {
+            return {
+              content: [{ type: "text" as const, text: validationBlockReason(task) }],
+              details: { ok: false, validationDecision: task.validation.decision, validationTier: task.validation.tier },
+            };
+          }
+
           const previousStatus = task.status;
           task.status = "done";
           task.timestamps.completedAt = nowIso();
@@ -560,6 +869,10 @@ export default function (pi: ExtensionAPI) {
         provider: providerFromModelId(modelId),
         taskId: task?.id ?? params.id ?? null,
         taskStatus: task?.status ?? null,
+        taskClass: task?.taskClass ?? params.taskClass ?? null,
+        validationTier: task?.validation?.tier ?? null,
+        validationDecision: task?.validation?.decision ?? null,
+        validationSource: task?.validation?.source ?? null,
         activeTaskId: (details.activeTaskId as string | null | undefined) ?? null,
         owner: task?.owner ?? params.owner ?? null,
         retryCount: task?.retryCount ?? null,

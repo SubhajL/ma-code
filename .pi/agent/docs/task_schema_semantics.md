@@ -72,10 +72,19 @@ Current task shape:
   "title": "example",
   "owner": "assistant",
   "status": "queued",
+  "taskClass": "implementation",
   "acceptance": ["..."],
   "evidence": [],
   "dependencies": [],
   "retryCount": 0,
+  "validation": {
+    "tier": "standard",
+    "decision": "pending",
+    "source": null,
+    "checklist": null,
+    "approvalRef": null,
+    "updatedAt": null
+  },
   "notes": [],
   "timestamps": {
     "createdAt": "...",
@@ -134,6 +143,19 @@ Status meaning:
 - `done`: completion accepted with evidence
 - `failed`: task ended unsuccessfully and should not be treated as pending work without an explicit retry/reopen decision
 
+### `taskClass`
+- machine-readable classification for completion-gate expectations
+- current task classes:
+  - `research`
+  - `docs`
+  - `implementation`
+  - `runtime_safety`
+- the task class determines:
+  - validation tier
+  - allowed validation source
+  - which checklist categories may be `not_applicable`
+  - whether validator-backed proof is required before `done`
+
 ### `acceptance`
 - list of concrete acceptance criteria
 - minimum one item is required
@@ -183,6 +205,18 @@ Recommended style:
 - must start at `0`
 - increments only when the task is deliberately retried, not on every edit
 - helps recovery logic decide between retry, reroute, rollback, or stop
+
+### `validation`
+- machine-readable completion-gate state for the task
+- current fields:
+  - `tier`: `lightweight` | `standard` | `strict`
+  - `decision`: `pending` | `pass` | `fail` | `blocked` | `overridden`
+  - `source`: `review` | `validator` | `override` | `null`
+  - `checklist`: per-category outcomes for `acceptance`, `tests`, `diff_review`, and `evidence`
+  - `approvalRef`: explicit approval metadata for manual overrides when used
+  - `updatedAt`: last validation/override timestamp
+- `done` now requires `validation.decision` to be `pass` or `overridden`
+- docs/research tasks still require visible validation proof, but may use the lighter review-backed path with `not_applicable` checklist items where policy allows
 
 ### `notes`
 - append-only operational notes
@@ -321,6 +355,8 @@ For the current runtime gate, the hard-enforced minimum is:
 - `status === review`
 - non-empty `evidence`
 - no unresolved dependency IDs
+- `validation.decision === pass` or `validation.decision === overridden`
+- task-class-specific validation source/checklist requirements are satisfied before that validation result can be recorded
 
 ### Entering `failed`
 Use `failed` when:
@@ -388,8 +424,10 @@ Validators should be able to check the following deterministically:
 - no `in_progress` task lacks owner or acceptance
 - `activeTaskId` is `null` or references a real task
 - `done` tasks contain evidence and come from `review`
+- `done` tasks carry a visible validation result (`pass` or `overridden`)
+- docs/research tasks use the lighter allowed validation source rather than skipping proof
 - blocked tasks have an explanatory note
-- required `dependencies` and `retryCount` fields are present
+- required `dependencies`, `retryCount`, `taskClass`, and `validation` fields are present
 - illegal transitions are not silently allowed by runtime tools
 
 ## Examples
@@ -401,6 +439,7 @@ Validators should be able to check the following deterministically:
   "title": "Define task schema semantics",
   "owner": null,
   "status": "queued",
+  "taskClass": "implementation",
   "acceptance": [
     "documents legal task state transitions",
     "defines evidence rules for version 1"
@@ -408,6 +447,14 @@ Validators should be able to check the following deterministically:
   "evidence": [],
   "dependencies": [],
   "retryCount": 0,
+  "validation": {
+    "tier": "standard",
+    "decision": "pending",
+    "source": null,
+    "checklist": null,
+    "approvalRef": null,
+    "updatedAt": null
+  },
   "notes": [],
   "timestamps": {
     "createdAt": "2026-04-18T10:00:00Z",
@@ -427,6 +474,7 @@ Validators should be able to check the following deterministically:
       "title": "Define task schema semantics",
       "owner": "assistant",
       "status": "in_progress",
+      "taskClass": "implementation",
       "acceptance": [
         "documents legal task state transitions",
         "defines evidence rules for version 1"
@@ -434,6 +482,14 @@ Validators should be able to check the following deterministically:
       "evidence": [],
       "dependencies": [],
       "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
       "notes": [],
       "timestamps": {
         "createdAt": "2026-04-18T10:00:00Z",
@@ -453,10 +509,19 @@ Invalid because owner is missing for in-progress:
   "title": "Bad task",
   "owner": null,
   "status": "in_progress",
+  "taskClass": "implementation",
   "acceptance": ["do work"],
   "evidence": [],
   "dependencies": [],
   "retryCount": 0,
+  "validation": {
+    "tier": "standard",
+    "decision": "pending",
+    "source": null,
+    "checklist": null,
+    "approvalRef": null,
+    "updatedAt": null
+  },
   "notes": [],
   "timestamps": {
     "createdAt": "2026-04-18T10:00:00Z",
@@ -465,17 +530,26 @@ Invalid because owner is missing for in-progress:
 }
 ```
 
-Invalid because done has no evidence and bypasses review:
+Invalid because done has no evidence, bypasses review, and lacks validation proof:
 ```json
 {
   "id": "bad-done-task",
   "title": "Pretend complete",
   "owner": "assistant",
   "status": "done",
+  "taskClass": "implementation",
   "acceptance": ["finish work"],
   "evidence": [],
   "dependencies": [],
   "retryCount": 0,
+  "validation": {
+    "tier": "standard",
+    "decision": "pending",
+    "source": null,
+    "checklist": null,
+    "approvalRef": null,
+    "updatedAt": null
+  },
   "notes": [],
   "timestamps": {
     "createdAt": "2026-04-18T10:00:00Z",

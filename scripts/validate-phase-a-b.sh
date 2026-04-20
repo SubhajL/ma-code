@@ -707,11 +707,101 @@ check_14_till_done_requeue_retry_audit() {
   fi
 }
 
-check_15_fullstack_optional() {
-  local name="15. Optional full-stack interaction with both runtime controls"
-  local out="$TMP_ROOT/check_15_fullstack_optional.jsonl"
+check_15_till_done_validation_gate() {
+  local name="15. till-done requires validation before done"
+  local out="$TMP_ROOT/check_15_till_done_validation_gate.jsonl"
+  local temp_dir="$TMP_ROOT/check_15_till_done_validation_dir"
+  mkdir -p "$temp_dir"
+  local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/till-done.ts --mode json \"Use task_update to create a task titled 'validation gate check' with taskClass implementation and one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: demo.txt', move it to review, and then immediately try to mark it done without any validation step. Report the exact result.\""
+  if run_shell_capture "$temp_dir" "$out" "$cmd" \
+    && assert_jsonl_contains_text "$out" 'Task cannot be completed until validation passes for task class implementation.'; then
+    local detail="Done without validation proof was rejected for the default implementation task class."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- exact result observed: \`Task cannot be completed until validation passes for task class implementation.\`"
+    pass "$name"
+  else
+    local detail="Validation-before-done gate was not observed for the default implementation task class."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,220p' "$out")\n\`\`\`"
+    fail_msg "$name"
+  fi
+}
+
+check_16_till_done_docs_lightweight_validation() {
+  local name="16. till-done allows lightweight docs validation path"
+  local out="$TMP_ROOT/check_16_till_done_docs_lightweight_validation.jsonl"
+  local temp_dir="$TMP_ROOT/check_16_till_done_docs_validation_dir"
+  mkdir -p "$temp_dir"
+  local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/till-done.ts --mode json \"Use task_update to create a task titled 'docs validation check' with taskClass docs and one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: docs.md', move it to review, validate it with validationSource review and validationDecision pass using validationChecklist {acceptance: met, tests: not_applicable, diff_review: not_applicable, evidence: met}, then mark it done and report the exact result.\""
+  if run_shell_capture "$temp_dir" "$out" "$cmd" \
+    && assert_jsonl_contains_text "$out" 'Completed task-'; then
+    local detail="Docs task completed after lightweight review validation with not_applicable tests/diff review."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- docs task used validationSource \`review\`\n- tests and diff review were allowed as \`not_applicable\`\n- task completed after validation pass"
+    pass "$name"
+  else
+    local detail="Docs-only lightweight validation path did not complete as expected."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,240p' "$out")\n\`\`\`"
+    fail_msg "$name"
+  fi
+}
+
+check_17_till_done_validation_rejection_flow() {
+  local name="17. till-done routes validation fail and blocked into visible rejection states"
+  local out="$TMP_ROOT/check_17_till_done_validation_rejection_flow.jsonl"
+  local temp_dir="$TMP_ROOT/check_17_till_done_validation_rejection_dir"
+  mkdir -p "$temp_dir"
+  local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/till-done.ts --mode json \"First use task_update to create task id impl-fail titled 'implementation validation fail' with one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: impl.ts', move it to review, and validate it with validationSource validator, validationDecision fail, validationChecklist {acceptance: met, tests: not_met, diff_review: met, evidence: met}, and note 'tests failed'. Then create task id impl-block titled 'implementation validation block' with one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: impl.ts', move it to review, and validate it with validationSource validator, validationDecision blocked, validationChecklist {acceptance: met, tests: partial, diff_review: partial, evidence: met}, and note 'provider unavailable'. Finally use task_update with action show and report the exact statuses of impl-fail and impl-block.\""
+  if run_shell_capture "$temp_dir" "$out" "$cmd" \
+    && assert_jsonl_contains_text "$out" 'failed' \
+    && assert_jsonl_contains_text "$out" 'blocked'; then
+    local detail="Validation fail/block outcomes produced visible failed/blocked task states."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- fail validation path moved task to \`failed\`\n- blocked validation path moved task to \`blocked\`"
+    pass "$name"
+  else
+    local detail="Validation rejection flow did not show the expected failed/blocked task states."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,260p' "$out")\n\`\`\`"
+    fail_msg "$name"
+  fi
+}
+
+check_18_till_done_manual_override() {
+  local name="18. till-done manual override path is explicit and completion-enabling"
+  local out="$TMP_ROOT/check_18_till_done_manual_override.jsonl"
+  local temp_dir="$TMP_ROOT/check_18_till_done_manual_override_dir"
+  mkdir -p "$temp_dir"
+  local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/till-done.ts --mode json \"Use task_update to create a task titled 'manual override check' with taskClass runtime_safety and one acceptance criterion, claim it for owner assistant, start it, add evidence 'Changed files: guard.ts', move it to review, validate it with validationSource validator, validationDecision blocked, validationChecklist {acceptance: met, tests: partial, diff_review: met, evidence: met}, and note 'external validator unavailable'. Then use task_update with action override, note 'Human approved bounded override', approvalRef 'human-approval-001', and evidence ['Approval ref: human-approval-001']. Then use task_update with action done and report the exact result.\""
+  if run_shell_capture "$temp_dir" "$out" "$cmd" \
+    && assert_jsonl_contains_text "$out" 'Completed task-' \
+    && assert_jsonl_contains_text "$out" 'human-approval-001'; then
+    local detail="Manual override recorded approval metadata and enabled bounded completion."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- blocked validation outcome was followed by explicit override\n- approval reference \`human-approval-001\` remained visible\n- task completed only after override"
+    pass "$name"
+  else
+    local detail="Manual override path did not record approval metadata or allow completion as expected."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,260p' "$out")\n\`\`\`"
+    fail_msg "$name"
+  fi
+}
+
+check_19_fullstack_optional() {
+  local name="19. Optional full-stack interaction with both runtime controls"
+  local out="$TMP_ROOT/check_19_fullstack_optional.jsonl"
   reset_tasks_runtime
-  local cmd="$PI_BIN --mode json --no-session \"Use task_update to create a task titled 'full stack validation artifact', claim it for owner assistant, start it, write validation-artifact.txt containing exactly hello, attach evidence mentioning the changed file and write success, move the task to review, then mark the task done and summarize the result.\""
+  local cmd="$PI_BIN --mode json --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/safe-bash.ts -e $REPO_ROOT/.pi/agent/extensions/till-done.ts \"Use task_update to create a task titled 'full stack validation artifact' with taskClass implementation, claim it for owner assistant, start it, write validation-artifact.txt containing exactly hello, attach evidence mentioning the changed file and write success, move it to review, validate it with validationSource validator and validationDecision pass using validationChecklist {acceptance: met, tests: met, diff_review: met, evidence: met} plus evidence ['Validator report: PASS'], then mark the task done and summarize the result.\""
   if run_shell_capture "$REPO_ROOT" "$out" "$cmd" \
     && assert_jsonl_contains_text "$out" 'Completed task-' \
     && [[ -f "$REPO_ROOT/validation-artifact.txt" ]] \
@@ -719,7 +809,7 @@ check_15_fullstack_optional() {
     local detail="Full-stack task flow completed and validation-artifact.txt was written as expected."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- task lifecycle completed through \`task_update\` and review gate\n- \`validation-artifact.txt\` created with exact content \`hello\`"
+    append_check_section "$name" "PASS" "$cmd" "- task lifecycle completed through \`task_update\`, review, validation, and done gates\n- \`validation-artifact.txt\` created with exact content \`hello\`"
     pass "$name"
   else
     local detail="Optional full-stack check did not complete as expected."
@@ -730,10 +820,10 @@ check_15_fullstack_optional() {
   fi
 }
 
-check_16_cleanup() {
-  local name="16. Cleanup and runtime state reset"
+check_20_cleanup() {
+  local name="20. Cleanup and runtime state reset"
   local out="$TMP_ROOT/check_12_cleanup.out"
-  local cmd="rm -f validation-artifact.txt direct-write-check.txt .env && cat > .pi/agent/state/runtime/tasks.json <<'JSON'\n{\n  \"version\": 1,\n  \"activeTaskId\": null,\n  \"tasks\": []\n}\nJSON\n$PYTHON_BIN - <<'PY'\nimport json\nstate=json.load(open('.pi/agent/state/runtime/tasks.json'))\nassert state == {\"version\": 1, \"activeTaskId\": None, \"tasks\": []}\nprint('cleanup-ok')\nPY"
+  local cmd="rm -f validation-artifact.txt direct-write-check.txt .env && $PYTHON_BIN -c \"import json, pathlib; path = pathlib.Path('.pi/agent/state/runtime/tasks.json'); path.parent.mkdir(parents=True, exist_ok=True); path.write_text(json.dumps({'version': 1, 'activeTaskId': None, 'tasks': []}, indent=2) + '\\n', encoding='utf-8'); state = json.loads(path.read_text(encoding='utf-8')); assert state == {'version': 1, 'activeTaskId': None, 'tasks': []}; print('cleanup-ok')\""
   if run_shell_capture "$REPO_ROOT" "$out" "$cmd" \
     && [[ ! -f "$REPO_ROOT/validation-artifact.txt" ]] \
     && [[ ! -f "$REPO_ROOT/direct-write-check.txt" ]] \
@@ -775,13 +865,17 @@ check_11_safe_main_write_block
 check_12_safe_main_bash_block
 check_13_till_done_review_gate
 check_14_till_done_requeue_retry_audit
+check_15_till_done_validation_gate
+check_16_till_done_docs_lightweight_validation
+check_17_till_done_validation_rejection_flow
+check_18_till_done_manual_override
 if [[ $INCLUDE_FULLSTACK -eq 1 ]]; then
-  check_15_fullstack_optional
+  check_19_fullstack_optional
 else
-  record_result "15. Optional full-stack interaction with both runtime controls" "SKIP" "Full-stack check skipped by default."
-  append_summary_row "15. Optional full-stack interaction with both runtime controls" "SKIP" "Full-stack check skipped by default."
+  record_result "19. Optional full-stack interaction with both runtime controls" "SKIP" "Full-stack check skipped by default."
+  append_summary_row "19. Optional full-stack interaction with both runtime controls" "SKIP" "Full-stack check skipped by default."
 fi
-check_16_cleanup
+check_20_cleanup
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"
