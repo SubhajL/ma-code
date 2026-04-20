@@ -42,6 +42,20 @@ jobs:
       - name: Compile foundation runtime extensions
         run: ./scripts/check-foundation-extension-compile.sh
 
+  extension-unit-tests:
+    name: Extension Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Run extension unit-test validator
+        run: ./scripts/validate-extension-unit-tests.sh
+
   routing-validators:
     name: Routing Validators
     runs-on: ubuntu-latest

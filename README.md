@@ -46,13 +46,14 @@ Implemented here:
 - executable handoff generator, handoff policy, and handoff schema
 - same-runtime probe bridge for shared model/account-path child sessions
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
+- extension unit-test suite for safety/task-discipline/orchestration helper surfaces
 - validation reports and file map
 
 Not yet implemented:
 - live queue runner
 - team orchestration runtime
 - UI widgets / status components
-- broader automated test suite beyond bounded runtime validation
+- broader integration / end-to-end automated test suite beyond bounded runtime validation and extension unit tests
 
 ## Roadmap status
 Current implementation is best understood as the **first validated Phase A/B foundation slice**.
@@ -92,6 +93,13 @@ cd /Users/subhajlimanond/dev/ma-code
 ./scripts/validate-queue-semantics.sh
 ```
 
+Use the extension unit-test validator when changing extension behavior or shared helper logic:
+
+```bash
+cd /Users/subhajlimanond/dev/ma-code
+./scripts/validate-extension-unit-tests.sh
+```
+
 Key outputs:
 - runbook: `.pi/agent/docs/runtime_validation_runbook.md`
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
@@ -106,6 +114,7 @@ Current GitHub workflow surfaces:
   - repo static checks
   - foundation extension compile check
   - queue-semantics validator
+  - extension unit-test validator
   - skill-routing validator
   - harness-routing validator
   - team-activation validator
