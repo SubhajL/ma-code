@@ -44,6 +44,7 @@ Implemented here:
 - executable team-activation resolver and activation policy
 - executable task-packet generator, packet policy, and packet schema
 - executable handoff generator, handoff policy, and handoff schema
+- same-runtime probe bridge for shared model/account-path child sessions
 - validation reports and file map
 
 Not yet implemented:
@@ -101,6 +102,7 @@ Current GitHub workflow surfaces:
   - team-activation validator
   - task-packets validator
   - handoffs validator
+  - same-runtime bridge validator
 - Security: `.github/workflows/security.yml`
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript

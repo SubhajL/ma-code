@@ -215,6 +215,19 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect executable handoff generation or its policy/schema rules.
 
+### Dedicated same-runtime bridge validator
+Current dedicated same-runtime bridge script:
+- `scripts/validate-same-runtime-bridge.sh`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/extensions/same-runtime-bridge.ts`
+- same-runtime probe model inheritance
+- shared auth/model-registry reuse semantics
+- auth source class reporting
+- optional bounded live tool probe for `run_same_runtime_probe`
+
+It should be used when changes affect same-runtime probe behavior or its validation contract.
+
 ### Manual validator path
 Primary manual reference:
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -321,10 +334,10 @@ At minimum, completion evidence should still include:
 Validation reports are therefore one part of completion evidence, not a substitute for all of it.
 
 ## Current architecture boundary
-The current architecture validates the implemented Phase A/B foundation plus bounded executable routing, activation, packet-generation, and handoff-generation slices that were attached later.
+The current architecture validates the implemented Phase A/B foundation plus bounded executable routing, activation, packet-generation, handoff-generation, and same-runtime-probe slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
 - queue execution
-- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, and handoff generation
+- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, and same-runtime probes
 - UI widgets or TUI-specific behaviors
 - long-running autonomy or recovery loops beyond the current slice
 
@@ -386,7 +399,7 @@ If a future phase introduces richer artifacts such as logs, screenshots, traces,
 ## Recommended future expansion points
 When later phases are implemented, likely attachment points include:
 - a dedicated validator for queue and task-runner behavior
-- a validator for full multi-worker orchestration boundaries beyond the current activation + packet + handoff resolvers
+- a validator for full multi-worker orchestration boundaries beyond the current activation + packet + handoff resolvers and same-runtime probes
 - a validator for TUI or interface-level interactions if those become part of the repo-local harness contract
 - optional fast-check validators for frequent iteration alongside the fuller regression script
 

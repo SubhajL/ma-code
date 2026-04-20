@@ -67,3 +67,6 @@ jobs:
 
       - name: Run handoffs validator
         run: ./scripts/validate-handoffs.sh
+
+      - name: Run same-runtime bridge validator
+        run: ./scripts/validate-same-runtime-bridge.sh

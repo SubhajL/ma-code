@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level model and auth-source logic",
+      "status": "PASS",
+      "detail": "Helper-level model resolution and auth-source classification checks passed."
+    },
+    {
+      "name": "2. same-runtime bridge TypeScript compile",
+      "status": "PASS",
+      "detail": "same-runtime-bridge.ts compiled successfully."
+    },
+    {
+      "name": "3. live same-runtime probe tool",
+      "status": "SKIP",
+      "detail": "Live probe skipped because provider/model access was unavailable in this environment."
+    }
+  ]
+}
