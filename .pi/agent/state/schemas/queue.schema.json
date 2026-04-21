@@ -102,6 +102,144 @@
             "items": {
               "type": "string"
             }
+          },
+          "acceptanceCriteria": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "taskClass": {
+            "type": "string",
+            "enum": [
+              "research",
+              "docs",
+              "implementation",
+              "runtime_safety"
+            ]
+          },
+          "workType": {
+            "type": "string",
+            "enum": [
+              "implementation",
+              "docs_only",
+              "research_only",
+              "review_only",
+              "mixed"
+            ]
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "frontend",
+                "backend",
+                "infra",
+                "docs",
+                "research"
+              ]
+            }
+          },
+          "allowedPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignedRole": {
+            "type": "string",
+            "enum": [
+              "orchestrator",
+              "planning_lead",
+              "build_lead",
+              "quality_lead",
+              "research_worker",
+              "frontend_worker",
+              "backend_worker",
+              "infra_worker",
+              "reviewer_worker",
+              "validator_worker",
+              "docs_worker",
+              "recovery_worker"
+            ]
+          },
+          "routeReason": {
+            "type": "string",
+            "enum": [
+              "default",
+              "task_simpler",
+              "task_harder",
+              "provider_failure",
+              "budget_pressure",
+              "recovery_recommendation",
+              "human_override"
+            ]
+          },
+          "budgetMode": {
+            "type": "string",
+            "enum": [
+              "default",
+              "balanced",
+              "conserve",
+              "high"
+            ]
+          },
+          "modelOverride": {
+            "type": "string"
+          },
+          "linkedTaskId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "packetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "selectedModelId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initialHandoffId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastRecoveryAction": {
+            "type": "string",
+            "enum": [
+              "retry_same_lane",
+              "retry_stronger_model",
+              "switch_provider",
+              "rollback",
+              "stop",
+              "escalate"
+            ]
+          },
+          "lastRecoveryReason": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
           }
         },
         "additionalProperties": false

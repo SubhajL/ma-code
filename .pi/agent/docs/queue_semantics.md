@@ -196,10 +196,16 @@ Example:
   - `maxCostUsd`
   - `maxFilesChanged`
 - values should be conservative and reviewable
+- current HARNESS-032 runtime note:
+  - the bounded `run_next_queue_job` runner does not enforce concrete queue-job budget fields yet
+  - queued jobs that declare concrete budget values are blocked explicitly with a note that enforcement is deferred to HARNESS-034
 
 ### `stop_conditions`
 - optional list of conditions that should force stop, pause, or escalation
 - should be explicit and reviewable
+- current HARNESS-032 runtime note:
+  - the bounded `run_next_queue_job` runner does not evaluate queue-job `stop_conditions` yet
+  - queued jobs with non-empty `stop_conditions` are blocked explicitly until HARNESS-034 adds enforcement
 
 Examples:
 - `stop after 2 failed validations`
@@ -211,6 +217,47 @@ Examples:
 - dependency IDs should refer to other queue jobs, not free-form prose
 - unresolved dependencies should keep the job from moving into `running`
 
+### Executable queue-runner fields
+For the HARNESS-032 bounded single-runner path, jobs may also include executable metadata used to create a linked task and packet safely.
+
+Important executable fields:
+- `acceptanceCriteria`
+  - explicit acceptance criteria for the linked task
+  - the queue runner blocks queued jobs that omit this field or leave it empty
+- `taskClass`
+  - optional task class for the linked `till-done` task
+  - defaults to `implementation`
+- `workType`
+  - optional work type used by team activation and packet generation
+- `domains` or `allowedPaths`
+  - at least one of these should be present for executable packet generation
+  - if both are missing, the runner cannot generate a bounded packet and should block the job
+- `assignedRole`
+  - optional explicit starting role
+  - if omitted, the queue runner uses the selected team's lead role
+- `routeReason`, `budgetMode`, `modelOverride`
+  - optional routing controls passed through to task-packet generation
+- queue jobs do **not** carry packet-override lists for `disallowedPaths`, `discoverySummary`, `crossModelPlanningNote`, `evidenceExpectations`, `validationExpectations`, `wiringChecks`, or `escalationInstructions`
+  - HARNESS-032 uses the task-packet policy defaults for those bounded fields instead of duplicating them in queue state
+- `budget`, `stop_conditions`
+  - these remain part of the queue contract
+  - HARNESS-032 blocks queued jobs that specify concrete budget fields or non-empty `stop_conditions` instead of silently ignoring them
+  - planned enforcement is deferred to HARNESS-034
+
+Runtime-populated linkage and observability fields:
+- `linkedTaskId`
+- `packetId`
+- `selectedModelId`
+- `initialHandoffId`
+- `startedAt`
+- `finishedAt`
+- `updatedAt`
+- `notes`
+- `lastRecoveryAction`
+- `lastRecoveryReason`
+
+These runtime fields let the queue stay visibly connected to downstream task, packet, handoff, and recovery state without implying a free-running daemon.
+
 ## Lifecycle semantics
 
 ### `queued`
@@ -219,6 +266,9 @@ It may still be ineligible to run if:
 - dependencies are unresolved
 - required approval is missing
 - the queue is paused
+- explicit acceptance criteria are missing
+- bounded packet inputs such as `domains` or `allowedPaths` are missing
+- the job specifies concrete budget fields or non-empty `stop_conditions` that HARNESS-032 still defers to HARNESS-034
 
 ### `running`
 A job in `running` is the current active queue job.
@@ -298,7 +348,9 @@ A job is eligible to run only when:
 - queue `paused` is `false`
 - `status` is `queued`
 - dependencies are satisfied or explicitly waived
-- no stop condition precludes starting
+- explicit `acceptanceCriteria` exist
+- bounded packet inputs exist so the runner can generate a task packet
+- no deferred HARNESS-034 budget/stop-condition control is present on the queued job
 - required human approval has been granted when needed
 
 ### Single-runner recommendation
@@ -363,7 +415,12 @@ Examples:
 Budgets limit drift.
 They should be treated as hard controls, not advisory hints.
 
-Recommended budget interpretation:
+Current executable behavior:
+- HARNESS-032 does not enforce queue-job budget fields at runtime yet
+- instead, `run_next_queue_job` blocks queued jobs that set concrete budget values and records that enforcement is deferred to HARNESS-034
+- this avoids silently ignoring declared budget intent
+
+Recommended future budget interpretation once enforced:
 - exceeding retry budget -> `failed` or `blocked` with escalation
 - exceeding runtime budget -> stop and escalate
 - exceeding cost budget -> stop and escalate
@@ -373,7 +430,13 @@ If no budget is provided, the system should still apply conservative default lim
 
 ## Stop-condition semantics
 Stop conditions are explicit reasons to halt autonomous progress.
-They should be checked:
+
+Current executable behavior:
+- HARNESS-032 does not enforce queue-job `stop_conditions` yet
+- instead, `run_next_queue_job` blocks queued jobs that declare non-empty `stop_conditions` and records that enforcement is deferred to HARNESS-034
+- this keeps runtime behavior aligned with documentation instead of silently dropping stop intent
+
+Once enforced, stop conditions should be checked:
 - before starting a job
 - during recovery decisions
 - before retrying a failed job
@@ -396,18 +459,25 @@ Queue completion should rely on downstream evidence such as:
 Queue status is higher-level than task status, but it should still be evidence-backed.
 
 ## Recommended notes for future implementation
-Version 1 deliberately keeps the queue minimal.
-Likely later additions include:
-- `createdAt`
-- `updatedAt`
+Version 1 now includes minimal queue-runner linkage fields such as:
+- `linkedTaskId`
+- `packetId`
+- `selectedModelId`
+- `initialHandoffId`
 - `startedAt`
-- `completedAt`
+- `finishedAt`
+- `updatedAt`
 - `notes`
-- `retryCount`
-- linkage to generated task IDs
-- approval metadata
+- `lastRecoveryAction`
+- `lastRecoveryReason`
 
-Those additions should be introduced intentionally, not ad hoc.
+Likely later additions still include:
+- `createdAt`
+- `retryCount`
+- richer approval metadata
+- richer stop-condition counters and budget telemetry
+
+Those additions should still be introduced intentionally, not ad hoc.
 
 ## Examples
 
@@ -425,6 +495,14 @@ Those additions should be introduced intentionally, not ad hoc.
       "scope": "docs only under .pi/agent/docs",
       "status": "queued",
       "team": "planning",
+      "workType": "docs_only",
+      "domains": ["docs"],
+      "allowedPaths": [".pi/agent/docs/queue_semantics.md"],
+      "acceptanceCriteria": [
+        "Queue semantics document clearly distinguishes blocked vs failed",
+        "Queue examples stay aligned with the schema"
+      ],
+      "taskClass": "docs",
       "budget": {
         "maxRetries": 1,
         "maxRuntimeMinutes": 30
@@ -443,7 +521,7 @@ Those additions should be introduced intentionally, not ad hoc.
 {
   "version": 1,
   "paused": false,
-  "activeJobId": "queue-job-approval-needed",
+  "activeJobId": null,
   "jobs": [
     {
       "id": "queue-job-approval-needed",
@@ -452,6 +530,16 @@ Those additions should be introduced intentionally, not ad hoc.
       "scope": "runtime behavior under .pi/agent and scripts",
       "status": "blocked",
       "team": "build",
+      "workType": "implementation",
+      "domains": ["backend"],
+      "allowedPaths": [".pi/agent/extensions/queue-runner.ts"],
+      "acceptanceCriteria": [
+        "Queue runner starts at most one job"
+      ],
+      "linkedTaskId": "task-queue-runner-1",
+      "notes": [
+        "Waiting for human approval before protected runtime-path edits."
+      ],
       "dependencies": [
         "harness-009-queue-semantics"
       ]
@@ -473,6 +561,25 @@ Invalid because `priority` is unsupported:
       "goal": "Do something",
       "priority": "urgent",
       "status": "queued"
+    }
+  ]
+}
+```
+
+Invalid because executable queue-runner inputs are missing required acceptance criteria:
+```json
+{
+  "version": 1,
+  "paused": false,
+  "activeJobId": null,
+  "jobs": [
+    {
+      "id": "bad-missing-acceptance",
+      "goal": "Start a queued job without explicit acceptance",
+      "priority": "medium",
+      "status": "queued",
+      "workType": "implementation",
+      "allowedPaths": [".pi/agent/extensions/queue-runner.ts"]
     }
   ]
 }

@@ -1,0 +1,17 @@
+{
+  "name": "ma-code-harness-032-dev",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
+    "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-ai": "0.67.6",
+    "@mariozechner/pi-coding-agent": "0.67.6",
+    "@sinclair/typebox": "^0.34.41",
+    "@types/node": "^24.5.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3"
+  }
+}

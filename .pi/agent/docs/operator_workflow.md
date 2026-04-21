@@ -12,7 +12,7 @@ This workflow covers the current implemented harness slice:
 - bounded runtime validation
 
 It does not assume:
-- a queue runner
+- a free-running queue daemon beyond the bounded `run_next_queue_job` stepper (`run_queue_once` remains a compatibility alias)
 - UI widgets
 - full team orchestration runtime
 
@@ -129,6 +129,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-recovery-policy.sh`
 - `scripts/validate-recovery-runtime.sh`
+- `scripts/validate-queue-runner.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
@@ -157,7 +158,9 @@ Run the validator script when:
 - changing `.pi/agent/extensions/g-skill-auto-route.ts`
 - changing `.pi/agent/extensions/recovery-policy.ts`
 - changing `.pi/agent/extensions/recovery-runtime.ts`
+- changing `.pi/agent/extensions/queue-runner.ts`
 - changing `.pi/agent/recovery/recovery-policy.json`
+- changing queue jobs that rely on executable runner linkage fields such as `acceptanceCriteria`, `linkedTaskId`, or packet metadata
 - changing `.pi/agent/extensions/harness-routing.ts`
 - changing `.pi/agent/models.json` routing policy
 - changing `.pi/agent/extensions/team-activation.ts`
@@ -179,6 +182,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-extension-unit-tests.sh` for extension unit-test coverage across safety/task-discipline/orchestration helper surfaces
 - use `./scripts/validate-recovery-policy.sh` for failure taxonomy / provider-failure / retry-eligibility recovery policy changes
 - use `./scripts/validate-recovery-runtime.sh` for explicit retry / rollback / stop runtime decision changes
+- use `./scripts/validate-queue-runner.sh` for bounded queue start/finalize behavior, deferred budget/stop-condition blocking, and queue-runner wiring changes; it attempts one bounded live probe by default when possible, and `--skip-live` is available for CI/static runs
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
@@ -227,9 +231,9 @@ For tasks completed through `task_update`, the current completion gate also expe
 ## Current boundaries
 This workflow currently validates only the implemented Phase A/B slice.
 It does not validate future items like:
-- queue execution
-- team dispatch
+- a free-running queue daemon or scheduled autonomy loop beyond `run_next_queue_job`
+- team dispatch beyond the current deterministic routing/packet/handoff surfaces
 - UI widgets
-- long-running autonomy
+- long-running autonomy beyond one bounded queue step
 
 When those exist, they should add new validation scripts or extend the current validator in bounded ways.

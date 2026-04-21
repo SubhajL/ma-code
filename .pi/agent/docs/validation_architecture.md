@@ -219,6 +219,22 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect executable handoff generation or its policy/schema rules.
 
+### Dedicated queue-runner validator
+Current dedicated queue-runner script:
+- `scripts/validate-queue-runner.sh`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/extensions/queue-runner.ts`
+- queue job start/finalize behavior for one active job at a time
+- linked-task reuse via `till-done` semantics
+- start-path compensation when queue activation succeeds but final task start fails
+- explicit blocking for deferred queue-job `budget` and `stop_conditions` controls until HARNESS-034
+- packet generation and optional initial handoff generation during queue start
+- recovery-runtime reuse when failed or blocked tasks finalize a running job
+- one bounded live tool probe for `run_next_queue_job` by default when the environment supports it, with `--skip-live` available for CI/static runs
+
+It should be used when changes affect executable queue advancement or queue-runner wiring.
+
 ### Dedicated same-runtime bridge validator
 Current dedicated same-runtime bridge script:
 - `scripts/validate-same-runtime-bridge.sh`
@@ -338,10 +354,10 @@ At minimum, completion evidence should still include:
 Validation reports are therefore one part of completion evidence, not a substitute for all of it.
 
 ## Current architecture boundary
-The current architecture validates the implemented Phase A/B foundation plus bounded Phase H-style completion-gate behavior and the executable routing, activation, packet-generation, handoff-generation, recovery-policy, recovery-runtime-decision, and same-runtime-probe slices that were attached later.
+The current architecture validates the implemented Phase A/B foundation plus bounded Phase H-style completion-gate behavior and the executable routing, activation, packet-generation, handoff-generation, recovery-policy, recovery-runtime-decision, queue-runner, and same-runtime-probe slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
-- queue execution
-- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, bounded recovery-policy assessment, bounded recovery-runtime decisions, and same-runtime probes
+- a free-running queue daemon or scheduled multi-step autonomy loop beyond `run_next_queue_job`
+- full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, bounded recovery-policy assessment, bounded recovery-runtime decisions, queue start/finalize, and same-runtime probes
 - UI widgets or TUI-specific behaviors
 - long-running autonomy or recovery loops beyond the current slice
 
@@ -402,8 +418,8 @@ If a future phase introduces richer artifacts such as logs, screenshots, traces,
 
 ## Recommended future expansion points
 When later phases are implemented, likely attachment points include:
-- a dedicated validator for queue and task-runner behavior
-- a validator for full multi-worker orchestration boundaries beyond the current activation + packet + handoff resolvers and same-runtime probes
+- a validator for multi-step queue daemons, scheduling, and stop-condition counters beyond the current one-step queue runner
+- a validator for full multi-worker orchestration boundaries beyond the current activation + packet + handoff resolvers, queue start/finalize, and same-runtime probes
 - a validator for TUI or interface-level interactions if those become part of the repo-local harness contract
 - optional fast-check validators for frequent iteration alongside the fuller regression script
 

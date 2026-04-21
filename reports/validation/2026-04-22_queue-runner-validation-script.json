@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. queue-runner extension compiles with its shared helpers",
+      "status": "PASS",
+      "detail": "queue-runner and its till-done/routing/team/packet/handoff/recovery dependencies compile together."
+    },
+    {
+      "name": "2. queue-runner unit tests",
+      "status": "PASS",
+      "detail": "queue-runner unit tests passed for empty/paused no-ops, deterministic one-job start/finalize, invalid-job and deferred-control blocking, compensation safety, and recovery reuse."
+    },
+    {
+      "name": "3. queue-runner validator and docs wiring",
+      "status": "PASS",
+      "detail": "queue-runner validator and docs wiring are present in README, operator workflow, validation architecture, static checks, and CI."
+    },
+    {
+      "name": "4. live run_next_queue_job tool probe",
+      "status": "SKIP",
+      "detail": "Live probe skipped because --skip-live was requested explicitly."
+    }
+  ]
+}

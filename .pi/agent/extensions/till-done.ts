@@ -6,22 +6,22 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
-type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
-type ValidationTier = "lightweight" | "standard" | "strict";
-type ValidationSource = "review" | "validator" | "override";
-type ValidationDecision = "pending" | "pass" | "fail" | "blocked" | "overridden";
-type ChecklistStatus = "met" | "partial" | "not_met" | "not_applicable";
-type ChecklistCategory = "acceptance" | "tests" | "diff_review" | "evidence";
+export type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
+export type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
+export type ValidationTier = "lightweight" | "standard" | "strict";
+export type ValidationSource = "review" | "validator" | "override";
+export type ValidationDecision = "pending" | "pass" | "fail" | "blocked" | "overridden";
+export type ChecklistStatus = "met" | "partial" | "not_met" | "not_applicable";
+export type ChecklistCategory = "acceptance" | "tests" | "diff_review" | "evidence";
 
-interface ValidationChecklist {
+export interface ValidationChecklist {
   acceptance: ChecklistStatus;
   tests: ChecklistStatus;
   diff_review: ChecklistStatus;
   evidence: ChecklistStatus;
 }
 
-interface ValidationState {
+export interface ValidationState {
   tier: ValidationTier;
   decision: ValidationDecision;
   source: ValidationSource | null;
@@ -30,7 +30,7 @@ interface ValidationState {
   updatedAt: string | null;
 }
 
-interface CompletionGateTaskClassPolicy {
+export interface CompletionGateTaskClassPolicy {
   tier: ValidationTier;
   allowed_validation_sources: ValidationSource[];
   required_categories: ChecklistCategory[];
@@ -39,14 +39,14 @@ interface CompletionGateTaskClassPolicy {
   notes: string[];
 }
 
-interface CompletionGatePolicy {
+export interface CompletionGatePolicy {
   version: 1;
   checklist_categories: ChecklistCategory[];
   validation_tiers: Record<ValidationTier, { description: string }>;
   task_classes: Record<TaskClass, CompletionGateTaskClassPolicy>;
 }
 
-interface TaskRecord {
+export interface TaskRecord {
   id: string;
   title: string;
   owner: string | null;
@@ -66,13 +66,34 @@ interface TaskRecord {
   };
 }
 
-interface TaskState {
+export interface TaskState {
   version: 1;
   activeTaskId: string | null;
   tasks: TaskRecord[];
 }
 
-const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
+export interface TaskUpdateParams {
+  action: "show" | "create" | "claim" | "start" | "note" | "evidence" | "review" | "validate" | "override" | "requeue" | "block" | "done" | "fail";
+  id?: string;
+  title?: string;
+  owner?: string;
+  taskClass?: TaskClass;
+  acceptance?: string[];
+  dependencies?: string[];
+  evidence?: string[];
+  note?: string;
+  validationSource?: ValidationSource;
+  validationDecision?: "pass" | "fail" | "blocked";
+  validationChecklist?: ValidationChecklist;
+  approvalRef?: string;
+}
+
+export interface TaskUpdateResult {
+  content: Array<{ type: "text"; text: string }>;
+  details: Record<string, unknown>;
+}
+
+export const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
 const AUDIT_LOG = "logs/harness-actions.jsonl";
 const COMPLETION_GATE_POLICY_FILE = ".pi/agent/validation/completion-gate-policy.json";
 const TASK_CLASSES = ["research", "docs", "implementation", "runtime_safety"] as const;
@@ -145,7 +166,7 @@ function defaultValidationState(taskClass: TaskClass, policy: CompletionGatePoli
   };
 }
 
-async function loadCompletionGatePolicy(cwd: string): Promise<CompletionGatePolicy> {
+export async function loadCompletionGatePolicy(cwd: string): Promise<CompletionGatePolicy> {
   const fallbackPath = fileURLToPath(new URL("../validation/completion-gate-policy.json", import.meta.url));
   const candidates = [resolve(cwd, COMPLETION_GATE_POLICY_FILE), fallbackPath];
 
@@ -193,7 +214,7 @@ function normalizeTaskRecord(task: TaskRecord, policy: CompletionGatePolicy): Ta
   };
 }
 
-function normalizeState(state: TaskState, policy: CompletionGatePolicy): void {
+export function normalizeState(state: TaskState, policy: CompletionGatePolicy): void {
   state.tasks = state.tasks.map((task) => normalizeTaskRecord(task, policy));
 }
 
@@ -259,7 +280,7 @@ async function appendAudit(cwd: string, entry: Record<string, unknown>): Promise
   });
 }
 
-async function ensureTaskFile(cwd: string): Promise<void> {
+export async function ensureTaskFile(cwd: string): Promise<void> {
   const absolute = resolve(cwd, TASKS_FILE);
   await mkdir(dirname(absolute), { recursive: true });
 
@@ -276,20 +297,20 @@ async function ensureTaskFile(cwd: string): Promise<void> {
   }
 }
 
-async function readState(cwd: string): Promise<TaskState> {
+export async function readTaskState(cwd: string): Promise<TaskState> {
   await ensureTaskFile(cwd);
   const absolute = resolve(cwd, TASKS_FILE);
   const raw = await readFile(absolute, "utf8");
   return JSON.parse(raw) as TaskState;
 }
 
-async function writeState(cwd: string, state: TaskState): Promise<void> {
+export async function writeTaskState(cwd: string, state: TaskState): Promise<void> {
   const absolute = resolve(cwd, TASKS_FILE);
   await mkdir(dirname(absolute), { recursive: true });
   await writeFile(absolute, `${JSON.stringify(state, null, 2)}\n`, "utf8");
 }
 
-async function mutateState<T>(cwd: string, fn: (state: TaskState) => T | Promise<T>): Promise<T> {
+export async function mutateTaskState<T>(cwd: string, fn: (state: TaskState) => T | Promise<T>): Promise<T> {
   const absolute = resolve(cwd, TASKS_FILE);
   await ensureTaskFile(cwd);
 
@@ -297,20 +318,20 @@ async function mutateState<T>(cwd: string, fn: (state: TaskState) => T | Promise
     const raw = await readFile(absolute, "utf8");
     const state = JSON.parse(raw) as TaskState;
     const result = await fn(state);
-    await writeState(cwd, state);
+    await writeTaskState(cwd, state);
     return result;
   });
 }
 
-function getTask(state: TaskState, id: string): TaskRecord | undefined {
+export function getTask(state: TaskState, id: string): TaskRecord | undefined {
   return state.tasks.find((task) => task.id === id);
 }
 
-function getActiveTask(state: TaskState): TaskRecord | undefined {
+export function getActiveTask(state: TaskState): TaskRecord | undefined {
   return state.activeTaskId ? getTask(state, state.activeTaskId) : undefined;
 }
 
-function canTransition(from: TaskStatus, to: TaskStatus): boolean {
+export function canTransition(from: TaskStatus, to: TaskStatus): boolean {
   const allowed: Record<TaskStatus, TaskStatus[]> = {
     queued: ["in_progress", "blocked", "failed"],
     in_progress: ["queued", "review", "blocked", "failed"],
@@ -358,6 +379,494 @@ function unresolvedDependenciesForDone(state: TaskState, task: TaskRecord): stri
   });
 }
 
+
+export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams, completionGatePolicy: CompletionGatePolicy): TaskUpdateResult {
+  normalizeState(state, completionGatePolicy);
+  const action = params.action;
+
+  if (action === "show") {
+    const active = getActiveTask(state);
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              activeTaskId: state.activeTaskId,
+              activeTask: active ?? null,
+              tasks: state.tasks,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+      details: { activeTaskId: state.activeTaskId, taskCount: state.tasks.length },
+    };
+  }
+
+  if (action === "create") {
+    if (!params.title || !params.acceptance || params.acceptance.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "create requires `title` and non-empty `acceptance`.",
+          },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    const taskClass: TaskClass = params.taskClass ?? "implementation";
+    const task: TaskRecord = {
+      id: params.id ?? makeTaskId(),
+      title: params.title,
+      owner: params.owner ?? null,
+      status: "queued",
+      taskClass,
+      acceptance: params.acceptance,
+      evidence: [],
+      dependencies: params.dependencies ?? [],
+      retryCount: 0,
+      validation: defaultValidationState(taskClass, completionGatePolicy),
+      notes: [],
+      timestamps: {
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      },
+    };
+
+    state.tasks.push(task);
+
+    return {
+      content: [{ type: "text" as const, text: `Created task ${task.id}` }],
+      details: { ok: true, task },
+    };
+  }
+
+  if (!params.id) {
+    return {
+      content: [{ type: "text" as const, text: `${action} requires \`id\`.` }],
+      details: { ok: false },
+    };
+  }
+
+  const task = getTask(state, params.id);
+  if (!task) {
+    return {
+      content: [{ type: "text" as const, text: `Task not found: ${params.id}` }],
+      details: { ok: false },
+    };
+  }
+
+  if (action === "claim") {
+    if (!params.owner) {
+      return {
+        content: [{ type: "text" as const, text: "claim requires `owner`." }],
+        details: { ok: false },
+      };
+    }
+
+    task.owner = params.owner;
+    task.timestamps.updatedAt = nowIso();
+
+    return {
+      content: [{ type: "text" as const, text: `Claimed ${task.id} for ${task.owner}` }],
+      details: { ok: true, task },
+    };
+  }
+
+  if (action === "start") {
+    const currentActive = getActiveTask(state);
+    if (currentActive && currentActive.id !== task.id) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Another active task exists: ${currentActive.id}. Resolve or block it before starting ${task.id}.`,
+          },
+        ],
+        details: { ok: false, activeTaskId: state.activeTaskId },
+      };
+    }
+
+    if (!canTransition(task.status, "in_progress")) {
+      return {
+        content: [
+          { type: "text" as const, text: `Illegal transition: ${task.status} -> in_progress` },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    if (task.acceptance.length === 0) {
+      return {
+        content: [
+          { type: "text" as const, text: "Task cannot start without acceptance criteria." },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    if (!task.owner) {
+      return {
+        content: [{ type: "text" as const, text: "Task cannot start without an owner." }],
+        details: { ok: false },
+      };
+    }
+
+    const blockingDependencies = blockingDependenciesForStart(state, task);
+    if (blockingDependencies.length > 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Task cannot start while blocked/failed dependencies remain unresolved: ${blockingDependencies.join(", ")}`,
+          },
+        ],
+        details: { ok: false, blockingDependencies },
+      };
+    }
+
+    const previousStatus = task.status;
+    task.status = "in_progress";
+    task.validation = defaultValidationState(task.taskClass, completionGatePolicy);
+    task.timestamps.startedAt = task.timestamps.startedAt ?? nowIso();
+    task.timestamps.updatedAt = nowIso();
+    if (previousStatus === "failed") {
+      task.retryCount = (task.retryCount ?? 0) + 1;
+    }
+    state.activeTaskId = task.id;
+
+    return {
+      content: [{ type: "text" as const, text: `Started ${task.id} and made it active` }],
+      details: {
+        ok: true,
+        task,
+        activeTaskId: state.activeTaskId,
+        previousStatus,
+        nextStatus: task.status,
+        retryCount: task.retryCount ?? 0,
+      },
+    };
+  }
+
+  if (action === "note") {
+    if (!params.note) {
+      return {
+        content: [{ type: "text" as const, text: "note requires `note`." }],
+        details: { ok: false },
+      };
+    }
+
+    task.notes.push(params.note);
+    task.timestamps.updatedAt = nowIso();
+
+    return {
+      content: [{ type: "text" as const, text: `Added note to ${task.id}` }],
+      details: { ok: true, task },
+    };
+  }
+
+  if (action === "evidence") {
+    if (!params.evidence || params.evidence.length === 0) {
+      return {
+        content: [{ type: "text" as const, text: "evidence requires non-empty `evidence`." }],
+        details: { ok: false },
+      };
+    }
+
+    task.evidence.push(...params.evidence);
+    task.timestamps.updatedAt = nowIso();
+
+    return {
+      content: [{ type: "text" as const, text: `Added evidence to ${task.id}` }],
+      details: { ok: true, task },
+    };
+  }
+
+  if (action === "review") {
+    if (!canTransition(task.status, "review")) {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> review` }],
+        details: { ok: false },
+      };
+    }
+
+    const previousStatus = task.status;
+    task.status = "review";
+    task.timestamps.updatedAt = nowIso();
+    if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+    return {
+      content: [{ type: "text" as const, text: `Moved ${task.id} to review` }],
+      details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
+    };
+  }
+
+  if (action === "validate") {
+    if (task.status !== "review") {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> validate` }],
+        details: { ok: false },
+      };
+    }
+
+    if (!params.validationDecision || !params.validationSource || !params.validationChecklist) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "validate requires `validationDecision`, `validationSource`, and `validationChecklist`.",
+          },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    if (!isAllowedValidationSource(task, params.validationSource, completionGatePolicy)) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Validation source ${params.validationSource} is not allowed for task class ${task.taskClass}.`,
+          },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    const checklistProblems = assertChecklistSatisfied(task, params.validationChecklist, completionGatePolicy);
+    if (params.validationDecision === "pass" && checklistProblems.length > 0) {
+      return {
+        content: [{ type: "text" as const, text: checklistProblems.join(" ") }],
+        details: { ok: false, checklistProblems },
+      };
+    }
+
+    if ((params.validationDecision === "fail" || params.validationDecision === "blocked") && !params.note) {
+      return {
+        content: [{ type: "text" as const, text: "validate requires `note` for fail or blocked outcomes." }],
+        details: { ok: false },
+      };
+    }
+
+    task.validation = {
+      tier: completionGatePolicy.task_classes[task.taskClass].tier,
+      decision: params.validationDecision,
+      source: params.validationSource,
+      checklist: params.validationChecklist,
+      approvalRef: null,
+      updatedAt: nowIso(),
+    };
+    if (params.evidence && params.evidence.length > 0) {
+      task.evidence.push(...params.evidence);
+    }
+    task.timestamps.updatedAt = nowIso();
+
+    if (params.validationDecision === "pass") {
+      return {
+        content: [{ type: "text" as const, text: `Validation passed for ${task.id}` }],
+        details: { ok: true, task, validationDecision: task.validation.decision },
+      };
+    }
+
+    transitionToTerminalReviewOutcome(task, params.validationDecision, params.note!);
+    if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            params.validationDecision === "fail"
+              ? `Validation failed for ${task.id}`
+              : `Validation blocked ${task.id}`,
+        },
+      ],
+      details: { ok: true, task, validationDecision: task.validation.decision, activeTaskId: state.activeTaskId },
+    };
+  }
+
+  if (action === "override") {
+    if (task.status !== "review" && task.status !== "blocked") {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> override` }],
+        details: { ok: false },
+      };
+    }
+
+    const taskPolicy = completionGatePolicy.task_classes[task.taskClass];
+    if (taskPolicy.override_requires_approval && (!params.approvalRef || !params.note)) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "override requires `approvalRef` and `note` for manual completion-gate bypass.",
+          },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    task.status = "review";
+    task.validation = {
+      tier: taskPolicy.tier,
+      decision: "overridden",
+      source: "override",
+      checklist: task.validation.checklist,
+      approvalRef: params.approvalRef ?? null,
+      updatedAt: nowIso(),
+    };
+    task.notes.push(params.note!);
+    if (params.evidence && params.evidence.length > 0) {
+      task.evidence.push(...params.evidence);
+    }
+    task.timestamps.updatedAt = nowIso();
+
+    return {
+      content: [{ type: "text" as const, text: `Override recorded for ${task.id}` }],
+      details: { ok: true, task, validationDecision: task.validation.decision },
+    };
+  }
+
+  if (action === "requeue") {
+    if (!params.note) {
+      return {
+        content: [{ type: "text" as const, text: "requeue requires `note`." }],
+        details: { ok: false },
+      };
+    }
+
+    if (!canTransition(task.status, "queued")) {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> queued` }],
+        details: { ok: false },
+      };
+    }
+
+    const previousStatus = task.status;
+    task.status = "queued";
+    task.notes.push(params.note);
+    task.timestamps.updatedAt = nowIso();
+    if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+    return {
+      content: [{ type: "text" as const, text: `Requeued ${task.id}` }],
+      details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
+    };
+  }
+
+  if (action === "block") {
+    if (!params.note) {
+      return {
+        content: [{ type: "text" as const, text: "block requires `note`." }],
+        details: { ok: false },
+      };
+    }
+
+    if (!canTransition(task.status, "blocked")) {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> blocked` }],
+        details: { ok: false },
+      };
+    }
+
+    const previousStatus = task.status;
+    task.status = "blocked";
+    task.notes.push(params.note);
+    task.timestamps.updatedAt = nowIso();
+    if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+    return {
+      content: [{ type: "text" as const, text: `Blocked ${task.id}` }],
+      details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
+    };
+  }
+
+  if (action === "done") {
+    if (task.status !== "review") {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> done` }],
+        details: { ok: false },
+      };
+    }
+
+    if (task.evidence.length === 0) {
+      return {
+        content: [
+          { type: "text" as const, text: "Task cannot be completed without evidence." },
+        ],
+        details: { ok: false },
+      };
+    }
+
+    const unresolvedDependencies = unresolvedDependenciesForDone(state, task);
+    if (unresolvedDependencies.length > 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Task cannot be completed while dependencies remain unresolved: ${unresolvedDependencies.join(", ")}`,
+          },
+        ],
+        details: { ok: false, unresolvedDependencies },
+      };
+    }
+
+    if (task.validation.decision !== "pass" && task.validation.decision !== "overridden") {
+      return {
+        content: [{ type: "text" as const, text: validationBlockReason(task) }],
+        details: { ok: false, validationDecision: task.validation.decision, validationTier: task.validation.tier },
+      };
+    }
+
+    const previousStatus = task.status;
+    task.status = "done";
+    task.timestamps.completedAt = nowIso();
+    task.timestamps.updatedAt = nowIso();
+    if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+    return {
+      content: [{ type: "text" as const, text: `Completed ${task.id}` }],
+      details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
+    };
+  }
+
+  if (action === "fail") {
+    if (!params.note) {
+      return {
+        content: [{ type: "text" as const, text: "fail requires `note`." }],
+        details: { ok: false },
+      };
+    }
+
+    if (!canTransition(task.status, "failed")) {
+      return {
+        content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> failed` }],
+        details: { ok: false },
+      };
+    }
+
+    const previousStatus = task.status;
+    task.status = "failed";
+    task.notes.push(params.note);
+    task.timestamps.updatedAt = nowIso();
+    if (state.activeTaskId === task.id) state.activeTaskId = null;
+
+    return {
+      content: [{ type: "text" as const, text: `Failed ${task.id}` }],
+      details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
+    };
+  }
+
+  return {
+    content: [{ type: "text" as const, text: `Unhandled action: ${action}` }],
+    details: { ok: false },
+  };
+}
+
 export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "task_update",
@@ -366,492 +875,7 @@ export default function (pi: ExtensionAPI) {
     parameters: TaskUpdateSchema,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const completionGatePolicy = await loadCompletionGatePolicy(ctx.cwd);
-      const result = await mutateState(ctx.cwd, async (state) => {
-        normalizeState(state, completionGatePolicy);
-        const action = params.action;
-
-        if (action === "show") {
-          const active = getActiveTask(state);
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: JSON.stringify(
-                  {
-                    activeTaskId: state.activeTaskId,
-                    activeTask: active ?? null,
-                    tasks: state.tasks,
-                  },
-                  null,
-                  2,
-                ),
-              },
-            ],
-            details: { activeTaskId: state.activeTaskId, taskCount: state.tasks.length },
-          };
-        }
-
-        if (action === "create") {
-          if (!params.title || !params.acceptance || params.acceptance.length === 0) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: "create requires `title` and non-empty `acceptance`.",
-                },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          const taskClass: TaskClass = params.taskClass ?? "implementation";
-          const task: TaskRecord = {
-            id: params.id ?? makeTaskId(),
-            title: params.title,
-            owner: params.owner ?? null,
-            status: "queued",
-            taskClass,
-            acceptance: params.acceptance,
-            evidence: [],
-            dependencies: params.dependencies ?? [],
-            retryCount: 0,
-            validation: defaultValidationState(taskClass, completionGatePolicy),
-            notes: [],
-            timestamps: {
-              createdAt: nowIso(),
-              updatedAt: nowIso(),
-            },
-          };
-
-          state.tasks.push(task);
-
-          return {
-            content: [{ type: "text" as const, text: `Created task ${task.id}` }],
-            details: { ok: true, task },
-          };
-        }
-
-        if (!params.id) {
-          return {
-            content: [{ type: "text" as const, text: `${action} requires \`id\`.` }],
-            details: { ok: false },
-          };
-        }
-
-        const task = getTask(state, params.id);
-        if (!task) {
-          return {
-            content: [{ type: "text" as const, text: `Task not found: ${params.id}` }],
-            details: { ok: false },
-          };
-        }
-
-        if (action === "claim") {
-          if (!params.owner) {
-            return {
-              content: [{ type: "text" as const, text: "claim requires `owner`." }],
-              details: { ok: false },
-            };
-          }
-
-          task.owner = params.owner;
-          task.timestamps.updatedAt = nowIso();
-
-          return {
-            content: [{ type: "text" as const, text: `Claimed ${task.id} for ${task.owner}` }],
-            details: { ok: true, task },
-          };
-        }
-
-        if (action === "start") {
-          const currentActive = getActiveTask(state);
-          if (currentActive && currentActive.id !== task.id) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `Another active task exists: ${currentActive.id}. Resolve or block it before starting ${task.id}.`,
-                },
-              ],
-              details: { ok: false, activeTaskId: state.activeTaskId },
-            };
-          }
-
-          if (!canTransition(task.status, "in_progress")) {
-            return {
-              content: [
-                { type: "text" as const, text: `Illegal transition: ${task.status} -> in_progress` },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          if (task.acceptance.length === 0) {
-            return {
-              content: [
-                { type: "text" as const, text: "Task cannot start without acceptance criteria." },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          if (!task.owner) {
-            return {
-              content: [{ type: "text" as const, text: "Task cannot start without an owner." }],
-              details: { ok: false },
-            };
-          }
-
-          const blockingDependencies = blockingDependenciesForStart(state, task);
-          if (blockingDependencies.length > 0) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `Task cannot start while blocked/failed dependencies remain unresolved: ${blockingDependencies.join(", ")}`,
-                },
-              ],
-              details: { ok: false, blockingDependencies },
-            };
-          }
-
-          const previousStatus = task.status;
-          task.status = "in_progress";
-          task.validation = defaultValidationState(task.taskClass, completionGatePolicy);
-          task.timestamps.startedAt = task.timestamps.startedAt ?? nowIso();
-          task.timestamps.updatedAt = nowIso();
-          if (previousStatus === "failed") {
-            task.retryCount = (task.retryCount ?? 0) + 1;
-          }
-          state.activeTaskId = task.id;
-
-          return {
-            content: [{ type: "text" as const, text: `Started ${task.id} and made it active` }],
-            details: {
-              ok: true,
-              task,
-              activeTaskId: state.activeTaskId,
-              previousStatus,
-              nextStatus: task.status,
-              retryCount: task.retryCount ?? 0,
-            },
-          };
-        }
-
-        if (action === "note") {
-          if (!params.note) {
-            return {
-              content: [{ type: "text" as const, text: "note requires `note`." }],
-              details: { ok: false },
-            };
-          }
-
-          task.notes.push(params.note);
-          task.timestamps.updatedAt = nowIso();
-
-          return {
-            content: [{ type: "text" as const, text: `Added note to ${task.id}` }],
-            details: { ok: true, task },
-          };
-        }
-
-        if (action === "evidence") {
-          if (!params.evidence || params.evidence.length === 0) {
-            return {
-              content: [{ type: "text" as const, text: "evidence requires non-empty `evidence`." }],
-              details: { ok: false },
-            };
-          }
-
-          task.evidence.push(...params.evidence);
-          task.timestamps.updatedAt = nowIso();
-
-          return {
-            content: [{ type: "text" as const, text: `Added evidence to ${task.id}` }],
-            details: { ok: true, task },
-          };
-        }
-
-        if (action === "review") {
-          if (!canTransition(task.status, "review")) {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> review` }],
-              details: { ok: false },
-            };
-          }
-
-          const previousStatus = task.status;
-          task.status = "review";
-          task.timestamps.updatedAt = nowIso();
-          if (state.activeTaskId === task.id) state.activeTaskId = null;
-
-          return {
-            content: [{ type: "text" as const, text: `Moved ${task.id} to review` }],
-            details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
-          };
-        }
-
-        if (action === "validate") {
-          if (task.status !== "review") {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> validate` }],
-              details: { ok: false },
-            };
-          }
-
-          if (!params.validationDecision || !params.validationSource || !params.validationChecklist) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: "validate requires `validationDecision`, `validationSource`, and `validationChecklist`.",
-                },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          if (!isAllowedValidationSource(task, params.validationSource, completionGatePolicy)) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `Validation source ${params.validationSource} is not allowed for task class ${task.taskClass}.`,
-                },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          const checklistProblems = assertChecklistSatisfied(task, params.validationChecklist, completionGatePolicy);
-          if (params.validationDecision === "pass" && checklistProblems.length > 0) {
-            return {
-              content: [{ type: "text" as const, text: checklistProblems.join(" ") }],
-              details: { ok: false, checklistProblems },
-            };
-          }
-
-          if ((params.validationDecision === "fail" || params.validationDecision === "blocked") && !params.note) {
-            return {
-              content: [{ type: "text" as const, text: "validate requires `note` for fail or blocked outcomes." }],
-              details: { ok: false },
-            };
-          }
-
-          task.validation = {
-            tier: completionGatePolicy.task_classes[task.taskClass].tier,
-            decision: params.validationDecision,
-            source: params.validationSource,
-            checklist: params.validationChecklist,
-            approvalRef: null,
-            updatedAt: nowIso(),
-          };
-          if (params.evidence && params.evidence.length > 0) {
-            task.evidence.push(...params.evidence);
-          }
-          task.timestamps.updatedAt = nowIso();
-
-          if (params.validationDecision === "pass") {
-            return {
-              content: [{ type: "text" as const, text: `Validation passed for ${task.id}` }],
-              details: { ok: true, task, validationDecision: task.validation.decision },
-            };
-          }
-
-          transitionToTerminalReviewOutcome(task, params.validationDecision, params.note!);
-          if (state.activeTaskId === task.id) state.activeTaskId = null;
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text:
-                  params.validationDecision === "fail"
-                    ? `Validation failed for ${task.id}`
-                    : `Validation blocked ${task.id}`,
-              },
-            ],
-            details: { ok: true, task, validationDecision: task.validation.decision, activeTaskId: state.activeTaskId },
-          };
-        }
-
-        if (action === "override") {
-          if (task.status !== "review" && task.status !== "blocked") {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> override` }],
-              details: { ok: false },
-            };
-          }
-
-          const taskPolicy = completionGatePolicy.task_classes[task.taskClass];
-          if (taskPolicy.override_requires_approval && (!params.approvalRef || !params.note)) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: "override requires `approvalRef` and `note` for manual completion-gate bypass.",
-                },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          task.status = "review";
-          task.validation = {
-            tier: taskPolicy.tier,
-            decision: "overridden",
-            source: "override",
-            checklist: task.validation.checklist,
-            approvalRef: params.approvalRef ?? null,
-            updatedAt: nowIso(),
-          };
-          task.notes.push(params.note!);
-          if (params.evidence && params.evidence.length > 0) {
-            task.evidence.push(...params.evidence);
-          }
-          task.timestamps.updatedAt = nowIso();
-
-          return {
-            content: [{ type: "text" as const, text: `Override recorded for ${task.id}` }],
-            details: { ok: true, task, validationDecision: task.validation.decision },
-          };
-        }
-
-        if (action === "requeue") {
-          if (!params.note) {
-            return {
-              content: [{ type: "text" as const, text: "requeue requires `note`." }],
-              details: { ok: false },
-            };
-          }
-
-          if (!canTransition(task.status, "queued")) {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> queued` }],
-              details: { ok: false },
-            };
-          }
-
-          const previousStatus = task.status;
-          task.status = "queued";
-          task.notes.push(params.note);
-          task.timestamps.updatedAt = nowIso();
-          if (state.activeTaskId === task.id) state.activeTaskId = null;
-
-          return {
-            content: [{ type: "text" as const, text: `Requeued ${task.id}` }],
-            details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
-          };
-        }
-
-        if (action === "block") {
-          if (!params.note) {
-            return {
-              content: [{ type: "text" as const, text: "block requires `note`." }],
-              details: { ok: false },
-            };
-          }
-
-          if (!canTransition(task.status, "blocked")) {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> blocked` }],
-              details: { ok: false },
-            };
-          }
-
-          const previousStatus = task.status;
-          task.status = "blocked";
-          task.notes.push(params.note);
-          task.timestamps.updatedAt = nowIso();
-          if (state.activeTaskId === task.id) state.activeTaskId = null;
-
-          return {
-            content: [{ type: "text" as const, text: `Blocked ${task.id}` }],
-            details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
-          };
-        }
-
-        if (action === "done") {
-          if (task.status !== "review") {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> done` }],
-              details: { ok: false },
-            };
-          }
-
-          if (task.evidence.length === 0) {
-            return {
-              content: [
-                { type: "text" as const, text: "Task cannot be completed without evidence." },
-              ],
-              details: { ok: false },
-            };
-          }
-
-          const unresolvedDependencies = unresolvedDependenciesForDone(state, task);
-          if (unresolvedDependencies.length > 0) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: `Task cannot be completed while dependencies remain unresolved: ${unresolvedDependencies.join(", ")}`,
-                },
-              ],
-              details: { ok: false, unresolvedDependencies },
-            };
-          }
-
-          if (task.validation.decision !== "pass" && task.validation.decision !== "overridden") {
-            return {
-              content: [{ type: "text" as const, text: validationBlockReason(task) }],
-              details: { ok: false, validationDecision: task.validation.decision, validationTier: task.validation.tier },
-            };
-          }
-
-          const previousStatus = task.status;
-          task.status = "done";
-          task.timestamps.completedAt = nowIso();
-          task.timestamps.updatedAt = nowIso();
-          if (state.activeTaskId === task.id) state.activeTaskId = null;
-
-          return {
-            content: [{ type: "text" as const, text: `Completed ${task.id}` }],
-            details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
-          };
-        }
-
-        if (action === "fail") {
-          if (!params.note) {
-            return {
-              content: [{ type: "text" as const, text: "fail requires `note`." }],
-              details: { ok: false },
-            };
-          }
-
-          if (!canTransition(task.status, "failed")) {
-            return {
-              content: [{ type: "text" as const, text: `Illegal transition: ${task.status} -> failed` }],
-              details: { ok: false },
-            };
-          }
-
-          const previousStatus = task.status;
-          task.status = "failed";
-          task.notes.push(params.note);
-          task.timestamps.updatedAt = nowIso();
-          if (state.activeTaskId === task.id) state.activeTaskId = null;
-
-          return {
-            content: [{ type: "text" as const, text: `Failed ${task.id}` }],
-            details: { ok: true, task, previousStatus, nextStatus: task.status, activeTaskId: state.activeTaskId },
-          };
-        }
-
-        return {
-          content: [{ type: "text" as const, text: `Unhandled action: ${action}` }],
-          details: { ok: false },
-        };
-      });
+      const result = await mutateTaskState(ctx.cwd, async (state) => applyTaskUpdateAction(state, params as TaskUpdateParams, completionGatePolicy));
 
       const branch = await getCurrentBranch(pi, ctx.cwd);
       const modelId = modelIdFromContext(ctx);
@@ -884,7 +908,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("tool_call", async (event, ctx) => {
-    const state = await readState(ctx.cwd);
+    const state = await readTaskState(ctx.cwd);
     const activeTask = getActiveTask(state);
 
     const mutationBlockedReason = !taskIsRunnable(activeTask)
@@ -939,7 +963,7 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.on("agent_end", async (_event, ctx) => {
-    const state = await readState(ctx.cwd);
+    const state = await readTaskState(ctx.cwd);
     const activeTask = getActiveTask(state);
     if (!activeTask) return;
 

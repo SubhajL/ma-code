@@ -198,7 +198,7 @@ setup_temp_runtime() {
 }
 JSON
 
-  cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner}.ts "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -281,11 +281,31 @@ check_3_orchestration_helper_unit_tests() {
   fi
 }
 
+check_4_queue_runner_unit_tests() {
+  local name="4. queue-runner bounded step unit tests"
+  local out="$TMP_ROOT/check_4_queue_runner_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/unit-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/queue-runner.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/extension-units/queue-runner.test.ts" "$out"; then
+    local detail="queue-runner unit tests passed for empty/paused no-ops, deterministic single-job start/finalize, invalid-job and deferred-control blocking, compensation safety, and recovery reuse."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="queue-runner unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
 setup_temp_runtime
 write_header
 check_1_safe_bash_unit_tests
 check_2_till_done_unit_tests
 check_3_orchestration_helper_unit_tests
+check_4_queue_runner_unit_tests
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"
