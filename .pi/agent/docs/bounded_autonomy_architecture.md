@@ -36,6 +36,23 @@ Recommended Phase I model:
 5. quality/validation gates still apply
 6. the system stops, blocks, fails, or completes explicitly
 
+## Current executable queue-runner surface
+The current repo-local slice now includes a bounded single-step queue runner at:
+- `.pi/agent/extensions/queue-runner.ts`
+- public tool: `run_next_queue_job`
+- compatibility alias: `run_queue_once`
+- validator: `scripts/validate-queue-runner.sh`
+
+Current behavior is intentionally narrow:
+- if one queue job is already `running`, the tool only tries to finalize it from linked task state when the task is terminal
+- otherwise the tool starts at most one eligible queued job
+- queued-job start now prepares/claims a linked task, generates packet/handoff data, marks the queue running, then starts the task last with bounded compensation if that final task start fails
+- task creation/claim/start reuses `till-done` task semantics
+- packet generation, optional initial handoff generation, and recovery recommendations reuse the existing executable helper surfaces
+- queued jobs that declare concrete `budget` fields or non-empty `stop_conditions` are blocked explicitly until HARNESS-034 adds enforcement rather than being silently ignored
+
+This is not yet a free-running daemon, scheduler, or pause/resume control plane.
+
 ## Design rules
 - autonomy must be queue-driven, not free-roaming
 - every job must have scope

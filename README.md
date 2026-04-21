@@ -45,13 +45,14 @@ Implemented here:
 - executable task-packet generator, packet policy, and packet schema
 - executable handoff generator, handoff policy, and handoff schema
 - executable recovery policy and runtime decision surfaces for bounded retry/rollback/stop recommendations before queue automation
+- bounded single-runner queue execution via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts` (`run_queue_once` remains as a compatibility alias)
 - same-runtime probe bridge for shared model/account-path child sessions
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
 - validation reports and file map
 
 Not yet implemented:
-- live queue runner
-- team orchestration runtime
+- a free-running queue daemon or scheduled workflow loop
+- broader team orchestration runtime beyond deterministic activation, packets, handoffs, recovery, and one-step queue advancement
 - UI widgets / status components
 - broader automated test suite beyond bounded runtime validation
 
@@ -76,6 +77,7 @@ So Phase F should be read as:
 
 Related docs:
 - validation architecture: `.pi/agent/docs/validation_architecture.md`
+- bounded autonomy architecture: `.pi/agent/docs/bounded_autonomy_architecture.md`
 - phase capability map: `.pi/agent/docs/harness_phase_capability_map.md`
 
 ## Validation workflow
@@ -92,6 +94,12 @@ Key outputs:
 - validation reports: `reports/validation/`
 - current coding log pointer: `logs/CURRENT.md`
 
+Direct repo-root extension test ergonomics:
+```bash
+npm install --no-package-lock
+npm run test:queue-runner
+```
+
 ## GitHub automation
 This repo uses a harness-specific GitHub baseline rather than app-specific deployment pipelines.
 
@@ -99,6 +107,7 @@ Current GitHub workflow surfaces:
 - CI: `.github/workflows/ci.yml`
   - repo static checks
   - foundation extension compile check
+  - queue-semantics validator
   - skill-routing validator
   - harness-routing validator
   - team-activation validator
@@ -107,6 +116,7 @@ Current GitHub workflow surfaces:
   - same-runtime bridge validator
   - recovery-policy validator
   - recovery-runtime validator
+  - queue-runner validator (`--skip-live` in CI; local/operator runs attempt one bounded live probe by default when possible)
 - Security: `.github/workflows/security.yml`
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript

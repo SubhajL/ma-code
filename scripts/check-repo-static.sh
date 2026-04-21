@@ -9,15 +9,18 @@ required_files=(
   "AGENTS.md"
   "README.md"
   "SYSTEM.md"
+  "package.json"
   ".pi/agent/models.json"
   ".pi/agent/teams/activation-policy.json"
   ".pi/agent/packets/packet-policy.json"
   ".pi/agent/handoffs/handoff-policy.json"
   ".pi/agent/validation/completion-gate-policy.json"
   ".pi/agent/state/schemas/tasks.schema.json"
+  ".pi/agent/state/schemas/queue.schema.json"
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
   "scripts/validate-phase-a-b.sh"
+  "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
   "scripts/validate-harness-routing.sh"
   "scripts/validate-team-activation.sh"
@@ -26,6 +29,7 @@ required_files=(
   "scripts/validate-same-runtime-bridge.sh"
   "scripts/validate-recovery-policy.sh"
   "scripts/validate-recovery-runtime.sh"
+  "scripts/validate-queue-runner.sh"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
   ".github/dependabot.yml"
@@ -52,8 +56,10 @@ for rel in [
     ".pi/agent/handoffs/handoff-policy.json",
     ".pi/agent/validation/completion-gate-policy.json",
     ".pi/agent/state/schemas/tasks.schema.json",
+    ".pi/agent/state/schemas/queue.schema.json",
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
+    "package.json",
     "packages/pi-g-skills/package.json",
 ]:
     with (root / rel).open("r", encoding="utf-8") as f:

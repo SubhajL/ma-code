@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile } from "node:fs/promises";
+import { copyFile, mkdtemp, mkdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 export type ToolRegistration = {
   name: string;
@@ -90,4 +90,11 @@ export function textContent(result: unknown): string {
 
 export async function readAuditLog(cwd: string): Promise<string> {
   return readFile(join(cwd, "logs", "harness-actions.jsonl"), "utf8");
+}
+
+export async function copyFixtureRepoFile(cwd: string, relativePath: string): Promise<void> {
+  const source = new URL(`../../${relativePath}`, import.meta.url);
+  const destination = join(cwd, relativePath);
+  await mkdir(dirname(destination), { recursive: true });
+  await copyFile(source, destination);
 }

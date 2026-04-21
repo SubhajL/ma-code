@@ -34,6 +34,11 @@ So the most accurate answer is:
 - **Phase I = bounded autonomy exists**
 - **Phase J = bounded autonomy becomes practical to operate daily**
 
+Current repo-local reality is narrower than the full Phase I target:
+- bounded single-step queue advancement now exists via `run_next_queue_job`
+- concrete queue-job `budget` fields and non-empty `stop_conditions` are blocked explicitly for now rather than fully enforced
+- HARNESS-034 still carries the later stop-condition enforcement work
+
 ## Capability table by phase
 
 | Phase | Name | Main capability gained | What you can realistically do after this phase | What you still do not have yet |
@@ -193,11 +198,17 @@ Meaning:
 - failures, blockers, retries, and limits can be tracked
 - long-running operation becomes possible without implying endless drift
 
+Current repo-local attachment in this slice:
+- bounded single-step queue advancement now exists via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts`
+- the tool finalizes one `running` job if its linked task is terminal, otherwise starts at most one eligible queued job
+- queued jobs with concrete `budget` fields or non-empty `stop_conditions` are blocked explicitly for now rather than fully enforced
+- HARNESS-034 still carries the later runtime stop-condition enforcement work
+
 This is the first phase where “almost hands-free” starts becoming a defensible phrase, but only in a bounded sense.
 
 A careful description would be:
 
-> The harness can perform bounded, queue-driven, semi-autonomous work with explicit stop conditions.
+> The harness can perform bounded, queue-driven, semi-autonomous work one step at a time, with full stop-condition enforcement still deferred.
 
 That is much better than saying:
 

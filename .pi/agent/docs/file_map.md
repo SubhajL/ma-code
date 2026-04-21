@@ -63,6 +63,7 @@
 - `scripts/validate-same-runtime-bridge.sh`
 - `scripts/validate-recovery-policy.sh`
 - `scripts/validate-recovery-runtime.sh`
+- `scripts/validate-queue-runner.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 

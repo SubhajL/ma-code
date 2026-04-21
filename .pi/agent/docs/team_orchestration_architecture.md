@@ -183,6 +183,20 @@ For the current repo-local slice, executable recovery decisioning now lives at:
 
 It gives recovery and orchestration layers one bounded decision surface for retry, stronger-model retry, provider switch, rollback recommendation, stop, or escalation recommendations using existing validation/failure evidence before queue execution is added.
 
+## Current bounded queue-runner surface
+For the current repo-local slice, bounded single-step queue advancement now lives at:
+- `.pi/agent/extensions/queue-runner.ts`
+- public tool: `run_next_queue_job`
+- compatibility alias: `run_queue_once`
+- validator: `scripts/validate-queue-runner.sh`
+
+Its behavior is intentionally narrow:
+- finalize one existing `running` job only when its linked task is terminal
+- otherwise start at most one eligible queued job
+- reuse executable team activation, task packets, optional initial handoff generation, and existing `till-done` task semantics
+- block queued jobs with concrete `budget` fields or non-empty `stop_conditions` until HARNESS-034
+- it is not full team dispatch or a daemon
+
 ## Team activation rules
 
 ### Rule 1: start with planning when uncertainty is material
