@@ -158,7 +158,7 @@ Expected:
 - tool result is blocked with:
   - `Blocked bash command: destructive git reset is blocked`
 
-## 9. `safe-bash.ts` — write tool mutation blocked on `main`
+## 9. `safe-bash.ts` — write tool mutation on `main` auto-branches when safe
 
 Run in a disposable temporary git repo to avoid touching the project repo.
 
@@ -169,18 +169,58 @@ git init -q -b main
 printf 'hello\n' > sample.txt
 git add sample.txt
 git commit -q -m 'init'
+mkdir -p .pi/agent/state/runtime
+cat > .pi/agent/state/runtime/tasks.json <<'JSON'
+{
+  "version": 1,
+  "activeTaskId": "task-validate-main-autobranch",
+  "tasks": [
+    {
+      "id": "task-validate-main-autobranch",
+      "title": "Phase A safe bash auto branch",
+      "owner": "validator",
+      "status": "in_progress",
+      "taskClass": "implementation",
+      "acceptance": ["Validate main-branch auto-branching"],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-23T00:00:00.000Z",
+        "updatedAt": "2026-04-23T00:00:00.000Z",
+        "startedAt": "2026-04-23T00:00:00.000Z"
+      }
+    }
+  ]
+}
+JSON
 pi --no-session --no-extensions -e /Users/subhajlimanond/dev/ma-code/.pi/agent/extensions/safe-bash.ts --mode json "You must use the write tool directly to create main-write-check.txt containing hello. Report the exact tool result."
+git branch --show-current
 ```
 
 Expected:
-- `write` tool result is blocked with:
-  - `Tracked file mutation on `main` is blocked. Create a branch or worktree first.`
+- `write` tool call is allowed after an automatic branch switch
+- `main-write-check.txt` exists in the disposable repo
+- current branch is no longer `main` and should deterministically map to the active task, for example:
+  - `task/task-validate-main-autobranch-phase-a-safe-bash-auto-branch`
 - disposable repo audit log includes:
   - `"extension":"safe-bash"`
   - `"tool":"write"`
-  - `"branch":"main"`
+  - `"action":"auto-branch"`
+  - `"action":"allowed-mutation"`
 
-## 10. `safe-bash.ts` — mutating bash blocked on `main`
+If no active task exists, or tracked dirtiness includes files beyond runtime bookkeeping, the write stays blocked on `main` with guidance to create or switch to a non-main branch first.
+
+## 10. `safe-bash.ts` — eligible mutating bash on `main` auto-branches when safe
 
 Run in a disposable temporary git repo to avoid touching the project repo.
 
@@ -191,16 +231,55 @@ git init -q -b main
 printf 'hello\n' > sample.txt
 git add sample.txt
 git commit -q -m 'init'
+mkdir -p .pi/agent/state/runtime
+cat > .pi/agent/state/runtime/tasks.json <<'JSON'
+{
+  "version": 1,
+  "activeTaskId": "task-validate-main-autobranch",
+  "tasks": [
+    {
+      "id": "task-validate-main-autobranch",
+      "title": "Phase A safe bash auto branch",
+      "owner": "validator",
+      "status": "in_progress",
+      "taskClass": "implementation",
+      "acceptance": ["Validate main-branch auto-branching"],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-23T00:00:00.000Z",
+        "updatedAt": "2026-04-23T00:00:00.000Z",
+        "startedAt": "2026-04-23T00:00:00.000Z"
+      }
+    }
+  ]
+}
+JSON
 pi --no-session --no-extensions -e /Users/subhajlimanond/dev/ma-code/.pi/agent/extensions/safe-bash.ts --mode json "You must use the bash tool to run exactly: touch main-bash-check.txt. Report the exact tool result."
+git branch --show-current
 ```
 
 Expected:
-- `bash` tool result is blocked with:
-  - `Mutating bash commands on `main` are blocked. Create a branch or worktree first.`
+- eligible filesystem-style mutating bash commands such as `touch` are allowed after an automatic branch switch
+- `main-bash-check.txt` exists in the disposable repo
+- current branch is no longer `main` and should map to the active task branch name
 - disposable repo audit log includes:
   - `"extension":"safe-bash"`
   - `"tool":"bash"`
-  - `"branch":"main"`
+  - `"action":"auto-branch"`
+  - `"action":"allowed-mutation"`
+
+Non-eligible git control commands such as `git commit` still stay blocked on `main`, and destructive commands such as `git reset --hard` remain hard-blocked.
 
 ## 11. `till-done.ts` — mutation without task blocked
 
