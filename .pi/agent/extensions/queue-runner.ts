@@ -64,10 +64,12 @@ export interface QueueJob {
   budget?: {
     maxRetries?: number;
     maxRuntimeMinutes?: number;
+    maxFailedValidations?: number;
     maxCostUsd?: number;
     maxFilesChanged?: number;
   };
   stop_conditions?: string[];
+  approvalRequired?: boolean;
   acceptanceCriteria?: string[];
   taskClass?: TaskClass;
   workType?: WorkType;
@@ -279,25 +281,53 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
   };
 }
 
-function deferredControlBlockNote(job: QueueJob): string | null {
-  const budgetFields = Object.entries(job.budget ?? {})
-    .filter(([, value]) => value !== undefined)
+function unsupportedControlBlockNote(job: QueueJob): string | null {
+  const unsupportedBudgetFields = Object.entries(job.budget ?? {})
+    .filter(([key, value]) => value !== undefined && ["maxCostUsd", "maxFilesChanged"].includes(key))
     .map(([key]) => key);
-  const stopConditions = uniqueStrings(job.stop_conditions ?? []);
+  const unsupportedStopConditions = uniqueStrings(job.stop_conditions ?? []).filter(
+    (value) => value !== "approval_boundary_hit",
+  );
 
-  if (budgetFields.length === 0 && stopConditions.length === 0) {
+  if (unsupportedBudgetFields.length === 0 && unsupportedStopConditions.length === 0) {
     return null;
   }
 
   const unsupportedParts: string[] = [];
-  if (budgetFields.length > 0) {
-    unsupportedParts.push(`budget fields (${budgetFields.join(", ")})`);
+  if (unsupportedBudgetFields.length > 0) {
+    unsupportedParts.push(`unsupported budget fields (${unsupportedBudgetFields.join(", ")})`);
   }
-  if (stopConditions.length > 0) {
-    unsupportedParts.push(`stop_conditions (${stopConditions.join("; ")})`);
+  if (unsupportedStopConditions.length > 0) {
+    unsupportedParts.push(`unsupported stop_conditions (${unsupportedStopConditions.join("; ")})`);
   }
 
-  return `Queue runner blocked the job because ${unsupportedParts.join(" and ")} are not yet enforced in HARNESS-032; defer queue budget/stop-condition execution until HARNESS-034.`;
+  return `Queue runner blocked the job because ${unsupportedParts.join(" and ")} are not supported by HARNESS-034 stop-condition enforcement.`;
+}
+
+function taskFailedValidationCount(task: TaskRecord): number {
+  return Math.max(task.retryCount ?? 0, 0) + (task.validation.decision === "fail" ? 1 : 0);
+}
+
+function jobExceededRetryBudget(job: QueueJob, task: TaskRecord): boolean {
+  const maxRetries = job.budget?.maxRetries;
+  if (maxRetries === undefined) return false;
+  return task.status === "failed" && (task.retryCount ?? 0) >= maxRetries;
+}
+
+function jobExceededFailedValidationBudget(job: QueueJob, task: TaskRecord): boolean {
+  const maxFailedValidations = job.budget?.maxFailedValidations;
+  if (maxFailedValidations === undefined) return false;
+  return taskFailedValidationCount(task) >= maxFailedValidations;
+}
+
+function jobExceededRuntimeBudget(job: QueueJob, now: Date = new Date()): boolean {
+  const maxRuntimeMinutes = job.budget?.maxRuntimeMinutes;
+  if (maxRuntimeMinutes === undefined || !job.startedAt) return false;
+
+  const startedAt = new Date(job.startedAt);
+  if (Number.isNaN(startedAt.getTime())) return false;
+
+  return now.getTime() - startedAt.getTime() > maxRuntimeMinutes * 60_000;
 }
 
 function ensureRoleBelongsToTeam(team: TeamDefinition, role: HarnessRole): void {
@@ -489,8 +519,53 @@ function blockJobInState(
   return normalizeQueueJob(target);
 }
 
-async function blockJobAndContinue(cwd: string, jobId: string, note: string): Promise<QueueJob> {
-  return mutateQueueState(cwd, (state) => blockJobInState(state, jobId, note));
+function failJobInState(
+  state: QueueState,
+  jobId: string,
+  note: string,
+  options: { clearActiveJobId?: boolean } = {},
+): QueueJob {
+  const target = getJob(state, jobId);
+  if (!target) {
+    throw new Error(`Queue job ${jobId} not found.`);
+  }
+  target.status = "failed";
+  target.finishedAt = nowIso();
+  target.updatedAt = target.finishedAt;
+  target.notes = target.notes ?? [];
+  target.notes.push(note);
+  if (options.clearActiveJobId && state.activeJobId === jobId) {
+    state.activeJobId = null;
+  }
+  return normalizeQueueJob(target);
+}
+
+function transitionTaskForStopInState(taskState: TaskState, taskId: string, status: Extract<TaskRecord["status"], "blocked" | "failed">, note: string): TaskRecord {
+  const task = getTask(taskState, taskId);
+  if (!task) {
+    throw new Error(`Linked task ${taskId} was not found.`);
+  }
+  task.status = status;
+  task.notes.push(note);
+  task.timestamps.updatedAt = nowIso();
+  task.timestamps.completedAt = task.timestamps.completedAt ?? task.timestamps.updatedAt;
+  if (taskState.activeTaskId === task.id) {
+    taskState.activeTaskId = null;
+  }
+  return task;
+}
+
+function stopLinkedTaskAndQueueJobInState(
+  queueState: QueueState,
+  taskState: TaskState,
+  jobId: string,
+  taskId: string,
+  status: Extract<QueueJobStatus, "blocked" | "failed">,
+  note: string,
+): { job: QueueJob; task: TaskRecord } {
+  const task = transitionTaskForStopInState(taskState, taskId, status === "blocked" ? "blocked" : "failed", note);
+  const job = status === "blocked" ? blockJobInState(queueState, jobId, note, { clearActiveJobId: true }) : failJobInState(queueState, jobId, note, { clearActiveJobId: true });
+  return { job, task };
 }
 
 async function prepareLinkedTask(cwd: string, job: QueueJob, owner: string): Promise<TaskRecord> {
@@ -826,13 +901,42 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
         };
       }
 
-      const deferredControlsNote = deferredControlBlockNote(job);
-      if (deferredControlsNote) {
-        blockJobInState(queueState, job.id, deferredControlsNote);
+      const unsupportedControlsNote = unsupportedControlBlockNote(job);
+      if (unsupportedControlsNote) {
+        blockJobInState(queueState, job.id, unsupportedControlsNote);
         return {
           type: "blocked-before-start" as const,
           jobId: job.id,
         };
+      }
+
+      if (job.approvalRequired) {
+        blockJobInState(queueState, job.id, "Queue runner blocked the queued job because the approval boundary was hit before start (approvalRequired=true).");
+        return {
+          type: "blocked-before-start" as const,
+          jobId: job.id,
+        };
+      }
+
+      if (job.linkedTaskId) {
+        const linkedTask = getTask(taskState, job.linkedTaskId);
+        if (linkedTask) {
+          if (jobExceededRetryBudget(job, linkedTask)) {
+            failJobInState(queueState, job.id, `Queue runner failed the queued job before restart because linked task ${linkedTask.id} exhausted budget.maxRetries.`);
+            return {
+              type: "failed-before-start" as const,
+              jobId: job.id,
+            };
+          }
+
+          if (jobExceededFailedValidationBudget(job, linkedTask)) {
+            failJobInState(queueState, job.id, `Queue runner failed the queued job before restart because linked task ${linkedTask.id} exhausted budget.maxFailedValidations using retryCount plus the current validation failure.`);
+            return {
+              type: "failed-before-start" as const,
+              jobId: job.id,
+            };
+          }
+        }
       }
 
       try {
@@ -960,7 +1064,7 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
       };
     }
 
-    if (attempt.type === "blocked-before-start") {
+    if (attempt.type === "blocked-before-start" || attempt.type === "failed-before-start") {
       blockedJobIds.push(attempt.jobId);
       continue;
     }
@@ -1075,6 +1179,44 @@ export async function runNextQueueJob(cwd: string, input: { owner?: string; allo
       }
 
       if (!taskTerminal(linkedTask)) {
+        if (normalizedJob.approvalRequired) {
+          const note = `Queue runner stopped the active job at the approval boundary because approvalRequired=true for linked task ${linkedTask.id}.`;
+          const stopped = stopLinkedTaskAndQueueJobInState(
+            coordinatedQueueState,
+            taskState,
+            normalizedJob.id,
+            linkedTask.id,
+            "blocked",
+            note,
+          );
+          return {
+            type: "stopped-active-job" as const,
+            stopAction: "blocked" as const,
+            finalizedJob: stopped.job,
+            linkedTask: stopped.task,
+            queuePaused: coordinatedQueueState.paused,
+          };
+        }
+
+        if (jobExceededRuntimeBudget(normalizedJob)) {
+          const note = `Queue runner failed the active job because linked task ${linkedTask.id} exceeded budget.maxRuntimeMinutes.`;
+          const stopped = stopLinkedTaskAndQueueJobInState(
+            coordinatedQueueState,
+            taskState,
+            normalizedJob.id,
+            linkedTask.id,
+            "failed",
+            note,
+          );
+          return {
+            type: "stopped-active-job" as const,
+            stopAction: "finalized" as const,
+            finalizedJob: stopped.job,
+            linkedTask: stopped.task,
+            queuePaused: coordinatedQueueState.paused,
+          };
+        }
+
         return {
           type: "active-job-still-running" as const,
           normalizedJob,
@@ -1171,6 +1313,27 @@ export async function runNextQueueJob(cwd: string, input: { owner?: string; allo
         startedJob: null,
         finalizedJob: null,
         blockedJobIds: [],
+        linkedTask: activeOutcome.linkedTask,
+        packet: null,
+        initialHandoff: null,
+        recoveryDecision: null,
+      };
+    }
+
+    if (activeOutcome.type === "stopped-active-job") {
+      return {
+        version: 1,
+        ok: true,
+        action: activeOutcome.stopAction,
+        reason:
+          activeOutcome.stopAction === "blocked"
+            ? `Active job ${activeOutcome.finalizedJob.id} was blocked together with linked task ${activeOutcome.linkedTask.id}.`
+            : `Active job ${activeOutcome.finalizedJob.id} was failed together with linked task ${activeOutcome.linkedTask.id}.`,
+        queuePaused: activeOutcome.queuePaused,
+        activeJobId: null,
+        startedJob: null,
+        finalizedJob: activeOutcome.stopAction === "finalized" ? activeOutcome.finalizedJob : null,
+        blockedJobIds: activeOutcome.stopAction === "blocked" ? [activeOutcome.finalizedJob.id] : [],
         linkedTask: activeOutcome.linkedTask,
         packet: null,
         initialHandoff: null,

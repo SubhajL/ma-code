@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 import tillDone from "../../.pi/agent/extensions/till-done.ts";
-import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo } from "./test-utils.ts";
+import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo, readAuditLog } from "./test-utils.ts";
 
 async function setupQueueRunnerRepo() {
   const cwd = await makeTempRepo("queue-runner-");
@@ -417,7 +417,8 @@ test("queue runner blocks jobs without acceptance criteria and starts the next e
   assert.equal(queueState.jobs.find((job) => job.id === "job-valid")?.status, "running");
 });
 
-test("queue runner blocks unsupported budget and stop_conditions controls instead of silently ignoring them", async () => {
+
+test("queue runner blocks unsupported budget fields and unsupported free-form stop_conditions but allows supported HARNESS-034 controls", async () => {
   const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
 
   await writeQueue(cwd, {
@@ -426,8 +427,8 @@ test("queue runner blocks unsupported budget and stop_conditions controls instea
     activeJobId: null,
     jobs: [
       {
-        id: "job-deferred-controls",
-        goal: "Do not silently ignore budget controls",
+        id: "job-unsupported-controls",
+        goal: "Reject unsupported queue controls clearly",
         priority: "high",
         status: "queued",
         team: "build",
@@ -435,13 +436,13 @@ test("queue runner blocks unsupported budget and stop_conditions controls instea
         workType: "implementation",
         domains: ["backend"],
         allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
-        acceptanceCriteria: ["Jobs with deferred budget enforcement are blocked clearly"],
-        budget: { maxRetries: 1 },
+        acceptanceCriteria: ["Unsupported controls are blocked clearly before start"],
+        budget: { maxCostUsd: 5, maxFilesChanged: 3 },
         stop_conditions: ["stop after first validation failure"],
       },
       {
-        id: "job-after-budget-block",
-        goal: "Start the next valid job after deferred controls are blocked",
+        id: "job-supported-controls",
+        goal: "Allow supported HARNESS-034 stop controls",
         priority: "medium",
         status: "queued",
         team: "build",
@@ -449,7 +450,9 @@ test("queue runner blocks unsupported budget and stop_conditions controls instea
         workType: "implementation",
         domains: ["backend"],
         allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
-        acceptanceCriteria: ["The runner should continue after blocking unsupported controls"],
+        acceptanceCriteria: ["Supported controls no longer trigger blanket HARNESS-032 deferral blocking"],
+        budget: { maxRetries: 2, maxRuntimeMinutes: 30, maxFailedValidations: 1 },
+        stop_conditions: ["approval_boundary_hit"],
       },
     ],
   });
@@ -457,13 +460,438 @@ test("queue runner blocks unsupported budget and stop_conditions controls instea
   const result = await runNextQueueJob({ owner: "assistant" });
   const details = (result as any).details;
   const queueState = await readQueueState(cwd);
-  const blockedJob = queueState.jobs.find((job) => job.id === "job-deferred-controls");
+  const blockedJob = queueState.jobs.find((job) => job.id === "job-unsupported-controls");
+  const startedJob = queueState.jobs.find((job) => job.id === "job-supported-controls");
 
   assert.equal(details.action, "started");
-  assert.deepEqual(details.blockedJobIds, ["job-deferred-controls"]);
-  assert.equal(details.startedJob.id, "job-after-budget-block");
+  assert.deepEqual(details.blockedJobIds, ["job-unsupported-controls"]);
+  assert.equal(details.startedJob.id, "job-supported-controls");
   assert.equal(blockedJob?.status, "blocked");
-  assert.match(blockedJob?.notes?.at(-1) ?? "", /HARNESS-034/);
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /unsupported/i);
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /maxCostUsd/i);
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /maxFilesChanged/i);
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /stop after first validation failure/i);
+  assert.equal(startedJob?.status, "running");
+});
+
+test("queue runner blocks queued approvalRequired jobs before start", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-approval-boundary",
+        goal: "Respect approval boundary before start",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["approvalRequired queued jobs are blocked before they start"],
+        approvalRequired: true,
+        stop_conditions: ["approval_boundary_hit"],
+      },
+      {
+        id: "job-after-approval-block",
+        goal: "Start the next valid job",
+        priority: "medium",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Runner continues after approval boundary block"],
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const blockedJob = queueState.jobs.find((job) => job.id === "job-approval-boundary");
+
+  assert.equal(details.action, "started");
+  assert.deepEqual(details.blockedJobIds, ["job-approval-boundary"]);
+  assert.equal(details.startedJob.id, "job-after-approval-block");
+  assert.equal(blockedJob?.status, "blocked");
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /approval boundary/i);
+  assert.equal(queueState.activeJobId, "job-after-approval-block");
+});
+
+test("queue runner logs queued approval boundary blocks to the audit log", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-approval-log-block",
+        goal: "Record approval boundary block",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["approval boundary blocks are visible in the audit log"],
+        approvalRequired: true,
+        stop_conditions: ["approval_boundary_hit"],
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const auditLog = await readAuditLog(cwd);
+  const lastEntry = JSON.parse(auditLog.trim().split("\n").at(-1) ?? "{}");
+
+  assert.equal(details.action, "blocked");
+  assert.deepEqual(details.blockedJobIds, ["job-approval-log-block"]);
+  assert.equal(lastEntry.action, "run_next_queue_job");
+  assert.equal(lastEntry.result.action, "blocked");
+  assert.deepEqual(lastEntry.result.blockedJobIds, ["job-approval-log-block"]);
+  assert.equal(lastEntry.result.startedJobId, null);
+});
+
+test("queue runner fails queued retries that already exhausted maxRetries or maxFailedValidations before restart", async () => {
+  const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
+
+  const retriedTask = await taskUpdate({
+    action: "create",
+    title: "exhausted retry task",
+    acceptance: ["Retry budget is already exhausted"],
+  });
+  const retriedTaskId = (retriedTask as any).details.task.id as string;
+  await taskUpdate({ action: "claim", id: retriedTaskId, owner: "assistant" });
+  await taskUpdate({ action: "start", id: retriedTaskId });
+  await taskUpdate({ action: "evidence", id: retriedTaskId, evidence: ["Changed files: retry.ts"] });
+  await taskUpdate({ action: "fail", id: retriedTaskId, note: "first attempt failed" });
+  await taskUpdate({ action: "start", id: retriedTaskId });
+  await taskUpdate({ action: "evidence", id: retriedTaskId, evidence: ["Changed files: retry.ts"] });
+  await taskUpdate({ action: "fail", id: retriedTaskId, note: "second attempt failed" });
+
+  const validationTask = await taskUpdate({
+    action: "create",
+    title: "exhausted validation task",
+    acceptance: ["Validation failure budget is already exhausted"],
+  });
+  const validationTaskId = (validationTask as any).details.task.id as string;
+  await taskUpdate({ action: "claim", id: validationTaskId, owner: "assistant" });
+  await taskUpdate({ action: "start", id: validationTaskId });
+  await taskUpdate({ action: "evidence", id: validationTaskId, evidence: ["Changed files: validation.ts"] });
+  await taskUpdate({ action: "review", id: validationTaskId });
+  await taskUpdate({
+    action: "validate",
+    id: validationTaskId,
+    validationSource: "validator",
+    validationDecision: "fail",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "not_met",
+      diff_review: "met",
+      evidence: "met",
+    },
+    note: "validator rejected the attempt",
+  });
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-retry-exhausted",
+        goal: "Do not restart after retry exhaustion",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Queued job fails before restart when linked task retry budget is exhausted"],
+        linkedTaskId: retriedTaskId,
+        budget: { maxRetries: 1 },
+      },
+      {
+        id: "job-validation-exhausted",
+        goal: "Do not restart after validation failure exhaustion",
+        priority: "medium",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Queued job fails before restart when failed-validation budget is exhausted"],
+        linkedTaskId: validationTaskId,
+        budget: { maxFailedValidations: 1 },
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+
+  assert.equal(details.action, "blocked");
+  assert.deepEqual(details.blockedJobIds, ["job-retry-exhausted", "job-validation-exhausted"]);
+  assert.equal(details.startedJob, null);
+
+  const retryJob = queueState.jobs.find((job) => job.id === "job-retry-exhausted");
+  const validationJob = queueState.jobs.find((job) => job.id === "job-validation-exhausted");
+  assert.equal(retryJob?.status, "failed");
+  assert.equal(validationJob?.status, "failed");
+  assert.match(retryJob?.notes?.at(-1) ?? "", /maxRetries/i);
+  assert.match(validationJob?.notes?.at(-1) ?? "", /maxFailedValidations/i);
+});
+
+test("queue runner treats retryCount plus the current validation fail as exhausting maxFailedValidations before restart", async () => {
+  const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
+
+  const validationTask = await taskUpdate({
+    action: "create",
+    title: "retry-aware validation exhaustion",
+    acceptance: ["Retry count plus current validation failure exhausts the validation budget"],
+  });
+  const validationTaskId = (validationTask as any).details.task.id as string;
+  await taskUpdate({ action: "claim", id: validationTaskId, owner: "assistant" });
+  await taskUpdate({ action: "start", id: validationTaskId });
+  await taskUpdate({ action: "evidence", id: validationTaskId, evidence: ["Changed files: validation.ts"] });
+  await taskUpdate({ action: "fail", id: validationTaskId, note: "first implementation attempt failed" });
+  await taskUpdate({ action: "start", id: validationTaskId });
+  await taskUpdate({ action: "evidence", id: validationTaskId, evidence: ["Changed files: validation.ts"] });
+  await taskUpdate({ action: "review", id: validationTaskId });
+  await taskUpdate({
+    action: "validate",
+    id: validationTaskId,
+    validationSource: "validator",
+    validationDecision: "fail",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "not_met",
+      diff_review: "met",
+      evidence: "met",
+    },
+    note: "current validation failed after one retry",
+  });
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-retry-aware-validation-exhausted",
+        goal: "Do not restart when retryCount plus current validation fail reaches the limit",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Queue runner fails the queued job before restart when retryCount + current validation fail exhausts the budget"],
+        linkedTaskId: validationTaskId,
+        budget: { maxFailedValidations: 2 },
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const validationJob = queueState.jobs.find((job) => job.id === "job-retry-aware-validation-exhausted");
+
+  assert.equal(details.action, "blocked");
+  assert.deepEqual(details.blockedJobIds, ["job-retry-aware-validation-exhausted"]);
+  assert.equal(details.startedJob, null);
+  assert.equal(validationJob?.status, "failed");
+  assert.match(validationJob?.notes?.at(-1) ?? "", /retryCount plus the current validation failure/i);
+});
+
+test("queue runner allows restart when a single current validation fail is still below maxFailedValidations", async () => {
+  const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
+
+  const validationTask = await taskUpdate({
+    action: "create",
+    title: "single validation failure below threshold",
+    acceptance: ["One current validation fail does not exhaust a budget of two failed validations"],
+  });
+  const validationTaskId = (validationTask as any).details.task.id as string;
+  await taskUpdate({ action: "claim", id: validationTaskId, owner: "assistant" });
+  await taskUpdate({ action: "start", id: validationTaskId });
+  await taskUpdate({ action: "evidence", id: validationTaskId, evidence: ["Changed files: validation.ts"] });
+  await taskUpdate({ action: "review", id: validationTaskId });
+  await taskUpdate({
+    action: "validate",
+    id: validationTaskId,
+    validationSource: "validator",
+    validationDecision: "fail",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "not_met",
+      diff_review: "met",
+      evidence: "met",
+    },
+    note: "first validation failed but budget should remain",
+  });
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-validation-budget-remaining",
+        goal: "Restart when one failed validation remains within budget",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Queue runner restarts the queued job when one failed validation remains below the budget"],
+        linkedTaskId: validationTaskId,
+        budget: { maxFailedValidations: 2 },
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const restartedJob = queueState.jobs.find((job) => job.id === "job-validation-budget-remaining");
+
+  assert.equal(details.action, "started");
+  assert.equal(details.startedJob.id, "job-validation-budget-remaining");
+  assert.equal(details.startedJob.status, "running");
+  assert.deepEqual(details.blockedJobIds, []);
+  assert.equal(restartedJob?.status, "running");
+  assert.equal(queueState.activeJobId, "job-validation-budget-remaining");
+});
+
+test("queue runner coordinates queue and linked task stop when approval boundary is hit on an active running job", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-running-approval-stop",
+        goal: "Stop active job at approval boundary",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["approvalRequired active jobs block both queue and linked task together"],
+        stop_conditions: ["approval_boundary_hit"],
+      },
+    ],
+  });
+
+  const start = await runNextQueueJob({ owner: "assistant" });
+  const startedJobId = (start as any).details.startedJob.id as string;
+  const taskId = (start as any).details.startedJob.linkedTaskId as string;
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: startedJobId,
+    jobs: [
+      {
+        ...(await readQueueState(cwd)).jobs[0],
+        approvalRequired: true,
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const taskState = await readTaskState(cwd);
+  const linkedTask = taskState.tasks.find((task) => task.id === taskId);
+
+  assert.equal(details.action, "blocked");
+  assert.equal(details.blockedJobIds[0], "job-running-approval-stop");
+  assert.equal(details.activeJobId, null);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "blocked");
+  assert.equal(linkedTask?.status, "blocked");
+  assert.match(queueState.jobs[0]?.notes?.at(-1) ?? "", /approval boundary/i);
+  assert.match(linkedTask?.notes?.at(-1) ?? "", /approval boundary/i);
+});
+
+test("queue runner coordinates queue and linked task failure when active runtime exceeds maxRuntimeMinutes", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-runtime-stop",
+        goal: "Stop active job when runtime budget is exceeded",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Exceeded runtime budget fails both queue and linked task together"],
+        budget: { maxRuntimeMinutes: 1 },
+      },
+    ],
+  });
+
+  const start = await runNextQueueJob({ owner: "assistant" });
+  const startedJob = (start as any).details.startedJob;
+  const taskId = startedJob.linkedTaskId as string;
+  const queueStateAfterStart = await readQueueState(cwd);
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: startedJob.id,
+    jobs: [
+      {
+        ...queueStateAfterStart.jobs[0],
+        startedAt: "2000-01-01T00:00:00.000Z",
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const taskState = await readTaskState(cwd);
+  const linkedTask = taskState.tasks.find((task) => task.id === taskId);
+
+  assert.equal(details.action, "finalized");
+  assert.equal(details.finalizedJob.status, "failed");
+  assert.equal(details.activeJobId, null);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "failed");
+  assert.equal(linkedTask?.status, "failed");
+  assert.match(queueState.jobs[0]?.notes?.at(-1) ?? "", /maxRuntimeMinutes/i);
+  assert.match(linkedTask?.notes?.at(-1) ?? "", /maxRuntimeMinutes/i);
 });
 
 test("queue runner selects the next queued job deterministically by existing order within the same priority", async () => {

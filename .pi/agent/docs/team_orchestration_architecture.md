@@ -181,7 +181,7 @@ For the current repo-local slice, executable recovery decisioning now lives at:
 - policy source: `.pi/agent/recovery/recovery-policy.json`
 - validators: `scripts/validate-recovery-policy.sh`, `scripts/validate-recovery-runtime.sh`
 
-It gives recovery and orchestration layers one bounded decision surface for retry, stronger-model retry, provider switch, rollback recommendation, stop, or escalation recommendations using existing validation/failure evidence before queue execution is added.
+It gives recovery and orchestration layers one bounded decision surface for retry, stronger-model retry, provider switch, rollback recommendation, stop, or escalation recommendations using existing validation/failure evidence alongside bounded queue execution.
 
 ## Current bounded queue-runner surface
 For the current repo-local slice, bounded single-step queue advancement now lives at:
@@ -194,7 +194,9 @@ Its behavior is intentionally narrow:
 - finalize one existing `running` job only when its linked task is terminal
 - otherwise start at most one eligible queued job
 - reuse executable team activation, task packets, optional initial handoff generation, and existing `till-done` task semantics
-- block queued jobs with concrete `budget` fields or non-empty `stop_conditions` until HARNESS-034
+- enforce the currently supported HARNESS-034 controls directly: `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- block unsupported controls explicitly, including `budget.maxCostUsd`, `budget.maxFilesChanged`, and unsupported free-form `stop_conditions`
+- log queue-runner decisions to `logs/harness-actions.jsonl`
 - it is not full team dispatch or a daemon
 
 ## Team activation rules
