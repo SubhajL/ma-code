@@ -180,6 +180,46 @@ reset_tasks_runtime() {
 JSON
 }
 
+seed_active_task_runtime() {
+  local repo_root="$1"
+  mkdir -p "$repo_root/.pi/agent/state/runtime"
+  cat > "$repo_root/.pi/agent/state/runtime/tasks.json" <<'JSON'
+{
+  "version": 1,
+  "activeTaskId": "task-validate-main-autobranch",
+  "tasks": [
+    {
+      "id": "task-validate-main-autobranch",
+      "title": "Phase A safe bash auto branch",
+      "owner": "validator",
+      "status": "in_progress",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Validate main-branch auto-branching"
+      ],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-23T00:00:00.000Z",
+        "updatedAt": "2026-04-23T00:00:00.000Z",
+        "startedAt": "2026-04-23T00:00:00.000Z"
+      }
+    }
+  ]
+}
+JSON
+}
+
 escape_json() {
   "$PYTHON_BIN" - <<'PY'
 import json, sys
@@ -596,7 +636,7 @@ check_10_till_done_evidence_gate() {
 }
 
 check_11_safe_main_write_block() {
-  local name="11. safe-bash blocks write tool mutation on main"
+  local name="11. safe-bash auto-branches write tool mutation off main"
   local temp_repo="$TMP_ROOT/check_11_main_write_repo"
   mkdir -p "$temp_repo"
   (
@@ -606,29 +646,36 @@ check_11_safe_main_write_block() {
     git add sample.txt
     git commit -q -m 'init'
   )
+  seed_active_task_runtime "$temp_repo"
   local out="$TMP_ROOT/check_11_safe_main_write_block.jsonl"
   local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/safe-bash.ts --mode json \"You must use the write tool directly to create main-write-check.txt containing hello. Report the exact tool result.\""
-  if run_shell_capture "$temp_repo" "$out" "$cmd" \
-    && assert_jsonl_tool_result_contains "$out" "write" 'Tracked file mutation on `main` is blocked. Create a branch or worktree first.' \
+  local branch_after=""
+  if run_shell_capture "$temp_repo" "$out" "$cmd"; then
+    branch_after="$(git -C "$temp_repo" branch --show-current)"
+  fi
+  if [[ -f "$temp_repo/main-write-check.txt" ]] \
+    && [[ -n "$branch_after" && "$branch_after" != "main" ]] \
+    && [[ "$branch_after" == task/* ]] \
     && grep -Fq '"extension":"safe-bash"' "$temp_repo/logs/harness-actions.jsonl" \
     && grep -Fq '"tool":"write"' "$temp_repo/logs/harness-actions.jsonl" \
-    && grep -Fq '"branch":"main"' "$temp_repo/logs/harness-actions.jsonl"; then
-    local detail="Direct write on main was blocked and audit log recorded the main-branch context."
+    && grep -Fq '"action":"auto-branch"' "$temp_repo/logs/harness-actions.jsonl" \
+    && grep -Fq '"action":"allowed-mutation"' "$temp_repo/logs/harness-actions.jsonl"; then
+    local detail="Direct write on main auto-branched to a task branch and completed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- temp repo branch: \`main\`\n- exact block reason observed for write tool\n- audit log included extension/tool/branch fields"
+    append_check_section "$name" "PASS" "$cmd" "- temp repo started on \`main\`\n- active task runtime state seeded before execution\n- final branch after command: \`$branch_after\`\n- file \`main-write-check.txt\` was created\n- audit log included auto-branch and allowed-mutation entries"
     pass "$name"
   else
-    local detail="Main-branch write blocking evidence or audit metadata was missing."
+    local detail="Main-branch write did not auto-branch and complete as expected."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
-    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,180p' "$out")\n\`\`\`\n- audit excerpt:\n\n\`\`\`json\n$(sed -n '1,40p' "$temp_repo/logs/harness-actions.jsonl" 2>/dev/null)\n\`\`\`"
+    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,180p' "$out")\n\`\`\`\n- final branch: \`${branch_after:-<missing>}\`\n- audit excerpt:\n\n\`\`\`json\n$(sed -n '1,40p' "$temp_repo/logs/harness-actions.jsonl" 2>/dev/null)\n\`\`\`"
     fail_msg "$name"
   fi
 }
 
 check_12_safe_main_bash_block() {
-  local name="12. safe-bash blocks mutating bash on main"
+  local name="12. safe-bash auto-branches eligible mutating bash off main"
   local temp_repo="$TMP_ROOT/check_12_main_bash_repo"
   mkdir -p "$temp_repo"
   (
@@ -638,23 +685,30 @@ check_12_safe_main_bash_block() {
     git add sample.txt
     git commit -q -m 'init'
   )
+  seed_active_task_runtime "$temp_repo"
   local out="$TMP_ROOT/check_12_safe_main_bash_block.jsonl"
   local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/safe-bash.ts --mode json \"You must use the bash tool to run exactly: touch main-bash-check.txt. Report the exact tool result.\""
-  if run_shell_capture "$temp_repo" "$out" "$cmd" \
-    && assert_jsonl_tool_result_contains "$out" "bash" 'Mutating bash commands on `main` are blocked. Create a branch or worktree first.' \
+  local branch_after=""
+  if run_shell_capture "$temp_repo" "$out" "$cmd"; then
+    branch_after="$(git -C "$temp_repo" branch --show-current)"
+  fi
+  if [[ -f "$temp_repo/main-bash-check.txt" ]] \
+    && [[ -n "$branch_after" && "$branch_after" != "main" ]] \
+    && [[ "$branch_after" == task/* ]] \
     && grep -Fq '"extension":"safe-bash"' "$temp_repo/logs/harness-actions.jsonl" \
     && grep -Fq '"tool":"bash"' "$temp_repo/logs/harness-actions.jsonl" \
-    && grep -Fq '"branch":"main"' "$temp_repo/logs/harness-actions.jsonl"; then
-    local detail="Mutating bash on main was blocked and audit log recorded the main-branch context."
+    && grep -Fq '"action":"auto-branch"' "$temp_repo/logs/harness-actions.jsonl" \
+    && grep -Fq '"action":"allowed-mutation"' "$temp_repo/logs/harness-actions.jsonl"; then
+    local detail="Eligible mutating bash on main auto-branched to a task branch and completed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- temp repo branch: \`main\`\n- exact block reason observed for bash tool\n- audit log included extension/tool/branch fields"
+    append_check_section "$name" "PASS" "$cmd" "- temp repo started on \`main\`\n- active task runtime state seeded before execution\n- final branch after command: \`$branch_after\`\n- file \`main-bash-check.txt\` was created\n- audit log included auto-branch and allowed-mutation entries"
     pass "$name"
   else
-    local detail="Main-branch mutating bash blocking evidence or audit metadata was missing."
+    local detail="Eligible mutating bash on main did not auto-branch and complete as expected."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
-    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,180p' "$out")\n\`\`\`\n- audit excerpt:\n\n\`\`\`json\n$(sed -n '1,40p' "$temp_repo/logs/harness-actions.jsonl" 2>/dev/null)\n\`\`\`"
+    append_check_section "$name" "FAIL" "$cmd" "- output excerpt:\n\n\`\`\`json\n$(sed -n '1,180p' "$out")\n\`\`\`\n- final branch: \`${branch_after:-<missing>}\`\n- audit excerpt:\n\n\`\`\`json\n$(sed -n '1,40p' "$temp_repo/logs/harness-actions.jsonl" 2>/dev/null)\n\`\`\`"
     fail_msg "$name"
   fi
 }

@@ -11,8 +11,31 @@ export type ToolRegistration = {
 export class FakePi {
   private readonly tools = new Map<string, ToolRegistration>();
   private readonly handlers = new Map<string, (...args: any[]) => Promise<any> | any>();
+  private readonly branches = new Set<string>();
+  private readonly failSwitchBranches = new Set<string>();
+  private currentBranch: string | null;
+  private statusPorcelain: string;
 
-  constructor(private readonly branch: string | null = "feat/test") {}
+  constructor(
+    branch: string | null = "feat/test",
+    options: {
+      statusPorcelain?: string;
+      existingBranches?: string[];
+      failSwitchBranches?: string[];
+    } = {},
+  ) {
+    this.currentBranch = branch;
+    this.statusPorcelain = options.statusPorcelain ?? "";
+
+    for (const name of options.existingBranches ?? []) {
+      this.branches.add(name);
+    }
+    if (branch) this.branches.add(branch);
+
+    for (const name of options.failSwitchBranches ?? []) {
+      this.failSwitchBranches.add(name);
+    }
+  }
 
   registerTool(tool: ToolRegistration): void {
     this.tools.set(tool.name, tool);
@@ -23,12 +46,75 @@ export class FakePi {
   }
 
   async exec(command: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
-    if (command === "git" && args.slice(-2).join(" ") === "branch --show-current") {
-      return {
-        code: 0,
-        stdout: `${this.branch ?? ""}\n`,
-        stderr: "",
-      };
+    if (command === "git") {
+      const gitArgs = args[0] === "-C" ? args.slice(2) : args;
+
+      if (gitArgs[0] === "branch" && gitArgs[1] === "--show-current") {
+        return {
+          code: 0,
+          stdout: `${this.currentBranch ?? ""}\n`,
+          stderr: "",
+        };
+      }
+
+      if (gitArgs[0] === "status" && gitArgs[1] === "--porcelain") {
+        return {
+          code: 0,
+          stdout: this.statusPorcelain,
+          stderr: "",
+        };
+      }
+
+      if (gitArgs[0] === "branch" && gitArgs[1] === "--list") {
+        const branchName = gitArgs[2] ?? "";
+        return {
+          code: 0,
+          stdout: this.branches.has(branchName) ? `${branchName}\n` : "",
+          stderr: "",
+        };
+      }
+
+      if (gitArgs[0] === "switch" && gitArgs[1] === "-c") {
+        const branchName = gitArgs[2] ?? "";
+        if (this.failSwitchBranches.has(branchName)) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr: `simulated switch failure for ${branchName}`,
+          };
+        }
+        this.branches.add(branchName);
+        this.currentBranch = branchName;
+        return {
+          code: 0,
+          stdout: "",
+          stderr: "",
+        };
+      }
+
+      if (gitArgs[0] === "switch") {
+        const branchName = gitArgs[1] ?? "";
+        if (!this.branches.has(branchName)) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr: `unknown branch ${branchName}`,
+          };
+        }
+        if (this.failSwitchBranches.has(branchName)) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr: `simulated switch failure for ${branchName}`,
+          };
+        }
+        this.currentBranch = branchName;
+        return {
+          code: 0,
+          stdout: "",
+          stderr: "",
+        };
+      }
     }
 
     return {
@@ -36,6 +122,10 @@ export class FakePi {
       stdout: "",
       stderr: `unsupported command: ${command} ${args.join(" ")}`,
     };
+  }
+
+  getCurrentBranchName(): string | null {
+    return this.currentBranch;
   }
 
   getTool(name: string): ToolRegistration {
