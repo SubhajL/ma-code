@@ -34,10 +34,11 @@ So the most accurate answer is:
 - **Phase I = bounded autonomy exists**
 - **Phase J = bounded autonomy becomes practical to operate daily**
 
-Current repo-local reality is narrower than the full Phase I target:
-- bounded single-step queue advancement now exists via `run_next_queue_job`
-- concrete queue-job `budget` fields and non-empty `stop_conditions` are blocked explicitly for now rather than fully enforced
-- HARNESS-034 still carries the later stop-condition enforcement work
+Current repo-local reality is still narrower than the full Phase I target, but HARNESS-034 now enforces the supported stop controls directly:
+- bounded single-step queue advancement exists via `run_next_queue_job`
+- supported queue-job controls enforced directly in `.pi/agent/extensions/queue-runner.ts` are `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- unsupported controls remain blocked explicitly, including `budget.maxCostUsd`, `budget.maxFilesChanged`, and unsupported free-form `stop_conditions`
+- queue-runner decisions are logged to `logs/harness-actions.jsonl`
 
 ## Capability table by phase
 
@@ -201,14 +202,15 @@ Meaning:
 Current repo-local attachment in this slice:
 - bounded single-step queue advancement now exists via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts`
 - the tool finalizes one `running` job if its linked task is terminal, otherwise starts at most one eligible queued job
-- queued jobs with concrete `budget` fields or non-empty `stop_conditions` are blocked explicitly for now rather than fully enforced
-- HARNESS-034 still carries the later runtime stop-condition enforcement work
+- supported HARNESS-034 controls are enforced directly: `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- unsupported controls remain blocked explicitly rather than silently ignored
+- queue-runner decisions are logged to `logs/harness-actions.jsonl`
 
 This is the first phase where “almost hands-free” starts becoming a defensible phrase, but only in a bounded sense.
 
 A careful description would be:
 
-> The harness can perform bounded, queue-driven, semi-autonomous work one step at a time, with full stop-condition enforcement still deferred.
+> The harness can perform bounded, queue-driven, semi-autonomous work one step at a time, with direct enforcement for max retries, runtime, failed validations, and approval-boundary stops while unsupported controls remain blocked.
 
 That is much better than saying:
 

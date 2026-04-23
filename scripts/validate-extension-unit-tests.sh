@@ -288,7 +288,7 @@ check_4_queue_runner_unit_tests() {
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/queue-runner.test.ts"
 
   if run_test_file "$runtime_dir" "tests/extension-units/queue-runner.test.ts" "$out"; then
-    local detail="queue-runner unit tests passed for empty/paused no-ops, deterministic single-job start/finalize, invalid-job and deferred-control blocking, compensation safety, and recovery reuse."
+    local detail="queue-runner unit tests passed for empty/paused no-ops, deterministic single-job start/finalize, stop-condition enforcement for retries/runtime/failed validations/approval boundaries, unsupported-control blocking, compensation safety, and recovery reuse."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"

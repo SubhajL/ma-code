@@ -228,7 +228,7 @@ This script is responsible for the bounded regression path for:
 - queue job start/finalize behavior for one active job at a time
 - linked-task reuse via `till-done` semantics
 - start-path compensation when queue activation succeeds but final task start fails
-- explicit blocking for deferred queue-job `budget` and `stop_conditions` controls until HARNESS-034
+- queue-runner validation now covers executable stop-condition enforcement for `maxRetries`, `maxRuntimeMinutes`, `maxFailedValidations`, and approval-boundary signaling, while still blocking unsupported queue-job `budget` and `stop_conditions` controls clearly
 - packet generation and optional initial handoff generation during queue start
 - recovery-runtime reuse when failed or blocked tasks finalize a running job
 - one bounded live tool probe for `run_next_queue_job` by default when the environment supports it, with `--skip-live` available for CI/static runs
