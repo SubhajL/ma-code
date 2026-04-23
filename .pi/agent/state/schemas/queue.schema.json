@@ -80,6 +80,10 @@
                 "type": "integer",
                 "minimum": 1
               },
+              "maxFailedValidations": {
+                "type": "integer",
+                "minimum": 0
+              },
               "maxCostUsd": {
                 "type": "number",
                 "minimum": 0
@@ -96,6 +100,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "approvalRequired": {
+            "type": "boolean"
           },
           "dependencies": {
             "type": "array",

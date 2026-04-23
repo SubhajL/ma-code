@@ -49,7 +49,8 @@ Current behavior is intentionally narrow:
 - queued-job start now prepares/claims a linked task, generates packet/handoff data, marks the queue running, then starts the task last with bounded compensation if that final task start fails
 - task creation/claim/start reuses `till-done` task semantics
 - packet generation, optional initial handoff generation, and recovery recommendations reuse the existing executable helper surfaces
-- queued jobs that declare concrete `budget` fields or non-empty `stop_conditions` are blocked explicitly until HARNESS-034 adds enforcement rather than being silently ignored
+- queued jobs now enforce `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and `approvalRequired` approval-boundary stops in the bounded runner
+- unsupported free-form `stop_conditions` and unsupported budget fields such as `maxCostUsd`/`maxFilesChanged` are still blocked explicitly rather than being silently ignored
 
 This is not yet a free-running daemon, scheduler, or pause/resume control plane.
 

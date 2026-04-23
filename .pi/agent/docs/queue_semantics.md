@@ -193,22 +193,26 @@ Example:
 - intended keys in version 1:
   - `maxRetries`
   - `maxRuntimeMinutes`
+  - `maxFailedValidations`
   - `maxCostUsd`
   - `maxFilesChanged`
 - values should be conservative and reviewable
-- current HARNESS-032 runtime note:
-  - the bounded `run_next_queue_job` runner does not enforce concrete queue-job budget fields yet
-  - queued jobs that declare concrete budget values are blocked explicitly with a note that enforcement is deferred to HARNESS-034
+- current executable behavior in HARNESS-034:
+  - `budget.maxRetries` is enforced conservatively before restarting a queued job with an existing linked failed task
+  - `budget.maxRuntimeMinutes` is enforced on an active running job using the queue job `startedAt` timestamp
+  - `budget.maxFailedValidations` is enforced conservatively from the current linked task validation outcome because there is not yet a dedicated failed-validation counter in runtime state
+  - unsupported `budget.maxCostUsd` and `budget.maxFilesChanged` still block the job clearly instead of being silently ignored
 
 ### `stop_conditions`
 - optional list of conditions that should force stop, pause, or escalation
 - should be explicit and reviewable
-- current HARNESS-032 runtime note:
-  - the bounded `run_next_queue_job` runner does not evaluate queue-job `stop_conditions` yet
-  - queued jobs with non-empty `stop_conditions` are blocked explicitly until HARNESS-034 adds enforcement
+- current executable behavior in HARNESS-034:
+  - `approval_boundary_hit` is the only supported `stop_conditions` token in the bounded queue runner
+  - the actual approval-boundary signal comes from queue-job `approvalRequired: true`
+  - other free-form `stop_conditions` values still block the job clearly as unsupported controls
 
 Examples:
-- `stop after 2 failed validations`
+- `approval_boundary_hit`
 - `stop if protected path access is required`
 - `stop if scope expands beyond docs`
 
@@ -224,6 +228,10 @@ Important executable fields:
 - `acceptanceCriteria`
   - explicit acceptance criteria for the linked task
   - the queue runner blocks queued jobs that omit this field or leave it empty
+- `approvalRequired`
+  - explicit approval-boundary signal for bounded autonomy
+  - queued jobs with `approvalRequired: true` are blocked before start
+  - active running jobs with `approvalRequired: true` are stopped together with the linked task in one coordinated mutation
 - `taskClass`
   - optional task class for the linked `till-done` task
   - defaults to `implementation`
@@ -241,8 +249,8 @@ Important executable fields:
   - HARNESS-032 uses the task-packet policy defaults for those bounded fields instead of duplicating them in queue state
 - `budget`, `stop_conditions`
   - these remain part of the queue contract
-  - HARNESS-032 blocks queued jobs that specify concrete budget fields or non-empty `stop_conditions` instead of silently ignoring them
-  - planned enforcement is deferred to HARNESS-034
+  - HARNESS-034 enforces `maxRetries`, `maxRuntimeMinutes`, `maxFailedValidations`, and the `approval_boundary_hit`/`approvalRequired` stop boundary
+  - unsupported free-form `stop_conditions` plus unsupported `maxCostUsd` and `maxFilesChanged` still block clearly
 
 Runtime-populated linkage and observability fields:
 - `linkedTaskId`
@@ -268,7 +276,8 @@ It may still be ineligible to run if:
 - the queue is paused
 - explicit acceptance criteria are missing
 - bounded packet inputs such as `domains` or `allowedPaths` are missing
-- the job specifies concrete budget fields or non-empty `stop_conditions` that HARNESS-032 still defers to HARNESS-034
+- the job hits an approval boundary before start
+- the job specifies unsupported free-form `stop_conditions` or unsupported budget fields such as `maxCostUsd`/`maxFilesChanged`
 
 ### `running`
 A job in `running` is the current active queue job.
@@ -350,7 +359,8 @@ A job is eligible to run only when:
 - dependencies are satisfied or explicitly waived
 - explicit `acceptanceCriteria` exist
 - bounded packet inputs exist so the runner can generate a task packet
-- no deferred HARNESS-034 budget/stop-condition control is present on the queued job
+- no unsupported budget/stop-condition control is present on the queued job
+- `approvalRequired` is not already signaling an approval boundary before start
 - required human approval has been granted when needed
 
 ### Single-runner recommendation
@@ -416,15 +426,16 @@ Budgets limit drift.
 They should be treated as hard controls, not advisory hints.
 
 Current executable behavior:
-- HARNESS-032 does not enforce queue-job budget fields at runtime yet
-- instead, `run_next_queue_job` blocks queued jobs that set concrete budget values and records that enforcement is deferred to HARNESS-034
-- this avoids silently ignoring declared budget intent
+- `run_next_queue_job` fails queued restart attempts when an existing linked failed task already exhausted `budget.maxRetries`
+- `run_next_queue_job` fails queued restart attempts when the current linked task validation outcome already exhausted `budget.maxFailedValidations`
+- `run_next_queue_job` fails an active running job when `budget.maxRuntimeMinutes` is exceeded
+- unsupported `maxCostUsd` and `maxFilesChanged` still block clearly because they are not yet executable in the bounded runner
 
-Recommended future budget interpretation once enforced:
-- exceeding retry budget -> `failed` or `blocked` with escalation
-- exceeding runtime budget -> stop and escalate
-- exceeding cost budget -> stop and escalate
-- exceeding file-change budget -> stop and re-scope
+Current bounded interpretation:
+- exceeding retry budget -> `failed`
+- exceeding runtime budget -> `failed`
+- exceeding failed-validation budget -> `failed`
+- unsupported cost/file-change budget -> `blocked`
 
 If no budget is provided, the system should still apply conservative default limits in any future autonomy implementation.
 
@@ -432,14 +443,15 @@ If no budget is provided, the system should still apply conservative default lim
 Stop conditions are explicit reasons to halt autonomous progress.
 
 Current executable behavior:
-- HARNESS-032 does not enforce queue-job `stop_conditions` yet
-- instead, `run_next_queue_job` blocks queued jobs that declare non-empty `stop_conditions` and records that enforcement is deferred to HARNESS-034
-- this keeps runtime behavior aligned with documentation instead of silently dropping stop intent
+- `approval_boundary_hit` is supported as the only executable `stop_conditions` token in the bounded runner
+- queued jobs are blocked before start when `approvalRequired: true`
+- active running jobs are blocked together with their linked task when `approvalRequired: true`
+- other free-form `stop_conditions` still block clearly so stop intent is never silently ignored
 
-Once enforced, stop conditions should be checked:
+Current bounded checks happen:
 - before starting a job
-- during recovery decisions
-- before retrying a failed job
+- while polling an active running job
+- before retrying a failed job with an existing linked task
 
 Recommended stop-condition categories:
 - safety stop
