@@ -16,6 +16,26 @@ It does not assume:
 - UI widgets
 - full team orchestration runtime
 
+## Daily queue operator loop
+When operating queued work in a live harness session, use the runtime tools in this order:
+
+1. inspect current status with `inspect_queue_state`
+   - confirm whether the queue is paused
+   - confirm the active job and active task
+   - review blocked or failed job/task IDs before taking action
+2. pause intake with `pause_queue` when you want to stop new pickup without discarding state
+3. resume intake with `resume_queue` when visible queue/task state is acceptable again
+4. stop safely with `stop_queue_safely` when the current active job should move into a reviewable blocked state
+5. advance at most one bounded step with `run_next_queue_job`
+6. review evidence, blockers, and validation before declaring work complete
+
+Recommended operator questions during this loop:
+- is the queue paused intentionally?
+- is there an active running job?
+- does the linked active task match the queue state?
+- are there blocked or failed items that need a human decision?
+- should the next action be resume, stop, or one bounded queue step?
+
 ## Core operating loop
 
 ### 1. Start from the repo root
