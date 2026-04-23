@@ -47,6 +47,10 @@ async function setupQueueRunnerRepo() {
   const queueTool = pi.getTool("run_next_queue_job");
   const queueCompatTool = pi.getTool("run_queue_once");
   const taskTool = pi.getTool("task_update");
+  const inspectTool = pi.getTool("inspect_queue_state");
+  const pauseTool = pi.getTool("pause_queue");
+  const resumeTool = pi.getTool("resume_queue");
+  const stopTool = pi.getTool("stop_queue_safely");
 
   const runNextQueueJob = async (params: Record<string, unknown> = {}) =>
     queueTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
@@ -55,7 +59,33 @@ async function setupQueueRunnerRepo() {
   const taskUpdate = async (params: Record<string, unknown>) =>
     taskTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
 
-  return { cwd, pi, runNextQueueJob, runQueueOnceCompat, taskUpdate };
+  async function inspectQueueStateForOperator(params = {}) {
+    return inspectTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
+  }
+
+  async function pauseQueueForOperator(params = {}) {
+    return pauseTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
+  }
+
+  async function resumeQueueForOperator(params = {}) {
+    return resumeTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
+  }
+
+  async function stopQueueSafelyForOperator(params = {}) {
+    return stopTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
+  }
+
+  return {
+    cwd,
+    pi,
+    runNextQueueJob,
+    runQueueOnceCompat,
+    inspectQueueStateForOperator,
+    pauseQueueForOperator,
+    resumeQueueForOperator,
+    stopQueueSafelyForOperator,
+    taskUpdate,
+  };
 }
 
 async function writeQueue(cwd: string, queue: unknown) {
@@ -126,6 +156,124 @@ test("queue runner no-ops when the queue is paused", async () => {
   assert.equal(details.queuePaused, true);
   assert.equal(queueState.jobs[0]?.status, "queued");
   assert.equal(queueState.activeJobId, null);
+});
+
+
+test("operator inspect queue state summarizes queue and task status", async function () {
+  const { cwd, runNextQueueJob, inspectQueueStateForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-inspect",
+        goal: "Inspect current operator state",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Operator summary shows the active queue and task state"],
+      },
+    ],
+  });
+
+  await runNextQueueJob({ owner: "assistant" });
+  const inspectResult = await inspectQueueStateForOperator({ recentLimit: 3 });
+  const details = inspectResult.details;
+
+  assert.equal(details.summary.activeJob?.id, "job-inspect");
+  assert.equal(details.summary.activeTask?.status, "in_progress");
+  assert.equal(details.summary.jobCounts.running, 1);
+  assert.equal(details.summary.taskCounts.in_progress, 1);
+  assert.deepEqual(details.summary.recentJobIds, ["job-inspect"]);
+});
+
+test("operator pause and resume controls gate queue pickup", async function () {
+  const { cwd, runNextQueueJob, pauseQueueForOperator, resumeQueueForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-pause-resume",
+        goal: "Pause then resume queue pickup",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Paused queue does not start work until resumed"],
+      },
+    ],
+  });
+
+  const pauseResult = await pauseQueueForOperator({ note: "operator requested pause" });
+  assert.equal(pauseResult.details.action, "paused");
+  assert.equal(pauseResult.details.queuePaused, true);
+
+  const pausedRun = await runNextQueueJob({ owner: "assistant" });
+  assert.equal(pausedRun.details.action, "noop");
+  assert.equal(pausedRun.details.queuePaused, true);
+
+  const resumeResult = await resumeQueueForOperator({ note: "operator resumed work" });
+  assert.equal(resumeResult.details.action, "resumed");
+  assert.equal(resumeResult.details.queuePaused, false);
+
+  const resumedRun = await runNextQueueJob({ owner: "assistant" });
+  assert.equal(resumedRun.details.action, "started");
+  assert.equal(resumedRun.details.startedJob.id, "job-pause-resume");
+});
+
+test("operator safe stop pauses queue and blocks the active linked task", async function () {
+  const { cwd, runNextQueueJob, stopQueueSafelyForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-stop",
+        goal: "Stop active queue work safely",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Safe stop blocks the active job and linked task"],
+      },
+    ],
+  });
+
+  const start = await runNextQueueJob({ owner: "assistant" });
+  const activeTaskId = start.details.startedJob.linkedTaskId;
+
+  const stopResult = await stopQueueSafelyForOperator({ note: "operator ended run for review" });
+  const details = stopResult.details;
+  const queueState = await readQueueState(cwd);
+  const taskState = await readTaskState(cwd);
+
+  assert.equal(details.action, "stopped");
+  assert.equal(details.queuePaused, true);
+  assert.equal(details.stoppedJob.id, "job-stop");
+  assert.equal(details.stoppedJob.status, "blocked");
+  assert.equal(details.stoppedTask.id, activeTaskId);
+  assert.equal(details.stoppedTask.status, "blocked");
+  assert.equal(queueState.paused, true);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(taskState.activeTaskId, null);
+  assert.equal(taskState.tasks[0]?.status, "blocked");
 });
 
 test("queue runner starts one eligible queued build job with linked task, packet, and initial handoff", async () => {

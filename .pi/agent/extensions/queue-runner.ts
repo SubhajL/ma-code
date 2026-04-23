@@ -114,17 +114,69 @@ export interface QueueRunnerResult {
   recoveryDecision: RuntimeRecoveryDecision | null;
 }
 
+export interface QueueInspectionSummary {
+  queuePaused: boolean;
+  activeJobId: string | null;
+  activeTaskId: string | null;
+  totalJobs: number;
+  totalTasks: number;
+  jobCounts: Record<QueueJobStatus, number>;
+  taskCounts: Record<string, number>;
+  activeJob: QueueJob | null;
+  activeTask: TaskRecord | null;
+  blockedJobIds: string[];
+  failedJobIds: string[];
+  blockedTaskIds: string[];
+  failedTaskIds: string[];
+  recentJobIds: string[];
+  recentTaskIds: string[];
+}
+
+export interface QueueInspectionResult {
+  version: 1;
+  queue: QueueState;
+  tasks: {
+    activeTaskId: string | null;
+    tasks: TaskRecord[];
+  };
+  summary: QueueInspectionSummary;
+}
+
+export interface QueueControlResult {
+  version: 1;
+  ok: boolean;
+  action: "paused" | "resumed" | "stopped" | "noop";
+  reason: string;
+  queuePaused: boolean;
+  activeJobId: string | null;
+  stoppedJob: QueueJob | null;
+  stoppedTask: TaskRecord | null;
+  summary: QueueInspectionSummary;
+}
+
 const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
 const QUEUE_TASK_COORDINATION_LOCK = ".pi/agent/state/runtime/queue-runner.coordination.lock";
 const AUDIT_LOG = "logs/harness-actions.jsonl";
 const PUBLIC_QUEUE_RUNNER_TOOL_NAME = "run_next_queue_job";
 const QUEUE_RUNNER_COMPAT_TOOL_NAME = "run_queue_once";
+const INSPECT_QUEUE_STATE_TOOL_NAME = "inspect_queue_state";
+const PAUSE_QUEUE_TOOL_NAME = "pause_queue";
+const RESUME_QUEUE_TOOL_NAME = "resume_queue";
+const STOP_QUEUE_SAFELY_TOOL_NAME = "stop_queue_safely";
 const QUEUE_JOB_STATUSES = ["queued", "running", "blocked", "done", "failed"] as const;
 const QUEUE_PRIORITIES = ["low", "medium", "high"] as const;
 
 const RunQueueOnceSchema = Type.Object({
   owner: Type.Optional(Type.String({ minLength: 1 })),
   allowInitialHandoff: Type.Optional(Type.Boolean()),
+});
+
+const InspectQueueStateSchema = Type.Object({
+  recentLimit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
+});
+
+const QueueControlSchema = Type.Object({
+  note: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
 });
 
 function nowIso(): string {
@@ -232,6 +284,234 @@ async function withCoordinatedQueueTaskMutation<T>(
 
 function getJob(state: QueueState, id: string): QueueJob | undefined {
   return state.jobs.find((job) => job.id === id);
+}
+
+function makeEmptyJobCounts(): Record<QueueJobStatus, number> {
+  return {
+    queued: 0,
+    running: 0,
+    blocked: 0,
+    done: 0,
+    failed: 0,
+  };
+}
+
+function buildTaskCounts(tasks: TaskRecord[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const task of tasks) {
+    counts[task.status] = (counts[task.status] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function buildQueueInspectionSummary(queueState: QueueState, taskState: TaskState, recentLimit: number): QueueInspectionSummary {
+  const activeJob = queueState.activeJobId ? getJob(queueState, queueState.activeJobId) ?? null : null;
+  const activeTask = taskState.activeTaskId ? getTask(taskState, taskState.activeTaskId) ?? null : null;
+  const jobCounts = makeEmptyJobCounts();
+  const blockedJobIds: string[] = [];
+  const failedJobIds: string[] = [];
+
+  for (const job of queueState.jobs) {
+    jobCounts[job.status] += 1;
+    if (job.status === "blocked") blockedJobIds.push(job.id);
+    if (job.status === "failed") failedJobIds.push(job.id);
+  }
+
+  const blockedTaskIds: string[] = [];
+  const failedTaskIds: string[] = [];
+  for (const task of taskState.tasks) {
+    if (task.status === "blocked") blockedTaskIds.push(task.id);
+    if (task.status === "failed") failedTaskIds.push(task.id);
+  }
+
+  return {
+    queuePaused: queueState.paused,
+    activeJobId: queueState.activeJobId,
+    activeTaskId: taskState.activeTaskId,
+    totalJobs: queueState.jobs.length,
+    totalTasks: taskState.tasks.length,
+    jobCounts,
+    taskCounts: buildTaskCounts(taskState.tasks),
+    activeJob: activeJob ? normalizeQueueJob(activeJob) : null,
+    activeTask,
+    blockedJobIds,
+    failedJobIds,
+    blockedTaskIds,
+    failedTaskIds,
+    recentJobIds: queueState.jobs.slice(-recentLimit).map(function (job) { return job.id; }).reverse(),
+    recentTaskIds: taskState.tasks.slice(-recentLimit).map(function (task) { return task.id; }).reverse(),
+  };
+}
+
+export async function inspectQueueState(cwd: string, input: { recentLimit?: number } = {}): Promise<QueueInspectionResult> {
+  const recentLimit = Math.max(1, Math.min(input.recentLimit ?? 5, 20));
+  const [queueState, taskState] = await Promise.all([readQueueState(cwd), readTaskState(cwd)]);
+  return {
+    version: 1,
+    queue: queueState,
+    tasks: {
+      activeTaskId: taskState.activeTaskId,
+      tasks: taskState.tasks,
+    },
+    summary: buildQueueInspectionSummary(queueState, taskState, recentLimit),
+  };
+}
+
+async function pauseQueue(cwd: string, note?: string): Promise<QueueControlResult> {
+  const normalizedNote = note?.trim() || null;
+  return withCoordinatedQueueTaskMutation(cwd, function ({ queueState, taskState }) {
+    const alreadyPaused = queueState.paused;
+    queueState.paused = true;
+
+    return {
+      version: 1,
+      ok: true,
+      action: alreadyPaused ? "noop" : "paused",
+      reason: alreadyPaused
+        ? "Queue was already paused."
+        : normalizedNote
+          ? `Queue paused. ${normalizedNote}`
+          : "Queue paused; no new queued job pickup will occur.",
+      queuePaused: queueState.paused,
+      activeJobId: queueState.activeJobId,
+      stoppedJob: null,
+      stoppedTask: null,
+      summary: buildQueueInspectionSummary(queueState, taskState, 5),
+    };
+  });
+}
+
+async function resumeQueue(cwd: string, note?: string): Promise<QueueControlResult> {
+  const normalizedNote = note?.trim() || null;
+  return withCoordinatedQueueTaskMutation(cwd, function ({ queueState, taskState }) {
+    const alreadyRunning = !queueState.paused;
+    queueState.paused = false;
+
+    return {
+      version: 1,
+      ok: true,
+      action: alreadyRunning ? "noop" : "resumed",
+      reason: alreadyRunning
+        ? "Queue was already resumable."
+        : normalizedNote
+          ? `Queue resumed. ${normalizedNote}`
+          : "Queue resumed; eligible queued jobs may be picked up again.",
+      queuePaused: queueState.paused,
+      activeJobId: queueState.activeJobId,
+      stoppedJob: null,
+      stoppedTask: null,
+      summary: buildQueueInspectionSummary(queueState, taskState, 5),
+    };
+  });
+}
+
+async function stopQueueSafely(cwd: string, note?: string): Promise<QueueControlResult> {
+  const normalizedNote = note?.trim() || "Operator requested safe stop.";
+  return withCoordinatedQueueTaskMutation(cwd, function ({ queueState, taskState }) {
+    queueState.paused = true;
+
+    if (!queueState.activeJobId) {
+      return {
+        version: 1,
+        ok: true,
+        action: "stopped",
+        reason: `${normalizedNote} Queue paused with no active job.`,
+        queuePaused: true,
+        activeJobId: null,
+        stoppedJob: null,
+        stoppedTask: null,
+        summary: buildQueueInspectionSummary(queueState, taskState, 5),
+      };
+    }
+
+    const activeJob = getJob(queueState, queueState.activeJobId);
+    if (!activeJob) {
+      const missingId = queueState.activeJobId;
+      queueState.activeJobId = null;
+      return {
+        version: 1,
+        ok: true,
+        action: "stopped",
+        reason: `${normalizedNote} Cleared missing active job pointer ${missingId}.`,
+        queuePaused: true,
+        activeJobId: null,
+        stoppedJob: null,
+        stoppedTask: null,
+        summary: buildQueueInspectionSummary(queueState, taskState, 5),
+      };
+    }
+
+    const normalizedJob = normalizeQueueJob(activeJob);
+    if (!normalizedJob.linkedTaskId) {
+      const blockedJob = blockJobInState(
+        queueState,
+        normalizedJob.id,
+        `${normalizedNote} Active job was blocked because linkedTaskId was missing during safe stop.`,
+        { clearActiveJobId: true },
+      );
+      return {
+        version: 1,
+        ok: true,
+        action: "stopped",
+        reason: `${normalizedNote} Active job ${blockedJob.id} was blocked because linkedTaskId was missing.`,
+        queuePaused: true,
+        activeJobId: queueState.activeJobId,
+        stoppedJob: blockedJob,
+        stoppedTask: null,
+        summary: buildQueueInspectionSummary(queueState, taskState, 5),
+      };
+    }
+
+    const linkedTask = getTask(taskState, normalizedJob.linkedTaskId);
+    if (!linkedTask) {
+      const blockedJob = blockJobInState(
+        queueState,
+        normalizedJob.id,
+        `${normalizedNote} Active job was blocked because linked task ${normalizedJob.linkedTaskId} was missing during safe stop.`,
+        { clearActiveJobId: true },
+      );
+      return {
+        version: 1,
+        ok: true,
+        action: "stopped",
+        reason: `${normalizedNote} Active job ${blockedJob.id} was blocked because linked task ${normalizedJob.linkedTaskId} was missing.`,
+        queuePaused: true,
+        activeJobId: queueState.activeJobId,
+        stoppedJob: blockedJob,
+        stoppedTask: null,
+        summary: buildQueueInspectionSummary(queueState, taskState, 5),
+      };
+    }
+
+    if (taskTerminal(linkedTask)) {
+      const finalizedJob = finalizeRunningJobInState(queueState, normalizedJob.id, linkedTask, null);
+      return {
+        version: 1,
+        ok: true,
+        action: "stopped",
+        reason: `${normalizedNote} Active job ${finalizedJob.id} was finalized from linked task ${linkedTask.id}.`,
+        queuePaused: true,
+        activeJobId: queueState.activeJobId,
+        stoppedJob: finalizedJob,
+        stoppedTask: linkedTask,
+        summary: buildQueueInspectionSummary(queueState, taskState, 5),
+      };
+    }
+
+    const stopNote = `${normalizedNote} Active queue job ${normalizedJob.id} was blocked together with linked task ${linkedTask.id}.`;
+    const stopped = stopLinkedTaskAndQueueJobInState(queueState, taskState, normalizedJob.id, linkedTask.id, "blocked", stopNote);
+    return {
+      version: 1,
+      ok: true,
+      action: "stopped",
+      reason: stopNote,
+      queuePaused: true,
+      activeJobId: queueState.activeJobId,
+      stoppedJob: stopped.job,
+      stoppedTask: stopped.task,
+      summary: buildQueueInspectionSummary(queueState, taskState, 5),
+    };
+  });
 }
 
 function priorityRank(priority: QueuePriority): number {
@@ -1424,4 +1704,149 @@ export default function queueRunner(pi: ExtensionAPI) {
     "Compatibility alias for run_next_queue_job.",
     "Compatibility alias for run_next_queue_job; prefer the public run_next_queue_job tool name for new usage.",
   );
+
+  pi.registerTool({
+    name: INSPECT_QUEUE_STATE_TOOL_NAME,
+    label: "Inspect Queue State",
+    description: "Return the current queue and task state plus an operator-friendly summary.",
+    promptSnippet: "Use inspect_queue_state to inspect current queue and task status before deciding whether to run, pause, resume, or stop.",
+    promptGuidelines: [
+      "Use this before operational decisions so queue/task state comes from runtime files rather than chat memory.",
+      "Prefer this tool when the operator needs to know the active job/task, blocked items, failed items, or whether the queue is paused.",
+    ],
+    parameters: InspectQueueStateSchema,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const result = await inspectQueueState(ctx.cwd, params);
+      const branch = await getCurrentBranch(pi, ctx.cwd);
+      const modelId = modelIdFromContext(ctx);
+      await appendAudit(ctx.cwd, {
+        ts: nowIso(),
+        extension: "queue-runner",
+        action: INSPECT_QUEUE_STATE_TOOL_NAME,
+        cwd: ctx.cwd,
+        branch,
+        modelId,
+        provider: providerFromModelId(modelId),
+        input: params,
+        result: result.summary,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        details: result,
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: PAUSE_QUEUE_TOOL_NAME,
+    label: "Pause Queue",
+    description: "Pause new queue pickup while preserving visible queue/task state.",
+    promptSnippet: "Use pause_queue when the operator wants to stop new queued job pickup without discarding state.",
+    promptGuidelines: [
+      "Pause stops new queued job pickup but does not silently discard current queue/task state.",
+      "Use inspect_queue_state after pausing if the operator also needs a fresh summary.",
+    ],
+    parameters: QueueControlSchema,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const result = await pauseQueue(ctx.cwd, params.note);
+      const branch = await getCurrentBranch(pi, ctx.cwd);
+      const modelId = modelIdFromContext(ctx);
+      await appendAudit(ctx.cwd, {
+        ts: nowIso(),
+        extension: "queue-runner",
+        action: PAUSE_QUEUE_TOOL_NAME,
+        cwd: ctx.cwd,
+        branch,
+        modelId,
+        provider: providerFromModelId(modelId),
+        input: params,
+        result: {
+          action: result.action,
+          reason: result.reason,
+          queuePaused: result.queuePaused,
+          activeJobId: result.activeJobId,
+        },
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        details: result,
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: RESUME_QUEUE_TOOL_NAME,
+    label: "Resume Queue",
+    description: "Resume eligible queued job pickup from visible runtime state.",
+    promptSnippet: "Use resume_queue when the operator wants eligible queued jobs to become runnable again.",
+    promptGuidelines: [
+      "Resume only flips the queue pause state; it does not fabricate hidden execution context.",
+      "Follow with run_next_queue_job when the operator wants to advance at most one bounded job.",
+    ],
+    parameters: QueueControlSchema,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const result = await resumeQueue(ctx.cwd, params.note);
+      const branch = await getCurrentBranch(pi, ctx.cwd);
+      const modelId = modelIdFromContext(ctx);
+      await appendAudit(ctx.cwd, {
+        ts: nowIso(),
+        extension: "queue-runner",
+        action: RESUME_QUEUE_TOOL_NAME,
+        cwd: ctx.cwd,
+        branch,
+        modelId,
+        provider: providerFromModelId(modelId),
+        input: params,
+        result: {
+          action: result.action,
+          reason: result.reason,
+          queuePaused: result.queuePaused,
+          activeJobId: result.activeJobId,
+        },
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        details: result,
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: STOP_QUEUE_SAFELY_TOOL_NAME,
+    label: "Stop Queue Safely",
+    description: "Pause the queue and put the current active queue/task state into a reviewable stopped condition.",
+    promptSnippet: "Use stop_queue_safely when the operator wants a safe reviewable stop instead of continued pickup or hidden state.",
+    promptGuidelines: [
+      "This tool pauses the queue and preserves visible queue/task state instead of silently discarding it.",
+      "If an active job is still running, the tool blocks the linked job/task together so the stop is reviewable.",
+    ],
+    parameters: QueueControlSchema,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const result = await stopQueueSafely(ctx.cwd, params.note);
+      const branch = await getCurrentBranch(pi, ctx.cwd);
+      const modelId = modelIdFromContext(ctx);
+      await appendAudit(ctx.cwd, {
+        ts: nowIso(),
+        extension: "queue-runner",
+        action: STOP_QUEUE_SAFELY_TOOL_NAME,
+        cwd: ctx.cwd,
+        branch,
+        modelId,
+        provider: providerFromModelId(modelId),
+        input: params,
+        result: {
+          action: result.action,
+          reason: result.reason,
+          queuePaused: result.queuePaused,
+          activeJobId: result.activeJobId,
+          stoppedJobId: result.stoppedJob?.id ?? null,
+          stoppedTaskId: result.stoppedTask?.id ?? null,
+        },
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        details: result,
+      };
+    },
+  });
 }

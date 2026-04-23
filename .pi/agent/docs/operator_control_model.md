@@ -51,6 +51,16 @@ Phase J should provide at least these control surfaces conceptually:
 - stop safely
 - review recent reports and evidence
 
+Current repo-local implementation now provides these bounded operator tools through `.pi/agent/extensions/queue-runner.ts`:
+- `inspect_queue_state`
+- `pause_queue`
+- `resume_queue`
+- `stop_queue_safely`
+- `run_next_queue_job` for one explicit bounded queue step
+
+These controls are intentionally file-backed and reviewable rather than daemon-driven.
+Pause and stop preserve visible queue/task state instead of relying on hidden memory.
+
 ## Pause / resume model
 ### Pause
 Pause should stop new job pickup.
