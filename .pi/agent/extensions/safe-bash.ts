@@ -341,7 +341,7 @@ async function attemptAutoBranchOnMain(
   }
 
   const branchResult = await ensureTaskBranch(pi, ctx.cwd, task);
-  if (!branchResult.ok) {
+  if (branchResult.ok === false) {
     const auditReasons = [`git switch failed: ${branchResult.error}`];
     await appendAuditLog(ctx.cwd, {
       ts: new Date().toISOString(),
@@ -432,7 +432,7 @@ export default function (pi: ExtensionAPI) {
           resolvedPath: absolutePath,
         });
 
-        if (!autoBranch.ok) {
+        if (autoBranch.ok === false) {
           await appendAuditLog(ctx.cwd, {
             ts: new Date().toISOString(),
             extension: "safe-bash",
@@ -564,7 +564,7 @@ export default function (pi: ExtensionAPI) {
       }
 
       const autoBranch = await attemptAutoBranchOnMain(pi, ctx, "bash", { command });
-      if (!autoBranch.ok) {
+      if (autoBranch.ok === false) {
         await appendAuditLog(ctx.cwd, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
