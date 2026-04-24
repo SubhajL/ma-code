@@ -321,6 +321,37 @@
       "budget_guidance": "high"
     }
   },
+  "thinking_policy": {
+    "notes": [
+      "Calibrate thinking policy before changing model-cost routing so reasoning depth is tuned separately from provider/model choice.",
+      "Critical roles keep a high-thinking floor even when cost pressure is present.",
+      "Budget-mode caps and reason-based adjustments are deterministic and machine-readable so tuning stays reviewable."
+    ],
+    "level_order": [
+      "off",
+      "minimal",
+      "low",
+      "medium",
+      "high",
+      "xhigh"
+    ],
+    "reason_adjustments": {
+      "default": 0,
+      "task_simpler": -1,
+      "task_harder": 1,
+      "provider_failure": 0,
+      "budget_pressure": -1,
+      "recovery_recommendation": 0,
+      "human_override": 0
+    },
+    "budget_mode_caps": {
+      "default": "xhigh",
+      "balanced": "xhigh",
+      "conserve": "medium",
+      "high": "xhigh"
+    },
+    "critical_role_minimum": "high"
+  },
   "task_handling_architecture": {
     "interaction_layer": "tool-driven",
     "persistence_layer": "file-backed JSON",

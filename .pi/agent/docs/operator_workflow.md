@@ -157,6 +157,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-task-packets.sh`
 - `scripts/validate-handoffs.sh`
 - `scripts/validate-same-runtime-bridge.sh`
+- `scripts/collect-harness-tuning-data.sh`
 
 ### Supporting docs
 - `.pi/agent/docs/runtime_validation_runbook.md`
@@ -209,6 +210,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-core-workflows.sh` for isolated end-to-end task/queue workflow coverage across docs-only completion, implementation pass, validation fail visibility, recovery finalization, and provider/tool-block handling
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
+- use `./scripts/collect-harness-tuning-data.sh` after harness-routing/core-workflow changes when you want a bounded thinking-first cost/performance tuning report from real validator timings
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
 - use `./scripts/validate-task-packets.sh` for executable task-packet changes
 - use `./scripts/validate-handoffs.sh` for executable handoff changes

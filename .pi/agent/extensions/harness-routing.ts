@@ -30,6 +30,7 @@ export const ROUTE_REASONS = [
 ] as const;
 
 export const BUDGET_MODES = ["default", "balanced", "conserve", "high"] as const;
+export const THINKING_LEVEL_ORDER = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
 export type HarnessRole = (typeof ROLE_IDS)[number];
 export type RouteReason = (typeof ROUTE_REASONS)[number];
@@ -64,10 +65,19 @@ export interface RoutingPolicy {
   budget_modes: Record<BudgetMode, BudgetModeRule>;
 }
 
+export interface ThinkingPolicy {
+  notes: string[];
+  level_order: string[];
+  reason_adjustments: Partial<Record<RouteReason, number>>;
+  budget_mode_caps: Partial<Record<BudgetMode, string>>;
+  critical_role_minimum: string | null;
+}
+
 export interface HarnessRoutingConfig {
   notes: string[];
   routing_defaults: Record<HarnessRole, RoutingDefault>;
   routing_policy: RoutingPolicy;
+  thinking_policy: ThinkingPolicy;
 }
 
 export interface RouteResolutionInput {
@@ -124,6 +134,47 @@ function roleMatches(list: string[] | undefined, role: HarnessRole): boolean {
   return list.includes("*") || list.includes(role);
 }
 
+function thinkingIndex(levelOrder: string[], level: string): number {
+  return levelOrder.indexOf(level);
+}
+
+function clampThinkingIndex(index: number, levelOrder: string[]): number {
+  if (index < 0) return 0;
+  if (index >= levelOrder.length) return levelOrder.length - 1;
+  return index;
+}
+
+export function resolveThinkingLevel(
+  policy: ThinkingPolicy,
+  baseThinking: string,
+  role: HarnessRole,
+  reason: RouteReason,
+  budgetMode: BudgetMode,
+  criticalRole: boolean,
+): string {
+  const levelOrder = policy.level_order.length > 0 ? policy.level_order : [...THINKING_LEVEL_ORDER];
+  const baseIndex = thinkingIndex(levelOrder, baseThinking);
+  if (baseIndex < 0) return baseThinking;
+
+  const adjustment = policy.reason_adjustments[reason] ?? 0;
+  let resolvedIndex = clampThinkingIndex(baseIndex + adjustment, levelOrder);
+
+  const budgetCap = policy.budget_mode_caps[budgetMode];
+  const budgetCapIndex = budgetCap ? thinkingIndex(levelOrder, budgetCap) : -1;
+  if (budgetCapIndex >= 0) {
+    resolvedIndex = Math.min(resolvedIndex, budgetCapIndex);
+  }
+
+  if (criticalRole && policy.critical_role_minimum) {
+    const criticalMinimumIndex = thinkingIndex(levelOrder, policy.critical_role_minimum);
+    if (criticalMinimumIndex >= 0) {
+      resolvedIndex = Math.max(resolvedIndex, criticalMinimumIndex);
+    }
+  }
+
+  return levelOrder[resolvedIndex] ?? baseThinking;
+}
+
 export function normalizeModelId(modelId: string, defaultProvider: string): string {
   const trimmed = modelId.trim();
   if (!trimmed) return trimmed;
@@ -150,6 +201,7 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
   const notes = Array.isArray(raw.notes) ? raw.notes.filter((value): value is string => typeof value === "string") : [];
   const routingDefaultsRaw = raw.routing_defaults;
   const routingPolicyRaw = raw.routing_policy;
+  const thinkingPolicyRaw = raw.thinking_policy;
 
   if (!isRecord(routingDefaultsRaw)) {
     throw new Error("routing_defaults is required.");
@@ -245,6 +297,48 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     };
   }
 
+  const thinking_policy: ThinkingPolicy = {
+    notes: [],
+    level_order: [...THINKING_LEVEL_ORDER],
+    reason_adjustments: {},
+    budget_mode_caps: {},
+    critical_role_minimum: null,
+  };
+
+  if (isRecord(thinkingPolicyRaw)) {
+    thinking_policy.notes = Array.isArray(thinkingPolicyRaw.notes)
+      ? thinkingPolicyRaw.notes.filter((value): value is string => typeof value === "string")
+      : [];
+
+    const rawLevelOrder = Array.isArray(thinkingPolicyRaw.level_order)
+      ? thinkingPolicyRaw.level_order.filter((value): value is string => typeof value === "string")
+      : [];
+    thinking_policy.level_order = rawLevelOrder.length > 0 ? rawLevelOrder : [...THINKING_LEVEL_ORDER];
+
+    if (isRecord(thinkingPolicyRaw.reason_adjustments)) {
+      for (const reason of ROUTE_REASONS) {
+        const rawAdjustment = thinkingPolicyRaw.reason_adjustments[reason];
+        if (typeof rawAdjustment === "number" && Number.isInteger(rawAdjustment)) {
+          thinking_policy.reason_adjustments[reason] = rawAdjustment;
+        }
+      }
+    }
+
+    if (isRecord(thinkingPolicyRaw.budget_mode_caps)) {
+      for (const mode of BUDGET_MODES) {
+        const rawCap = thinkingPolicyRaw.budget_mode_caps[mode];
+        if (typeof rawCap === "string" && rawCap.length > 0) {
+          thinking_policy.budget_mode_caps[mode] = rawCap;
+        }
+      }
+    }
+
+    thinking_policy.critical_role_minimum =
+      typeof thinkingPolicyRaw.critical_role_minimum === "string" && thinkingPolicyRaw.critical_role_minimum.length > 0
+        ? thinkingPolicyRaw.critical_role_minimum
+        : null;
+  }
+
   return {
     notes,
     routing_defaults,
@@ -253,6 +347,7 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
       override_reasons,
       budget_modes,
     },
+    thinking_policy,
   };
 }
 
@@ -343,6 +438,14 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
   }
 
   const selected = splitModelId(selectedModelId);
+  const resolvedThinking = resolveThinkingLevel(
+    config.thinking_policy,
+    roleConfig.thinking,
+    input.role,
+    reason,
+    budgetMode,
+    criticalRole,
+  );
   return {
     role: input.role,
     reason,
@@ -350,7 +453,7 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
     selectedModelId,
     selectedProvider: selected.provider,
     selectedModel: selected.model,
-    thinking: roleConfig.thinking,
+    thinking: resolvedThinking,
     budgetGuidance: roleConfig.budget_guidance,
     criticalRole,
     source,

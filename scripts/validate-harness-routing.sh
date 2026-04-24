@@ -223,22 +223,22 @@ const cases = [
   {
     name: "planning default",
     input: { role: "planning_lead" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "default" },
+    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "default", thinking: "high" },
   },
   {
     name: "critical role not downgraded",
     input: { role: "orchestrator", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "default", blockedContains: "blocked from budget_pressure" },
+    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "default", thinking: "high", blockedContains: "blocked from budget_pressure" },
   },
   {
     name: "backend budget override",
     input: { role: "backend_worker", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override" },
+    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override", thinking: "low" },
   },
   {
     name: "frontend harder task stronger override",
     input: { role: "frontend_worker", reason: "task_harder", budgetMode: "high" },
-    expected: { selectedModelId: "anthropic/claude-sonnet-4-6", source: "stronger_override" },
+    expected: { selectedModelId: "anthropic/claude-sonnet-4-6", source: "stronger_override", thinking: "high" },
   },
   {
     name: "provider failure fallback",
@@ -260,6 +260,9 @@ const results = cases.map((testCase) => {
   if (actual.source !== testCase.expected.source) {
     throw new Error(`${testCase.name}: expected source=${testCase.expected.source} got ${actual.source}`);
   }
+  if (testCase.expected.thinking && actual.thinking !== testCase.expected.thinking) {
+    throw new Error(`${testCase.name}: expected thinking=${testCase.expected.thinking} got ${actual.thinking}`);
+  }
   if (testCase.expected.blockedContains) {
     const joined = actual.blockedAdjustments.join("\n");
     if (!joined.includes(testCase.expected.blockedContains)) {
@@ -270,6 +273,7 @@ const results = cases.map((testCase) => {
     name: testCase.name,
     selectedModelId: actual.selectedModelId,
     source: actual.source,
+    thinking: actual.thinking,
     blockedAdjustments: actual.blockedAdjustments,
   };
 });
