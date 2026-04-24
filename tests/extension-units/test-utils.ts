@@ -8,13 +8,19 @@ export type ToolRegistration = {
   execute: (...args: any[]) => Promise<any> | any;
 };
 
+type RepoExecState = {
+  currentBranch: string | null;
+  statusPorcelain: string;
+  branches: Set<string>;
+  failSwitchBranches: Set<string>;
+  gitCommonDir: string | null;
+};
+
 export class FakePi {
   private readonly tools = new Map<string, ToolRegistration>();
   private readonly handlers = new Map<string, (...args: any[]) => Promise<any> | any>();
-  private readonly branches = new Set<string>();
-  private readonly failSwitchBranches = new Set<string>();
-  private currentBranch: string | null;
-  private statusPorcelain: string;
+  private readonly defaultState: RepoExecState;
+  private readonly repoStates = new Map<string, RepoExecState>();
 
   constructor(
     branch: string | null = "feat/test",
@@ -22,19 +28,58 @@ export class FakePi {
       statusPorcelain?: string;
       existingBranches?: string[];
       failSwitchBranches?: string[];
+      cwdStates?: Record<
+        string,
+        {
+          branch?: string | null;
+          statusPorcelain?: string;
+          existingBranches?: string[];
+          failSwitchBranches?: string[];
+          gitCommonDir?: string | null;
+        }
+      >;
     } = {},
   ) {
-    this.currentBranch = branch;
-    this.statusPorcelain = options.statusPorcelain ?? "";
+    this.defaultState = this.makeState(branch, options);
 
-    for (const name of options.existingBranches ?? []) {
-      this.branches.add(name);
+    for (const [cwd, state] of Object.entries(options.cwdStates ?? {})) {
+      this.repoStates.set(
+        cwd,
+        this.makeState(state.branch !== undefined ? state.branch : branch, {
+          statusPorcelain: state.statusPorcelain,
+          existingBranches: state.existingBranches,
+          failSwitchBranches: state.failSwitchBranches,
+          gitCommonDir: state.gitCommonDir,
+        }),
+      );
     }
-    if (branch) this.branches.add(branch);
+  }
 
-    for (const name of options.failSwitchBranches ?? []) {
-      this.failSwitchBranches.add(name);
-    }
+  private makeState(
+    branch: string | null,
+    options: {
+      statusPorcelain?: string;
+      existingBranches?: string[];
+      failSwitchBranches?: string[];
+      gitCommonDir?: string | null;
+    } = {},
+  ): RepoExecState {
+    const branches = new Set<string>();
+    for (const name of options.existingBranches ?? []) branches.add(name);
+    if (branch) branches.add(branch);
+
+    return {
+      currentBranch: branch,
+      statusPorcelain: options.statusPorcelain ?? "",
+      branches,
+      failSwitchBranches: new Set(options.failSwitchBranches ?? []),
+      gitCommonDir: options.gitCommonDir !== undefined ? options.gitCommonDir : ".git",
+    };
+  }
+
+  private getState(cwd?: string): RepoExecState {
+    if (cwd && this.repoStates.has(cwd)) return this.repoStates.get(cwd)!;
+    return this.defaultState;
   }
 
   registerTool(tool: ToolRegistration): void {
@@ -47,12 +92,29 @@ export class FakePi {
 
   async exec(command: string, args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
     if (command === "git") {
+      const cwd = args[0] === "-C" ? args[1] : undefined;
       const gitArgs = args[0] === "-C" ? args.slice(2) : args;
+      const state = this.getState(cwd);
 
       if (gitArgs[0] === "branch" && gitArgs[1] === "--show-current") {
         return {
           code: 0,
-          stdout: `${this.currentBranch ?? ""}\n`,
+          stdout: `${state.currentBranch ?? ""}\n`,
+          stderr: "",
+        };
+      }
+
+      if (gitArgs[0] === "rev-parse" && gitArgs[1] === "--git-common-dir") {
+        if (!state.gitCommonDir) {
+          return {
+            code: 1,
+            stdout: "",
+            stderr: "not a git repository",
+          };
+        }
+        return {
+          code: 0,
+          stdout: `${state.gitCommonDir}\n`,
           stderr: "",
         };
       }
@@ -60,7 +122,7 @@ export class FakePi {
       if (gitArgs[0] === "status" && gitArgs[1] === "--porcelain") {
         return {
           code: 0,
-          stdout: this.statusPorcelain,
+          stdout: state.statusPorcelain,
           stderr: "",
         };
       }
@@ -69,22 +131,22 @@ export class FakePi {
         const branchName = gitArgs[2] ?? "";
         return {
           code: 0,
-          stdout: this.branches.has(branchName) ? `${branchName}\n` : "",
+          stdout: state.branches.has(branchName) ? `${branchName}\n` : "",
           stderr: "",
         };
       }
 
       if (gitArgs[0] === "switch" && gitArgs[1] === "-c") {
         const branchName = gitArgs[2] ?? "";
-        if (this.failSwitchBranches.has(branchName)) {
+        if (state.failSwitchBranches.has(branchName)) {
           return {
             code: 1,
             stdout: "",
             stderr: `simulated switch failure for ${branchName}`,
           };
         }
-        this.branches.add(branchName);
-        this.currentBranch = branchName;
+        state.branches.add(branchName);
+        state.currentBranch = branchName;
         return {
           code: 0,
           stdout: "",
@@ -94,21 +156,21 @@ export class FakePi {
 
       if (gitArgs[0] === "switch") {
         const branchName = gitArgs[1] ?? "";
-        if (!this.branches.has(branchName)) {
+        if (!state.branches.has(branchName)) {
           return {
             code: 1,
             stdout: "",
             stderr: `unknown branch ${branchName}`,
           };
         }
-        if (this.failSwitchBranches.has(branchName)) {
+        if (state.failSwitchBranches.has(branchName)) {
           return {
             code: 1,
             stdout: "",
             stderr: `simulated switch failure for ${branchName}`,
           };
         }
-        this.currentBranch = branchName;
+        state.currentBranch = branchName;
         return {
           code: 0,
           stdout: "",
@@ -124,8 +186,8 @@ export class FakePi {
     };
   }
 
-  getCurrentBranchName(): string | null {
-    return this.currentBranch;
+  getCurrentBranchName(cwd?: string): string | null {
+    return this.getState(cwd).currentBranch;
   }
 
   getTool(name: string): ToolRegistration {

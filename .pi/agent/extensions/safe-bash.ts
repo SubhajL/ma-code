@@ -78,6 +78,26 @@ function resolveToolPath(cwd: string, input: string): string {
   return resolve(cwd, normalizePath(input));
 }
 
+function parseLeadingCdCommand(
+  sessionCwd: string,
+  command: string,
+): { targetCwd: string; innerCommand: string } | null {
+  const trimmed = command.trim();
+  const match = /^(?:cd)\s+(?:"([^"]+)"|'([^']+)'|([^&;|]+?))\s*&&\s*([\s\S]+)$/i.exec(trimmed);
+  if (!match) return null;
+
+  const rawPath = (match[1] ?? match[2] ?? match[3] ?? "").trim();
+  const innerCommand = (match[4] ?? "").trim();
+  if (!rawPath || !innerCommand) return null;
+  if (/[`$]/.test(rawPath)) return null;
+  if (/&&|\|\||;/.test(rawPath)) return null;
+
+  return {
+    targetCwd: resolveToolPath(sessionCwd, rawPath),
+    innerCommand,
+  };
+}
+
 function findProtectedPathReason(path: string): string | null {
   const normalized = normalizePath(path);
   for (const rule of PROTECTED_PATH_RULES) {
@@ -187,6 +207,49 @@ async function getCurrentBranch(pi: ExtensionAPI, cwd: string): Promise<string |
   return branch.length > 0 ? branch : null;
 }
 
+async function getGitCommonDir(pi: ExtensionAPI, cwd: string): Promise<string | null> {
+  const result = await pi.exec("git", ["-C", cwd, "rev-parse", "--git-common-dir"]);
+  if (result.code !== 0) return null;
+
+  const commonDir = result.stdout.trim();
+  if (!commonDir) return null;
+  return resolve(cwd, commonDir);
+}
+
+async function ensureSameRepoFamily(
+  pi: ExtensionAPI,
+  sessionCwd: string,
+  targetCwd: string,
+): Promise<{ ok: true; commonDir: string } | { ok: false; reason: string; auditReasons: string[] }> {
+  const sessionCommonDir = await getGitCommonDir(pi, sessionCwd);
+  const targetCommonDir = await getGitCommonDir(pi, targetCwd);
+
+  if (!sessionCommonDir || !targetCommonDir) {
+    const auditReasons = [
+      `git repo context could not be resolved (session: ${sessionCommonDir ? "ok" : "missing"}, target: ${targetCommonDir ? "ok" : "missing"})`,
+    ];
+    return {
+      ok: false,
+      reason:
+        "Blocked target outside the current repo/worktree family: git context could not be resolved for the session or target path, so mutation safety cannot verify the target repo.",
+      auditReasons,
+    };
+  }
+
+  if (sessionCommonDir !== targetCommonDir) {
+    const auditReasons = [
+      `target repo family differs from session repo family (session common-dir: ${sessionCommonDir}, target common-dir: ${targetCommonDir})`,
+    ];
+    return {
+      ok: false,
+      reason: "Blocked target outside the current repo/worktree family: target path/cwd resolves to a different git common-dir than the session.",
+      auditReasons,
+    };
+  }
+
+  return { ok: true, commonDir: sessionCommonDir };
+}
+
 async function getDirtyTrackedFiles(pi: ExtensionAPI, cwd: string): Promise<{ files: string[] | null; error: string | null }> {
   const result = await pi.exec("git", ["-C", cwd, "status", "--porcelain", "--untracked-files=no"]);
   if (result.code !== 0) {
@@ -252,22 +315,24 @@ async function appendAuditLog(cwd: string, entry: Record<string, unknown>): Prom
 async function attemptAutoBranchOnMain(
   pi: ExtensionAPI,
   ctx: { cwd: string; model?: { id?: string } | null },
+  auditCwd: string,
   tool: "write" | "edit" | "bash",
   metadata: Record<string, unknown>,
 ): Promise<AutoBranchOutcome> {
   const modelId = modelIdFromContext(ctx);
   const provider = providerFromModelId(modelId);
-  const task = await getRunnableActiveTask(ctx.cwd);
+  const task = await getRunnableActiveTask(auditCwd);
 
   if (!task) {
     const auditReasons = ["auto-branch requires an active in-progress task with owner and acceptance criteria"];
-    await appendAuditLog(ctx.cwd, {
+    await appendAuditLog(auditCwd, {
       ts: new Date().toISOString(),
       extension: "safe-bash",
       action: "auto-branch",
       outcome: "skipped",
       tool,
-      cwd: ctx.cwd,
+      cwd: auditCwd,
+      sessionCwd: ctx.cwd,
       branch: "main",
       modelId,
       provider,
@@ -283,16 +348,17 @@ async function attemptAutoBranchOnMain(
     };
   }
 
-  const dirtyState = await getDirtyTrackedFiles(pi, ctx.cwd);
+  const dirtyState = await getDirtyTrackedFiles(pi, auditCwd);
   if (dirtyState.error) {
     const auditReasons = [`git status check failed: ${dirtyState.error}`];
-    await appendAuditLog(ctx.cwd, {
+    await appendAuditLog(auditCwd, {
       ts: new Date().toISOString(),
       extension: "safe-bash",
       action: "auto-branch",
       outcome: "failed",
       tool,
-      cwd: ctx.cwd,
+      cwd: auditCwd,
+      sessionCwd: ctx.cwd,
       branch: "main",
       modelId,
       provider,
@@ -314,13 +380,14 @@ async function attemptAutoBranchOnMain(
       (path) => !ALLOWED_BOOKKEEPING_DIRTY_PATHS.has(normalizeRepoRelativePath(path)),
     );
     const auditReasons = [`unexpected dirty tracked files: ${unexpectedDirtyFiles.join(", ")}`];
-    await appendAuditLog(ctx.cwd, {
+    await appendAuditLog(auditCwd, {
       ts: new Date().toISOString(),
       extension: "safe-bash",
       action: "auto-branch",
       outcome: "skipped",
       tool,
-      cwd: ctx.cwd,
+      cwd: auditCwd,
+      sessionCwd: ctx.cwd,
       branch: "main",
       modelId,
       provider,
@@ -340,16 +407,17 @@ async function attemptAutoBranchOnMain(
     };
   }
 
-  const branchResult = await ensureTaskBranch(pi, ctx.cwd, task);
+  const branchResult = await ensureTaskBranch(pi, auditCwd, task);
   if (branchResult.ok === false) {
     const auditReasons = [`git switch failed: ${branchResult.error}`];
-    await appendAuditLog(ctx.cwd, {
+    await appendAuditLog(auditCwd, {
       ts: new Date().toISOString(),
       extension: "safe-bash",
       action: "auto-branch",
       outcome: "failed",
       tool,
-      cwd: ctx.cwd,
+      cwd: auditCwd,
+      sessionCwd: ctx.cwd,
       branch: "main",
       toBranch: branchResult.branch,
       modelId,
@@ -370,13 +438,14 @@ async function attemptAutoBranchOnMain(
     };
   }
 
-  await appendAuditLog(ctx.cwd, {
+  await appendAuditLog(auditCwd, {
     ts: new Date().toISOString(),
     extension: "safe-bash",
     action: "auto-branch",
     outcome: branchResult.mode,
     tool,
-    cwd: ctx.cwd,
+    cwd: auditCwd,
+    sessionCwd: ctx.cwd,
     branch: "main",
     toBranch: branchResult.branch,
     modelId,
@@ -400,18 +469,44 @@ export default function (pi: ExtensionAPI) {
     if (event.toolName === "write" || event.toolName === "edit") {
       const rawPath = String((event.input as { path?: string }).path ?? "");
       const absolutePath = resolveToolPath(ctx.cwd, rawPath);
+      const targetCwd = dirname(absolutePath);
       const protectedReason = findProtectedPathReason(absolutePath);
-      let branch = await getCurrentBranch(pi, ctx.cwd);
       const modelId = modelIdFromContext(ctx);
       const provider = providerFromModelId(modelId);
+      const repoFamily = await ensureSameRepoFamily(pi, ctx.cwd, targetCwd);
+      let branch = repoFamily.ok ? await getCurrentBranch(pi, targetCwd) : await getCurrentBranch(pi, ctx.cwd);
 
-      if (protectedReason) {
+      if (repoFamily.ok === false) {
         await appendAuditLog(ctx.cwd, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "blocked",
           tool: event.toolName,
           cwd: ctx.cwd,
+          sessionCwd: ctx.cwd,
+          branch,
+          modelId,
+          provider,
+          path: rawPath,
+          resolvedPath: absolutePath,
+          targetCwd,
+          reasons: repoFamily.auditReasons,
+        });
+
+        return {
+          block: true,
+          reason: `${event.toolName === "write" ? "Blocked write" : "Blocked edit"}: ${repoFamily.reason}`,
+        };
+      }
+
+      if (protectedReason) {
+        await appendAuditLog(targetCwd, {
+          ts: new Date().toISOString(),
+          extension: "safe-bash",
+          action: "blocked",
+          tool: event.toolName,
+          cwd: targetCwd,
+          sessionCwd: ctx.cwd,
           branch,
           modelId,
           provider,
@@ -427,18 +522,19 @@ export default function (pi: ExtensionAPI) {
       }
 
       if (branch === "main") {
-        const autoBranch = await attemptAutoBranchOnMain(pi, ctx, event.toolName, {
+        const autoBranch = await attemptAutoBranchOnMain(pi, ctx, targetCwd, event.toolName, {
           path: rawPath,
           resolvedPath: absolutePath,
         });
 
         if (autoBranch.ok === false) {
-          await appendAuditLog(ctx.cwd, {
+          await appendAuditLog(targetCwd, {
             ts: new Date().toISOString(),
             extension: "safe-bash",
             action: "blocked",
             tool: event.toolName,
-            cwd: ctx.cwd,
+            cwd: targetCwd,
+            sessionCwd: ctx.cwd,
             branch,
             modelId,
             provider,
@@ -456,12 +552,13 @@ export default function (pi: ExtensionAPI) {
         branch = autoBranch.branch;
       }
 
-      await appendAuditLog(ctx.cwd, {
+      await appendAuditLog(targetCwd, {
         ts: new Date().toISOString(),
         extension: "safe-bash",
         action: "allowed-mutation",
         tool: event.toolName,
-        cwd: ctx.cwd,
+        cwd: targetCwd,
+        sessionCwd: ctx.cwd,
         branch,
         modelId,
         provider,
@@ -475,22 +572,55 @@ export default function (pi: ExtensionAPI) {
     if (event.toolName !== "bash") return;
 
     const command = String((event.input as { command?: string }).command ?? "");
-    let branch = await getCurrentBranch(pi, ctx.cwd);
+    const cdContext = parseLeadingCdCommand(ctx.cwd, command);
+    const commandForClassification = cdContext?.innerCommand ?? command;
     const modelId = modelIdFromContext(ctx);
     const provider = providerFromModelId(modelId);
 
-    const protectedPathReason = commandTouchesProtectedPath(command);
+    if (cdContext) {
+      const repoFamily = await ensureSameRepoFamily(pi, ctx.cwd, cdContext.targetCwd);
+      if (repoFamily.ok === false) {
+        const branch = await getCurrentBranch(pi, ctx.cwd);
+        await appendAuditLog(ctx.cwd, {
+          ts: new Date().toISOString(),
+          extension: "safe-bash",
+          action: "blocked",
+          tool: "bash",
+          cwd: ctx.cwd,
+          sessionCwd: ctx.cwd,
+          branch,
+          modelId,
+          provider,
+          command,
+          classificationCommand: commandForClassification,
+          targetCwd: cdContext.targetCwd,
+          reasons: repoFamily.auditReasons,
+        });
+
+        return {
+          block: true,
+          reason: `Blocked bash command: ${repoFamily.reason}`,
+        };
+      }
+    }
+
+    const auditCwd = cdContext?.targetCwd ?? ctx.cwd;
+    let branch = await getCurrentBranch(pi, auditCwd);
+
+    const protectedPathReason = commandTouchesProtectedPath(commandForClassification);
     if (protectedPathReason) {
-      await appendAuditLog(ctx.cwd, {
+      await appendAuditLog(auditCwd, {
         ts: new Date().toISOString(),
         extension: "safe-bash",
         action: "blocked",
         tool: "bash",
-        cwd: ctx.cwd,
+        cwd: auditCwd,
+        sessionCwd: ctx.cwd,
         branch,
         modelId,
         provider,
         command,
+        classificationCommand: commandForClassification,
         reasons: [protectedPathReason],
       });
 
@@ -500,19 +630,21 @@ export default function (pi: ExtensionAPI) {
       };
     }
 
-    const risk = classifyBashRisk(command);
+    const risk = classifyBashRisk(commandForClassification);
 
     if (risk.level === "block") {
-      await appendAuditLog(ctx.cwd, {
+      await appendAuditLog(auditCwd, {
         ts: new Date().toISOString(),
         extension: "safe-bash",
         action: "blocked",
         tool: "bash",
-        cwd: ctx.cwd,
+        cwd: auditCwd,
+        sessionCwd: ctx.cwd,
         branch,
         modelId,
         provider,
         command,
+        classificationCommand: commandForClassification,
         reasons: risk.reasons,
       });
 
@@ -522,20 +654,22 @@ export default function (pi: ExtensionAPI) {
       };
     }
 
-    if (branch === "main" && commandLooksMutating(command)) {
-      if (!bashCommandEligibleForAutoBranch(command)) {
+    if (branch === "main" && commandLooksMutating(commandForClassification)) {
+      if (!bashCommandEligibleForAutoBranch(commandForClassification)) {
         const auditReasons = ["command is not eligible for automatic branching"];
-        await appendAuditLog(ctx.cwd, {
+        await appendAuditLog(auditCwd, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "auto-branch",
           outcome: "skipped",
           tool: "bash",
-          cwd: ctx.cwd,
+          cwd: auditCwd,
+          sessionCwd: ctx.cwd,
           branch,
           modelId,
           provider,
           command,
+          classificationCommand: commandForClassification,
           reasons: auditReasons,
         });
 
@@ -544,16 +678,18 @@ export default function (pi: ExtensionAPI) {
           "Command is not eligible for automatic branching.",
         );
 
-        await appendAuditLog(ctx.cwd, {
+        await appendAuditLog(auditCwd, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "blocked",
           tool: "bash",
-          cwd: ctx.cwd,
+          cwd: auditCwd,
+          sessionCwd: ctx.cwd,
           branch,
           modelId,
           provider,
           command,
+          classificationCommand: commandForClassification,
           reasons: auditReasons,
         });
 
@@ -563,18 +699,23 @@ export default function (pi: ExtensionAPI) {
         };
       }
 
-      const autoBranch = await attemptAutoBranchOnMain(pi, ctx, "bash", { command });
+      const autoBranch = await attemptAutoBranchOnMain(pi, ctx, auditCwd, "bash", {
+        command,
+        classificationCommand: commandForClassification,
+      });
       if (autoBranch.ok === false) {
-        await appendAuditLog(ctx.cwd, {
+        await appendAuditLog(auditCwd, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "blocked",
           tool: "bash",
-          cwd: ctx.cwd,
+          cwd: auditCwd,
+          sessionCwd: ctx.cwd,
           branch,
           modelId,
           provider,
           command,
+          classificationCommand: commandForClassification,
           reasons: autoBranch.auditReasons,
         });
 
@@ -589,16 +730,18 @@ export default function (pi: ExtensionAPI) {
 
     if (risk.level === "warn") {
       if (!ctx.hasUI) {
-        await appendAuditLog(ctx.cwd, {
+        await appendAuditLog(auditCwd, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "blocked",
           tool: "bash",
-          cwd: ctx.cwd,
+          cwd: auditCwd,
+          sessionCwd: ctx.cwd,
           branch,
           modelId,
           provider,
           command,
+          classificationCommand: commandForClassification,
           reasons: [...risk.reasons, "warn-level command blocked because no interactive confirmation UI exists"],
         });
 
@@ -613,16 +756,18 @@ export default function (pi: ExtensionAPI) {
         `${command}\n\nReasons:\n- ${risk.reasons.join("\n- ")}\n\nAllow this command?`,
       );
 
-      await appendAuditLog(ctx.cwd, {
+      await appendAuditLog(auditCwd, {
         ts: new Date().toISOString(),
         extension: "safe-bash",
         action: ok ? "confirmed" : "blocked",
         tool: "bash",
-        cwd: ctx.cwd,
+        cwd: auditCwd,
+        sessionCwd: ctx.cwd,
         branch,
         modelId,
         provider,
         command,
+        classificationCommand: commandForClassification,
         reasons: risk.reasons,
       });
 
@@ -634,17 +779,19 @@ export default function (pi: ExtensionAPI) {
       }
     }
 
-    if (commandLooksMutating(command)) {
-      await appendAuditLog(ctx.cwd, {
+    if (commandLooksMutating(commandForClassification)) {
+      await appendAuditLog(auditCwd, {
         ts: new Date().toISOString(),
         extension: "safe-bash",
         action: "allowed-mutation",
         tool: "bash",
-        cwd: ctx.cwd,
+        cwd: auditCwd,
+        sessionCwd: ctx.cwd,
         branch,
         modelId,
         provider,
         command,
+        classificationCommand: commandForClassification,
         riskLevel: risk.level,
       });
     }
