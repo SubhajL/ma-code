@@ -6,6 +6,7 @@ It assumes the queue/recovery/testing foundation already exists and focuses on t
 ## What this quickstart is
 Current operator surface is intentionally lightweight:
 - a read-only CLI status view
+- a file-backed scheduled workflow helper for explicit due-work inspection/materialization
 - package-script entrypoints for common validators
 - runtime queue control tools for live sessions
 
@@ -39,6 +40,18 @@ This status surface summarizes:
 - blocked and failed items
 - recent job/task IDs
 
+Inspect scheduled workflows separately:
+```bash
+npm run harness:schedules
+npm run harness:schedules:json
+```
+
+Materialize due workflows only through explicit operator action:
+```bash
+node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run
+node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run --apply
+```
+
 ## 4. Use package-script validator entrypoints
 Common local validation commands:
 ```bash
@@ -49,9 +62,10 @@ npm run validate:core-workflows
 npm run validate:tuning-data
 ```
 
-Focused integration proof for the operator surface:
+Focused integration proof for the operator/schedule surfaces:
 ```bash
 npm run test:operator-surface
+npm run test:scheduled-workflows
 ```
 
 ## 5. Use live queue controls inside a harness session
@@ -77,7 +91,7 @@ Current implementation supports:
 
 It does **not** support:
 - endless unattended autonomy
-- background daemon scheduling
+- hidden background daemon scheduling
 - rich widget UI
 
 A safe summary is:

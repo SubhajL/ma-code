@@ -237,6 +237,12 @@ Important executable fields:
   - defaults to `implementation`
 - `workType`
   - optional work type used by team activation and packet generation
+- `scheduledWorkflowId`
+  - optional provenance tag for queue jobs materialized from `.pi/agent/schedules/scheduled-workflows.json`
+  - helps operators distinguish recurring scheduled jobs from ad hoc queue entries
+- `scheduledRunKey`
+  - optional per-run uniqueness key such as a UTC date stamp
+  - used by the scheduled-workflow helper to avoid silently creating duplicate queue jobs for the same recurring run window
 - `domains` or `allowedPaths`
   - at least one of these should be present for executable packet generation
   - if both are missing, the runner cannot generate a bounded packet and should block the job

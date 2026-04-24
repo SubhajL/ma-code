@@ -79,6 +79,8 @@ export interface QueueJob {
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
+  scheduledWorkflowId?: string | null;
+  scheduledRunKey?: string | null;
   linkedTaskId?: string | null;
   packetId?: string | null;
   selectedModelId?: string | null;

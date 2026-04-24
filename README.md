@@ -46,12 +46,13 @@ Implemented here:
 - executable handoff generator, handoff policy, and handoff schema
 - executable recovery policy and runtime decision surfaces for bounded retry/rollback/stop recommendations before queue automation
 - bounded single-runner queue execution via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts` (`run_queue_once` remains as a compatibility alias)
+- file-backed scheduled workflow definitions plus explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
 - same-runtime probe bridge for shared model/account-path child sessions
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
 - validation reports and file map
 
 Not yet implemented:
-- a free-running queue daemon or scheduled workflow loop
+- a free-running queue daemon or hidden scheduled workflow loop
 - broader team orchestration runtime beyond deterministic activation, packets, handoffs, recovery, and one-step queue advancement
 - rich UI widgets / dashboard components beyond the lightweight CLI status surface
 - broader automated test suite beyond bounded runtime validation
@@ -98,12 +99,22 @@ Direct repo-root operator/package ergonomics:
 ```bash
 npm install --no-package-lock
 npm run harness:status
+npm run harness:schedules
 npm run harness:worktree -- status
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
+npm run test:scheduled-workflows
 npm run test:worktree-helper
 npm run validate:core-workflows
+```
+
+Bounded scheduled workflow examples:
+```bash
+npm run harness:schedules
+npm run harness:schedules:json
+node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run
+node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run --apply
 ```
 
 Bounded worktree helper examples:

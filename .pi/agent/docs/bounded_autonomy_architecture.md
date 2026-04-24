@@ -54,6 +54,17 @@ Current behavior is intentionally narrow:
 
 This is not yet a free-running daemon, scheduler, or pause/resume control plane.
 
+The current repo-local slice now also includes an explicit scheduled-workflow helper at:
+- `.pi/agent/schedules/scheduled-workflows.json`
+- `scripts/harness-scheduled-workflows.ts`
+
+Current scheduled-workflow behavior is intentionally narrow:
+- supported schedule types are `daily`, `weekday`, and `manual-disabled`
+- due work can be inspected without mutating queue state
+- queue jobs are materialized only through explicit operator action
+- duplicate materialization for the same workflow/day is blocked visibly
+- there is still no hidden recurring daemon loop
+
 ## Design rules
 - autonomy must be queue-driven, not free-roaming
 - every job must have scope
@@ -80,6 +91,7 @@ It should move to `blocked`, `failed`, or `escalate` depending on the cause.
 Scheduled workflows are acceptable only when they are repetitive and bounded.
 Good candidates:
 - daily review queue
+- repo audit run
 - nightly docs cleanup
 - test triage
 - backlog summarization

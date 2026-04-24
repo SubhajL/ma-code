@@ -203,6 +203,8 @@ Current repo-local attachment in this slice:
 - bounded single-step queue advancement now exists via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts`
 - the tool finalizes one `running` job if its linked task is terminal, otherwise starts at most one eligible queued job
 - supported HARNESS-034 controls are enforced directly: `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- file-backed scheduled workflow definitions now exist in `.pi/agent/schedules/scheduled-workflows.json` with explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
+- scheduled workflows remain operator-driven and duplicate-safe rather than daemon-driven
 - unsupported controls remain blocked explicitly rather than silently ignored
 - queue-runner decisions are logged to `logs/harness-actions.jsonl`
 

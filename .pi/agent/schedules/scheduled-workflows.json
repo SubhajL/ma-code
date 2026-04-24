@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "timezone": "UTC",
+  "workflows": [
+    {
+      "id": "daily-review-queue",
+      "title": "Daily review queue",
+      "description": "Queue a bounded review pass over active, blocked, and failed harness work so the operator gets one visible follow-up item instead of reconstructing state from chat history.",
+      "schedule": {
+        "type": "weekday",
+        "hourUtc": 13,
+        "minuteUtc": 0
+      },
+      "queueJobTemplate": {
+        "goal": "Review active, blocked, and failed harness work and recommend the next bounded operator action.",
+        "priority": "medium",
+        "team": "quality",
+        "assignedRole": "reviewer_worker",
+        "workType": "review_only",
+        "domains": ["docs", "research"],
+        "taskClass": "research",
+        "allowedPaths": [
+          ".pi/agent/state/runtime/queue.json",
+          ".pi/agent/state/runtime/tasks.json",
+          "logs/harness-actions.jsonl",
+          "reports/validation/",
+          "reports/planning/",
+          ".pi/agent/docs/"
+        ],
+        "acceptanceCriteria": [
+          "Summarize the active queue/task state with blocked and failed items called out clearly.",
+          "Recommend the next bounded operator action with unresolved risks noted explicitly.",
+          "Do not mutate tracked source/config files unless a separate approved task is created for that follow-up work."
+        ],
+        "notes": [
+          "Scheduled review-only workflow.",
+          "Keep the output operator-facing and bounded."
+        ]
+      }
+    },
+    {
+      "id": "repo-audit-run",
+      "title": "Repo audit run",
+      "description": "Queue a bounded repo audit that checks worktree/branch hygiene, recent validation artifacts, and stale runtime/task state drift.",
+      "schedule": {
+        "type": "daily",
+        "hourUtc": 1,
+        "minuteUtc": 0
+      },
+      "queueJobTemplate": {
+        "goal": "Audit repo hygiene, validation/report freshness, and stale runtime-task drift without broad mutation.",
+        "priority": "low",
+        "team": "planning",
+        "assignedRole": "research_worker",
+        "workType": "research_only",
+        "domains": ["research", "docs"],
+        "taskClass": "research",
+        "allowedPaths": [
+          ".pi/agent/docs/",
+          ".pi/agent/state/runtime/queue.json",
+          ".pi/agent/state/runtime/tasks.json",
+          "logs/",
+          "reports/"
+        ],
+        "acceptanceCriteria": [
+          "Identify stale runtime/task/worktree artifacts that no longer match repo or GitHub truth.",
+          "Call out missing or old validation/report surfaces that should be refreshed soon.",
+          "Recommend bounded cleanup or follow-up tasks instead of performing broad cleanup implicitly."
+        ],
+        "notes": [
+          "Scheduled research-only audit.",
+          "Prefer read-only inspection and explicit follow-up tasks."
+        ]
+      }
+    },
+    {
+      "id": "backlog-summarization",
+      "title": "Backlog summarization",
+      "description": "Queue a bounded planning pass that reconciles the backlog against landed PRs and recommends the next highest-value unfinished item.",
+      "schedule": {
+        "type": "weekday",
+        "hourUtc": 14,
+        "minuteUtc": 0
+      },
+      "queueJobTemplate": {
+        "goal": "Summarize current backlog truth versus landed work and recommend the next bounded harness task.",
+        "priority": "medium",
+        "team": "planning",
+        "assignedRole": "planning_lead",
+        "workType": "research_only",
+        "domains": ["research", "docs"],
+        "taskClass": "research",
+        "allowedPaths": [
+          "pi_harness_implementation_backlog_REPO_LOCAL.md",
+          ".pi/agent/docs/",
+          "reports/planning/",
+          "logs/",
+          "README.md"
+        ],
+        "acceptanceCriteria": [
+          "List landed, deferred, and still-open backlog items using repo/GitHub truth rather than stale task records alone.",
+          "Recommend the next bounded non-deferred task with short rationale.",
+          "Keep the output planning-only unless a separate implementation task is explicitly started."
+        ],
+        "notes": [
+          "Scheduled planning workflow.",
+          "Do not silently widen scope into implementation."
+        ]
+      }
+    },
+    {
+      "id": "test-triage",
+      "title": "Test triage",
+      "description": "Queue a bounded quality pass that inspects recent validator/test failures and proposes the smallest useful next fixes or reruns.",
+      "schedule": {
+        "type": "weekday",
+        "hourUtc": 15,
+        "minuteUtc": 0
+      },
+      "queueJobTemplate": {
+        "goal": "Review recent validator/test failures and recommend the smallest bounded next triage step.",
+        "priority": "medium",
+        "team": "quality",
+        "assignedRole": "validator_worker",
+        "workType": "review_only",
+        "domains": ["research", "docs"],
+        "taskClass": "research",
+        "allowedPaths": [
+          "reports/validation/",
+          "logs/",
+          "scripts/",
+          "tests/"
+        ],
+        "acceptanceCriteria": [
+          "Summarize the latest failing or flaky validation/test signals with exact report references when available.",
+          "Distinguish provider/tool/environment issues from code regressions.",
+          "Recommend one bounded next action instead of repeated long rerun loops by default."
+        ],
+        "notes": [
+          "Scheduled quality workflow.",
+          "Prefer analysis and explicit follow-up over repeated live reruns."
+        ]
+      }
+    },
+    {
+      "id": "docs-safe-cleanup",
+      "title": "Nightly docs cleanup",
+      "description": "A docs-only cleanup lane kept disabled by default until the operator narrows scope and confirms the cleanup is safe.",
+      "schedule": {
+        "type": "manual-disabled"
+      },
+      "queueJobTemplate": {
+        "goal": "Apply a small safe docs cleanup only after the operator confirms the exact scope.",
+        "priority": "low",
+        "team": "planning",
+        "assignedRole": "docs_worker",
+        "workType": "docs_only",
+        "domains": ["docs"],
+        "taskClass": "docs",
+        "allowedPaths": [
+          "README.md",
+          ".pi/agent/docs/"
+        ],
+        "approvalRequired": true,
+        "acceptanceCriteria": [
+          "Restrict cleanup to an explicitly named docs surface.",
+          "Preserve substantive operator/runtime guidance while trimming obvious stale wording only.",
+          "Stop and ask for approval if the cleanup would expand beyond safe docs-only edits."
+        ],
+        "notes": [
+          "Manual-disabled by default.",
+          "Requires explicit human approval before materialization or execution."
+        ]
+      }
+    }
+  ]
+}
