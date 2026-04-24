@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "packageName": "pi-repo-local-harness",
+  "packageVersion": "0.1.0",
+  "notes": [
+    "HARNESS-040 package manifest for staging/bootstrap of reusable harness assets.",
+    "Reusable assets are copied directly; repo-local assets are generated from templates or left for manual review.",
+    "Runtime history, logs, reports, and repo VCS metadata must never be copied by the bootstrap helper."
+  ],
+  "reusableAssets": [
+    ".pi/agent/settings.json",
+    ".pi/agent/docs",
+    ".pi/agent/extensions",
+    ".pi/agent/handoffs",
+    ".pi/agent/package",
+    ".pi/agent/packets",
+    ".pi/agent/prompts",
+    ".pi/agent/recovery",
+    ".pi/agent/routing",
+    ".pi/agent/schedules",
+    ".pi/agent/skills",
+    ".pi/agent/state/schemas",
+    ".pi/agent/teams",
+    ".pi/agent/validation",
+    "scripts",
+    "tests"
+  ],
+  "generatedFiles": [
+    {
+      "target": "AGENTS.md",
+      "template": ".pi/agent/package/templates/AGENTS.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": true,
+      "notes": [
+        "Project-specific agent rules should be reviewed and customized after bootstrap."
+      ]
+    },
+    {
+      "target": "SYSTEM.md",
+      "template": ".pi/agent/package/templates/SYSTEM.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": true,
+      "notes": [
+        "System guidance should be reviewed and customized after bootstrap."
+      ]
+    },
+    {
+      "target": ".pi/agent/models.json",
+      "template": ".pi/agent/package/templates/models.template.json",
+      "mode": "create_if_missing",
+      "requiredReview": true,
+      "notes": [
+        "Routing defaults are a starting point and may need repo/provider adjustments."
+      ]
+    },
+    {
+      "target": ".pi/agent/state/runtime/tasks.json",
+      "template": ".pi/agent/package/templates/runtime/tasks.json",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Fresh runtime task state placeholder."
+      ]
+    },
+    {
+      "target": ".pi/agent/state/runtime/queue.json",
+      "template": ".pi/agent/package/templates/runtime/queue.json",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Fresh runtime queue state placeholder."
+      ]
+    },
+    {
+      "target": ".pi/agent/state/runtime/scheduled-workflows.json",
+      "template": ".pi/agent/package/templates/runtime/scheduled-workflows.json",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Fresh scheduled workflow runtime state placeholder."
+      ]
+    }
+  ],
+  "packageJsonTemplate": ".pi/agent/package/templates/package.template.json",
+  "versionRecordTarget": ".pi/agent/package/installed-package.json",
+  "excludedPaths": [
+    ".git",
+    "node_modules",
+    "logs",
+    "reports",
+    ".pi/agent/state/runtime",
+    ".pi/agent/package/installed-package.json",
+    ".pi/agent/pi-session-*.html"
+  ]
+}

@@ -52,11 +52,13 @@
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
 - `.pi/agent/docs/operator_quickstart.md`
+- `.pi/agent/docs/harness_package_install.md`
 - `.pi/agent/docs/validation_architecture.md`
 - `.pi/agent/docs/validation_recovery_architecture.md`
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/harness-operator-status.ts`
+- `scripts/harness-package.ts`
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 - `scripts/validate-phase-a-b.sh`
@@ -69,10 +71,13 @@
 - `scripts/validate-recovery-policy.sh`
 - `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-queue-runner.sh`
+- `scripts/validate-harness-package.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
 
 ## Update roadmap interpretation and capability expectations
+- `.pi/agent/package/*.json`
+- `.pi/agent/package/templates/*`
 - `.pi/agent/docs/harness_phase_capability_map.md`
 - `.pi/agent/docs/worktree_isolation_policy.md`
 - `.pi/agent/docs/bounded_autonomy_architecture.md`

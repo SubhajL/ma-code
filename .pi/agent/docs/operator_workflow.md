@@ -190,6 +190,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-queue-runner.sh`
 - `scripts/validate-core-workflows.sh`
+- `scripts/validate-harness-package.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
@@ -238,6 +239,7 @@ Run the validator script when:
 - changing `.pi/agent/state/schemas/handoff.schema.json`
 - changing `.pi/agent/extensions/same-runtime-bridge.ts`
 - changing audit logging behavior or expectations
+- changing `.pi/agent/package/harness-package.json`, package templates, or `scripts/harness-package.ts`
 - before calling a bounded phase complete
 
 Choose the validator that matches the change:
@@ -254,6 +256,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/collect-harness-tuning-data.sh` after harness-routing/core-workflow/queue-runner/scheduled-workflow changes when you want a bounded thinking-first cost/performance tuning report from local validator timings, scheduled-workflow dry runs, and role-level cost-ish routing summaries
+- use `./scripts/validate-harness-package.sh` for reusable-vs-repo-local package manifest, bootstrap helper, install-template, and fresh-target adoption changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
 - use `./scripts/validate-task-packets.sh` for executable task-packet changes
 - use `./scripts/validate-handoffs.sh` for executable handoff changes
