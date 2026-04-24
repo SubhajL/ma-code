@@ -5,10 +5,13 @@
   "scripts": {
     "harness:status": "node --import tsx scripts/harness-operator-status.ts",
     "harness:status:json": "node --import tsx scripts/harness-operator-status.ts --json",
+    "harness:worktree": "node --import tsx scripts/harness-worktree.ts",
+    "harness:worktree:status": "node --import tsx scripts/harness-worktree.ts status",
     "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
     "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
     "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",
     "test:operator-surface": "node --import tsx --test tests/integration/operator-surface.test.ts",
+    "test:worktree-helper": "node --import tsx --test tests/integration/worktree-helper.test.ts",
     "validate:phase-a-b": "./scripts/validate-phase-a-b.sh",
     "validate:extension-units": "./scripts/validate-extension-unit-tests.sh",
     "validate:harness-routing": "./scripts/validate-harness-routing.sh",

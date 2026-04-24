@@ -59,6 +59,23 @@ Follow `AGENTS.md`:
 - prefer small bounded changes
 - keep scope explicit
 
+When a dedicated worktree helps keep ownership and cleanup obvious, use the helper surface:
+```bash
+npm run harness:worktree -- branch-name --id HARNESS-024 --slug "worktree helpers"
+npm run harness:worktree -- create --id HARNESS-024 --slug "worktree helpers"
+npm run harness:worktree -- status
+```
+
+Before presenting a worktree as merge-ready, use:
+```bash
+npm run harness:worktree -- review-prep --path ../ma-code-worktrees/harness-024-worktree-helpers
+```
+
+After merge or explicit abandonment, remove only a clean linked worktree:
+```bash
+npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
+```
+
 ### 3. Make or review one bounded change set
 Examples:
 - config wiring
@@ -153,6 +170,10 @@ When a repeated live rerun is used, record:
 - what scope was rerun
 
 ## Validation assets
+### Helper CLIs
+- `scripts/harness-worktree.ts`
+- `scripts/harness-operator-status.ts`
+
 ### Primary validators
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-queue-semantics.sh`
@@ -213,6 +234,7 @@ Run the validator script when:
 
 Choose the validator that matches the change:
 - use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance one queue step
+- use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes
 - use `./scripts/validate-extension-unit-tests.sh` for extension unit-test coverage across safety/task-discipline/orchestration helper surfaces
