@@ -30,6 +30,7 @@ required_files=(
   "scripts/validate-recovery-policy.sh"
   "scripts/validate-recovery-runtime.sh"
   "scripts/validate-queue-runner.sh"
+  "scripts/validate-core-workflows.sh"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
   ".github/dependabot.yml"

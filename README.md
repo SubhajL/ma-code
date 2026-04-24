@@ -98,6 +98,12 @@ Direct repo-root extension test ergonomics:
 ```bash
 npm install --no-package-lock
 npm run test:queue-runner
+npm run test:core-workflows
+```
+
+Dedicated core workflow validator:
+```bash
+./scripts/validate-core-workflows.sh
 ```
 
 ## GitHub automation
@@ -117,6 +123,7 @@ Current GitHub workflow surfaces:
   - recovery-policy validator
   - recovery-runtime validator
   - queue-runner validator (`--skip-live` in CI; local/operator runs attempt one bounded live probe by default when possible)
+  - core-workflows validator
 - Security: `.github/workflows/security.yml`
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript

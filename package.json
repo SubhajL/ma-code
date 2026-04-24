@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
-    "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts"
+    "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
+    "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",
+    "validate:core-workflows": "./scripts/validate-core-workflows.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

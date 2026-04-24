@@ -150,6 +150,7 @@ When a repeated live rerun is used, record:
 - `scripts/validate-recovery-policy.sh`
 - `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-queue-runner.sh`
+- `scripts/validate-core-workflows.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`
@@ -179,6 +180,8 @@ Run the validator script when:
 - changing `.pi/agent/extensions/recovery-policy.ts`
 - changing `.pi/agent/extensions/recovery-runtime.ts`
 - changing `.pi/agent/extensions/queue-runner.ts`
+- changing `tests/integration/core-workflows.test.ts`
+- changing `scripts/validate-core-workflows.sh`
 - changing `.pi/agent/recovery/recovery-policy.json`
 - changing queue jobs that rely on executable runner linkage fields such as `acceptanceCriteria`, `linkedTaskId`, or packet metadata
 - changing `.pi/agent/extensions/harness-routing.ts`
@@ -203,6 +206,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-recovery-policy.sh` for failure taxonomy / provider-failure / retry-eligibility recovery policy changes
 - use `./scripts/validate-recovery-runtime.sh` for explicit retry / rollback / stop runtime decision changes
 - use `./scripts/validate-queue-runner.sh` for bounded queue start/finalize behavior, stop-condition enforcement (retries/runtime/failed validations/approval boundaries), unsupported-control blocking, and queue-runner wiring changes; it attempts one bounded live probe by default when possible, and `--skip-live` is available for CI/static runs
+- use `./scripts/validate-core-workflows.sh` for isolated end-to-end task/queue workflow coverage across docs-only completion, implementation pass, validation fail visibility, recovery finalization, and provider/tool-block handling
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes

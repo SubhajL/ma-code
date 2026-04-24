@@ -82,3 +82,6 @@ jobs:
 
       - name: Run queue-runner validator
         run: ./scripts/validate-queue-runner.sh --skip-live
+
+      - name: Run core-workflows validator
+        run: ./scripts/validate-core-workflows.sh
