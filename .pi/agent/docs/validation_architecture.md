@@ -235,6 +235,20 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect executable queue advancement or queue-runner wiring.
 
+### Dedicated core-workflows validator
+Current dedicated core-workflows script:
+- `scripts/validate-core-workflows.sh`
+
+This script is responsible for the bounded regression path for:
+- `tests/integration/core-workflows.test.ts`
+- end-to-end task/queue workflow integration using the existing runtime extensions in an isolated temp package
+- docs-only completion under lighter validation rules
+- implementation pass finalization from queued work
+- validation fail visibility and recovery-path finalization
+- provider/tool-block handling with blocked task/job preservation
+
+It should be used when changes affect end-to-end core workflow behavior or its validator wiring.
+
 ### Dedicated same-runtime bridge validator
 Current dedicated same-runtime bridge script:
 - `scripts/validate-same-runtime-bridge.sh`
