@@ -140,9 +140,11 @@ npm run harness:worktree -- review-prep --path ../ma-code-worktrees/harness-024-
 npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
 ```
 
-Operator quickstart:
+Operator docs:
+- `.pi/agent/docs/operator_manual.md`
 - `.pi/agent/docs/operator_quickstart.md`
 - `.pi/agent/docs/operator_workflow.md`
+- `.pi/agent/docs/operator_install_guide.md`
 
 Dedicated core workflow validator:
 ```bash

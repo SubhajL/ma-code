@@ -25,8 +25,11 @@ npm run harness:schedules
 npm run harness:schedules:json
 ```
 
-Related quickstart:
+Related operator docs:
+- `.pi/agent/docs/operator_manual.md`
 - `.pi/agent/docs/operator_quickstart.md`
+- `.pi/agent/docs/operator_install_guide.md`
+- `.pi/agent/docs/operator_troubleshooting_guide.md`
 
 ## Daily queue operator loop
 When operating queued work in a live harness session, use the runtime tools in this order:
@@ -201,8 +204,10 @@ When a repeated live rerun is used, record:
 
 ### Supporting docs
 - `.pi/agent/docs/runtime_validation_runbook.md`
+- `.pi/agent/docs/operator_manual.md`
 - this file: `.pi/agent/docs/operator_workflow.md`
 - `.pi/agent/docs/operator_quickstart.md`
+- `.pi/agent/docs/operator_install_guide.md`
 
 ### Outputs
 - markdown report: `reports/validation/*.md`

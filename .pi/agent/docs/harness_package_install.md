@@ -71,6 +71,10 @@ Review these files before normal use:
 - `.pi/agent/models.json`
 - `package.json`
 
+Then start the operator docs set at:
+- `.pi/agent/docs/operator_manual.md`
+- `.pi/agent/docs/operator_install_guide.md`
+
 Then install dev dependencies in the target repo:
 ```bash
 cd /path/to/target-repo

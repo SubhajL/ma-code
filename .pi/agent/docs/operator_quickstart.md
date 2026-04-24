@@ -3,6 +3,9 @@
 This is the shortest practical path for running the current harness as an operator-light system.
 It assumes the queue/recovery/testing foundation already exists and focuses on the read-mostly UI, package scripts, and daily commands.
 
+For the full operator documentation set, start at:
+- `.pi/agent/docs/operator_manual.md`
+
 ## What this quickstart is
 Current operator surface is intentionally lightweight:
 - a read-only CLI status view
@@ -96,3 +99,8 @@ It does **not** support:
 
 A safe summary is:
 > operator-light harness for bounded queued work with visible control points
+
+Next docs:
+- `.pi/agent/docs/operator_workflow.md`
+- `.pi/agent/docs/operator_install_guide.md`
+- `.pi/agent/docs/operator_troubleshooting_guide.md`
