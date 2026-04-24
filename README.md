@@ -98,10 +98,20 @@ Direct repo-root operator/package ergonomics:
 ```bash
 npm install --no-package-lock
 npm run harness:status
+npm run harness:worktree -- status
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
+npm run test:worktree-helper
 npm run validate:core-workflows
+```
+
+Bounded worktree helper examples:
+```bash
+npm run harness:worktree -- branch-name --id HARNESS-024 --slug "worktree helpers"
+npm run harness:worktree -- create --id HARNESS-024 --slug "worktree helpers"
+npm run harness:worktree -- review-prep --path ../ma-code-worktrees/harness-024-worktree-helpers
+npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
 ```
 
 Operator quickstart:

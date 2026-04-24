@@ -91,6 +91,7 @@ Current structure:
 - the runbook is the manual and debugging path
 - the operator workflow explains when validation should be run and how evidence should be preserved
 - the lightweight operator status CLI provides a read-only queue/task snapshot before and after validation runs
+- the bounded worktree helper CLI provides repeatable branch/worktree creation, status inspection, review-prep, and cleanup commands so humans and agents do not improvise git worktree mechanics
 
 Validation role of this layer:
 - verifies that policy and runtime controls are wired correctly
@@ -203,6 +204,19 @@ This script is responsible for the bounded operator-facing read path for:
 - surfacing blocked/failed/active items without requiring a rich widget UI
 
 Its focused proof currently runs through `scripts/validate-core-workflows.sh` via operator-surface integration coverage.
+
+### Worktree helper proof
+Current bounded worktree helper script:
+- `scripts/harness-worktree.ts`
+
+This script is responsible for the bounded operator/build support path for:
+- deterministic branch-name generation for bounded work
+- linked worktree creation from an explicit base ref
+- multi-worktree status inspection
+- review-prep summaries against a comparison ref before merge-ready claims
+- conservative cleanup that refuses dirty or repo-root worktree removal
+
+Its focused proof currently runs through `scripts/validate-core-workflows.sh` via worktree-helper integration coverage in temp git repos.
 
 ### Dedicated team-activation validator
 Current dedicated team-activation script:
