@@ -12,7 +12,7 @@ async function readFixture(relativePath: string): Promise<string> {
   return readFile(url, "utf8");
 }
 
-test("harness-routing resolves backend budget pressure to mini model with calibrated low thinking", async () => {
+test("harness-routing resolves backend budget pressure to mini model with calibrated minimal thinking", async () => {
   const config = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const result = resolveHarnessRoute(config, {
     role: "backend_worker",
@@ -22,7 +22,7 @@ test("harness-routing resolves backend budget pressure to mini model with calibr
 
   assert.equal(result.selectedModelId, "openai-codex/gpt-5.4-mini");
   assert.equal(result.source, "budget_override");
-  assert.equal(result.thinking, "low");
+  assert.equal(result.thinking, "minimal");
 });
 
 
@@ -40,7 +40,7 @@ test("harness-routing keeps critical roles at high thinking under cost pressure"
 });
 
 
-test("harness-routing raises thinking for harder tasks before model fallback tuning", async () => {
+test("harness-routing raises cheaper build-worker defaults back to high thinking for harder tasks", async () => {
   const config = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const result = resolveHarnessRoute(config, {
     role: "frontend_worker",
@@ -51,6 +51,19 @@ test("harness-routing raises thinking for harder tasks before model fallback tun
   assert.equal(result.selectedModelId, "anthropic/claude-sonnet-4-6");
   assert.equal(result.source, "stronger_override");
   assert.equal(result.thinking, "high");
+});
+
+test("harness-routing allows build lead budget pressure to use the mini override", async () => {
+  const config = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const result = resolveHarnessRoute(config, {
+    role: "build_lead",
+    reason: "budget_pressure",
+    budgetMode: "conserve",
+  });
+
+  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4-mini");
+  assert.equal(result.source, "budget_override");
+  assert.equal(result.thinking, "minimal");
 });
 
 test("team-activation resolves a planning-first path for ambiguous mixed work", async () => {

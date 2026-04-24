@@ -29,13 +29,13 @@
         "allowed_roles": [
           "research_worker",
           "docs_worker",
+          "build_lead",
           "frontend_worker",
           "backend_worker"
         ],
         "blocked_roles": [
           "orchestrator",
           "planning_lead",
-          "build_lead",
           "quality_lead",
           "infra_worker",
           "reviewer_worker",
@@ -68,13 +68,13 @@
         "allowed_roles": [
           "research_worker",
           "docs_worker",
+          "build_lead",
           "frontend_worker",
           "backend_worker"
         ],
         "blocked_roles": [
           "orchestrator",
           "planning_lead",
-          "build_lead",
           "quality_lead",
           "infra_worker",
           "reviewer_worker",
@@ -159,7 +159,7 @@
     "build_lead": {
       "provider": "openai-codex",
       "default_model": "gpt-5.4",
-      "thinking": "medium",
+      "thinking": "low",
       "allowed_overrides": [
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
@@ -169,8 +169,10 @@
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
       ],
-      "budget_overrides": [],
-      "budget_guidance": "medium_high"
+      "budget_overrides": [
+        "openai-codex/gpt-5.4-mini"
+      ],
+      "budget_guidance": "medium"
     },
     "quality_lead": {
       "provider": "openai-codex",
@@ -207,7 +209,7 @@
     "frontend_worker": {
       "provider": "openai-codex",
       "default_model": "gpt-5.4",
-      "thinking": "medium",
+      "thinking": "low",
       "allowed_overrides": [
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
@@ -225,7 +227,7 @@
     "backend_worker": {
       "provider": "openai-codex",
       "default_model": "gpt-5.4",
-      "thinking": "medium",
+      "thinking": "low",
       "allowed_overrides": [
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
@@ -338,7 +340,7 @@
     "reason_adjustments": {
       "default": 0,
       "task_simpler": -1,
-      "task_harder": 1,
+      "task_harder": 2,
       "provider_failure": 0,
       "budget_pressure": -1,
       "recovery_recommendation": 0,
@@ -346,12 +348,37 @@
     },
     "budget_mode_caps": {
       "default": "xhigh",
-      "balanced": "xhigh",
-      "conserve": "medium",
+      "balanced": "high",
+      "conserve": "low",
       "high": "xhigh"
     },
     "critical_role_minimum": "high"
   },
+  "tuning_history": [
+    {
+      "date": "2026-04-24",
+      "scope": "HARNESS-039 closeout",
+      "inputs": [
+        "harness routing validator timings",
+        "queue-runner validator timings",
+        "core workflow validator timings",
+        "scheduled workflow dry-run timings"
+      ],
+      "before": [
+        "build_lead default thinking was medium with no budget override path.",
+        "frontend_worker and backend_worker default thinking were medium.",
+        "task_harder raised thinking by only one level, which would have become too weak after cheaper default thinking changes.",
+        "balanced and conserve budget modes capped thinking at xhigh and medium respectively."
+      ],
+      "after": [
+        "build_lead now defaults to low thinking and may use gpt-5.4-mini under explicit budget pressure or simpler-task routing.",
+        "frontend_worker and backend_worker now default to low thinking while task_harder raises them by two levels to preserve high-effort escalation.",
+        "balanced mode now caps at high and conserve mode caps at low for non-critical roles.",
+        "Critical roles still retain a high-thinking floor and do not gain new budget override paths."
+      ],
+      "rationale": "Local validator timings showed the routing validator dominating runtime, so the cheapest safe next move was to reduce default reasoning depth and add one new non-critical budget override path before touching critical-role model defaults."
+    }
+  ],
   "task_handling_architecture": {
     "interaction_layer": "tool-driven",
     "persistence_layer": "file-backed JSON",

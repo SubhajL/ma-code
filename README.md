@@ -134,10 +134,17 @@ Dedicated core workflow validator:
 ./scripts/validate-core-workflows.sh
 ```
 
-Thinking-first tuning report from real validator timings:
+Thinking-first tuning report from bounded local timing/cost-ish evidence:
 ```bash
 ./scripts/collect-harness-tuning-data.sh
 ```
+
+That report now combines:
+- harness-routing validator timings
+- queue-runner validator timings
+- core workflow validator timings
+- scheduled workflow dry-run helper timings
+- role-level cost-ish index summaries from `.pi/agent/models.json`
 
 ## GitHub automation
 This repo uses a harness-specific GitHub baseline rather than app-specific deployment pipelines.
