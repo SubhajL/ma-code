@@ -229,7 +229,7 @@ check_2_bootstrap_integration() {
 }
 
 check_3_manifest_and_install_docs() {
-  local name="3. package manifest/install doc wiring"
+  local name="3. package manifest/install/operator doc wiring"
   local out="$TMP_ROOT/check_3_manifest_and_install_docs.txt"
   local cmd="$PYTHON_BIN $TMP_ROOT/check_3_manifest_and_install_docs.py"
 
@@ -243,23 +243,26 @@ checks = {
     'manifest version': manifest.get('version') == 1,
     'manifest packageVersion': isinstance(manifest.get('packageVersion'), str) and len(manifest['packageVersion']) > 0,
     'manifest reusable assets': isinstance(manifest.get('reusableAssets'), list) and len(manifest['reusableAssets']) > 0,
-    'README.md': 'harness:package' in (root / 'README.md').read_text(encoding='utf-8'),
+    'README.md': 'harness:package' in (root / 'README.md').read_text(encoding='utf-8') and 'operator_manual.md' in (root / 'README.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/harness_packaging_strategy.md': 'bootstrap' in (root / '.pi/agent/docs/harness_packaging_strategy.md').read_text(encoding='utf-8').lower(),
-    '.pi/agent/docs/harness_package_install.md': 'harness-package.ts bootstrap' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/harness_package_install.md': 'harness-package.ts bootstrap' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8') and 'operator_manual.md' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/operator_manual.md': 'operator_install_guide.md' in (root / '.pi/agent/docs/operator_manual.md').read_text(encoding='utf-8') and 'operator_troubleshooting_guide.md' in (root / '.pi/agent/docs/operator_manual.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/operator_quickstart.md': 'operator_manual.md' in (root / '.pi/agent/docs/operator_quickstart.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/operator_workflow.md': 'operator_manual.md' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8'),
     'package.json': 'validate:harness-package' in json.loads((root / 'package.json').read_text(encoding='utf-8')).get('scripts', {}),
 }
 missing = [name for name, ok in checks.items() if not ok]
-assert not missing, f'missing package/install wiring in: {missing}'
+assert not missing, f'missing package/install/operator-doc wiring in: {missing}'
 print('harness-package-wiring-ok')
 PY
 
   if "$PYTHON_BIN" "$TMP_ROOT/check_3_manifest_and_install_docs.py" "$REPO_ROOT" >"$out" 2>&1; then
-    local detail="package manifest, install docs, and package-script wiring are present for repeatable harness bootstrap."
+    local detail="package manifest, install docs, package-script wiring, and operator-doc entrypoints are present for repeatable harness bootstrap and onboarding."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
-    local detail="package manifest/install doc wiring is incomplete."
+    local detail="package manifest/install/operator-doc wiring is incomplete."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
     append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"

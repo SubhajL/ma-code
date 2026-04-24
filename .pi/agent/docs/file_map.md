@@ -50,8 +50,17 @@
 
 ## Update validation workflow
 - `.pi/agent/docs/runtime_validation_runbook.md`
+- `.pi/agent/docs/operator_manual.md`
 - `.pi/agent/docs/operator_workflow.md`
 - `.pi/agent/docs/operator_quickstart.md`
+- `.pi/agent/docs/operator_install_guide.md`
+- `.pi/agent/docs/operator_provider_setup.md`
+- `.pi/agent/docs/operator_model_routing_guide.md`
+- `.pi/agent/docs/operator_role_guide.md`
+- `.pi/agent/docs/operator_troubleshooting_guide.md`
+- `.pi/agent/docs/operator_safety_rules.md`
+- `.pi/agent/docs/operator_extension_guide.md`
+- `.pi/agent/docs/operator_scheduled_workflows.md`
 - `.pi/agent/docs/harness_package_install.md`
 - `.pi/agent/docs/validation_architecture.md`
 - `.pi/agent/docs/validation_recovery_architecture.md`
