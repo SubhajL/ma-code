@@ -91,6 +91,7 @@ Current structure:
 - the runbook is the manual and debugging path
 - the operator workflow explains when validation should be run and how evidence should be preserved
 - the lightweight operator status CLI provides a read-only queue/task snapshot before and after validation runs
+- the scheduled workflow helper CLI provides repeatable due-work inspection and explicit queue materialization without implying a daemon
 - the bounded worktree helper CLI provides repeatable branch/worktree creation, status inspection, review-prep, and cleanup commands so humans and agents do not improvise git worktree mechanics
 
 Validation role of this layer:
@@ -204,6 +205,18 @@ This script is responsible for the bounded operator-facing read path for:
 - surfacing blocked/failed/active items without requiring a rich widget UI
 
 Its focused proof currently runs through `scripts/validate-core-workflows.sh` via operator-surface integration coverage.
+
+### Scheduled workflow helper proof
+Current bounded scheduled workflow script:
+- `scripts/harness-scheduled-workflows.ts`
+
+This script is responsible for the bounded operator/autonomy support path for:
+- machine-readable scheduled workflow loading from `.pi/agent/schedules/scheduled-workflows.json`
+- due/disabled/already-materialized workflow inspection
+- explicit queue materialization only when the operator requests `materialize --apply`
+- duplicate run blocking for the same workflow/day without a hidden daemon
+
+Its focused proof currently runs through `scripts/validate-core-workflows.sh` via scheduled-workflow integration coverage.
 
 ### Worktree helper proof
 Current bounded worktree helper script:

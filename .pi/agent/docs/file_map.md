@@ -34,6 +34,7 @@
 ## Update task/queue structure
 - `.pi/agent/state/schemas/*.json`
 - `.pi/agent/state/runtime/*.json`
+- `.pi/agent/schedules/*.json`
 - `.pi/agent/validation/*.json`
 - `.pi/agent/docs/task_schema_semantics.md`
 - `.pi/agent/docs/queue_semantics.md`
@@ -56,6 +57,7 @@
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/harness-operator-status.ts`
+- `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`

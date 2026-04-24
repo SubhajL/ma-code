@@ -21,6 +21,8 @@ For a fast read-only operator snapshot outside a live agent session, use:
 ```bash
 npm run harness:status
 npm run harness:status:json
+npm run harness:schedules
+npm run harness:schedules:json
 ```
 
 Related quickstart:
@@ -37,7 +39,11 @@ When operating queued work in a live harness session, use the runtime tools in t
 3. resume intake with `resume_queue` when visible queue/task state is acceptable again
 4. stop safely with `stop_queue_safely` when the current active job should move into a reviewable blocked state
 5. advance at most one bounded step with `run_next_queue_job`
-6. review evidence, blockers, and validation before declaring work complete
+6. inspect scheduled workflows when recurring bounded work should be queued
+   - use `npm run harness:schedules` for a read-only due-work snapshot
+   - use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id>` for dry-run inspection
+   - add `--apply` only when you explicitly want to enqueue eligible scheduled jobs
+7. review evidence, blockers, and validation before declaring work complete
 
 Recommended operator questions during this loop:
 - is the queue paused intentionally?
@@ -82,6 +88,7 @@ Examples:
 - schema adjustment
 - one runtime extension change
 - one validator change
+- one scheduled workflow inspection/materialization pass
 
 ### 4. Run validator before claiming completion
 Preferred command:
@@ -171,8 +178,9 @@ When a repeated live rerun is used, record:
 
 ## Validation assets
 ### Helper CLIs
-- `scripts/harness-worktree.ts`
 - `scripts/harness-operator-status.ts`
+- `scripts/harness-scheduled-workflows.ts`
+- `scripts/harness-worktree.ts`
 
 ### Primary validators
 - `scripts/validate-phase-a-b.sh`
@@ -234,6 +242,7 @@ Run the validator script when:
 
 Choose the validator that matches the change:
 - use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance one queue step
+- use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation
 - use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes
