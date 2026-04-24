@@ -106,6 +106,11 @@ Dedicated core workflow validator:
 ./scripts/validate-core-workflows.sh
 ```
 
+Thinking-first tuning report from real validator timings:
+```bash
+./scripts/collect-harness-tuning-data.sh
+```
+
 ## GitHub automation
 This repo uses a harness-specific GitHub baseline rather than app-specific deployment pipelines.
 

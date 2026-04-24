@@ -176,9 +176,21 @@ This script is responsible for the bounded regression path for:
 - `.pi/agent/extensions/harness-routing.ts`
 - machine-readable routing policy in `.pi/agent/models.json`
 - deterministic role/model route resolution
+- deterministic thinking-policy calibration before model-cost tuning
 - optional bounded live tool probe for `resolve_harness_route`
 
 It should be used when changes affect executable harness routing or its policy rules.
+
+### Thinking/cost tuning telemetry report
+Current bounded telemetry script:
+- `scripts/collect-harness-tuning-data.sh`
+
+This script is responsible for the bounded evidence path for:
+- running real local validators to collect integration timing data
+- preserving a thinking-first tuning baseline from `.pi/agent/models.json`
+- producing a reviewable markdown/JSON report before wider cost/performance tuning changes are attempted
+
+It should be used after routing/core-workflow changes when you want real integration timing evidence without defaulting to repeated provider-backed live loops.
 
 ### Dedicated team-activation validator
 Current dedicated team-activation script:
