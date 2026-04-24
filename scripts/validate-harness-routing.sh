@@ -233,7 +233,12 @@ const cases = [
   {
     name: "backend budget override",
     input: { role: "backend_worker", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override", thinking: "low" },
+    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
+  },
+  {
+    name: "build lead budget override",
+    input: { role: "build_lead", reason: "budget_pressure", budgetMode: "conserve" },
+    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
   },
   {
     name: "frontend harder task stronger override",

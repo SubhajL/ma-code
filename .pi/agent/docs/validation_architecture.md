@@ -189,11 +189,12 @@ Current bounded telemetry script:
 - `scripts/collect-harness-tuning-data.sh`
 
 This script is responsible for the bounded evidence path for:
-- running real local validators to collect integration timing data
-- preserving a thinking-first tuning baseline from `.pi/agent/models.json`
-- producing a reviewable markdown/JSON report before wider cost/performance tuning changes are attempted
+- running real local validators to collect integration timing data for harness routing, queue runner, and core workflows
+- running a scheduled-workflow dry-run helper probe without materializing hidden queue work
+- preserving a thinking-first tuning baseline plus documented before/after routing choices from `.pi/agent/models.json`
+- producing a reviewable markdown/JSON report with role-level cost-ish routing summaries before wider cost/performance tuning changes are attempted
 
-It should be used after routing/core-workflow changes when you want real integration timing evidence without defaulting to repeated provider-backed live loops.
+It should be used after routing/core-workflow/queue-runner/scheduled-workflow changes when you want real bounded local timing evidence without defaulting to repeated provider-backed live loops.
 
 ### Operator surface status proof
 Current lightweight operator status script:
