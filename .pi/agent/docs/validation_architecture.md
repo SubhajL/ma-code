@@ -207,6 +207,18 @@ This script is responsible for the bounded operator-facing read path for:
 
 Its focused proof currently runs through `scripts/validate-core-workflows.sh` via operator-surface integration coverage.
 
+### Harness package bootstrap proof
+Current bounded harness package scripts:
+- `scripts/harness-package.ts`
+- `scripts/validate-harness-package.sh`
+
+These scripts are responsible for the bounded packaging/bootstrap path for:
+- loading the machine-readable harness package manifest under `.pi/agent/package/harness-package.json`
+- copying reusable harness assets without carrying over runtime history/logs/reports
+- generating repo-local templates and runtime placeholders for a fresh target repo
+- merging harness scripts/devDependencies into `package.json` conservatively
+- producing repeatable bootstrap proof in a temp target repo
+
 ### Scheduled workflow helper proof
 Current bounded scheduled workflow script:
 - `scripts/harness-scheduled-workflows.ts`
@@ -301,6 +313,19 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect end-to-end core workflow behavior or its validator wiring.
 
+### Dedicated harness-package validator
+Current dedicated harness-package script:
+- `scripts/validate-harness-package.sh`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/package/harness-package.json`
+- `scripts/harness-package.ts`
+- bootstrap/install templates under `.pi/agent/package/templates/`
+- temp-target adoption without copying runtime history, logs, or reports
+- conservative `package.json` merge behavior plus explicit installed-version recording
+
+It should be used when changes affect reusable-vs-repo-local package boundaries, bootstrap/install behavior, or packaging templates.
+
 ### Dedicated same-runtime bridge validator
 Current dedicated same-runtime bridge script:
 - `scripts/validate-same-runtime-bridge.sh`
@@ -338,6 +363,8 @@ This document explains:
 Additional references:
 - `logs/README.md`
 - `.pi/agent/docs/file_map.md`
+- `.pi/agent/docs/harness_packaging_strategy.md`
+- `.pi/agent/docs/harness_package_install.md`
 
 These define where validation assets live and how they fit into the broader repo workflow.
 

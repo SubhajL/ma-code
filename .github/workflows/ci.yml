@@ -85,3 +85,6 @@ jobs:
 
       - name: Run core-workflows validator
         run: ./scripts/validate-core-workflows.sh
+
+      - name: Run harness-package validator
+        run: ./scripts/validate-harness-package.sh

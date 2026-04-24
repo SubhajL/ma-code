@@ -47,6 +47,7 @@ Implemented here:
 - executable recovery policy and runtime decision surfaces for bounded retry/rollback/stop recommendations before queue automation
 - bounded single-runner queue execution via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts` (`run_queue_once` remains as a compatibility alias)
 - file-backed scheduled workflow definitions plus explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
+- file-backed package/bootstrap scaffolding via `.pi/agent/package/harness-package.json` and `scripts/harness-package.ts`
 - same-runtime probe bridge for shared model/account-path child sessions
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
 - validation reports and file map
@@ -100,13 +101,16 @@ Direct repo-root operator/package ergonomics:
 npm install --no-package-lock
 npm run harness:status
 npm run harness:schedules
+npm run harness:package
 npm run harness:worktree -- status
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
 npm run test:scheduled-workflows
 npm run test:worktree-helper
+npm run test:harness-package
 npm run validate:core-workflows
+npm run validate:harness-package
 ```
 
 Bounded scheduled workflow examples:
@@ -116,6 +120,17 @@ npm run harness:schedules:json
 node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run
 node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run --apply
 ```
+
+Harness package/bootstrap examples:
+```bash
+npm run harness:package
+npm run harness:package:json
+node --import tsx scripts/harness-package.ts bootstrap --dest /path/to/target-repo
+```
+
+See also:
+- `.pi/agent/docs/harness_packaging_strategy.md`
+- `.pi/agent/docs/harness_package_install.md`
 
 Bounded worktree helper examples:
 ```bash
