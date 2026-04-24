@@ -3,10 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "harness:status": "node --import tsx scripts/harness-operator-status.ts",
+    "harness:status:json": "node --import tsx scripts/harness-operator-status.ts --json",
     "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
     "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
     "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",
-    "validate:core-workflows": "./scripts/validate-core-workflows.sh"
+    "test:operator-surface": "node --import tsx --test tests/integration/operator-surface.test.ts",
+    "validate:phase-a-b": "./scripts/validate-phase-a-b.sh",
+    "validate:extension-units": "./scripts/validate-extension-unit-tests.sh",
+    "validate:harness-routing": "./scripts/validate-harness-routing.sh",
+    "validate:queue-runner": "./scripts/validate-queue-runner.sh --skip-live",
+    "validate:core-workflows": "./scripts/validate-core-workflows.sh",
+    "validate:tuning-data": "./scripts/collect-harness-tuning-data.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

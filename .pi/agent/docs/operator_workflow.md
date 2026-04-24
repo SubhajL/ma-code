@@ -1,4 +1,4 @@
-# Operator Workflow — Phase A/B Harness
+# Operator Workflow — Current Harness
 
 This workflow explains how to operate the current Pi harness safely and consistently.
 
@@ -8,13 +8,23 @@ This workflow covers the current implemented harness slice:
 - repo policy and role contracts
 - `safe-bash.ts`
 - `till-done.ts`
+- queue/recovery/runtime validation surfaces
 - machine-readable completion-gate policy
-- bounded runtime validation
+- bounded runtime validation and operator-facing status/validator entrypoints
 
 It does not assume:
 - a free-running queue daemon beyond the bounded `run_next_queue_job` stepper (`run_queue_once` remains a compatibility alias)
-- UI widgets
+- rich UI widgets or a dashboard daemon
 - full team orchestration runtime
+
+For a fast read-only operator snapshot outside a live agent session, use:
+```bash
+npm run harness:status
+npm run harness:status:json
+```
+
+Related quickstart:
+- `.pi/agent/docs/operator_quickstart.md`
 
 ## Daily queue operator loop
 When operating queued work in a live harness session, use the runtime tools in this order:
@@ -162,6 +172,7 @@ When a repeated live rerun is used, record:
 ### Supporting docs
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - this file: `.pi/agent/docs/operator_workflow.md`
+- `.pi/agent/docs/operator_quickstart.md`
 
 ### Outputs
 - markdown report: `reports/validation/*.md`
@@ -201,6 +212,7 @@ Run the validator script when:
 - before calling a bounded phase complete
 
 Choose the validator that matches the change:
+- use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance one queue step
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes
 - use `./scripts/validate-extension-unit-tests.sh` for extension unit-test coverage across safety/task-discipline/orchestration helper surfaces
