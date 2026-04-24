@@ -53,7 +53,7 @@ Implemented here:
 Not yet implemented:
 - a free-running queue daemon or scheduled workflow loop
 - broader team orchestration runtime beyond deterministic activation, packets, handoffs, recovery, and one-step queue advancement
-- UI widgets / status components
+- rich UI widgets / dashboard components beyond the lightweight CLI status surface
 - broader automated test suite beyond bounded runtime validation
 
 ## Roadmap status
@@ -94,12 +94,19 @@ Key outputs:
 - validation reports: `reports/validation/`
 - current coding log pointer: `logs/CURRENT.md`
 
-Direct repo-root extension test ergonomics:
+Direct repo-root operator/package ergonomics:
 ```bash
 npm install --no-package-lock
+npm run harness:status
 npm run test:queue-runner
 npm run test:core-workflows
+npm run test:operator-surface
+npm run validate:core-workflows
 ```
+
+Operator quickstart:
+- `.pi/agent/docs/operator_quickstart.md`
+- `.pi/agent/docs/operator_workflow.md`
 
 Dedicated core workflow validator:
 ```bash

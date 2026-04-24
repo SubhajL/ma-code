@@ -168,6 +168,7 @@ setup_temp_runtime() {
     "$workdir/.pi/agent/handoffs" \
     "$workdir/.pi/agent/validation" \
     "$workdir/.pi/agent/recovery" \
+    "$workdir/scripts" \
     "$workdir/tests/extension-units" \
     "$workdir/tests/integration"
 
@@ -196,7 +197,8 @@ JSON
   cp "$REPO_ROOT/.pi/agent/validation/completion-gate-policy.json" "$workdir/.pi/agent/validation/completion-gate-policy.json"
   cp "$REPO_ROOT/.pi/agent/recovery/recovery-policy.json" "$workdir/.pi/agent/recovery/recovery-policy.json"
   cp "$REPO_ROOT/tests/extension-units/test-utils.ts" "$workdir/tests/extension-units/"
-  cp "$REPO_ROOT/tests/integration/core-workflows.test.ts" "$workdir/tests/integration/"
+  cp "$REPO_ROOT/scripts/harness-operator-status.ts" "$workdir/scripts/"
+  cp "$REPO_ROOT/tests/integration/"{core-workflows,operator-surface}.test.ts "$workdir/tests/integration/"
 
   (
     cd "$workdir"
@@ -218,7 +220,7 @@ check_1_compile_core_workflow_extensions() {
   local name="1. core workflow extensions compile together"
   local out="$TMP_ROOT/check_1_compile_core_workflow_extensions.txt"
   local runtime_dir="$TMP_ROOT/core-workflows-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts scripts/harness-operator-status.ts"
 
   if (
     cd "$runtime_dir" &&
@@ -231,9 +233,10 @@ check_1_compile_core_workflow_extensions() {
       .pi/agent/extensions/handoffs.ts \
       .pi/agent/extensions/recovery-policy.ts \
       .pi/agent/extensions/recovery-runtime.ts \
-      .pi/agent/extensions/queue-runner.ts >"$out" 2>&1
+      .pi/agent/extensions/queue-runner.ts \
+      scripts/harness-operator-status.ts >"$out" 2>&1
   ); then
-    local detail="safe-bash, till-done, queue-runner, and their routing/team/packet/handoff/recovery dependencies compile together in an isolated runtime package."
+    local detail="safe-bash, till-done, queue-runner, the operator status script, and their routing/team/packet/handoff/recovery dependencies compile together in an isolated runtime package."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -264,34 +267,56 @@ check_2_core_workflow_integration_tests() {
   fi
 }
 
-check_3_core_workflow_wiring() {
-  local name="3. core workflow validator wiring"
-  local out="$TMP_ROOT/check_3_core_workflow_wiring.txt"
-  local cmd="$PYTHON_BIN $TMP_ROOT/check_3_core_workflow_wiring.py"
+check_3_operator_surface_integration() {
+  local name="3. operator status integration surface"
+  local out="$TMP_ROOT/check_3_operator_surface_integration.txt"
+  local runtime_dir="$TMP_ROOT/core-workflows-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/integration/operator-surface.test.ts"
 
-  cat > "$TMP_ROOT/check_3_core_workflow_wiring.py" <<'PY'
-import sys
-from pathlib import Path
-root = Path(sys.argv[1])
-checks = {
-    'README.md': 'core-workflows validator' in (root / 'README.md').read_text(encoding='utf-8'),
-    '.pi/agent/docs/operator_workflow.md': './scripts/validate-core-workflows.sh' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8'),
-    '.pi/agent/docs/validation_architecture.md': 'scripts/validate-core-workflows.sh' in (root / '.pi/agent/docs/validation_architecture.md').read_text(encoding='utf-8'),
-    'scripts/check-repo-static.sh': 'scripts/validate-core-workflows.sh' in (root / 'scripts/check-repo-static.sh').read_text(encoding='utf-8'),
-    '.github/workflows/ci.yml': 'Run core-workflows validator' in (root / '.github/workflows/ci.yml').read_text(encoding='utf-8'),
-}
-missing = [name for name, ok in checks.items() if not ok]
-assert not missing, f'missing core-workflows wiring in: {missing}'
-print('core-workflows-wiring-ok')
-PY
-
-  if "$PYTHON_BIN" "$TMP_ROOT/check_3_core_workflow_wiring.py" "$REPO_ROOT" >"$out" 2>&1; then
-    local detail="core-workflows validator is wired in README, operator workflow, validation architecture, static checks, and CI."
+  if run_test_file "$runtime_dir" "tests/integration/operator-surface.test.ts" "$out"; then
+    local detail="operator status integration tests passed for readable text output and stable JSON output from the lightweight CLI status surface."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
-    local detail="core-workflows validator wiring is incomplete."
+    local detail="operator status integration tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
+check_4_operator_surface_wiring() {
+  local name="4. operator surface/package/docs wiring"
+  local out="$TMP_ROOT/check_4_operator_surface_wiring.txt"
+  local cmd="$PYTHON_BIN $TMP_ROOT/check_4_operator_surface_wiring.py"
+
+  cat > "$TMP_ROOT/check_4_operator_surface_wiring.py" <<'PY'
+import json
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+package = json.loads((root / 'package.json').read_text(encoding='utf-8'))
+scripts = package.get('scripts', {})
+checks = {
+    'package.json:harness:status': 'harness:status' in scripts,
+    'package.json:test:operator-surface': 'test:operator-surface' in scripts,
+    'README.md': 'harness:status' in (root / 'README.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/operator_workflow.md': 'harness:status' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/validation_architecture.md': 'operator status' in (root / '.pi/agent/docs/validation_architecture.md').read_text(encoding='utf-8').lower(),
+}
+missing = [name for name, ok in checks.items() if not ok]
+assert not missing, f'missing operator surface wiring in: {missing}'
+print('operator-surface-wiring-ok')
+PY
+
+  if "$PYTHON_BIN" "$TMP_ROOT/check_4_operator_surface_wiring.py" "$REPO_ROOT" >"$out" 2>&1; then
+    local detail="operator status/package/docs wiring is present in package scripts, README, and validation/operator docs."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="operator surface/package/docs wiring is incomplete."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
     append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -303,7 +328,8 @@ main() {
   setup_temp_runtime
   check_1_compile_core_workflow_extensions
   check_2_core_workflow_integration_tests
-  check_3_core_workflow_wiring
+  check_3_operator_surface_integration
+  check_4_operator_surface_wiring
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF

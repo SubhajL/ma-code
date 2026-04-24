@@ -19,7 +19,8 @@ This doc outlines:
 - daily operation boundaries
 - testing expectations tied to trust
 
-It does not define a UI implementation.
+Current implementation includes a lightweight UI surface in the form of a read-only CLI status script (`scripts/harness-operator-status.ts`).
+It does not yet define a rich widget dashboard or daemon UI.
 
 ## Core principle
 Autonomy should reduce manual prompting, not remove human control.
@@ -57,6 +58,10 @@ Current repo-local implementation now provides these bounded operator tools thro
 - `resume_queue`
 - `stop_queue_safely`
 - `run_next_queue_job` for one explicit bounded queue step
+
+Current repo-local implementation also provides a lightweight operator CLI surface:
+- `npm run harness:status`
+- `npm run harness:status:json`
 
 These controls are intentionally file-backed and reviewable rather than daemon-driven.
 Pause and stop preserve visible queue/task state instead of relying on hidden memory.

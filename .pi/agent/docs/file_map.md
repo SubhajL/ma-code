@@ -50,10 +50,12 @@
 ## Update validation workflow
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
+- `.pi/agent/docs/operator_quickstart.md`
 - `.pi/agent/docs/validation_architecture.md`
 - `.pi/agent/docs/validation_recovery_architecture.md`
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
+- `scripts/harness-operator-status.ts`
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`

@@ -90,6 +90,7 @@ Current structure:
 - the script is the preferred automated path
 - the runbook is the manual and debugging path
 - the operator workflow explains when validation should be run and how evidence should be preserved
+- the lightweight operator status CLI provides a read-only queue/task snapshot before and after validation runs
 
 Validation role of this layer:
 - verifies that policy and runtime controls are wired correctly
@@ -191,6 +192,17 @@ This script is responsible for the bounded evidence path for:
 - producing a reviewable markdown/JSON report before wider cost/performance tuning changes are attempted
 
 It should be used after routing/core-workflow changes when you want real integration timing evidence without defaulting to repeated provider-backed live loops.
+
+### Operator surface status proof
+Current lightweight operator status script:
+- `scripts/harness-operator-status.ts`
+
+This script is responsible for the bounded operator-facing read path for:
+- rendering a human-readable queue/task status snapshot
+- emitting stable JSON for package-script or shell automation
+- surfacing blocked/failed/active items without requiring a rich widget UI
+
+Its focused proof currently runs through `scripts/validate-core-workflows.sh` via operator-surface integration coverage.
 
 ### Dedicated team-activation validator
 Current dedicated team-activation script:
