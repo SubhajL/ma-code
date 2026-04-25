@@ -122,6 +122,12 @@ npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
 node --import tsx scripts/harness-queue-session.ts --max-steps 2 --recent 3
 ```
 
+That session summary now includes:
+- duration and action counts
+- started/finalized/blocked job IDs touched during the session
+- remaining queued work count
+- a recommended next action with operator-triage reasoning
+
 Bounded scheduled workflow examples:
 ```bash
 npm run harness:schedules

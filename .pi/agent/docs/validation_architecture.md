@@ -91,7 +91,7 @@ Current structure:
 - the runbook is the manual and debugging path
 - the operator workflow explains when validation should be run and how evidence should be preserved
 - the lightweight operator status CLI provides a read-only queue/task snapshot before and after validation runs
-- the bounded queue-session CLI provides explicit multi-step queue advancement proof without implying a hidden daemon
+- the bounded queue-session CLI provides explicit multi-step queue advancement proof plus richer end-of-session triage summaries without implying a hidden daemon
 - the scheduled workflow helper CLI provides repeatable due-work inspection and explicit queue materialization without implying a daemon
 - the bounded worktree helper CLI provides repeatable branch/worktree creation, status inspection, review-prep, and cleanup commands so humans and agents do not improvise git worktree mechanics
 

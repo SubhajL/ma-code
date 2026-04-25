@@ -53,6 +53,7 @@ npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
 This session helper:
 - advances the queue only under explicit step/runtime limits
 - stops once it reaches the next waiting point, idle state, pause, blocked state, or configured limit
+- returns richer end-of-session triage data including action counts, touched job IDs, remaining queued work, and a recommended next action
 - does not create a hidden recurring daemon
 
 Inspect scheduled workflows separately:
