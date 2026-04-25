@@ -298,7 +298,7 @@ check_4_queue_session_integration() {
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/integration/queue-session.test.ts"
 
   if run_test_file "$runtime_dir" "tests/integration/queue-session.test.ts" "$out"; then
-    local detail="queue session integration tests passed for waiting-point start behavior, richer triage summaries, finalize-then-start chaining, blocked-job review guidance, and explicit max-step stopping."
+    local detail="queue session integration tests passed for waiting-point starts, finalize-then-start chaining with invalid-queue skipping, blocked+failed visibility, paused-queue boundaries, recovery-action triage visibility, scheduled-workflow job provenance through sessions, and explicit max-step/max-runtime stopping."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
