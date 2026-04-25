@@ -181,9 +181,13 @@
       "kind": "template",
       "exactTopLevelHeaders": [
         "## Work Summary",
+        "## Discovery Summary",
+        "## Scope Boundaries",
         "## Acceptance Coverage",
         "## Evidence",
+        "## Evidence Expectations",
         "## Validation Commands",
+        "## Wiring Checks",
         "## Wiring Verification",
         "## Known Gaps",
         "## Blockers"
@@ -196,6 +200,7 @@
         "## Likely Causes",
         "## Recovery Options",
         "## Recommended Action",
+        "## Migration Path Note",
         "## Stop Threshold"
       ]
     },
@@ -204,6 +209,7 @@
       "exactTopLevelHeaders": [
         "## Review Scope",
         "## Claimed Completion Status",
+        "## Scope Boundaries",
         "## Files To Inspect",
         "## Risks To Challenge",
         "## Questions For Reviewer"
@@ -213,9 +219,11 @@
       "kind": "template",
       "exactTopLevelHeaders": [
         "## Validation Scope",
+        "## Scope Boundaries",
         "## Acceptance Criteria",
         "## Expected Proof",
-        "## Open Questions",
+        "## Validation Questions",
+        "## Wiring Checks",
         "## Risks"
       ]
     },

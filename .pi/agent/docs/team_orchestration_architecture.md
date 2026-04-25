@@ -428,9 +428,12 @@ Must include:
 Must include:
 - what changed
 - what did not change
+- packet-derived discovery summary
+- packet-derived scope boundaries
 - evidence produced
+- packet-derived evidence expectations and expected proof
 - validation commands run when relevant
-- wiring verification summary when relevant
+- packet-derived wiring checks plus wiring verification summary when relevant
 - known gaps
 - blockers encountered
 
@@ -438,16 +441,19 @@ Must include:
 Must include:
 - review scope
 - claimed completion status
+- packet-derived scope boundaries
 - files to inspect
 - specific risks to challenge
 - request for severity-ordered findings and concrete file references where possible
 
 ### Quality lead -> validator handoff
 Must include:
-- acceptance criteria to check
 - validation path to run or inspect
+- packet-derived scope boundaries
+- acceptance criteria to check
 - expected proof artifacts
-- exact open questions
+- exact validation questions
+- wiring checks that may explain pass/fail behavior
 
 ### Recovery -> orchestrator or lead handoff
 Must include:
@@ -455,6 +461,7 @@ Must include:
 - likely cause
 - retry options
 - recommended action
+- migration-path note when architecture recommendations are escalated
 - stop/escalation threshold if applicable
 
 ## Current executable handoff contract
@@ -466,7 +473,8 @@ The current repo-local executable handoff contract is enforced by:
 
 The generator validates:
 - role-pair correctness for each supported handoff type
-- preservation of packet scope, acceptance, evidence expectations, and escalation instructions
+- preservation of packet scope, discovery summary, evidence expectations, expected proof, wiring checks, and escalation instructions
+- policy-declared required packet/detail structure for each handoff type
 - role-specific required sections before a handoff is emitted
 
 ## Recommended handoff templates
@@ -477,6 +485,16 @@ The generator validates:
 - changed files: ...
 - unchanged but inspected: ...
 
+## Discovery Summary
+- Auggie-first or local fallback summary that matters to the handoff
+
+## Scope Boundaries
+- goal: ...
+- scope: ...
+- non-goals: ...
+- files to inspect: ...
+- files to modify: ...
+
 ## Acceptance Coverage
 - criterion 1: met / partial / not met
 - criterion 2: met / partial / not met
@@ -484,6 +502,13 @@ The generator validates:
 ## Evidence
 - report path: ...
 - command output summary: ...
+
+## Evidence Expectations
+- expected proof: ...
+- missing proof if any: ...
+
+## Wiring Checks
+- packet-derived wiring checks
 
 ## Known Gaps
 - ...
@@ -497,12 +522,21 @@ The generator validates:
 ## Validation Scope
 - validate acceptance criteria for packet-build-001
 
-## Files
-- ...
+## Scope Boundaries
+- goal: ...
+- scope: ...
+- files to inspect: ...
 
 ## Expected Proof
 - validator report
 - exact block reason if rejected
+
+## Validation Questions
+- does wiring stay reachable?
+- do preserved scope boundaries still match the implementation?
+
+## Wiring Checks
+- runtime registration is still present
 
 ## Risks
 - overlap with task schema semantics

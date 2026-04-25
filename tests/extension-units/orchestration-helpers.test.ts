@@ -162,7 +162,7 @@ test("task-packets default planning-completeness fields remain explicit for boun
   assert.match(generated.packet.migrationPathNote, /Not applicable/);
 });
 
-test("handoffs preserve packet structure for worker-to-quality flow", async () => {
+test("handoffs preserve stronger planning context for worker-to-quality flow", async () => {
   const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
   const handoffPolicy = parseHandoffPolicy(JSON.parse(await readFixture(".pi/agent/handoffs/handoff-policy.json")));
@@ -180,11 +180,17 @@ test("handoffs preserve packet structure for worker-to-quality flow", async () =
     assignedTeam: "build",
     assignedRole: "backend_worker",
     title: "Add extension unit tests",
+    goal: "Preserve stronger packet context through quality handoffs.",
     scope: "tests only under tests/extension-units",
+    nonGoals: ["Do not change runtime queue behavior."],
     workType: "implementation",
     domains: ["backend"],
+    filesToInspect: ["tests/extension-units/orchestration-helpers.test.ts", ".pi/agent/extensions/handoffs.ts"],
+    filesToModify: ["tests/extension-units/orchestration-helpers.test.ts"],
     allowedPaths: ["tests/extension-units", "scripts"],
     acceptanceCriteria: ["Unit tests exist and pass"],
+    expectedProof: ["Generated handoff output includes quality-facing scope and proof context."],
+    migrationPathNote: "Not applicable; improve the current handoff contract in place.",
     dependencies: [],
   });
 
@@ -196,10 +202,83 @@ test("handoffs preserve packet structure for worker-to-quality flow", async () =
     changedFiles: ["tests/extension-units/till-done.test.ts"],
     acceptanceCoverage: ["Implementation task validation gate covered"],
     evidence: ["node --test output PASS"],
+    commandsRun: ["bash scripts/validate-extension-unit-tests.sh"],
+    wiringVerification: ["generate_handoff preserved packet wiring checks"],
   });
 
   validateStructuredHandoff(generated.handoff);
   assert.equal(generated.handoff.preservedPacket.scope, packet.scope);
+  assert.deepEqual(generated.handoff.preservedPacket.filesToInspect, ["tests/extension-units/orchestration-helpers.test.ts", ".pi/agent/extensions/handoffs.ts"]);
   assert.equal(generated.handoff.details.changedFiles[0], "tests/extension-units/till-done.test.ts");
   assert.match(generated.renderedHandoff, /## Work Summary/);
+  assert.match(generated.renderedHandoff, /## Scope Boundaries/);
+  assert.match(generated.renderedHandoff, /## Evidence Expectations/);
+});
+
+test("quality-to-validator and recovery handoffs require stronger validation and migration structure", async () => {
+  const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
+  const handoffPolicy = parseHandoffPolicy(JSON.parse(await readFixture(".pi/agent/handoffs/handoff-policy.json")));
+  const teams = {
+    planning: parseTeamDefinition(await readFixture(".pi/agent/teams/planning.yaml"), "planning"),
+    build: parseTeamDefinition(await readFixture(".pi/agent/teams/build.yaml"), "build"),
+    quality: parseTeamDefinition(await readFixture(".pi/agent/teams/quality.yaml"), "quality"),
+    recovery: parseTeamDefinition(await readFixture(".pi/agent/teams/recovery.yaml"), "recovery"),
+  };
+
+  const { packet } = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "harness-045",
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    title: "Tighten handoff completeness",
+    scope: "Only change handoff policy, templates, and validation surfaces.",
+    workType: "implementation",
+    domains: ["backend"],
+    allowedPaths: [".pi/agent/extensions/handoffs.ts", ".pi/agent/handoffs/handoff-policy.json"],
+    acceptanceCriteria: ["handoff structure is stronger and still readable"],
+  });
+
+  const validatorHandoff = generateHandoff(handoffPolicy, {
+    handoffType: "quality_to_validator",
+    sourcePacket: packet,
+    fromRole: "quality_lead",
+    toRole: "validator_worker",
+    validationScope: ["validate stronger quality/recovery handoff completeness"],
+    expectedProof: ["validator output names missing structure clearly"],
+    validationQuestions: ["Does the handoff preserve scope boundaries, wiring checks, and exact proof expectations?"],
+    knownGaps: ["Validator should challenge whether any proof or review-risk wording remains too vague."],
+  });
+
+  validateStructuredHandoff(validatorHandoff.handoff);
+  assert.match(validatorHandoff.renderedHandoff, /## Validation Questions/);
+  assert.match(validatorHandoff.renderedHandoff, /## Wiring Checks/);
+
+  const recoveryPacket = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "harness-045",
+    assignedTeam: "recovery",
+    assignedRole: "recovery_worker",
+    title: "Escalate architectural drift",
+    scope: "Recovery review only.",
+    workType: "review_only",
+    domains: ["research"],
+    allowedPaths: [".pi/agent/extensions/handoffs.ts"],
+    acceptanceCriteria: ["recovery recommendation is explicit"],
+    migrationPathNote: "If escalation is chosen, keep migration bounded: tighten templates and validator first, then broaden runtime only if proof remains insufficient.",
+  });
+
+  const recoveryHandoff = generateHandoff(handoffPolicy, {
+    handoffType: "recovery_to_orchestrator_or_lead",
+    sourcePacket: recoveryPacket.packet,
+    fromRole: "recovery_worker",
+    toRole: "orchestrator",
+    failureType: "architecture_drift",
+    likelyCauses: ["handoff structure did not preserve enough review context"],
+    recoveryOptions: ["tighten templates and validator", "escalate with bounded migration note"],
+    recommendedAction: "escalate",
+    migrationPathNote: "Escalate only with bounded migration: tighten handoff templates and validator now, then revisit broader orchestration only if drift persists.",
+    stopThreshold: "stop after one more contradictory architectural escalation without stronger proof",
+  });
+
+  validateStructuredHandoff(recoveryHandoff.handoff);
+  assert.match(recoveryHandoff.renderedHandoff, /## Migration Path Note/);
 });

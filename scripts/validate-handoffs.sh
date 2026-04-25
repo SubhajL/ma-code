@@ -257,6 +257,7 @@ const buildToWorker = generateHandoff(handoffPolicy, {
 });
 validateStructuredHandoff(buildToWorker.handoff);
 if (!buildToWorker.renderedHandoff.includes("## Worker Assignment")) throw new Error("expected build_to_worker headers");
+if (!buildToWorker.renderedHandoff.includes("## Discovery Summary")) throw new Error("expected build_to_worker discovery summary");
 
 const workerToQuality = generateHandoff(handoffPolicy, {
   handoffType: "worker_to_quality",
@@ -272,6 +273,8 @@ const workerToQuality = generateHandoff(handoffPolicy, {
 });
 validateStructuredHandoff(workerToQuality.handoff);
 if (!workerToQuality.renderedHandoff.includes("## Work Summary")) throw new Error("expected worker_to_quality headers");
+if (!workerToQuality.renderedHandoff.includes("## Scope Boundaries")) throw new Error("expected worker_to_quality scope boundaries");
+if (!workerToQuality.renderedHandoff.includes("## Evidence Expectations")) throw new Error("expected worker_to_quality evidence expectations");
 
 const qualityToReviewer = generateHandoff(handoffPolicy, {
   handoffType: "quality_to_reviewer",
@@ -285,6 +288,7 @@ const qualityToReviewer = generateHandoff(handoffPolicy, {
   questionsForReviewer: ["Are any packet constraints lost in the handoff?"],
 });
 validateStructuredHandoff(qualityToReviewer.handoff);
+if (!qualityToReviewer.renderedHandoff.includes("## Scope Boundaries")) throw new Error("expected quality_to_reviewer scope boundaries");
 
 const qualityToValidator = generateHandoff(handoffPolicy, {
   handoffType: "quality_to_validator",
@@ -293,10 +297,11 @@ const qualityToValidator = generateHandoff(handoffPolicy, {
   toRole: "validator_worker",
   validationScope: ["validate all HARNESS-022 handoff types"],
   expectedProof: ["validator report", "exact block reason if invalid role pair is rejected"],
-  openQuestions: ["Do recovery handoffs preserve stop threshold?"],
-  knownGaps: ["none"],
+  validationQuestions: ["Does the handoff preserve discovery summary, scope boundaries, and wiring checks?"],
+  knownGaps: ["Validator should challenge whether recovery escalation notes are still too generic."],
 });
 validateStructuredHandoff(qualityToValidator.handoff);
+if (!qualityToValidator.renderedHandoff.includes("## Validation Questions")) throw new Error("expected quality_to_validator validation questions");
 
 const recoveryPacket = generateTaskPacket(packetPolicy, teams, routingConfig, {
   sourceGoalId: "harness-022",
@@ -319,9 +324,11 @@ const recovery = generateHandoff(handoffPolicy, {
   likelyCauses: ["missing required handoff section"],
   recoveryOptions: ["retry with corrected input", "escalate if packet is contradictory"],
   recommendedAction: "retry_same_lane",
+  migrationPathNote: "Not applicable; this recovery recommendation stays tactical and does not escalate architecture.",
   stopThreshold: "stop after one repeated contradictory failure",
 });
 validateStructuredHandoff(recovery.handoff);
+if (!recovery.renderedHandoff.includes("## Migration Path Note")) throw new Error("expected recovery migration path note");
 
 let mismatchError = "";
 try {
@@ -343,6 +350,24 @@ if (!(mismatchError.includes("must target reviewer_worker") || mismatchError.inc
   throw new Error(`expected reviewer mismatch error, got ${mismatchError}`);
 }
 
+let missingValidationQuestionsError = "";
+try {
+  generateHandoff(handoffPolicy, {
+    handoffType: "quality_to_validator",
+    sourcePacket: packet,
+    fromRole: "quality_lead",
+    toRole: "validator_worker",
+    validationScope: ["validate all HARNESS-022 handoff types"],
+    expectedProof: ["validator report"],
+    knownGaps: ["Need one explicit risk entry before validator handoff is complete."],
+  });
+} catch (error) {
+  missingValidationQuestionsError = String(error);
+}
+if (!missingValidationQuestionsError.includes("validationQuestions")) {
+  throw new Error(`expected validationQuestions error, got ${missingValidationQuestionsError}`);
+}
+
 console.log(JSON.stringify({
   buildHandoffId: buildToWorker.handoff.handoffId,
   workerHandoffId: workerToQuality.handoff.handoffId,
@@ -350,6 +375,7 @@ console.log(JSON.stringify({
   validatorHandoffId: qualityToValidator.handoff.handoffId,
   recoveryHandoffId: recovery.handoff.handoffId,
   mismatchError,
+  missingValidationQuestionsError,
 }, null, 2));
 EOF
 
@@ -387,13 +413,19 @@ if rules != expected_rules:
 for key, rule in policy['handoff_rules'].items():
     if not rule['required_headers']:
         raise SystemExit(f'{key} must define required headers')
+    if 'required_packet_fields' not in rule:
+        raise SystemExit(f'{key} must define required_packet_fields')
+if '## Validation Questions' not in policy['handoff_rules']['quality_to_validator']['required_headers']:
+    raise SystemExit('quality_to_validator must require Validation Questions header')
+if 'migration_path_note' not in policy['handoff_rules']['recovery_to_orchestrator_or_lead']['required_detail_fields']:
+    raise SystemExit('recovery handoff must require migration_path_note detail field')
 print('handoff-schema-policy-ok')
 PY"
   if bash -lc "$cmd" >"$out" 2>&1; then
     local detail="Handoff schema and policy sanity checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-022 handoff contract\n- handoff policy covers all required role transitions\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-045 handoff-completeness contract\n- handoff policy covers all required role transitions plus stronger packet/detail completeness rules\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
     local detail="Handoff schema and policy sanity checks failed."
     record_result "$name" "FAIL" "$detail"
