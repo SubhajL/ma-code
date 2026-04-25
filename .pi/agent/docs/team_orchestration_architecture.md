@@ -288,15 +288,21 @@ Each packet should include:
 - source goal or job ID
 - assigned role or team
 - task title
+- explicit goal statement
+- explicit non-goals, or a bounded "do not widen scope" default when no custom non-goals were provided
 - scope
 - discovery path or inspected-context summary when planning/research informed the packet
 - cross-model planning note when a second planning pass influenced the packet
+- files to inspect
+- files expected to be modified, or explicit `none` when the packet is inspect-only
 - allowed files or domains
 - disallowed files or domains when relevant
 - acceptance criteria
 - evidence expectations
 - validation expectations
+- expected proof artifacts or command results
 - wiring or registration checks when new runtime components are involved
+- migration-path note when the packet touches an architectural boundary or explicitly says that no migration is needed
 - escalation instructions
 - dependencies
 - model override if needed
@@ -315,7 +321,10 @@ The current repo-local executable packet contract is enforced by:
 The generator validates:
 - assigned role/team alignment
 - presence of scope boundaries via allowed paths or domains
+- explicit goal/non-goal/file-plan/proof fields
 - required acceptance/evidence/escalation sections
+- required migration-path note
+- build-packet modify lists for packets expected to make changes
 - optional model override attachment through executable routing policy when needed
 
 ### Recommended packet template
@@ -333,14 +342,29 @@ The generator validates:
 ## Task
 - Define task update transition checks
 
+## Goal
+- tighten task-state transition enforcement without changing unrelated queue behavior
+
 ## Scope
 - implement only transition logic for task states
+
+## Non-Goals
+- do not redesign task storage
+- do not change queue-runner behavior in this packet
 
 ## Discovery Path
 - Auggie-first if available; otherwise inspect task schema files directly
 
 ## Cross-Model Planning
 - second model not needed for this packet
+
+## Files to Inspect
+- .pi/agent/extensions/till-done.ts
+- .pi/agent/docs/task_schema_semantics.md
+
+## Files to Modify
+- .pi/agent/extensions/till-done.ts
+- .pi/agent/docs/task_schema_semantics.md
 
 ## Allowed Files
 - .pi/agent/extensions/till-done.ts
@@ -364,11 +388,19 @@ The generator validates:
 - validator checks transition behavior
 - run smallest relevant command path before handoff
 
+## Expected Proof
+- focused validator or unit-test output proves illegal done-without-evidence is blocked
+- changed files and known gaps are recorded before handoff
+
 ## Wiring Checks
 - verify the transition logic is actually reached from the task update path
 
+## Migration Path Note
+- not applicable; this packet tightens an existing path in place
+
 ## Escalation Instructions
 - escalate if queue semantics are required to proceed
+- escalate if the file plan or expected proof becomes unclear before mutation
 
 ## Model Override
 - none
@@ -381,12 +413,15 @@ They should not be casual summaries that lose constraints.
 ### Build lead -> worker handoff
 Must include:
 - worker assignment
+- explicit goal and non-goals inside the bounded scope summary
 - scope boundaries
 - discovery path or inspected-context summary when relevant
+- files to inspect and files to modify when known
 - allowed files/domains
 - acceptance criteria
-- evidence expectations
+- evidence expectations and expected proof
 - wiring or registration checks when relevant
+- migration-path note when relevant
 - escalation triggers
 
 ### Worker -> quality lead handoff

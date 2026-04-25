@@ -65,15 +65,21 @@ export interface HandoffPolicy {
 export interface PreservedPacketSummary {
   packetId: string;
   title: string;
+  goal: string;
   scope: string;
+  nonGoals: string[];
   domains: string[];
   discoverySummary: string[];
+  filesToInspect: string[];
+  filesToModify: string[];
   allowedPaths: string[];
   disallowedPaths: string[];
   acceptanceCriteria: string[];
   evidenceExpectations: string[];
   validationExpectations: string[];
+  expectedProof: string[];
   wiringChecks: string[];
+  migrationPathNote: string;
   escalationInstructions: string[];
   modelOverride: string | null;
 }
@@ -312,15 +318,21 @@ function preservePacket(packet: TaskPacket): PreservedPacketSummary {
   return {
     packetId: packet.packetId,
     title: packet.title,
+    goal: packet.goal,
     scope: packet.scope,
+    nonGoals: packet.nonGoals,
     domains: packet.domains,
     discoverySummary: packet.discoverySummary,
+    filesToInspect: packet.filesToInspect,
+    filesToModify: packet.filesToModify,
     allowedPaths: packet.allowedPaths,
     disallowedPaths: packet.disallowedPaths,
     acceptanceCriteria: packet.acceptanceCriteria,
     evidenceExpectations: packet.evidenceExpectations,
     validationExpectations: packet.validationExpectations,
+    expectedProof: packet.expectedProof,
     wiringChecks: packet.wiringChecks,
+    migrationPathNote: packet.migrationPathNote,
     escalationInstructions: packet.escalationInstructions,
     modelOverride: packet.modelOverride,
   };
@@ -431,10 +443,15 @@ export function validateStructuredHandoff(handoff: StructuredHandoff): void {
   if (!handoff.sourceGoalId.trim()) throw new Error("sourceGoalId is required.");
   if (handoff.requiredHeaders.length === 0) throw new Error("requiredHeaders must not be empty.");
   if (!handoff.preservedPacket.packetId.trim()) throw new Error("preservedPacket.packetId is required.");
+  if (!handoff.preservedPacket.goal.trim()) throw new Error("preservedPacket.goal is required.");
   if (!handoff.preservedPacket.scope.trim()) throw new Error("preservedPacket.scope is required.");
+  if (handoff.preservedPacket.nonGoals.length === 0) throw new Error("preserved packet nonGoals are required.");
   if (handoff.preservedPacket.discoverySummary.length === 0) throw new Error("preserved packet discovery summary is required.");
+  if (handoff.preservedPacket.filesToInspect.length === 0) throw new Error("preserved packet filesToInspect are required.");
   if (handoff.preservedPacket.acceptanceCriteria.length === 0) throw new Error("preserved acceptance criteria are required.");
   if (handoff.preservedPacket.evidenceExpectations.length === 0) throw new Error("preserved evidence expectations are required.");
+  if (handoff.preservedPacket.expectedProof.length === 0) throw new Error("preserved expected proof is required.");
+  if (!handoff.preservedPacket.migrationPathNote.trim()) throw new Error("preserved migrationPathNote is required.");
   if (handoff.preservedPacket.escalationInstructions.length === 0) throw new Error("preserved escalation instructions are required.");
 }
 
@@ -447,10 +464,14 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "## Worker Assignment",
         `- role: ${handoff.toRole}`,
         `- packet: ${packet.packetId}`,
+        `- goal: ${packet.goal}`,
         "",
         "## Scope Boundaries",
         `- title: ${packet.title}`,
         `- scope: ${packet.scope}`,
+        `- non-goals:\n${renderList(packet.nonGoals)}`,
+        `- files to inspect:\n${renderList(packet.filesToInspect)}`,
+        `- files to modify:\n${renderList(packet.filesToModify)}`,
         ...packet.allowedPaths.length > 0 ? [renderList(packet.allowedPaths)] : ["- allowed paths: none"],
         ...packet.domains.length > 0 ? [renderList(packet.domains)] : ["- domains: none"],
         `- disallowed paths:\n${renderList(packet.disallowedPaths)}`,
@@ -462,10 +483,10 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         renderList(packet.acceptanceCriteria),
         "",
         "## Evidence Expectations",
-        renderList(packet.evidenceExpectations),
+        renderList([...packet.evidenceExpectations, ...packet.expectedProof.map((line) => `expected proof: ${line}`)]),
         "",
         "## Wiring Checks",
-        renderList(packet.wiringChecks),
+        renderList([...packet.wiringChecks, `migration path note: ${packet.migrationPathNote}`]),
         "",
         "## Escalations",
         renderList(packet.escalationInstructions),

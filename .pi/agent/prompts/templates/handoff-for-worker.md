@@ -1,5 +1,5 @@
 Prepare a build-to-worker handoff.
-Use the executable handoff generator when available and preserve packet scope and evidence expectations.
+Use the executable handoff generator when available and preserve packet goal, non-goals, inspect-vs-modify file plan, scope, expected proof, and evidence expectations.
 
 Return exactly:
 ## Worker Assignment
