@@ -1,0 +1,338 @@
+{
+  "version": 1,
+  "defaults": {
+    "role": {
+      "requiredSubstrings": [
+        "Required output:",
+        "Output contract rules:",
+        "Do not add extra top-level headers."
+      ]
+    },
+    "template": {
+      "requiredSubstrings": [
+        "Return exactly:"
+      ]
+    }
+  },
+  "files": {
+    ".pi/agent/prompts/roles/backend_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Task",
+        "## Changes Made",
+        "## Files Changed",
+        "## Evidence",
+        "## Risks or Follow-ups"
+      ]
+    },
+    ".pi/agent/prompts/roles/build_lead.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Worker Assignments",
+        "## Scope Boundaries",
+        "## Acceptance Criteria",
+        "## Evidence Expectations",
+        "## Wiring Checks",
+        "## Escalations"
+      ]
+    },
+    ".pi/agent/prompts/roles/docs_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Summary",
+        "## Files Touched",
+        "## Validation",
+        "## Open Issues",
+        "## Next Steps"
+      ]
+    },
+    ".pi/agent/prompts/roles/frontend_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Task",
+        "## Changes Made",
+        "## Files Changed",
+        "## Evidence",
+        "## Risks or Follow-ups"
+      ]
+    },
+    ".pi/agent/prompts/roles/infra_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Task",
+        "## Changes Made",
+        "## Files Changed",
+        "## Validation",
+        "## Risks or Follow-ups"
+      ]
+    },
+    ".pi/agent/prompts/roles/orchestrator.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Goal",
+        "## Team Routing",
+        "## Task Packets",
+        "## Risks",
+        "## Completion Decision",
+        "## Next Action"
+      ],
+      "requiredLines": [
+        "Decision: route | blocked | retry | escalate | complete"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
+      ]
+    },
+    ".pi/agent/prompts/roles/planning_lead.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Discovery Path",
+        "## Goal",
+        "## Assumptions",
+        "## Cross-Model Check",
+        "## Plan",
+        "## Files to Modify",
+        "## New Files",
+        "## Acceptance Criteria",
+        "## Wiring Checks",
+        "## Risks",
+        "## Validation Ideas"
+      ]
+    },
+    ".pi/agent/prompts/roles/quality_lead.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Review Scope",
+        "## Validation Scope",
+        "## Evidence Gaps",
+        "## Decision",
+        "## Next Action"
+      ],
+      "requiredLines": [
+        "Decision: send_to_review | send_to_validation | reject | accept | blocked"
+      ]
+    },
+    ".pi/agent/prompts/roles/recovery_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Failure Summary",
+        "## Likely Causes",
+        "## Recovery Options",
+        "## Recommended Action"
+      ],
+      "requiredLines": [
+        "Recommended Action: retry_same_lane | retry_stronger_model | switch_provider | rollback | stop | escalate"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
+      ]
+    },
+    ".pi/agent/prompts/roles/research_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Discovery Path",
+        "## Findings",
+        "## Relevant Files",
+        "## Existing Patterns",
+        "## Open Questions"
+      ]
+    },
+    ".pi/agent/prompts/roles/reviewer_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Summary",
+        "## Findings by Severity",
+        "## Required Fixes",
+        "## Optional Improvements",
+        "## Risk Notes"
+      ],
+      "requiredLines": [
+        "Review Verdict: changes_required | no_required_fixes"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
+      ]
+    },
+    ".pi/agent/prompts/roles/validator_worker.md": {
+      "kind": "role",
+      "exactTopLevelHeaders": [
+        "## Discovery Path",
+        "## Acceptance Criteria Check",
+        "## Evidence Review",
+        "## Validation Result",
+        "## Missing Proof",
+        "## Final Decision"
+      ],
+      "requiredLines": [
+        "Final Decision: pass | fail | blocked"
+      ]
+    },
+    ".pi/agent/prompts/templates/dispatch-build.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Worker Assignments",
+        "## Scope Boundaries",
+        "## Acceptance Criteria",
+        "## Evidence Expectations",
+        "## Escalations"
+      ]
+    },
+    ".pi/agent/prompts/templates/handoff-for-quality.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Work Summary",
+        "## Acceptance Coverage",
+        "## Evidence",
+        "## Validation Commands",
+        "## Wiring Verification",
+        "## Known Gaps",
+        "## Blockers"
+      ]
+    },
+    ".pi/agent/prompts/templates/handoff-for-recovery.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Failure Type",
+        "## Likely Causes",
+        "## Recovery Options",
+        "## Recommended Action",
+        "## Stop Threshold"
+      ]
+    },
+    ".pi/agent/prompts/templates/handoff-for-review.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Review Scope",
+        "## Claimed Completion Status",
+        "## Files To Inspect",
+        "## Risks To Challenge",
+        "## Questions For Reviewer"
+      ]
+    },
+    ".pi/agent/prompts/templates/handoff-for-validation.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Validation Scope",
+        "## Acceptance Criteria",
+        "## Expected Proof",
+        "## Open Questions",
+        "## Risks"
+      ]
+    },
+    ".pi/agent/prompts/templates/handoff-for-worker.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Worker Assignment",
+        "## Scope Boundaries",
+        "## Discovery Summary",
+        "## Acceptance Criteria",
+        "## Evidence Expectations",
+        "## Wiring Checks",
+        "## Escalations"
+      ]
+    },
+    ".pi/agent/prompts/templates/inspect-failure.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Failure Type",
+        "## Observed Signals",
+        "## Most Likely Cause",
+        "## What To Check Next",
+        "## Suggested Immediate Action"
+      ]
+    },
+    ".pi/agent/prompts/templates/plan-feature.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Discovery Path",
+        "## Goal",
+        "## Assumptions",
+        "## Cross-Model Check",
+        "## Plan",
+        "## Files to Modify",
+        "## New Files",
+        "## Acceptance Criteria",
+        "## Wiring Checks",
+        "## Risks",
+        "## Validation Ideas"
+      ]
+    },
+    ".pi/agent/prompts/templates/queue-job.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Job ID",
+        "## Goal",
+        "## Priority",
+        "## Scope",
+        "## Team",
+        "## Budget",
+        "## Stop Conditions",
+        "## Dependencies"
+      ]
+    },
+    ".pi/agent/prompts/templates/recover-run.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Failure Summary",
+        "## Likely Causes",
+        "## Retry Recommendation",
+        "## Provider or Model Change",
+        "## Rollback Recommendation",
+        "## Escalation Recommendation"
+      ]
+    },
+    ".pi/agent/prompts/templates/request-retry.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Failed Step",
+        "## Previous Attempt Summary",
+        "## Why Retry Is Reasonable",
+        "## What Changes On Retry",
+        "## Stop Condition"
+      ]
+    },
+    ".pi/agent/prompts/templates/review-diff.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Summary",
+        "## Findings by Severity",
+        "## Required Fixes",
+        "## Optional Improvements",
+        "## Risk Notes"
+      ],
+      "requiredLines": [
+        "Review Verdict: changes_required | no_required_fixes"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
+      ]
+    },
+    ".pi/agent/prompts/templates/summarize-run.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Goal",
+        "## Final Status",
+        "## Work Completed",
+        "## Work Not Completed",
+        "## Evidence Summary",
+        "## Validation Summary",
+        "## Risks",
+        "## Next Action"
+      ]
+    },
+    ".pi/agent/prompts/templates/validate-task.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Discovery Path",
+        "## Acceptance Criteria Check",
+        "## Evidence Review",
+        "## Validation Result",
+        "## Missing Proof",
+        "## Final Decision"
+      ],
+      "requiredLines": [
+        "Final Decision: pass | fail | blocked"
+      ]
+    }
+  }
+}

@@ -13,6 +13,7 @@ Your job:
 - use executable handoff generation when available before escalating to orchestrator or a lead
 - identify likely causes
 - recommend retry, stronger model, provider switch, rollback, escalation, or stop
+- for architecture or drift-oriented failure analysis, follow `.pi/agent/docs/architecture_review_workflow.md` so tactical fixes stay separate from strategic redesign and any large change includes a bounded migration path
 - prefer tactical fixes before strategic redesign
 - if proposing a large architectural change, include a bounded migration path and explain why it is justified
 - prefer stability over endless retries

@@ -11,6 +11,7 @@
 
 ## Update prompt-entry workflows
 - `.pi/agent/prompts/templates/*.md`
+- `.pi/agent/validation/prompt-contracts.json`
 
 ## Update routing defaults
 - `.pi/agent/models.json`
@@ -82,6 +83,7 @@
 - `scripts/validate-recovery-policy.sh`
 - `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-queue-runner.sh`
+- `scripts/validate-prompt-contracts.sh`
 - `scripts/validate-harness-package.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`

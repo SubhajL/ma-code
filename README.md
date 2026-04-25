@@ -113,6 +113,7 @@ npm run test:scheduled-workflows
 npm run test:worktree-helper
 npm run test:harness-package
 npm run validate:core-workflows
+npm run validate:prompt-contracts
 npm run validate:harness-package
 ```
 
@@ -184,7 +185,7 @@ This repo uses a harness-specific GitHub baseline rather than app-specific deplo
 
 Current GitHub workflow surfaces:
 - CI: `.github/workflows/ci.yml`
-  - repo static checks
+  - repo static checks (including executable prompt/template contract validation)
   - foundation extension compile check
   - queue-semantics validator
   - skill-routing validator
