@@ -559,6 +559,80 @@ Use:
 
 ---
 
+## HARNESS-044 — Tighten task-packet planning completeness
+- **Priority:** P1
+- **Difficulty:** M
+- **Owner:** Pi-Builder
+- **Depends on:** HARNESS-006, HARNESS-032
+
+### Description
+Push more planning quality into task packets so downstream workers do not have to infer the real objective from thin summaries.
+
+### Tasks
+- identify which planning-derived fields should be explicit in packets
+- distinguish files to inspect from files to modify when relevant
+- tighten packet expectations for validation ideas
+- tighten packet expectations for wiring or registration checks
+- add non-goals or scope-boundary expectations when relevant
+- add migration-path note expectations when large architectural changes are proposed
+- update packet docs/policy/validator wiring as needed
+
+### Acceptance criteria
+- task packets preserve enough planning context that workers do not have to guess the real objective
+- packet expectations for validation and wiring checks are more explicit
+- packet docs and validator wiring match the stronger completeness rules
+- packet structure remains bounded and readable rather than turning into free-form essays
+
+---
+
+## HARNESS-045 — Tighten handoff completeness from planning and quality structure
+- **Priority:** P1
+- **Difficulty:** M
+- **Owner:** Pi-Builder
+- **Depends on:** HARNESS-044
+
+### Description
+Ensure handoffs preserve the stronger planning and quality expectations instead of dropping critical context between roles.
+
+### Tasks
+- tighten build-to-worker handoff expectations for discovery summary, scope boundaries, evidence expectations, and wiring checks
+- tighten quality-to-review handoff expectations for risks to challenge and file references
+- tighten quality-to-validation handoff expectations for exact proof path and open validation questions
+- tighten recovery escalation handoffs when migration-path or tactical-vs-strategic distinctions matter
+- update handoff docs/templates/validation wiring as needed
+
+### Acceptance criteria
+- handoffs preserve the critical planning and quality context needed by the next role
+- review and validation handoffs become more actionable and less guess-driven
+- handoff docs/templates stay aligned with executable handoff expectations
+- validator or static wiring proof catches obvious completeness drift
+
+---
+
+## HARNESS-048 — Refine bounded orchestration/runtime flow using stronger structures
+- **Priority:** P1
+- **Difficulty:** L
+- **Owner:** Pi-Builder
+- **Depends on:** HARNESS-044, HARNESS-045, HARNESS-047
+
+### Description
+Use the improved packet, handoff, and review/validation structures to make bounded orchestration more deterministic and easier to operate.
+
+### Tasks
+- identify the smallest meaningful orchestration/runtime refinements enabled by stronger packets and quality outputs
+- improve bounded role transitions where current flow still feels ad hoc
+- improve queue-to-quality or quality-to-next-step linkage where structured outputs now allow it
+- keep changes explicitly bounded and reviewable
+- add focused integration proof for the refined flow
+
+### Acceptance criteria
+- at least one meaningful bounded orchestration flow becomes more deterministic and easier to reason about
+- the refinement uses stronger packet/handoff/review structures rather than bypassing them
+- no hidden daemon or uncontrolled autonomy is introduced
+- integration proof demonstrates the refined bounded behavior
+
+---
+
 # Phase G — Repo isolation
 
 ## HARNESS-023 — Define worktree policy
@@ -730,6 +804,31 @@ Use:
 
 ---
 
+## HARNESS-047 — Normalize reviewer and validator output structure
+- **Priority:** P1
+- **Difficulty:** M
+- **Owner:** Pi-Builder + Validator
+- **Depends on:** HARNESS-043, HARNESS-046
+
+### Description
+Make reviewer and validator outputs more machine-checkable without turning them into unreadable bureaucracy.
+
+### Tasks
+- decide which review fields should become normalized
+- decide which validator fields should become normalized
+- define stable severity expectations for reviewer findings
+- define stable missing-proof and final-decision expectations for validator outputs
+- update relevant role prompts, templates, docs, and light validation checks
+- keep the structure easy for humans to read and easy for future tooling to consume
+
+### Acceptance criteria
+- reviewer outputs have clearer normalized structure for severity, required fixes, and optional improvements
+- validator outputs have clearer normalized structure for proof status, missing proof, and final decision
+- prompts/templates/docs remain aligned
+- validation or static checks can catch obvious drift in the normalized structure
+
+---
+
 # Phase I — Long-running autonomy
 
 ## HARNESS-032 — Implement bounded queue execution
@@ -785,6 +884,37 @@ Use:
 
 ### Acceptance criteria
 - long-running autonomy does not become endless drift
+
+---
+
+## HARNESS-049 — Add expanded safe stop and budget controls
+- **Priority:** P2
+- **Difficulty:** L
+- **Owner:** Pi-Builder
+- **Depends on:** HARNESS-042, HARNESS-048
+
+### Description
+Expand bounded autonomy stop controls carefully so longer-running bounded work becomes more trustworthy without pretending unsupported controls are implemented.
+
+### Tasks
+- identify the next safest structured stop/budget controls to implement
+- prefer controls that can be enforced deterministically from visible runtime state
+- add explicit enforcement for selected new controls
+- keep unsupported controls visibly blocked instead of silently ignored
+- update queue docs/schema/runtime validation as needed
+- add focused negative-path and non-trigger coverage
+
+### Candidate controls
+- max unresolved blockers
+- structured stop-condition enums beyond the current limited set
+- max files changed if it can be measured deterministically
+- stronger failed-run or failure-counter accounting
+
+### Acceptance criteria
+- newly supported controls are actually enforced in runtime behavior
+- unsupported controls remain blocked clearly
+- queue/session validators cover new stop-condition paths and non-trigger behavior
+- docs accurately distinguish supported controls from unsupported ones
 
 ---
 
@@ -875,6 +1005,101 @@ Use:
 
 ---
 
+## HARNESS-042 — Expand multi-step queue/session validation scenarios
+- **Priority:** P0
+- **Difficulty:** M
+- **Owner:** Validator
+- **Depends on:** HARNESS-032, HARNESS-033, HARNESS-038
+
+### Description
+Strengthen regression confidence in bounded queue execution and bounded queue sessions through harder multi-step test scenarios.
+
+### Tasks
+- add queue/session scenarios with multiple finalize/start transitions
+- add blocked and failed visibility scenarios across bounded session runs
+- add paused-queue boundary scenarios for bounded sessions
+- add recovery-action visibility checks in triage summaries
+- add scheduled-workflow-created job scenarios flowing through bounded sessions
+- add edge cases for `maxSteps` and `maxRuntimeSeconds`
+
+### Acceptance criteria
+- queue/session validation covers several meaningful multi-step flows beyond the current baseline
+- regressions in stop reasons, triage summaries, and next-action recommendations are easier to catch
+- validator output clearly shows the stronger scenarios were exercised
+
+---
+
+## HARNESS-043 — Add executable prompt/template contract validation
+- **Priority:** P0
+- **Difficulty:** M
+- **Owner:** Validator
+- **Depends on:** HARNESS-005, HARNESS-006, HARNESS-007, HARNESS-041
+
+### Description
+Move prompt/template proof beyond substring checks toward stronger contract validation for repo-local role and template surfaces.
+
+### Tasks
+- validate required section headers for role prompts
+- validate required section headers for templates
+- validate required decision lines where applicable
+- validate architecture-review workflow references where expected
+- consider prompt conformance linting for exact required top-level structure
+- wire the checks into static validation and CI
+
+### Acceptance criteria
+- a dedicated or clearly structured validation path exists for role/template contract shape
+- failures identify the exact prompt/template that violated contract
+- CI runs the check
+- current repo-local prompt/template inventory passes
+
+---
+
+## HARNESS-046 — Add architecture and drift review artifacts
+- **Priority:** P1
+- **Difficulty:** S
+- **Owner:** Pi-Builder + Docs
+- **Depends on:** HARNESS-043
+
+### Description
+Turn the architecture-review workflow into reusable artifacts so architecture and drift reviews become more consistent and less hand-wavy.
+
+### Tasks
+- add an architecture review request template
+- add a capability/drift assessment template
+- add a migration-path proposal template for larger architectural changes
+- update docs so operators and reviewers know when to use each artifact
+- add static validation for presence and basic wiring when appropriate
+
+### Acceptance criteria
+- architecture and drift review work has concrete reusable artifacts rather than only prose guidance
+- docs clearly point to the new artifacts
+- architecture-review outputs become more repeatable and bounded
+- validation or static wiring proof confirms the artifacts are present
+
+---
+
+## HARNESS-050 — Operator and report polish last
+- **Priority:** P3
+- **Difficulty:** S
+- **Owner:** Pi-Builder + Docs
+- **Depends on:** HARNESS-048, HARNESS-049
+
+### Description
+Improve operator ergonomics and report clarity after core proof, structure, and bounded runtime behavior are stronger.
+
+### Tasks
+- improve CLI summary readability where it helps daily operation
+- improve report formatting and drill-down guidance
+- improve operator-facing wording around review, validation, and bounded autonomy state
+- keep UI work lightweight and subordinate to runtime maturity
+
+### Acceptance criteria
+- operator-facing summaries and reports become easier to scan and use
+- no UI or presentation work outruns runtime maturity
+- docs and operator surfaces remain aligned with actual implemented capability
+
+---
+
 # Phase K — Packaging and docs
 
 ## HARNESS-040 — Convert harness into reusable Pi package
@@ -916,22 +1141,38 @@ Use:
 
 ---
 
+# Backlog sequencing note
+For the next slice of work, prefer this execution order even though items are stored under different phases:
+
+1. HARNESS-042
+2. HARNESS-043
+3. HARNESS-044
+4. HARNESS-045
+5. HARNESS-046
+6. HARNESS-047
+7. HARNESS-048
+8. HARNESS-049
+9. HARNESS-050
+
+Store by phase, execute by dependency order.
+
+---
+
 # Recommended next move
 
-Start with this exact order:
+For the current repo-local harness state, start with this exact order:
 
-1. HARNESS-001
-2. HARNESS-002
-3. HARNESS-003
-4. HARNESS-004
-5. HARNESS-005
-6. HARNESS-006
-7. HARNESS-011
-8. HARNESS-012
-9. HARNESS-013
-10. HARNESS-014
+1. HARNESS-042
+2. HARNESS-043
+3. HARNESS-044
+4. HARNESS-045
+5. HARNESS-046
+6. HARNESS-047
+7. HARNESS-048
+8. HARNESS-049
+9. HARNESS-050
 
-That is the shortest path from “starter pack” to “real system foundation.”
+That is the shortest path from the current bounded harness slice to stronger proof, planning/packet completeness, review structure, bounded orchestration maturity, and later operator polish.
 
 ---
 
