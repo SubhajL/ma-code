@@ -269,7 +269,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-harness-package.sh` for reusable-vs-repo-local package manifest, bootstrap helper, install-template, and fresh-target adoption changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
 - use `./scripts/validate-task-packets.sh` for executable task-packet changes, especially when goal/non-goal clarity, inspect-vs-modify file plans, expected proof, migration-path notes, or escalation instructions were tightened
-- use `./scripts/validate-handoffs.sh` for executable handoff changes
+- use `./scripts/validate-handoffs.sh` for executable handoff changes, especially when discovery summaries, scope boundaries, evidence expectations, wiring checks, review risks, validation questions, expected proof, or recovery migration-path notes were tightened
 - use `./scripts/validate-same-runtime-bridge.sh` for same-runtime probe bridge changes
 
 ## Minimum completion evidence for this harness slice

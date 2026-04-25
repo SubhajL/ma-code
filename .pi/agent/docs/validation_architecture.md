@@ -298,6 +298,7 @@ This script is responsible for the bounded regression path for:
 - machine-readable handoff policy in `.pi/agent/handoffs/handoff-policy.json`
 - handoff schema in `.pi/agent/state/schemas/handoff.schema.json`
 - deterministic multi-step handoff generation for the supported role transitions
+- stronger handoff completeness for discovery summary, scope boundaries, evidence expectations, wiring checks, review risks, exact validation questions / expected proof, and migration-path mention during escalated recovery recommendations
 - optional bounded live tool probe for `generate_handoff`
 
 It should be used when changes affect executable handoff generation or its policy/schema rules.

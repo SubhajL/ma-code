@@ -100,10 +100,12 @@
         "validationScope",
         "expectedProof",
         "openQuestions",
+        "validationQuestions",
         "failureType",
         "likelyCauses",
         "recoveryOptions",
         "recommendedAction",
+        "migrationPathNote",
         "stopThreshold"
       ],
       "properties": {
@@ -123,10 +125,12 @@
         "validationScope": { "type": "array", "items": { "type": "string" } },
         "expectedProof": { "type": "array", "items": { "type": "string" } },
         "openQuestions": { "type": "array", "items": { "type": "string" } },
+        "validationQuestions": { "type": "array", "items": { "type": "string" } },
         "failureType": { "type": ["string", "null"] },
         "likelyCauses": { "type": "array", "items": { "type": "string" } },
         "recoveryOptions": { "type": "array", "items": { "type": "string" } },
         "recommendedAction": { "type": ["string", "null"] },
+        "migrationPathNote": { "type": ["string", "null"] },
         "stopThreshold": { "type": ["string", "null"] }
       }
     }

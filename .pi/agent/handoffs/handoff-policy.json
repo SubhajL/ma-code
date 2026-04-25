@@ -23,16 +23,28 @@
         "## Wiring Checks",
         "## Escalations"
       ],
-      "required_detail_fields": []
+      "required_detail_fields": [],
+      "required_packet_fields": [
+        "goal",
+        "scope_boundaries",
+        "discovery_summary",
+        "evidence_expectations",
+        "wiring_checks",
+        "expected_proof"
+      ]
     },
     "worker_to_quality": {
       "from_roles": ["research_worker", "frontend_worker", "backend_worker", "infra_worker", "docs_worker"],
       "to_roles": ["quality_lead"],
       "required_headers": [
         "## Work Summary",
+        "## Discovery Summary",
+        "## Scope Boundaries",
         "## Acceptance Coverage",
         "## Evidence",
+        "## Evidence Expectations",
         "## Validation Commands",
+        "## Wiring Checks",
         "## Wiring Verification",
         "## Known Gaps",
         "## Blockers"
@@ -40,7 +52,15 @@
       "required_detail_fields": [
         "changed_files",
         "acceptance_coverage",
-        "evidence"
+        "evidence",
+        "commands_run",
+        "wiring_verification"
+      ],
+      "required_packet_fields": [
+        "discovery_summary",
+        "scope_boundaries",
+        "evidence_expectations",
+        "expected_proof"
       ]
     },
     "quality_to_reviewer": {
@@ -49,6 +69,7 @@
       "required_headers": [
         "## Review Scope",
         "## Claimed Completion Status",
+        "## Scope Boundaries",
         "## Files To Inspect",
         "## Risks To Challenge",
         "## Questions For Reviewer"
@@ -59,6 +80,10 @@
         "files_to_inspect",
         "risks_to_challenge",
         "questions_for_reviewer"
+      ],
+      "required_packet_fields": [
+        "scope_boundaries",
+        "discovery_summary"
       ]
     },
     "quality_to_validator": {
@@ -66,15 +91,22 @@
       "to_roles": ["validator_worker"],
       "required_headers": [
         "## Validation Scope",
+        "## Scope Boundaries",
         "## Acceptance Criteria",
         "## Expected Proof",
-        "## Open Questions",
+        "## Validation Questions",
+        "## Wiring Checks",
         "## Risks"
       ],
       "required_detail_fields": [
         "validation_scope",
         "expected_proof",
-        "open_questions"
+        "validation_questions",
+        "known_gaps"
+      ],
+      "required_packet_fields": [
+        "scope_boundaries",
+        "expected_proof"
       ]
     },
     "recovery_to_orchestrator_or_lead": {
@@ -85,6 +117,7 @@
         "## Likely Causes",
         "## Recovery Options",
         "## Recommended Action",
+        "## Migration Path Note",
         "## Stop Threshold"
       ],
       "required_detail_fields": [
@@ -92,7 +125,11 @@
         "likely_causes",
         "recovery_options",
         "recommended_action",
+        "migration_path_note",
         "stop_threshold"
+      ],
+      "required_packet_fields": [
+        "scope_boundaries"
       ]
     }
   }

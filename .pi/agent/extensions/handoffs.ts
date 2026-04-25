@@ -54,6 +54,7 @@ export interface HandoffRule {
   to_roles: HarnessRole[];
   required_headers: string[];
   required_detail_fields: string[];
+  required_packet_fields: string[];
 }
 
 export interface HandoffPolicy {
@@ -101,10 +102,12 @@ export interface HandoffDetails {
   validationScope: string[];
   expectedProof: string[];
   openQuestions: string[];
+  validationQuestions: string[];
   failureType: string | null;
   likelyCauses: string[];
   recoveryOptions: string[];
   recommendedAction: RecoveryAction | null;
+  migrationPathNote: string | null;
   stopThreshold: string | null;
 }
 
@@ -142,10 +145,12 @@ export interface GenerateHandoffInput {
   validationScope?: string[];
   expectedProof?: string[];
   openQuestions?: string[];
+  validationQuestions?: string[];
   failureType?: string;
   likelyCauses?: string[];
   recoveryOptions?: string[];
   recommendedAction?: RecoveryAction;
+  migrationPathNote?: string;
   stopThreshold?: string;
 }
 
@@ -185,10 +190,12 @@ const HandoffInputSchema = Type.Object({
   validationScope: Type.Optional(Type.Array(Type.String())),
   expectedProof: Type.Optional(Type.Array(Type.String())),
   openQuestions: Type.Optional(Type.Array(Type.String())),
+  validationQuestions: Type.Optional(Type.Array(Type.String())),
   failureType: Type.Optional(Type.String()),
   likelyCauses: Type.Optional(Type.Array(Type.String())),
   recoveryOptions: Type.Optional(Type.Array(Type.String())),
   recommendedAction: Type.Optional(StringEnum(RECOVERY_ACTIONS)),
+  migrationPathNote: Type.Optional(Type.String()),
   stopThreshold: Type.Optional(Type.String()),
 });
 
@@ -259,6 +266,7 @@ export function parseHandoffPolicy(raw: unknown): HandoffPolicy {
     }
     const required_headers = uniqueStrings(parseStringArray(ruleRaw.required_headers));
     const required_detail_fields = uniqueStrings(parseStringArray(ruleRaw.required_detail_fields));
+    const required_packet_fields = uniqueStrings(parseStringArray(ruleRaw.required_packet_fields));
     if (required_headers.length === 0) {
       throw new Error(`Handoff rule ${handoffType} must include required headers.`);
     }
@@ -267,6 +275,7 @@ export function parseHandoffPolicy(raw: unknown): HandoffPolicy {
       to_roles: parseRoleArray(ruleRaw.to_roles, `${handoffType}.to_roles`),
       required_headers,
       required_detail_fields,
+      required_packet_fields,
     };
   }
 
@@ -338,7 +347,8 @@ function preservePacket(packet: TaskPacket): PreservedPacketSummary {
   };
 }
 
-function buildDetails(input: GenerateHandoffInput, noneToken: string): HandoffDetails {
+function buildDetails(input: GenerateHandoffInput, packet: TaskPacket, noneToken: string): HandoffDetails {
+  const validationQuestions = uniqueStrings(input.validationQuestions ?? input.openQuestions ?? []);
   return {
     changedFiles: nonEmptyOrNone(uniqueStrings(input.changedFiles ?? []), noneToken),
     unchangedInspected: nonEmptyOrNone(uniqueStrings(input.unchangedInspected ?? []), noneToken),
@@ -355,11 +365,13 @@ function buildDetails(input: GenerateHandoffInput, noneToken: string): HandoffDe
     questionsForReviewer: nonEmptyOrNone(uniqueStrings(input.questionsForReviewer ?? []), noneToken),
     validationScope: nonEmptyOrNone(uniqueStrings(input.validationScope ?? []), noneToken),
     expectedProof: nonEmptyOrNone(uniqueStrings(input.expectedProof ?? []), noneToken),
-    openQuestions: nonEmptyOrNone(uniqueStrings(input.openQuestions ?? []), noneToken),
+    openQuestions: nonEmptyOrNone(uniqueStrings(input.openQuestions ?? validationQuestions), noneToken),
+    validationQuestions: nonEmptyOrNone(validationQuestions, noneToken),
     failureType: input.failureType?.trim() || null,
     likelyCauses: nonEmptyOrNone(uniqueStrings(input.likelyCauses ?? []), noneToken),
     recoveryOptions: nonEmptyOrNone(uniqueStrings(input.recoveryOptions ?? []), noneToken),
     recommendedAction: input.recommendedAction ?? null,
+    migrationPathNote: (input.migrationPathNote ?? packet.migrationPathNote).trim() || null,
     stopThreshold: input.stopThreshold?.trim() || null,
   };
 }
@@ -409,30 +421,84 @@ function requireNonNone(lines: string[], fieldName: string, noneToken: string): 
   }
 }
 
-function validateRequiredDetails(handoffType: HandoffType, details: HandoffDetails, noneToken: string): void {
-  if (handoffType === "worker_to_quality") {
-    requireNonNone(details.changedFiles, "changedFiles", noneToken);
-    requireNonNone(details.acceptanceCoverage, "acceptanceCoverage", noneToken);
-    requireNonNone(details.evidence, "evidence", noneToken);
+function validateRequiredDetails(handoffType: HandoffType, rule: HandoffRule, details: HandoffDetails, noneToken: string): void {
+  const detailChecks: Record<string, () => void> = {
+    changed_files: () => requireNonNone(details.changedFiles, "changedFiles", noneToken),
+    acceptance_coverage: () => requireNonNone(details.acceptanceCoverage, "acceptanceCoverage", noneToken),
+    evidence: () => requireNonNone(details.evidence, "evidence", noneToken),
+    commands_run: () => requireNonNone(details.commandsRun, "commandsRun", noneToken),
+    wiring_verification: () => requireNonNone(details.wiringVerification, "wiringVerification", noneToken),
+    review_scope: () => requireNonNone(details.reviewScope, "reviewScope", noneToken),
+    claimed_completion_status: () => {
+      if (!details.claimedCompletionStatus) throw new Error("claimedCompletionStatus is required for this handoff type.");
+    },
+    files_to_inspect: () => requireNonNone(details.filesToInspect, "filesToInspect", noneToken),
+    risks_to_challenge: () => requireNonNone(details.risksToChallenge, "risksToChallenge", noneToken),
+    questions_for_reviewer: () => requireNonNone(details.questionsForReviewer, "questionsForReviewer", noneToken),
+    validation_scope: () => requireNonNone(details.validationScope, "validationScope", noneToken),
+    expected_proof: () => requireNonNone(details.expectedProof, "expectedProof", noneToken),
+    open_questions: () => requireNonNone(details.openQuestions, "openQuestions", noneToken),
+    validation_questions: () => requireNonNone(details.validationQuestions, "validationQuestions", noneToken),
+    known_gaps: () => requireNonNone(details.knownGaps, "knownGaps", noneToken),
+    failure_type: () => {
+      if (!details.failureType) throw new Error("failureType is required for this handoff type.");
+    },
+    likely_causes: () => requireNonNone(details.likelyCauses, "likelyCauses", noneToken),
+    recovery_options: () => requireNonNone(details.recoveryOptions, "recoveryOptions", noneToken),
+    recommended_action: () => {
+      if (!details.recommendedAction) throw new Error("recommendedAction is required for this handoff type.");
+    },
+    migration_path_note: () => {
+      if (!details.migrationPathNote) throw new Error("migrationPathNote is required for this handoff type.");
+    },
+    stop_threshold: () => {
+      if (!details.stopThreshold) throw new Error("stopThreshold is required for this handoff type.");
+    },
+  };
+
+  for (const field of rule.required_detail_fields) {
+    const check = detailChecks[field];
+    if (!check) {
+      throw new Error(`Unsupported required detail field in handoff policy: ${field}`);
+    }
+    check();
   }
-  if (handoffType === "quality_to_reviewer") {
-    requireNonNone(details.reviewScope, "reviewScope", noneToken);
-    if (!details.claimedCompletionStatus) throw new Error("claimedCompletionStatus is required for quality_to_reviewer.");
-    requireNonNone(details.filesToInspect, "filesToInspect", noneToken);
-    requireNonNone(details.risksToChallenge, "risksToChallenge", noneToken);
-    requireNonNone(details.questionsForReviewer, "questionsForReviewer", noneToken);
+
+  if (handoffType === "recovery_to_orchestrator_or_lead" && details.recommendedAction === "escalate" && (!details.migrationPathNote || details.migrationPathNote.toLowerCase() === noneToken)) {
+    throw new Error("migrationPathNote is required when recovery recommends escalation.");
   }
-  if (handoffType === "quality_to_validator") {
-    requireNonNone(details.validationScope, "validationScope", noneToken);
-    requireNonNone(details.expectedProof, "expectedProof", noneToken);
-    requireNonNone(details.openQuestions, "openQuestions", noneToken);
-  }
-  if (handoffType === "recovery_to_orchestrator_or_lead") {
-    if (!details.failureType) throw new Error("failureType is required for recovery handoffs.");
-    requireNonNone(details.likelyCauses, "likelyCauses", noneToken);
-    requireNonNone(details.recoveryOptions, "recoveryOptions", noneToken);
-    if (!details.recommendedAction) throw new Error("recommendedAction is required for recovery handoffs.");
-    if (!details.stopThreshold) throw new Error("stopThreshold is required for recovery handoffs.");
+}
+
+function validateRequiredPacketFields(rule: HandoffRule, packet: PreservedPacketSummary): void {
+  const packetChecks: Record<string, () => void> = {
+    goal: () => {
+      if (!packet.goal.trim()) throw new Error("preserved packet goal is required for this handoff type.");
+    },
+    discovery_summary: () => {
+      if (packet.discoverySummary.length === 0) throw new Error("preserved packet discovery summary is required for this handoff type.");
+    },
+    scope_boundaries: () => {
+      if (!packet.scope.trim()) throw new Error("preserved packet scope is required for this handoff type.");
+      if (packet.nonGoals.length === 0) throw new Error("preserved packet nonGoals are required for this handoff type.");
+      if (packet.filesToInspect.length === 0) throw new Error("preserved packet filesToInspect are required for this handoff type.");
+    },
+    evidence_expectations: () => {
+      if (packet.evidenceExpectations.length === 0) throw new Error("preserved packet evidenceExpectations are required for this handoff type.");
+    },
+    wiring_checks: () => {
+      if (packet.wiringChecks.length === 0) throw new Error("preserved packet wiringChecks are required for this handoff type.");
+    },
+    expected_proof: () => {
+      if (packet.expectedProof.length === 0) throw new Error("preserved packet expectedProof is required for this handoff type.");
+    },
+  };
+
+  for (const field of rule.required_packet_fields) {
+    const check = packetChecks[field];
+    if (!check) {
+      throw new Error(`Unsupported required packet field in handoff policy: ${field}`);
+    }
+    check();
   }
 }
 
@@ -453,6 +519,8 @@ export function validateStructuredHandoff(handoff: StructuredHandoff): void {
   if (handoff.preservedPacket.expectedProof.length === 0) throw new Error("preserved expected proof is required.");
   if (!handoff.preservedPacket.migrationPathNote.trim()) throw new Error("preserved migrationPathNote is required.");
   if (handoff.preservedPacket.escalationInstructions.length === 0) throw new Error("preserved escalation instructions are required.");
+  if (handoff.details.validationQuestions.length === 0) throw new Error("handoff details validationQuestions must be present.");
+  if (handoff.details.openQuestions.length === 0) throw new Error("handoff details openQuestions must be present.");
 }
 
 function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
@@ -498,14 +566,30 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         `- changed files:\n${renderList(d.changedFiles)}`,
         `- unchanged but inspected:\n${renderList(d.unchangedInspected)}`,
         "",
+        "## Discovery Summary",
+        renderList(packet.discoverySummary),
+        "",
+        "## Scope Boundaries",
+        `- goal: ${packet.goal}`,
+        `- scope: ${packet.scope}`,
+        `- non-goals:\n${renderList(packet.nonGoals)}`,
+        `- files to inspect:\n${renderList(packet.filesToInspect)}`,
+        `- files to modify:\n${renderList(packet.filesToModify)}`,
+        "",
         "## Acceptance Coverage",
         renderList(d.acceptanceCoverage),
         "",
         "## Evidence",
         renderList(d.evidence),
         "",
+        "## Evidence Expectations",
+        renderList([...packet.evidenceExpectations, ...packet.expectedProof.map((line) => `expected proof: ${line}`)]),
+        "",
         "## Validation Commands",
         renderList(d.commandsRun),
+        "",
+        "## Wiring Checks",
+        renderList(packet.wiringChecks),
         "",
         "## Wiring Verification",
         renderList(d.wiringVerification),
@@ -524,6 +608,13 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "## Claimed Completion Status",
         `- ${d.claimedCompletionStatus ?? noneToken}`,
         "",
+        "## Scope Boundaries",
+        `- goal: ${packet.goal}`,
+        `- scope: ${packet.scope}`,
+        `- non-goals:\n${renderList(packet.nonGoals)}`,
+        `- files to inspect:\n${renderList(packet.filesToInspect)}`,
+        `- files to modify:\n${renderList(packet.filesToModify)}`,
+        "",
         "## Files To Inspect",
         renderList(d.filesToInspect),
         "",
@@ -538,14 +629,23 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "## Validation Scope",
         renderList(d.validationScope),
         "",
+        "## Scope Boundaries",
+        `- goal: ${packet.goal}`,
+        `- scope: ${packet.scope}`,
+        `- files to inspect:\n${renderList(packet.filesToInspect)}`,
+        `- files to modify:\n${renderList(packet.filesToModify)}`,
+        "",
         "## Acceptance Criteria",
         renderList(packet.acceptanceCriteria),
         "",
         "## Expected Proof",
         renderList(d.expectedProof),
         "",
-        "## Open Questions",
-        renderList(d.openQuestions),
+        "## Validation Questions",
+        renderList(d.validationQuestions),
+        "",
+        "## Wiring Checks",
+        renderList([...packet.wiringChecks, `migration path note: ${packet.migrationPathNote}`]),
         "",
         "## Risks",
         renderList(d.knownGaps),
@@ -563,6 +663,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Recommended Action",
         `- ${d.recommendedAction ?? noneToken}`,
+        "",
+        "## Migration Path Note",
+        `- ${d.migrationPathNote ?? noneToken}`,
         "",
         "## Stop Threshold",
         `- ${d.stopThreshold ?? noneToken}`,
@@ -584,8 +687,8 @@ export function generateHandoff(policy: HandoffPolicy, input: GenerateHandoffInp
   }
 
   validateRolePair(input.handoffType, input.fromRole, input.toRole, input.sourcePacket);
-  const details = buildDetails(input, policy.defaults.default_none_token);
-  validateRequiredDetails(input.handoffType, details, policy.defaults.default_none_token);
+  const details = buildDetails(input, input.sourcePacket, policy.defaults.default_none_token);
+  validateRequiredDetails(input.handoffType, rule, details, policy.defaults.default_none_token);
 
   const handoff: StructuredHandoff = {
     version: 1,
@@ -605,6 +708,7 @@ export function generateHandoff(policy: HandoffPolicy, input: GenerateHandoffInp
     details,
   };
 
+  validateRequiredPacketFields(rule, handoff.preservedPacket);
   validateStructuredHandoff(handoff);
 
   const policyNotes = [...policy.notes];
