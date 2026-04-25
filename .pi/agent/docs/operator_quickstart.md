@@ -9,6 +9,7 @@ For the full operator documentation set, start at:
 ## What this quickstart is
 Current operator surface is intentionally lightweight:
 - a read-only CLI status view
+- an explicit bounded queue-session CLI for multi-step queue advancement without a hidden daemon
 - a file-backed scheduled workflow helper for explicit due-work inspection/materialization
 - package-script entrypoints for common validators
 - runtime queue control tools for live sessions
@@ -43,6 +44,17 @@ This status surface summarizes:
 - blocked and failed items
 - recent job/task IDs
 
+Run a bounded queue session when one-step queue advancement is too manual:
+```bash
+npm run harness:queue-session -- --max-steps 3
+npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
+```
+
+This session helper:
+- advances the queue only under explicit step/runtime limits
+- stops once it reaches the next waiting point, idle state, pause, blocked state, or configured limit
+- does not create a hidden recurring daemon
+
 Inspect scheduled workflows separately:
 ```bash
 npm run harness:schedules
@@ -65,9 +77,10 @@ npm run validate:core-workflows
 npm run validate:tuning-data
 ```
 
-Focused integration proof for the operator/schedule surfaces:
+Focused integration proof for the operator/queue/schedule surfaces:
 ```bash
 npm run test:operator-surface
+npm run test:queue-session
 npm run test:scheduled-workflows
 ```
 
@@ -78,11 +91,12 @@ When operating the queue in-session, use the runtime tools:
 - `resume_queue`
 - `stop_queue_safely`
 - `run_next_queue_job`
+- `run_bounded_queue_session`
 
 Recommended order:
 1. inspect
 2. pause/resume/stop if needed
-3. run at most one bounded queue step
+3. use `run_next_queue_job` for one explicit step or `run_bounded_queue_session` for a bounded multi-step session
 4. inspect again
 5. review evidence before claiming completion
 

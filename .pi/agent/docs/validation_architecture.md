@@ -91,6 +91,7 @@ Current structure:
 - the runbook is the manual and debugging path
 - the operator workflow explains when validation should be run and how evidence should be preserved
 - the lightweight operator status CLI provides a read-only queue/task snapshot before and after validation runs
+- the bounded queue-session CLI provides explicit multi-step queue advancement proof without implying a hidden daemon
 - the scheduled workflow helper CLI provides repeatable due-work inspection and explicit queue materialization without implying a daemon
 - the bounded worktree helper CLI provides repeatable branch/worktree creation, status inspection, review-prep, and cleanup commands so humans and agents do not improvise git worktree mechanics
 
@@ -199,6 +200,9 @@ It should be used after routing/core-workflow/queue-runner/scheduled-workflow ch
 ### Operator surface status proof
 Current lightweight operator status script:
 - `scripts/harness-operator-status.ts`
+
+Current bounded queue-session script:
+- `scripts/harness-queue-session.ts`
 
 This script is responsible for the bounded operator-facing read path for:
 - rendering a human-readable queue/task status snapshot
@@ -449,7 +453,7 @@ Validation reports are therefore one part of completion evidence, not a substitu
 ## Current architecture boundary
 The current architecture validates the implemented Phase A/B foundation plus bounded Phase H-style completion-gate behavior and the executable routing, activation, packet-generation, handoff-generation, recovery-policy, recovery-runtime-decision, queue-runner, and same-runtime-probe slices that were attached later.
 It does not yet provide dedicated validators for later capabilities such as:
-- a free-running queue daemon or scheduled multi-step autonomy loop beyond `run_next_queue_job`
+- a free-running queue daemon or scheduled multi-step autonomy loop beyond the explicit `run_next_queue_job` / `run_bounded_queue_session` surfaces
 - full team dispatch and orchestration runtime beyond deterministic activation, packet generation, handoff generation, bounded recovery-policy assessment, bounded recovery-runtime decisions, queue start/finalize, and same-runtime probes
 - UI widgets or TUI-specific behaviors
 - long-running autonomy or recovery loops beyond the current slice

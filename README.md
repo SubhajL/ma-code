@@ -45,7 +45,7 @@ Implemented here:
 - executable task-packet generator, packet policy, and packet schema
 - executable handoff generator, handoff policy, and handoff schema
 - executable recovery policy and runtime decision surfaces for bounded retry/rollback/stop recommendations before queue automation
-- bounded single-runner queue execution via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts` (`run_queue_once` remains as a compatibility alias)
+- bounded queue execution via `run_next_queue_job` plus explicit multi-step sessions via `run_bounded_queue_session` in `.pi/agent/extensions/queue-runner.ts` (`run_queue_once` remains as a compatibility alias)
 - file-backed scheduled workflow definitions plus explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
 - file-backed package/bootstrap scaffolding via `.pi/agent/package/harness-package.json` and `scripts/harness-package.ts`
 - same-runtime probe bridge for shared model/account-path child sessions
@@ -100,17 +100,26 @@ Direct repo-root operator/package ergonomics:
 ```bash
 npm install --no-package-lock
 npm run harness:status
+npm run harness:queue-session -- --max-steps 3
 npm run harness:schedules
 npm run harness:package
 npm run harness:worktree -- status
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
+npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
 npm run test:harness-package
 npm run validate:core-workflows
 npm run validate:harness-package
+```
+
+Bounded queue-session examples:
+```bash
+npm run harness:queue-session -- --max-steps 3
+npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
+node --import tsx scripts/harness-queue-session.ts --max-steps 2 --recent 3
 ```
 
 Bounded scheduled workflow examples:

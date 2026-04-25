@@ -67,6 +67,7 @@
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/harness-operator-status.ts`
+- `scripts/harness-queue-session.ts`
 - `scripts/harness-package.ts`
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
