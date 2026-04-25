@@ -15,13 +15,27 @@
       "No additional discovery summary was provided; inspect the allowed paths and referenced docs before mutation."
     ],
     "cross_model_planning_note": "No second-model planning note was provided.",
+    "non_goals": [
+      "Do not widen scope beyond the stated goal, scope boundaries, allowed paths, and acceptance criteria."
+    ],
+    "files_to_inspect": [
+      "Inspect the allowed paths, referenced docs, and adjacent wiring before mutation."
+    ],
+    "expected_proof": [
+      "Name the exact validation command, report path, or direct inspection proof expected before handoff.",
+      "Make clear what output would count as sufficient local proof for this packet."
+    ],
+    "migration_path_note": "Not applicable; no architectural migration is proposed in this packet.",
     "evidence_expectations": [
       "List changed files.",
       "Record the smallest relevant validation or test output.",
       "Note unresolved risks or known gaps explicitly."
     ],
     "escalation_instructions": [
-      "Escalate if the packet objective is unclear.",
+      "Escalate if the packet objective or non-goals are unclear.",
+      "Escalate if the inspect-vs-modify file plan is unclear or insufficiently bounded.",
+      "Escalate if wiring or migration-path expectations are missing for architectural/runtime changes.",
+      "Escalate if required proof cannot be produced with bounded local validation.",
       "Escalate if file/domain boundaries would overlap with another worker.",
       "Escalate if evidence is weak or contradictory.",
       "Escalate if provider/model behavior becomes unreliable."
@@ -30,19 +44,23 @@
   "team_validation_expectations": {
     "planning": [
       "Record inspected files and the discovery path used.",
-      "Keep scope bounded and avoid hidden assumptions."
+      "Keep scope bounded and avoid hidden assumptions.",
+      "Call out missing non-goals, file plans, or migration-path requirements before implementation starts."
     ],
     "build": [
       "Run the smallest relevant local validation before handoff.",
-      "Prefer cheap/local evidence before live provider-backed proof."
+      "Prefer cheap/local evidence before live provider-backed proof.",
+      "Name the expected proof artifact or command that should confirm the packet is complete."
     ],
     "quality": [
       "Check acceptance criteria against actual evidence.",
-      "Do not trust self-reports without proof."
+      "Do not trust self-reports without proof.",
+      "Confirm the packet's expected proof and migration-path note still match the implemented scope."
     ],
     "recovery": [
       "State failure type and likely cause.",
-      "Recommend retry, reroute, rollback, stop, or escalate explicitly."
+      "Recommend retry, reroute, rollback, stop, or escalate explicitly.",
+      "Call out whether packet incompleteness, missing proof, or missing migration planning contributed to the failure."
     ]
   },
   "team_wiring_checks": {

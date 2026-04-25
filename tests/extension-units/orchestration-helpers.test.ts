@@ -106,11 +106,17 @@ test("task-packets generates a valid packet from real policies", async () => {
     assignedTeam: "build",
     assignedRole: "backend_worker",
     title: "Add extension unit tests",
+    goal: "Prove task packets keep planning-completeness details explicit.",
     scope: "tests only under tests/extension-units",
+    nonGoals: ["Do not change runtime routing behavior."],
     workType: "implementation",
     domains: ["backend"],
+    filesToInspect: ["tests/extension-units/orchestration-helpers.test.ts", ".pi/agent/extensions/task-packets.ts"],
+    filesToModify: ["tests/extension-units/orchestration-helpers.test.ts"],
     allowedPaths: ["tests/extension-units", "scripts"],
     acceptanceCriteria: ["Unit tests exist and pass"],
+    expectedProof: ["Targeted extension unit test output shows PASS."],
+    migrationPathNote: "Not applicable; tighten the existing task-packet contract in place.",
     dependencies: [],
     routeReason: "budget_pressure",
     budgetMode: "conserve",
@@ -118,8 +124,42 @@ test("task-packets generates a valid packet from real policies", async () => {
 
   validateTaskPacketShape(generated.packet);
   assert.equal(generated.packet.assignedRole, "backend_worker");
+  assert.equal(generated.packet.goal, "Prove task packets keep planning-completeness details explicit.");
+  assert.deepEqual(generated.packet.filesToModify, ["tests/extension-units/orchestration-helpers.test.ts"]);
   assert.equal(generated.packet.routing.selectedModelId, "openai-codex/gpt-5.4-mini");
   assert.match(generated.packet.packetId, /^packet-backend-worker-harness-037-/);
+  assert.match(generated.renderedPacket, /## Files to Inspect/);
+});
+
+test("task-packets default planning-completeness fields remain explicit for bounded build work", async () => {
+  const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
+  const teams = {
+    planning: parseTeamDefinition(await readFixture(".pi/agent/teams/planning.yaml"), "planning"),
+    build: parseTeamDefinition(await readFixture(".pi/agent/teams/build.yaml"), "build"),
+    quality: parseTeamDefinition(await readFixture(".pi/agent/teams/quality.yaml"), "quality"),
+    recovery: parseTeamDefinition(await readFixture(".pi/agent/teams/recovery.yaml"), "recovery"),
+  };
+
+  const generated = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "harness-044",
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    title: "Tighten task packet defaults",
+    scope: "Only change task-packet policy and generator surfaces.",
+    workType: "implementation",
+    domains: ["backend"],
+    allowedPaths: [".pi/agent/extensions/task-packets.ts", ".pi/agent/packets/packet-policy.json"],
+    acceptanceCriteria: ["packet defaults remain explicit and bounded"],
+  });
+
+  validateTaskPacketShape(generated.packet);
+  assert.equal(generated.packet.goal, "Tighten task packet defaults");
+  assert.ok(generated.packet.nonGoals.length >= 1);
+  assert.deepEqual(generated.packet.filesToInspect, [".pi/agent/extensions/task-packets.ts", ".pi/agent/packets/packet-policy.json"]);
+  assert.deepEqual(generated.packet.filesToModify, [".pi/agent/extensions/task-packets.ts", ".pi/agent/packets/packet-policy.json"]);
+  assert.ok(generated.packet.expectedProof.length >= 1);
+  assert.match(generated.packet.migrationPathNote, /Not applicable/);
 });
 
 test("handoffs preserve packet structure for worker-to-quality flow", async () => {

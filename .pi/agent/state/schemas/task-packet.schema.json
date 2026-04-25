@@ -9,17 +9,23 @@
     "assignedTeam",
     "assignedRole",
     "title",
+    "goal",
     "scope",
+    "nonGoals",
     "workType",
     "domains",
     "discoverySummary",
     "crossModelPlanningNote",
+    "filesToInspect",
+    "filesToModify",
     "allowedPaths",
     "disallowedPaths",
     "acceptanceCriteria",
     "evidenceExpectations",
     "validationExpectations",
+    "expectedProof",
     "wiringChecks",
+    "migrationPathNote",
     "escalationInstructions",
     "dependencies",
     "modelOverride",
@@ -91,8 +97,18 @@
     "title": {
       "type": "string"
     },
+    "goal": {
+      "type": "string"
+    },
     "scope": {
       "type": "string"
+    },
+    "nonGoals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
     },
     "workType": {
       "type": "string",
@@ -126,6 +142,19 @@
     },
     "crossModelPlanningNote": {
       "type": "string"
+    },
+    "filesToInspect": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "filesToModify": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "allowedPaths": {
       "type": "array",
@@ -161,11 +190,21 @@
       },
       "minItems": 1
     },
+    "expectedProof": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
     "wiringChecks": {
       "type": "array",
       "items": {
         "type": "string"
       }
+    },
+    "migrationPathNote": {
+      "type": "string"
     },
     "escalationInstructions": {
       "type": "array",

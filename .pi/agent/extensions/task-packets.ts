@@ -29,6 +29,10 @@ export interface PacketPolicyDefaults {
   disallowed_paths: string[];
   discovery_summary: string[];
   cross_model_planning_note: string;
+  non_goals: string[];
+  files_to_inspect: string[];
+  expected_proof: string[];
+  migration_path_note: string;
   evidence_expectations: string[];
   escalation_instructions: string[];
 }
@@ -63,17 +67,23 @@ export interface TaskPacket {
   assignedTeam: TeamId;
   assignedRole: HarnessRole;
   title: string;
+  goal: string;
   scope: string;
+  nonGoals: string[];
   workType: WorkType;
   domains: DomainId[];
   discoverySummary: string[];
   crossModelPlanningNote: string;
+  filesToInspect: string[];
+  filesToModify: string[];
   allowedPaths: string[];
   disallowedPaths: string[];
   acceptanceCriteria: string[];
   evidenceExpectations: string[];
   validationExpectations: string[];
+  expectedProof: string[];
   wiringChecks: string[];
+  migrationPathNote: string;
   escalationInstructions: string[];
   dependencies: string[];
   modelOverride: string | null;
@@ -87,9 +97,13 @@ export interface TaskPacketInput {
   assignedTeam: TeamId;
   assignedRole: HarnessRole;
   title: string;
+  goal?: string;
   scope: string;
+  nonGoals?: string[];
   workType: WorkType;
   domains?: DomainId[];
+  filesToInspect?: string[];
+  filesToModify?: string[];
   allowedPaths?: string[];
   disallowedPaths?: string[];
   discoverySummary?: string[];
@@ -97,7 +111,9 @@ export interface TaskPacketInput {
   acceptanceCriteria: string[];
   evidenceExpectations?: string[];
   validationExpectations?: string[];
+  expectedProof?: string[];
   wiringChecks?: string[];
+  migrationPathNote?: string;
   escalationInstructions?: string[];
   dependencies?: string[];
   routeReason?: RouteReason;
@@ -122,9 +138,13 @@ const GenerateTaskPacketSchema = Type.Object({
   assignedTeam: StringEnum(TEAM_IDS),
   assignedRole: StringEnum(ROLE_IDS),
   title: Type.String({ minLength: 1 }),
+  goal: Type.Optional(Type.String({ minLength: 1 })),
   scope: Type.String({ minLength: 1 }),
+  nonGoals: Type.Optional(Type.Array(Type.String())),
   workType: StringEnum(WORK_TYPES),
   domains: Type.Optional(Type.Array(StringEnum(DOMAIN_IDS))),
+  filesToInspect: Type.Optional(Type.Array(Type.String())),
+  filesToModify: Type.Optional(Type.Array(Type.String())),
   allowedPaths: Type.Optional(Type.Array(Type.String())),
   disallowedPaths: Type.Optional(Type.Array(Type.String())),
   discoverySummary: Type.Optional(Type.Array(Type.String())),
@@ -132,7 +152,9 @@ const GenerateTaskPacketSchema = Type.Object({
   acceptanceCriteria: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
   evidenceExpectations: Type.Optional(Type.Array(Type.String())),
   validationExpectations: Type.Optional(Type.Array(Type.String())),
+  expectedProof: Type.Optional(Type.Array(Type.String())),
   wiringChecks: Type.Optional(Type.Array(Type.String())),
+  migrationPathNote: Type.Optional(Type.String()),
   escalationInstructions: Type.Optional(Type.Array(Type.String())),
   dependencies: Type.Optional(Type.Array(Type.String())),
   routeReason: Type.Optional(StringEnum(ROUTE_REASONS)),
@@ -209,6 +231,10 @@ export function parsePacketPolicy(raw: unknown): PacketPolicy {
     disallowed_paths: uniqueStrings(parseStringArray(defaultsRaw.disallowed_paths)),
     discovery_summary: uniqueStrings(parseStringArray(defaultsRaw.discovery_summary)),
     cross_model_planning_note: parseString(defaultsRaw.cross_model_planning_note, "defaults.cross_model_planning_note"),
+    non_goals: uniqueStrings(parseStringArray(defaultsRaw.non_goals)),
+    files_to_inspect: uniqueStrings(parseStringArray(defaultsRaw.files_to_inspect)),
+    expected_proof: uniqueStrings(parseStringArray(defaultsRaw.expected_proof)),
+    migration_path_note: parseString(defaultsRaw.migration_path_note, "defaults.migration_path_note"),
     evidence_expectations: uniqueStrings(parseStringArray(defaultsRaw.evidence_expectations)),
     escalation_instructions: uniqueStrings(parseStringArray(defaultsRaw.escalation_instructions)),
   };
@@ -216,6 +242,9 @@ export function parsePacketPolicy(raw: unknown): PacketPolicy {
   if (
     defaults.disallowed_paths.length === 0 ||
     defaults.discovery_summary.length === 0 ||
+    defaults.non_goals.length === 0 ||
+    defaults.files_to_inspect.length === 0 ||
+    defaults.expected_proof.length === 0 ||
     defaults.evidence_expectations.length === 0 ||
     defaults.escalation_instructions.length === 0
   ) {
@@ -259,16 +288,24 @@ export function validateTaskPacketShape(packet: TaskPacket): void {
   if (!packet.packetId.trim()) throw new Error("packetId is required.");
   if (!packet.source.goalId.trim()) throw new Error("source.goalId is required.");
   if (!packet.title.trim()) throw new Error("title is required.");
+  if (!packet.goal.trim()) throw new Error("goal is required.");
   if (!packet.scope.trim()) throw new Error("scope is required.");
   if (packet.allowedPaths.length === 0 && packet.domains.length === 0) {
     throw new Error("Packet must include at least one allowed path or domain.");
   }
+  if (packet.nonGoals.length === 0) throw new Error("nonGoals must not be empty.");
   if (packet.discoverySummary.length === 0) throw new Error("discoverySummary must not be empty.");
+  if (packet.filesToInspect.length === 0) throw new Error("filesToInspect must not be empty.");
   if (packet.acceptanceCriteria.length === 0) throw new Error("acceptanceCriteria must not be empty.");
   if (packet.evidenceExpectations.length === 0) throw new Error("evidenceExpectations must not be empty.");
   if (packet.validationExpectations.length === 0) throw new Error("validationExpectations must not be empty.");
+  if (packet.expectedProof.length === 0) throw new Error("expectedProof must not be empty.");
   if (packet.escalationInstructions.length === 0) throw new Error("escalationInstructions must not be empty.");
   if (packet.disallowedPaths.length === 0) throw new Error("disallowedPaths must not be empty.");
+  if (!packet.migrationPathNote.trim()) throw new Error("migrationPathNote is required.");
+  if (packet.assignedTeam === "build" && packet.workType !== "review_only" && packet.workType !== "research_only" && packet.filesToModify.length === 0) {
+    throw new Error("filesToModify must not be empty for build packets that are expected to make changes.");
+  }
   if (!packet.routing.selectedModelId.trim()) throw new Error("routing.selectedModelId is required.");
 }
 
@@ -297,8 +334,14 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "## Task",
     `- ${packet.title}`,
     "",
+    "## Goal",
+    `- ${packet.goal}`,
+    "",
     "## Scope",
     `- ${packet.scope}`,
+    "",
+    "## Non-Goals",
+    renderList(packet.nonGoals),
     "",
     "## Work Type",
     `- ${packet.workType}`,
@@ -311,6 +354,12 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "",
     "## Cross-Model Planning",
     `- ${packet.crossModelPlanningNote}`,
+    "",
+    "## Files to Inspect",
+    renderList(packet.filesToInspect),
+    "",
+    "## Files to Modify",
+    renderList(packet.filesToModify),
     "",
     "## Allowed Paths",
     renderList(packet.allowedPaths),
@@ -327,8 +376,14 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "## Validation Expectations",
     renderList(packet.validationExpectations),
     "",
+    "## Expected Proof",
+    renderList(packet.expectedProof),
+    "",
     "## Wiring Checks",
     renderList(packet.wiringChecks),
+    "",
+    "## Migration Path Note",
+    `- ${packet.migrationPathNote}`,
     "",
     "## Escalation Instructions",
     renderList(packet.escalationInstructions),
@@ -375,6 +430,18 @@ export function generateTaskPacket(
     throw new Error("Task packet generation requires at least one acceptance criterion.");
   }
 
+  const evidenceExpectations = uniqueStrings(input.evidenceExpectations ?? policy.defaults.evidence_expectations);
+  const validationExpectations = uniqueStrings(input.validationExpectations ?? policy.team_validation_expectations[input.assignedTeam]);
+  const domainInspectFallback = domains.map((domain) => `[inspect within ${domain}] confirm the concrete files before mutation`);
+  const defaultFilesToInspect = allowedPaths.length > 0 ? allowedPaths : (domainInspectFallback.length > 0 ? domainInspectFallback : policy.defaults.files_to_inspect);
+  const filesToInspect = uniqueStrings(input.filesToInspect ?? defaultFilesToInspect);
+  const domainModifyFallback = domains.map((domain) => `[modify within ${domain}] confirm the concrete files before mutation`);
+  const defaultFilesToModify = input.assignedTeam === "build" && input.workType !== "review_only" && input.workType !== "research_only"
+    ? (allowedPaths.length > 0 ? allowedPaths : domainModifyFallback)
+    : [];
+  const filesToModify = uniqueStrings(input.filesToModify ?? defaultFilesToModify);
+  const expectedProof = uniqueStrings(input.expectedProof ?? [...validationExpectations, ...evidenceExpectations, ...policy.defaults.expected_proof]);
+
   const route = resolveHarnessRoute(routingConfig, {
     role: input.assignedRole,
     reason: input.routeReason ?? "default",
@@ -402,17 +469,23 @@ export function generateTaskPacket(
     assignedTeam: input.assignedTeam,
     assignedRole: input.assignedRole,
     title: input.title.trim(),
+    goal: (input.goal ?? input.title).trim(),
     scope: input.scope.trim(),
+    nonGoals: uniqueStrings(input.nonGoals ?? policy.defaults.non_goals),
     workType: input.workType,
     domains,
     discoverySummary: uniqueStrings(input.discoverySummary ?? policy.defaults.discovery_summary),
     crossModelPlanningNote: (input.crossModelPlanningNote ?? policy.defaults.cross_model_planning_note).trim(),
+    filesToInspect,
+    filesToModify,
     allowedPaths,
     disallowedPaths: uniqueStrings([...policy.defaults.disallowed_paths, ...(input.disallowedPaths ?? [])]),
     acceptanceCriteria,
-    evidenceExpectations: uniqueStrings(input.evidenceExpectations ?? policy.defaults.evidence_expectations),
-    validationExpectations: uniqueStrings(input.validationExpectations ?? policy.team_validation_expectations[input.assignedTeam]),
+    evidenceExpectations,
+    validationExpectations,
+    expectedProof,
     wiringChecks: uniqueStrings(input.wiringChecks ?? policy.team_wiring_checks[input.assignedTeam]),
+    migrationPathNote: (input.migrationPathNote ?? policy.defaults.migration_path_note).trim(),
     escalationInstructions: uniqueStrings(input.escalationInstructions ?? policy.defaults.escalation_instructions),
     dependencies: uniqueStrings(input.dependencies ?? []),
     modelOverride,
@@ -444,6 +517,7 @@ export default function taskPackets(pi: ExtensionAPI) {
     promptGuidelines: [
       "Use this tool when an orchestrator or lead needs a stable, executable packet for a worker or lead role.",
       "Prefer this tool before writing free-form task packets by hand.",
+      "Keep planning completeness explicit: goal, non-goals, files to inspect vs modify, expected proof, wiring checks, migration-path note when relevant, and concrete escalation instructions.",
     ],
     parameters: GenerateTaskPacketSchema,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {

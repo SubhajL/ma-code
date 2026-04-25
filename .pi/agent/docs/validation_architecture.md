@@ -284,6 +284,7 @@ This script is responsible for the bounded regression path for:
 - machine-readable packet policy in `.pi/agent/packets/packet-policy.json`
 - packet schema in `.pi/agent/state/schemas/task-packet.schema.json`
 - role/team-aligned task packet generation
+- planning-completeness fields such as goal, non-goals, files to inspect vs modify, expected proof, and migration-path note
 - optional bounded live tool probe for `generate_task_packet`
 
 It should be used when changes affect executable task packet generation or its policy/schema rules.

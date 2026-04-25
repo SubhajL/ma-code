@@ -237,11 +237,17 @@ const generated = generateTaskPacket(policy, teams, routingConfig, {
   assignedTeam: "build",
   assignedRole: "backend_worker",
   title: "Implement packet generation",
+  goal: "Tighten executable task-packet completeness without broad runtime redesign.",
   scope: "Only add deterministic packet generation runtime logic.",
+  nonGoals: ["Do not redesign team activation or queue execution."],
   workType: "implementation",
   domains: ["backend"],
+  filesToInspect: [".pi/agent/extensions/task-packets.ts", ".pi/agent/state/schemas/task-packet.schema.json"],
+  filesToModify: [".pi/agent/extensions/task-packets.ts", ".pi/agent/state/schemas/task-packet.schema.json"],
   allowedPaths: [".pi/agent/extensions/task-packets.ts", ".pi/agent/state/schemas/task-packet.schema.json"],
-  acceptanceCriteria: ["generator returns a valid packet", "packet contains evidence and escalation sections"],
+  acceptanceCriteria: ["generator returns a valid packet", "packet contains explicit planning-completeness sections"],
+  expectedProof: ["A focused validator run proves the packet shape and defaults."],
+  migrationPathNote: "Not applicable; this packet tightens existing packet structure only.",
   routeReason: "budget_pressure",
   budgetMode: "conserve",
 });
@@ -251,24 +257,34 @@ if (generated.packet.assignedRole !== "backend_worker") throw new Error("expecte
 if (generated.packet.modelOverride !== "openai-codex/gpt-5.4-mini") {
   throw new Error(`expected budget override modelOverride openai-codex/gpt-5.4-mini, got ${generated.packet.modelOverride}`);
 }
-if (!generated.renderedPacket.includes("## Packet ID")) throw new Error("expected rendered packet headings");
+if (!generated.renderedPacket.includes("## Goal")) throw new Error("expected rendered packet goal heading");
+if (!generated.renderedPacket.includes("## Files to Inspect")) throw new Error("expected rendered packet inspect heading");
 if (!generated.packet.disallowedPaths.includes(".env*")) throw new Error("expected default disallowed paths");
+if (generated.packet.filesToModify.length === 0) throw new Error("expected build packet filesToModify");
+if (!generated.packet.goal.includes("task-packet completeness")) throw new Error("expected explicit goal text");
 
 const planning = generateTaskPacket(policy, teams, routingConfig, {
   sourceGoalId: "harness-021",
   assignedTeam: "planning",
   assignedRole: "planning_lead",
   title: "Clarify packet shape",
+  goal: "Clarify how planning completeness survives into worker-scoped packets.",
   scope: "Inspect packet docs only.",
+  nonGoals: ["Do not change queue-runner semantics."],
   workType: "mixed",
   domains: ["research", "docs"],
+  filesToInspect: [".pi/agent/docs/team_orchestration_architecture.md"],
+  filesToModify: [".pi/agent/docs/team_orchestration_architecture.md"],
   allowedPaths: [".pi/agent/docs/team_orchestration_architecture.md"],
   discoverySummary: ["Read packet architecture docs first."],
   crossModelPlanningNote: "Second model unavailable; main model plan only.",
   acceptanceCriteria: ["packet fields are clarified"],
+  expectedProof: ["Documentation diff explicitly names the new packet fields."],
+  migrationPathNote: "Not applicable; clarify the existing packet contract in place.",
 });
 validateTaskPacketShape(planning.packet);
 if (planning.packet.modelOverride !== null) throw new Error("expected planning packet to keep default route and null override");
+if (!planning.packet.migrationPathNote.includes("Not applicable")) throw new Error("expected explicit migration path note");
 
 let mismatchError = "";
 try {
@@ -308,6 +324,19 @@ if (!pathError.includes("allowed path or domain")) {
   throw new Error(`expected allowed path/domain error, got: ${pathError}`);
 }
 
+let completenessError = "";
+try {
+  validateTaskPacketShape({
+    ...generated.packet,
+    filesToInspect: [],
+  });
+} catch (error) {
+  completenessError = String(error);
+}
+if (!completenessError.includes("filesToInspect must not be empty")) {
+  throw new Error(`expected filesToInspect completeness error, got: ${completenessError}`);
+}
+
 console.log(JSON.stringify({
   buildPacketId: generated.packet.packetId,
   buildModelOverride: generated.packet.modelOverride,
@@ -315,6 +344,7 @@ console.log(JSON.stringify({
   renderedHeading: generated.renderedPacket.split("\n")[0],
   mismatchError,
   pathError,
+  completenessError,
 }, null, 2));
 EOF
 
@@ -322,7 +352,7 @@ EOF
     local detail="Deterministic helper-level task packet generation checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for build packet generation, planning packet generation, protected defaults, rendered packet format, role/team mismatch rejection, and missing boundary rejection\n- sample output:\n\n\`\`\`json\n$(sed -n '1,160p' "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for build packet generation, planning packet generation, explicit goal/non-goals/file-plan/expected-proof fields, protected defaults, rendered packet format, role/team mismatch rejection, missing boundary rejection, and completeness-shape rejection\n- sample output:\n\n\`\`\`json\n$(sed -n '1,200p' "$out")\n\`\`\`"
   else
     local detail="Helper-level task packet generation checks failed."
     record_result "$name" "FAIL" "$detail"
@@ -342,16 +372,24 @@ schema = json.loads((root / '.pi/agent/state/schemas/task-packet.schema.json').r
 policy = json.loads((root / '.pi/agent/packets/packet-policy.json').read_text())
 required = set(schema['required'])
 expected = {
-    'version','packetId','source','assignedTeam','assignedRole','title','scope','workType','domains',
-    'discoverySummary','crossModelPlanningNote','allowedPaths','disallowedPaths','acceptanceCriteria',
-    'evidenceExpectations','validationExpectations','wiringChecks','escalationInstructions','dependencies',
-    'modelOverride','routing'
+    'version','packetId','source','assignedTeam','assignedRole','title','goal','scope','nonGoals','workType','domains',
+    'discoverySummary','crossModelPlanningNote','filesToInspect','filesToModify','allowedPaths','disallowedPaths',
+    'acceptanceCriteria','evidenceExpectations','validationExpectations','expectedProof','wiringChecks',
+    'migrationPathNote','escalationInstructions','dependencies','modelOverride','routing'
 }
 missing = sorted(expected - required)
 if missing:
     raise SystemExit(f'missing schema required keys: {missing}')
 if '.env*' not in policy['defaults']['disallowed_paths']:
     raise SystemExit('packet policy must protect .env* by default')
+if not policy['defaults']['non_goals']:
+    raise SystemExit('packet policy defaults.non_goals must not be empty')
+if not policy['defaults']['files_to_inspect']:
+    raise SystemExit('packet policy defaults.files_to_inspect must not be empty')
+if not policy['defaults']['expected_proof']:
+    raise SystemExit('packet policy defaults.expected_proof must not be empty')
+if not policy['defaults']['migration_path_note']:
+    raise SystemExit('packet policy defaults.migration_path_note must not be empty')
 if not policy['defaults']['evidence_expectations']:
     raise SystemExit('packet policy defaults.evidence_expectations must not be empty')
 if set(policy['team_validation_expectations'].keys()) != {'planning','build','quality','recovery'}:
@@ -362,7 +400,7 @@ PY"
     local detail="Schema and packet policy sanity checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-021 packet contract\n- packet policy protects default disallowed paths and covers all teams\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-044 planning-completeness packet contract\n- packet policy protects default disallowed paths, explicit non-goals/file-plan/proof defaults, and all teams\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
     local detail="Schema and packet policy sanity checks failed."
     record_result "$name" "FAIL" "$detail"

@@ -133,9 +133,10 @@ These patterns should now guide planning, implementation, and review even before
 For medium- or high-risk work, planning should make these explicit:
 - goal and non-goals
 - files to inspect or modify
-- validation ideas
+- validation ideas and expected proof
 - important edge cases
 - wiring or registration checks for new runtime components
+- migration-path note when the change is architectural or crosses subsystem boundaries
 - whether second-model planning synthesis was used or fell back to single-model planning
 
 ### Implementation discipline
@@ -267,7 +268,7 @@ Choose the validator that matches the change:
 - use `./scripts/collect-harness-tuning-data.sh` after harness-routing/core-workflow/queue-runner/scheduled-workflow changes when you want a bounded thinking-first cost/performance tuning report from local validator timings, scheduled-workflow dry runs, and role-level cost-ish routing summaries
 - use `./scripts/validate-harness-package.sh` for reusable-vs-repo-local package manifest, bootstrap helper, install-template, and fresh-target adoption changes
 - use `./scripts/validate-team-activation.sh` for executable team-activation changes
-- use `./scripts/validate-task-packets.sh` for executable task-packet changes
+- use `./scripts/validate-task-packets.sh` for executable task-packet changes, especially when goal/non-goal clarity, inspect-vs-modify file plans, expected proof, migration-path notes, or escalation instructions were tightened
 - use `./scripts/validate-handoffs.sh` for executable handoff changes
 - use `./scripts/validate-same-runtime-bridge.sh` for same-runtime probe bridge changes
 
