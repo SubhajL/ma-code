@@ -5,6 +5,8 @@
   "scripts": {
     "harness:status": "node --import tsx scripts/harness-operator-status.ts",
     "harness:status:json": "node --import tsx scripts/harness-operator-status.ts --json",
+    "harness:queue-session": "node --import tsx scripts/harness-queue-session.ts",
+    "harness:queue-session:json": "node --import tsx scripts/harness-queue-session.ts --json",
     "harness:worktree": "node --import tsx scripts/harness-worktree.ts",
     "harness:worktree:status": "node --import tsx scripts/harness-worktree.ts status",
     "harness:schedules": "node --import tsx scripts/harness-scheduled-workflows.ts status",
@@ -15,6 +17,7 @@
     "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
     "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",
     "test:operator-surface": "node --import tsx --test tests/integration/operator-surface.test.ts",
+    "test:queue-session": "node --import tsx --test tests/integration/queue-session.test.ts",
     "test:scheduled-workflows": "node --import tsx --test tests/integration/scheduled-workflows.test.ts",
     "test:worktree-helper": "node --import tsx --test tests/integration/worktree-helper.test.ts",
     "test:harness-package": "node --import tsx --test tests/integration/harness-package.test.ts",

@@ -51,6 +51,7 @@ async function setupQueueRunnerRepo() {
   const pauseTool = pi.getTool("pause_queue");
   const resumeTool = pi.getTool("resume_queue");
   const stopTool = pi.getTool("stop_queue_safely");
+  const sessionTool = pi.getTool("run_bounded_queue_session");
 
   const runNextQueueJob = async (params: Record<string, unknown> = {}) =>
     queueTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
@@ -75,6 +76,10 @@ async function setupQueueRunnerRepo() {
     return stopTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
   }
 
+  async function runBoundedQueueSessionForOperator(params = {}) {
+    return sessionTool.execute("tool-call-id", params, undefined, undefined, makeCtx(cwd));
+  }
+
   return {
     cwd,
     pi,
@@ -84,6 +89,7 @@ async function setupQueueRunnerRepo() {
     pauseQueueForOperator,
     resumeQueueForOperator,
     stopQueueSafelyForOperator,
+    runBoundedQueueSessionForOperator,
     taskUpdate,
   };
 }
@@ -231,6 +237,106 @@ test("operator pause and resume controls gate queue pickup", async function () {
   const resumedRun = await runNextQueueJob({ owner: "assistant" });
   assert.equal(resumedRun.details.action, "started");
   assert.equal(resumedRun.details.startedJob.id, "job-pause-resume");
+});
+
+test("bounded queue session tool starts queued work and stops at the next waiting point", async function () {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-session-start",
+        goal: "Start one bounded queue-session job",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Bounded queue session starts the queued job and then waits on task progress"],
+      },
+    ],
+  });
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 5, maxRuntimeSeconds: 60 });
+  const details = result.details;
+
+  assert.equal(details.stopReason, "waiting_on_active_task");
+  assert.equal(details.stepsRun, 1);
+  assert.equal(details.steps[0]?.action, "started");
+  assert.equal(details.finalInspection.summary.activeJob?.id, "job-session-start");
+});
+
+test("bounded queue session can finalize visible terminal work and start the next queued job in one invocation", async function () {
+  const { cwd, runNextQueueJob, runBoundedQueueSessionForOperator, taskUpdate } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-session-first",
+        goal: "First bounded queue-session job",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["First job is terminal before the session continues"],
+      },
+      {
+        id: "job-session-second",
+        goal: "Second bounded queue-session job",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Second job is started by the same bounded session"],
+      },
+    ],
+  });
+
+  const started = await runNextQueueJob({ owner: "assistant" });
+  const linkedTaskId = started.details.linkedTask.id;
+  await taskUpdate({ action: "evidence", id: linkedTaskId, evidence: ["Changed files: .pi/agent/extensions/queue-runner.ts"] });
+  await taskUpdate({ action: "review", id: linkedTaskId, note: "Ready to finalize the first job" });
+  await taskUpdate({
+    action: "validate",
+    id: linkedTaskId,
+    validationSource: "validator",
+    validationDecision: "pass",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "met",
+      diff_review: "met",
+      evidence: "met",
+    },
+  });
+  await taskUpdate({ action: "done", id: linkedTaskId, note: "First job completed before the session run." });
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 5, maxRuntimeSeconds: 60 });
+  const details = result.details;
+
+  assert.equal(details.stopReason, "waiting_on_active_task");
+  assert.equal(details.stepsRun, 2);
+  assert.deepEqual(
+    details.steps.map((step: any) => ({ step: step.step, action: step.action, finalized: step.finalizedJobId, started: step.startedJobId })),
+    [
+      { step: 1, action: "finalized", finalized: "job-session-first", started: null },
+      { step: 2, action: "started", finalized: null, started: "job-session-second" },
+    ],
+  );
+  assert.equal(details.finalInspection.summary.activeJob?.id, "job-session-second");
 });
 
 test("operator safe stop pauses queue and blocks the active linked task", async function () {

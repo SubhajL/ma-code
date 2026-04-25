@@ -13,14 +13,16 @@ This workflow covers the current implemented harness slice:
 - bounded runtime validation and operator-facing status/validator entrypoints
 
 It does not assume:
-- a free-running queue daemon beyond the bounded `run_next_queue_job` stepper (`run_queue_once` remains a compatibility alias)
+- a free-running queue daemon beyond the bounded queue-step/session surfaces (`run_next_queue_job`, `run_queue_once`, and `run_bounded_queue_session` remain explicit operator-invoked controls)
 - rich UI widgets or a dashboard daemon
 - full team orchestration runtime
 
-For a fast read-only operator snapshot outside a live agent session, use:
+For fast operator snapshots or bounded queue advancement outside a live agent session, use:
 ```bash
 npm run harness:status
 npm run harness:status:json
+npm run harness:queue-session -- --max-steps 3
+npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
 npm run harness:schedules
 npm run harness:schedules:json
 ```
@@ -41,7 +43,7 @@ When operating queued work in a live harness session, use the runtime tools in t
 2. pause intake with `pause_queue` when you want to stop new pickup without discarding state
 3. resume intake with `resume_queue` when visible queue/task state is acceptable again
 4. stop safely with `stop_queue_safely` when the current active job should move into a reviewable blocked state
-5. advance at most one bounded step with `run_next_queue_job`
+5. advance at most one bounded step with `run_next_queue_job` or run one explicit bounded multi-step session with `run_bounded_queue_session`
 6. inspect scheduled workflows when recurring bounded work should be queued
    - use `npm run harness:schedules` for a read-only due-work snapshot
    - use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id>` for dry-run inspection
@@ -53,7 +55,7 @@ Recommended operator questions during this loop:
 - is there an active running job?
 - does the linked active task match the queue state?
 - are there blocked or failed items that need a human decision?
-- should the next action be resume, stop, or one bounded queue step?
+- should the next action be resume, stop, one bounded queue step, or one bounded queue session?
 
 ## Core operating loop
 
@@ -182,6 +184,7 @@ When a repeated live rerun is used, record:
 ## Validation assets
 ### Helper CLIs
 - `scripts/harness-operator-status.ts`
+- `scripts/harness-queue-session.ts`
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 
@@ -248,7 +251,8 @@ Run the validator script when:
 - before calling a bounded phase complete
 
 Choose the validator that matches the change:
-- use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance one queue step
+- use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance queue work
+- use `npm run harness:queue-session -- --max-steps <n>` when you want bounded multi-step queue advancement without a hidden daemon; it stops at the next waiting point, blocked state, pause, idle state, or configured limit
 - use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation
 - use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
@@ -308,9 +312,9 @@ For tasks completed through `task_update`, the current completion gate also expe
 ## Current boundaries
 This workflow currently validates only the implemented Phase A/B slice.
 It does not validate future items like:
-- a free-running queue daemon or scheduled autonomy loop beyond `run_next_queue_job`
+- a free-running queue daemon or scheduled autonomy loop beyond the explicit `run_next_queue_job` / `run_bounded_queue_session` surfaces
 - team dispatch beyond the current deterministic routing/packet/handoff surfaces
 - UI widgets
-- long-running autonomy beyond one bounded queue step
+- long-running autonomy beyond bounded operator-invoked queue steps/sessions
 
 When those exist, they should add new validation scripts or extend the current validator in bounded ways.

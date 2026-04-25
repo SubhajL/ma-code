@@ -37,22 +37,24 @@ Recommended Phase I model:
 6. the system stops, blocks, fails, or completes explicitly
 
 ## Current executable queue-runner surface
-The current repo-local slice now includes a bounded single-step queue runner at:
+The current repo-local slice now includes bounded queue-runner/session surfaces at:
 - `.pi/agent/extensions/queue-runner.ts`
-- public tool: `run_next_queue_job`
+- public step tool: `run_next_queue_job`
 - compatibility alias: `run_queue_once`
+- public bounded session tool: `run_bounded_queue_session`
+- operator CLI: `scripts/harness-queue-session.ts`
 - validator: `scripts/validate-queue-runner.sh`
 
 Current behavior is intentionally narrow:
-- if one queue job is already `running`, the tool only tries to finalize it from linked task state when the task is terminal
-- otherwise the tool starts at most one eligible queued job
+- `run_next_queue_job` still finalizes at most one active running job or starts at most one eligible queued job
+- `run_bounded_queue_session` repeatedly reuses that same bounded stepper under explicit `maxSteps` / `maxRuntimeSeconds` limits until the queue becomes idle/paused, reaches a blocked state, hits a configured limit, or arrives at the next active-task waiting point
 - queued-job start now prepares/claims a linked task, generates packet/handoff data, marks the queue running, then starts the task last with bounded compensation if that final task start fails
 - task creation/claim/start reuses `till-done` task semantics
 - packet generation, optional initial handoff generation, and recovery recommendations reuse the existing executable helper surfaces
 - queued jobs now enforce `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and `approvalRequired` approval-boundary stops in the bounded runner
 - unsupported free-form `stop_conditions` and unsupported budget fields such as `maxCostUsd`/`maxFilesChanged` are still blocked explicitly rather than being silently ignored
 
-This is not yet a free-running daemon, scheduler, or pause/resume control plane.
+This is still not a free-running daemon or hidden scheduler.
 
 The current repo-local slice now also includes an explicit scheduled-workflow helper at:
 - `.pi/agent/schedules/scheduled-workflows.json`

@@ -156,6 +156,43 @@ export interface QueueControlResult {
   summary: QueueInspectionSummary;
 }
 
+export interface BoundedQueueSessionStep {
+  step: number;
+  ok: boolean;
+  action: QueueRunnerResult["action"];
+  reason: string | null;
+  queuePaused: boolean;
+  activeJobId: string | null;
+  startedJobId: string | null;
+  finalizedJobId: string | null;
+  blockedJobIds: string[];
+  linkedTaskId: string | null;
+  recoveryAction: RuntimeRecoveryDecision["recommendedAction"] | null;
+}
+
+export interface BoundedQueueSessionResult {
+  version: 1;
+  ok: boolean;
+  stopReason:
+    | "queue_paused"
+    | "waiting_on_active_task"
+    | "idle"
+    | "blocked"
+    | "max_steps_reached"
+    | "max_runtime_reached";
+  reason: string;
+  cwd: string;
+  owner: string;
+  allowInitialHandoff: boolean;
+  maxSteps: number;
+  maxRuntimeSeconds: number;
+  stepsRun: number;
+  startedAt: string;
+  finishedAt: string;
+  steps: BoundedQueueSessionStep[];
+  finalInspection: QueueInspectionResult;
+}
+
 const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
 const QUEUE_TASK_COORDINATION_LOCK = ".pi/agent/state/runtime/queue-runner.coordination.lock";
 const AUDIT_LOG = "logs/harness-actions.jsonl";
@@ -165,6 +202,7 @@ const INSPECT_QUEUE_STATE_TOOL_NAME = "inspect_queue_state";
 const PAUSE_QUEUE_TOOL_NAME = "pause_queue";
 const RESUME_QUEUE_TOOL_NAME = "resume_queue";
 const STOP_QUEUE_SAFELY_TOOL_NAME = "stop_queue_safely";
+const BOUNDED_QUEUE_SESSION_TOOL_NAME = "run_bounded_queue_session";
 const QUEUE_JOB_STATUSES = ["queued", "running", "blocked", "done", "failed"] as const;
 const QUEUE_PRIORITIES = ["low", "medium", "high"] as const;
 
@@ -179,6 +217,14 @@ const InspectQueueStateSchema = Type.Object({
 
 const QueueControlSchema = Type.Object({
   note: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })),
+});
+
+const BoundedQueueSessionSchema = Type.Object({
+  owner: Type.Optional(Type.String({ minLength: 1 })),
+  allowInitialHandoff: Type.Optional(Type.Boolean()),
+  maxSteps: Type.Optional(Type.Integer({ minimum: 1, maximum: 50 })),
+  maxRuntimeSeconds: Type.Optional(Type.Integer({ minimum: 1, maximum: 600 })),
+  recentLimit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
 });
 
 function nowIso(): string {
@@ -1645,6 +1691,131 @@ export async function runNextQueueJob(cwd: string, input: { owner?: string; allo
 
 export const runQueueOnce = runNextQueueJob;
 
+function buildBoundedQueueSessionStep(step: number, result: QueueRunnerResult): BoundedQueueSessionStep {
+  return {
+    step,
+    ok: result.ok,
+    action: result.action,
+    reason: result.reason,
+    queuePaused: result.queuePaused,
+    activeJobId: result.activeJobId,
+    startedJobId: result.startedJob?.id ?? null,
+    finalizedJobId: result.finalizedJob?.id ?? null,
+    blockedJobIds: [...result.blockedJobIds],
+    linkedTaskId: result.linkedTask?.id ?? null,
+    recoveryAction: result.recoveryDecision?.recommendedAction ?? null,
+  };
+}
+
+function countRunnableQueuedJobs(summary: QueueInspectionSummary): number {
+  return Math.max(0, (summary.jobCounts.queued ?? 0));
+}
+
+export async function runBoundedQueueSession(
+  cwd: string,
+  input: {
+    owner?: string;
+    allowInitialHandoff?: boolean;
+    maxSteps?: number;
+    maxRuntimeSeconds?: number;
+    recentLimit?: number;
+  } = {},
+): Promise<BoundedQueueSessionResult> {
+  const owner = input.owner?.trim() || "assistant";
+  const allowInitialHandoff = input.allowInitialHandoff ?? true;
+  const maxSteps = Math.max(1, Math.min(input.maxSteps ?? 5, 50));
+  const maxRuntimeSeconds = Math.max(1, Math.min(input.maxRuntimeSeconds ?? 60, 600));
+  const recentLimit = Math.max(1, Math.min(input.recentLimit ?? 5, 20));
+  const startedAt = nowIso();
+  const startedTime = Date.now();
+  const steps: BoundedQueueSessionStep[] = [];
+
+  const finalizeResult = async (
+    stopReason: BoundedQueueSessionResult["stopReason"],
+    reason: string,
+  ): Promise<BoundedQueueSessionResult> => {
+    const finalInspection = await inspectQueueState(cwd, { recentLimit });
+    return {
+      version: 1,
+      ok: true,
+      stopReason,
+      reason,
+      cwd,
+      owner,
+      allowInitialHandoff,
+      maxSteps,
+      maxRuntimeSeconds,
+      stepsRun: steps.length,
+      startedAt,
+      finishedAt: nowIso(),
+      steps,
+      finalInspection,
+    };
+  };
+
+  const initialInspection = await inspectQueueState(cwd, { recentLimit });
+  if (initialInspection.summary.queuePaused) {
+    return finalizeResult("queue_paused", "Queue is paused; bounded session did not attempt queue advancement.");
+  }
+
+  for (let step = 1; step <= maxSteps; step += 1) {
+    const elapsedSeconds = (Date.now() - startedTime) / 1000;
+    if (elapsedSeconds >= maxRuntimeSeconds) {
+      return finalizeResult(
+        "max_runtime_reached",
+        `Bounded queue session stopped before step ${step} because maxRuntimeSeconds=${maxRuntimeSeconds} was reached.`,
+      );
+    }
+
+    const result = await runNextQueueJob(cwd, { owner, allowInitialHandoff });
+    steps.push(buildBoundedQueueSessionStep(step, result));
+
+    const inspection = await inspectQueueState(cwd, { recentLimit });
+    if (inspection.summary.queuePaused) {
+      return finalizeResult("queue_paused", "Queue became paused during the bounded session.");
+    }
+
+    if (inspection.summary.activeJobId) {
+      return finalizeResult(
+        "waiting_on_active_task",
+        `Bounded queue session stopped after step ${step} because active job ${inspection.summary.activeJobId} is waiting on linked task progress.`,
+      );
+    }
+
+    if (result.action === "blocked") {
+      return finalizeResult(
+        "blocked",
+        result.reason ?? `Bounded queue session stopped after step ${step} because the queue reached a blocked or non-runnable state.`,
+      );
+    }
+
+    if (result.action === "finalized" && countRunnableQueuedJobs(inspection.summary) > 0) {
+      continue;
+    }
+
+    if (result.action === "finalized") {
+      return finalizeResult("idle", `Bounded queue session finalized visible work and no queued job remained runnable after step ${step}.`);
+    }
+
+    if (result.action === "started") {
+      return finalizeResult(
+        "waiting_on_active_task",
+        `Bounded queue session started job ${result.startedJob?.id ?? "unknown"} and is now waiting on linked task progress.`,
+      );
+    }
+
+    return finalizeResult(
+      "idle",
+      result.reason ?? `Bounded queue session stopped after step ${step} because no further runnable queue work was available.`,
+    );
+  }
+
+  return finalizeResult(
+    "max_steps_reached",
+    `Bounded queue session stopped after reaching maxSteps=${maxSteps}. Rerun explicitly to continue.`,
+  );
+}
+
 export default function queueRunner(pi: ExtensionAPI) {
   const registerQueueRunnerTool = (toolName: string, label: string, description: string, promptSnippet: string) => {
     pi.registerTool({
@@ -1843,6 +2014,49 @@ export default function queueRunner(pi: ExtensionAPI) {
           activeJobId: result.activeJobId,
           stoppedJobId: result.stoppedJob?.id ?? null,
           stoppedTaskId: result.stoppedTask?.id ?? null,
+        },
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+        details: result,
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: BOUNDED_QUEUE_SESSION_TOOL_NAME,
+    label: "Run Bounded Queue Session",
+    description:
+      "Advance queue execution through an explicit bounded multi-step session until the runner is waiting on an active task, the queue is idle/paused, a blocked state is reached, or step/runtime limits are hit.",
+    promptSnippet:
+      "Use run_bounded_queue_session for an explicit bounded queue session when one-step advancement is too manual but a hidden daemon would be unsafe.",
+    promptGuidelines: [
+      "This tool is still bounded and operator-invoked; it is not a free-running daemon.",
+      "Prefer this when you want the queue runner to finalize visible terminal work and continue until the next waiting point under explicit max-step and max-runtime limits.",
+    ],
+    parameters: BoundedQueueSessionSchema,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const result = await runBoundedQueueSession(ctx.cwd, params);
+      const branch = await getCurrentBranch(pi, ctx.cwd);
+      const modelId = modelIdFromContext(ctx);
+      await appendAudit(ctx.cwd, {
+        ts: nowIso(),
+        extension: "queue-runner",
+        action: BOUNDED_QUEUE_SESSION_TOOL_NAME,
+        cwd: ctx.cwd,
+        branch,
+        modelId,
+        provider: providerFromModelId(modelId),
+        input: params,
+        result: {
+          ok: result.ok,
+          stopReason: result.stopReason,
+          reason: result.reason,
+          stepsRun: result.stepsRun,
+          activeJobId: result.finalInspection.summary.activeJobId,
+          activeTaskId: result.finalInspection.summary.activeTaskId,
+          blockedJobIds: result.finalInspection.summary.blockedJobIds,
+          failedJobIds: result.finalInspection.summary.failedJobIds,
         },
       });
       return {
