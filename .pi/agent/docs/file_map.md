@@ -64,6 +64,7 @@
 - `.pi/agent/docs/harness_package_install.md`
 - `.pi/agent/docs/validation_architecture.md`
 - `.pi/agent/docs/validation_recovery_architecture.md`
+- `.pi/agent/docs/architecture_review_workflow.md`
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/harness-operator-status.ts`
@@ -94,6 +95,7 @@
 - `.pi/agent/docs/operator_control_model.md`
 - `.pi/agent/docs/harness_packaging_strategy.md`
 - `.pi/agent/docs/codex_skill_patterns_for_pi_harness.md`
+- `.pi/agent/docs/architecture_review_workflow.md`
 
 ## Update logs and evidence trail
 - `logs/CURRENT.md`

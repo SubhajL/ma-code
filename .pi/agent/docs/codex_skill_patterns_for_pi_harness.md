@@ -142,11 +142,19 @@ Wire into:
 - `.pi/agent/docs/operator_workflow.md`
 - `.pi/agent/docs/team_orchestration_architecture.md`
 - `.pi/agent/docs/validation_recovery_architecture.md`
+- `.pi/agent/docs/architecture_review_workflow.md`
 
 ### Task semantics and packets
 Wire into:
 - `.pi/agent/docs/task_schema_semantics.md`
 - task packet requirements in `.pi/agent/docs/team_orchestration_architecture.md`
+
+## Implemented repo-local wiring now
+The current repo-local harness now encodes these patterns directly in:
+- role prompts for planning/orchestration/build/quality lanes under `.pi/agent/prompts/roles/*.md`
+- planning/review/validation request templates under `.pi/agent/prompts/templates/*.md`
+- operator-facing role and architecture review workflow docs
+- static validation wiring that checks the skill-derived prompt/doc expectations stay present
 
 ## Explicit non-goals
 This adoption does not mean:
