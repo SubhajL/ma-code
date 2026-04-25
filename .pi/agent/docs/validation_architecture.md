@@ -83,6 +83,7 @@ It runs bounded checks against the implemented runtime behavior.
 Primary assets:
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`
+- `scripts/validate-prompt-contracts.sh`
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
 
@@ -159,6 +160,19 @@ Current checks include:
 - compact audit-log field checks
 - cleanup and runtime state reset
 - optional full-stack interaction when explicitly enabled
+
+### Dedicated prompt/template contract validator
+Current dedicated prompt-contract script:
+- `scripts/validate-prompt-contracts.sh`
+
+This script is responsible for the bounded regression path for:
+- exact role-prompt top-level output sections under `.pi/agent/prompts/roles/*.md`
+- exact template top-level output sections under `.pi/agent/prompts/templates/*.md`
+- required decision/result lines where the prompt contract includes them
+- required architecture review workflow references for the prompts/templates that should carry that review discipline
+- prompt/template inventory drift where a file exists without a declared contract or a stale contract points at a missing file
+
+It should be used when changes affect repo-local role prompts, prompt-entry templates, or the prompt-contract inventory itself.
 
 ### Dedicated skill-routing validator
 Current dedicated routing script:

@@ -26,6 +26,7 @@
     "validate:harness-routing": "./scripts/validate-harness-routing.sh",
     "validate:queue-runner": "./scripts/validate-queue-runner.sh --skip-live",
     "validate:core-workflows": "./scripts/validate-core-workflows.sh",
+    "validate:prompt-contracts": "./scripts/validate-prompt-contracts.sh",
     "validate:harness-package": "./scripts/validate-harness-package.sh",
     "validate:tuning-data": "./scripts/collect-harness-tuning-data.sh"
   },
