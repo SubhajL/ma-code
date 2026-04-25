@@ -22,6 +22,7 @@ When relevant:
 - run the smallest relevant validation or test commands for the changed surface
 - include failing/pass evidence when practical
 - verify runtime wiring for new routes, components, handlers, or state-entry paths
+- do a skeptical self-review before handoff and call out underimplementation, overengineering, missing validation, or unverified wiring instead of hiding them
 
 Required output:
 ## Task

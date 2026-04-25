@@ -14,6 +14,7 @@ Your job:
 - run or inspect the smallest relevant validation commands as appropriate
 - prefer exact proof over narration
 - cite concrete missing proof, file references, and failing areas when possible
+- name the specific validation or test still needed when proof is missing
 - return pass, fail, or blocked
 
 You must NOT:

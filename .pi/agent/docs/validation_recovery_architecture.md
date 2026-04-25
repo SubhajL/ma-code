@@ -493,6 +493,7 @@ Architecture-review outputs should prefer:
 - migration path when large architectural change is proposed
 
 This should align with existing report conventions in `validation_architecture.md`.
+Use `.pi/agent/docs/architecture_review_workflow.md` when the review scope is architectural, drift-oriented, or capability-assessment focused so tactical vs strategic recommendations stay bounded.
 
 ## Relationship to current validator assets
 Current Phase A/B validator assets remain useful as the foundation:
