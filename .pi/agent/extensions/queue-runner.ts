@@ -170,6 +170,25 @@ export interface BoundedQueueSessionStep {
   recoveryAction: RuntimeRecoveryDecision["recommendedAction"] | null;
 }
 
+export interface BoundedQueueSessionTriageSummary {
+  durationSeconds: number;
+  actionCounts: Record<QueueRunnerResult["action"], number>;
+  startedJobIds: string[];
+  finalizedJobIds: string[];
+  blockedJobIds: string[];
+  touchedTaskIds: string[];
+  recoveryActions: RuntimeRecoveryDecision["recommendedAction"][];
+  queuedJobsRemaining: number;
+  nextAction:
+    | "inspect_active_task"
+    | "review_blocked_jobs"
+    | "review_failed_jobs"
+    | "resume_queue"
+    | "rerun_bounded_session"
+    | "queue_more_work";
+  nextActionReason: string;
+}
+
 export interface BoundedQueueSessionResult {
   version: 1;
   ok: boolean;
@@ -191,6 +210,7 @@ export interface BoundedQueueSessionResult {
   finishedAt: string;
   steps: BoundedQueueSessionStep[];
   finalInspection: QueueInspectionResult;
+  triage: BoundedQueueSessionTriageSummary;
 }
 
 const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
@@ -1708,7 +1728,72 @@ function buildBoundedQueueSessionStep(step: number, result: QueueRunnerResult): 
 }
 
 function countRunnableQueuedJobs(summary: QueueInspectionSummary): number {
-  return Math.max(0, (summary.jobCounts.queued ?? 0));
+  return Math.max(0, summary.jobCounts.queued ?? 0);
+}
+
+function buildBoundedQueueSessionTriage(
+  steps: BoundedQueueSessionStep[],
+  finalInspection: QueueInspectionResult,
+  startedTime: number,
+): BoundedQueueSessionTriageSummary {
+  const actionCounts: Record<QueueRunnerResult["action"], number> = {
+    noop: 0,
+    started: 0,
+    finalized: 0,
+    blocked: 0,
+  };
+
+  const startedJobIds = uniqueStrings(steps.map((step) => step.startedJobId ?? "").filter(Boolean));
+  const finalizedJobIds = uniqueStrings(steps.map((step) => step.finalizedJobId ?? "").filter(Boolean));
+  const blockedJobIds = uniqueStrings([
+    ...steps.flatMap((step) => step.blockedJobIds),
+    ...finalInspection.summary.blockedJobIds,
+  ]);
+  const touchedTaskIds = uniqueStrings(steps.map((step) => step.linkedTaskId ?? "").filter(Boolean));
+  const recoveryActions = uniqueStrings(steps.map((step) => step.recoveryAction ?? "").filter(Boolean)) as RuntimeRecoveryDecision["recommendedAction"][];
+
+  for (const step of steps) {
+    actionCounts[step.action] += 1;
+  }
+
+  const queuedJobsRemaining = countRunnableQueuedJobs(finalInspection.summary);
+  let nextAction: BoundedQueueSessionTriageSummary["nextAction"];
+  let nextActionReason: string;
+
+  if (finalInspection.summary.activeJobId && finalInspection.summary.activeTaskId) {
+    nextAction = "inspect_active_task";
+    nextActionReason = `Inspect active task ${finalInspection.summary.activeTaskId} for running job ${finalInspection.summary.activeJobId} before rerunning the queue session.`;
+  } else if (blockedJobIds.length > 0) {
+    nextAction = "review_blocked_jobs";
+    nextActionReason = `Review blocked job IDs: ${blockedJobIds.join(", ")}.`;
+  } else if (finalInspection.summary.failedJobIds.length > 0) {
+    nextAction = "review_failed_jobs";
+    nextActionReason = `Review failed job IDs: ${finalInspection.summary.failedJobIds.join(", ")}.`;
+  } else if (finalInspection.summary.queuePaused) {
+    nextAction = "resume_queue";
+    nextActionReason = queuedJobsRemaining > 0
+      ? `Queue is paused with ${queuedJobsRemaining} queued job(s) remaining; resume only when pickup should continue.`
+      : "Queue is paused; resume only when more work should run.";
+  } else if (queuedJobsRemaining > 0) {
+    nextAction = "rerun_bounded_session";
+    nextActionReason = `${queuedJobsRemaining} queued job(s) remain runnable; rerun a bounded queue session explicitly when you want to continue.`;
+  } else {
+    nextAction = "queue_more_work";
+    nextActionReason = "No active, blocked, failed, or queued jobs need immediate action; queue more bounded work when ready.";
+  }
+
+  return {
+    durationSeconds: Math.max(0, Number(((Date.now() - startedTime) / 1000).toFixed(3))),
+    actionCounts,
+    startedJobIds,
+    finalizedJobIds,
+    blockedJobIds,
+    touchedTaskIds,
+    recoveryActions,
+    queuedJobsRemaining,
+    nextAction,
+    nextActionReason,
+  };
 }
 
 export async function runBoundedQueueSession(
@@ -1750,6 +1835,7 @@ export async function runBoundedQueueSession(
       finishedAt: nowIso(),
       steps,
       finalInspection,
+      triage: buildBoundedQueueSessionTriage(steps, finalInspection, startedTime),
     };
   };
 

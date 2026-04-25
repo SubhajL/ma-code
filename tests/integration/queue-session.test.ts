@@ -81,8 +81,13 @@ test("queue session starts one queued job and stops at the next waiting point", 
   assert.equal(view.result.stepsRun, 1);
   assert.equal(view.result.steps[0]?.action, "started");
   assert.equal(view.result.finalInspection.summary.activeJob?.id, "job-session-start");
+  assert.equal(view.result.triage.nextAction, "inspect_active_task");
+  assert.equal(view.result.triage.actionCounts.started, 1);
+  assert.deepEqual(view.result.triage.startedJobIds, ["job-session-start"]);
   assert.match(rendered, /Harness Queue Session/);
   assert.match(rendered, /stop reason: waiting_on_active_task/);
+  assert.match(rendered, /recommended next action: inspect_active_task/);
+  assert.match(rendered, /action counts: started=1, finalized=0, blocked=0, noop=0/);
   assert.match(rendered, /#1 started started=job-session-start/);
 });
 
@@ -151,6 +156,10 @@ test("queue session can finalize visible terminal work and immediately start the
       { step: 2, action: "started", finalized: null, started: "job-second" },
     ],
   );
+  assert.equal(view.result.triage.actionCounts.finalized, 1);
+  assert.equal(view.result.triage.actionCounts.started, 1);
+  assert.deepEqual(view.result.triage.finalizedJobIds, ["job-first"]);
+  assert.deepEqual(view.result.triage.startedJobIds, ["job-second"]);
   assert.equal(view.result.finalInspection.summary.activeJob?.id, "job-second");
 });
 
@@ -215,4 +224,39 @@ test("queue session respects max-step limits instead of continuing implicitly", 
   assert.equal(view.result.steps[0]?.action, "finalized");
   assert.equal(view.result.finalInspection.summary.activeJob, null);
   assert.equal(view.result.finalInspection.summary.jobCounts.queued, 1);
+  assert.equal(view.result.triage.queuedJobsRemaining, 1);
+  assert.equal(view.result.triage.nextAction, "rerun_bounded_session");
+});
+
+test("queue session triage recommends blocked-job review when the session ends on blocked queue state", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-blocked-");
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-blocked-session",
+        goal: "Blocked queue session job",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: [],
+      },
+    ],
+  });
+
+  const view = await buildHarnessQueueSession({ cwd, maxSteps: 3, maxRuntimeSeconds: 60, recentLimit: 5 });
+  const rendered = renderHarnessQueueSession(view);
+
+  assert.equal(view.result.stopReason, "blocked");
+  assert.equal(view.result.triage.nextAction, "review_blocked_jobs");
+  assert.deepEqual(view.result.triage.blockedJobIds, ["job-blocked-session"]);
+  assert.match(rendered, /recommended next action: review_blocked_jobs/);
+  assert.match(rendered, /blocked\/touched jobs: job-blocked-session/);
 });

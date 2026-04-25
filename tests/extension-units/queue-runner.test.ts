@@ -269,6 +269,8 @@ test("bounded queue session tool starts queued work and stops at the next waitin
   assert.equal(details.stepsRun, 1);
   assert.equal(details.steps[0]?.action, "started");
   assert.equal(details.finalInspection.summary.activeJob?.id, "job-session-start");
+  assert.equal(details.triage.nextAction, "inspect_active_task");
+  assert.equal(details.triage.actionCounts.started, 1);
 });
 
 test("bounded queue session can finalize visible terminal work and start the next queued job in one invocation", async function () {
@@ -336,6 +338,10 @@ test("bounded queue session can finalize visible terminal work and start the nex
       { step: 2, action: "started", finalized: null, started: "job-session-second" },
     ],
   );
+  assert.equal(details.triage.actionCounts.finalized, 1);
+  assert.equal(details.triage.actionCounts.started, 1);
+  assert.deepEqual(details.triage.finalizedJobIds, ["job-session-first"]);
+  assert.deepEqual(details.triage.startedJobIds, ["job-session-second"]);
   assert.equal(details.finalInspection.summary.activeJob?.id, "job-session-second");
 });
 

@@ -36,15 +36,22 @@ export async function buildHarnessQueueSession(options: HarnessQueueSessionOptio
   return { cwd, result };
 }
 
+function formatActionCounts(counts: Record<string, number>): string {
+  return ["started", "finalized", "blocked", "noop"]
+    .map((key) => `${key}=${counts[key] ?? 0}`)
+    .join(", ");
+}
+
 export function renderHarnessQueueSession(view: HarnessQueueSessionView): string {
   const { cwd, result } = view;
-  const { finalInspection } = result;
+  const { finalInspection, triage } = result;
   const { summary } = finalInspection;
   const lines = [
     "Harness Queue Session",
     `cwd: ${cwd}`,
     `stop reason: ${result.stopReason}`,
     `reason: ${result.reason}`,
+    `duration seconds: ${triage.durationSeconds}`,
     `steps run: ${result.stepsRun}/${result.maxSteps}`,
     `max runtime seconds: ${result.maxRuntimeSeconds}`,
     `queue: ${summary.queuePaused ? "paused" : "ready"}`,
@@ -52,6 +59,15 @@ export function renderHarnessQueueSession(view: HarnessQueueSessionView): string
     `active task: ${summary.activeTask?.id ?? "none"}`,
     `blocked jobs: ${formatIdList(summary.blockedJobIds, "none")}`,
     `failed jobs: ${formatIdList(summary.failedJobIds, "none")}`,
+    `queued jobs remaining: ${triage.queuedJobsRemaining}`,
+    `action counts: ${formatActionCounts(triage.actionCounts)}`,
+    `started jobs: ${formatIdList(triage.startedJobIds, "none")}`,
+    `finalized jobs: ${formatIdList(triage.finalizedJobIds, "none")}`,
+    `blocked/touched jobs: ${formatIdList(triage.blockedJobIds, "none")}`,
+    `touched tasks: ${formatIdList(triage.touchedTaskIds, "none")}`,
+    `recovery actions: ${formatIdList(triage.recoveryActions, "none")}`,
+    `recommended next action: ${triage.nextAction}`,
+    `next action reason: ${triage.nextActionReason}`,
   ];
 
   if (result.steps.length > 0) {
@@ -63,6 +79,8 @@ export function renderHarnessQueueSession(view: HarnessQueueSessionView): string
         step.startedJobId ? `started=${step.startedJobId}` : null,
         step.finalizedJobId ? `finalized=${step.finalizedJobId}` : null,
         step.blockedJobIds.length > 0 ? `blocked=${step.blockedJobIds.join(",")}` : null,
+        step.linkedTaskId ? `task=${step.linkedTaskId}` : null,
+        step.recoveryAction ? `recovery=${step.recoveryAction}` : null,
       ].filter(Boolean);
       lines.push(`- ${fragments.join(" ")}`);
     }
