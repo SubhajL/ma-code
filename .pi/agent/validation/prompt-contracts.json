@@ -147,7 +147,11 @@
         "## Risk Notes"
       ],
       "requiredLines": [
-        "Review Verdict: changes_required | no_required_fixes"
+        "Review Verdict: changes_required | no_required_fixes",
+        "Severity Buckets: CRITICAL | HIGH | MEDIUM | LOW",
+        "Severity Summary: CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>",
+        "Required Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed",
+        "Optional Improvement Item Fields: summary | file_ref | benefit | follow_up"
       ],
       "requiredSubstrings": [
         ".pi/agent/docs/architecture_review_workflow.md"
@@ -164,7 +168,11 @@
         "## Final Decision"
       ],
       "requiredLines": [
-        "Final Decision: pass | fail | blocked"
+        "Final Decision: pass | fail | blocked",
+        "Proof Status: sufficient | partial | missing | contradictory",
+        "Missing Proof Category: none | acceptance_gap | evidence_missing | validation_missing | wiring_unchecked | blocked_dependency | contradictory_evidence",
+        "Missing Proof Item Fields: category | gap | evidence_needed | blocking_effect",
+        "Decision Basis: proof_sufficient | proof_gap | blocked_dependency"
       ]
     },
     ".pi/agent/prompts/templates/dispatch-build.md": {
@@ -359,7 +367,11 @@
         "## Risk Notes"
       ],
       "requiredLines": [
-        "Review Verdict: changes_required | no_required_fixes"
+        "Review Verdict: changes_required | no_required_fixes",
+        "Severity Buckets: CRITICAL | HIGH | MEDIUM | LOW",
+        "Severity Summary: CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>",
+        "Required Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed",
+        "Optional Improvement Item Fields: summary | file_ref | benefit | follow_up"
       ],
       "requiredSubstrings": [
         ".pi/agent/docs/architecture_review_workflow.md"
@@ -389,7 +401,11 @@
         "## Final Decision"
       ],
       "requiredLines": [
-        "Final Decision: pass | fail | blocked"
+        "Final Decision: pass | fail | blocked",
+        "Proof Status: sufficient | partial | missing | contradictory",
+        "Missing Proof Category: none | acceptance_gap | evidence_missing | validation_missing | wiring_unchecked | blocked_dependency | contradictory_evidence",
+        "Missing Proof Item Fields: category | gap | evidence_needed | blocking_effect",
+        "Decision Basis: proof_sufficient | proof_gap | blocked_dependency"
       ]
     }
   }

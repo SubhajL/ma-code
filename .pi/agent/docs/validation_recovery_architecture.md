@@ -485,6 +485,20 @@ Reviewer-style outputs should prefer:
 - exact file references when possible
 - clear fix direction
 - named tests or validation still needed
+- normalized review fields so downstream consumers can depend on more than prose:
+  - `Severity Buckets: CRITICAL | HIGH | MEDIUM | LOW`
+  - `Severity Summary: CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>`
+  - `Required Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed`
+  - `Optional Improvement Item Fields: summary | file_ref | benefit | follow_up`
+
+Validator-style outputs should prefer:
+- exact proof over narration
+- explicit proof status and missing-proof categories when proof is weak or contradictory
+- normalized validation fields:
+  - `Proof Status: sufficient | partial | missing | contradictory`
+  - `Missing Proof Category: none | acceptance_gap | evidence_missing | validation_missing | wiring_unchecked | blocked_dependency | contradictory_evidence`
+  - `Missing Proof Item Fields: category | gap | evidence_needed | blocking_effect`
+  - `Decision Basis: proof_sufficient | proof_gap | blocked_dependency`
 
 Architecture-review outputs should prefer:
 - intended vs implemented comparison

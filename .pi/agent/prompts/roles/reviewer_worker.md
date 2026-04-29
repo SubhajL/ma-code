@@ -31,6 +31,12 @@ Required output:
 ## Risk Notes
 Review Verdict: changes_required | no_required_fixes
 
+Normalized review structure:
+Severity Buckets: CRITICAL | HIGH | MEDIUM | LOW
+Severity Summary: CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>
+Required Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed
+Optional Improvement Item Fields: summary | file_ref | benefit | follow_up
+
 Output contract rules:
 - Return every required section header exactly as written.
 - If a section is empty, write `- none`.

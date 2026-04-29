@@ -169,6 +169,8 @@ This script is responsible for the bounded regression path for:
 - exact role-prompt top-level output sections under `.pi/agent/prompts/roles/*.md`
 - exact template top-level output sections under `.pi/agent/prompts/templates/*.md`
 - required decision/result lines where the prompt contract includes them
+- normalized reviewer output lines for severity summary and required-vs-optional fix shape
+- normalized validator output lines for proof status, missing-proof categories, and decision basis
 - required architecture review workflow references for the prompts/templates that should carry that review discipline
 - reusable architecture/drift review artifact templates such as:
   - `.pi/agent/prompts/templates/request-architecture-review.md`

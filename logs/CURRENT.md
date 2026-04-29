@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-04-29_harness-046-architecture-review-artifacts.md`
+- `logs/coding/2026-04-29_harness-047-quality-output-normalization.md`
 
 ## Current planning log
-- `reports/planning/2026-04-29_harness-046-architecture-review-artifacts-plan.md`
+- `reports/planning/2026-04-29_harness-047-quality-output-normalization-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

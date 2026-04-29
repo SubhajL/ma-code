@@ -55,12 +55,22 @@ It also notes the main repo-local expectations shaped from the useful `g-*` skil
 - focuses on review findings and scoped review outcomes
 - treated as critical in routing
 - should prefer severity-ordered findings, exact file references, concrete fix direction, and named missing tests/validation
+- should keep review output normalized enough for downstream consumption, including:
+  - `Severity Buckets: CRITICAL | HIGH | MEDIUM | LOW`
+  - `Severity Summary: CRITICAL=<n> HIGH=<n> MEDIUM=<n> LOW=<n>`
+  - `Required Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed`
+  - `Optional Improvement Item Fields: summary | file_ref | benefit | follow_up`
 - when the scope is architectural or drift-oriented, should compare intended vs implemented behavior and separate tactical fixes from strategic recommendations
 
 ### validator_worker
 - focuses on proof and validator decisions
 - treated as critical in routing
 - should prefer exact proof over narration and name the specific missing validation or evidence when proof is weak
+- should keep validation output normalized enough for downstream consumption, including:
+  - `Proof Status: sufficient | partial | missing | contradictory`
+  - `Missing Proof Category: none | acceptance_gap | evidence_missing | validation_missing | wiring_unchecked | blocked_dependency | contradictory_evidence`
+  - `Missing Proof Item Fields: category | gap | evidence_needed | blocking_effect`
+  - `Decision Basis: proof_sufficient | proof_gap | blocked_dependency`
 
 ## Recovery side
 ### recovery_worker
