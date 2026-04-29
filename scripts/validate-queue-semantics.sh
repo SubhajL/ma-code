@@ -195,6 +195,11 @@ status_enum = set(items['properties']['status']['enum'])
 assert {'queued', 'running', 'blocked', 'done', 'failed'} == status_enum, 'job status enum mismatch'
 priority_enum = set(items['properties']['priority']['enum'])
 assert {'low', 'medium', 'high'} == priority_enum, 'job priority enum mismatch'
+quality_input = items['properties'].get('qualityInput')
+assert quality_input is not None, 'qualityInput schema entry is required for structured queue→quality runtime input'
+assert quality_input['type'] == ['object', 'null'], 'qualityInput must allow object or null'
+assert set(quality_input['required']) == {'sourcePacketId', 'sourceHandoff'}, 'qualityInput required fields mismatch'
+assert quality_input['properties']['sourceHandoff']['$ref'] == './handoff.schema.json', 'qualityInput.sourceHandoff must reference the structured handoff schema'
 print('queue-schema-ok')
 PY
 
@@ -261,6 +266,8 @@ required_snippets = [
     '### `activeJobId`',
     '## Who may create jobs',
     'Blocked is not the same as failed.',
+    '- `qualityInput`',
+    'structured `worker_to_quality` handoff object',
 ]
 missing = [snippet for snippet in required_snippets if snippet not in doc]
 assert not missing, f"missing expected queue doc snippets: {missing}"

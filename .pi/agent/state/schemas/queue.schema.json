@@ -195,6 +195,25 @@
           "modelOverride": {
             "type": "string"
           },
+          "qualityInput": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "sourcePacketId",
+              "sourceHandoff"
+            ],
+            "properties": {
+              "sourcePacketId": {
+                "type": "string"
+              },
+              "sourceHandoff": {
+                "$ref": "./handoff.schema.json"
+              }
+            },
+            "additionalProperties": false
+          },
           "linkedTaskId": {
             "type": [
               "string",

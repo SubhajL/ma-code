@@ -16,10 +16,17 @@ import {
 import {
   generateHandoff,
   loadHandoffPolicy,
+  validateStructuredHandoff,
   type GeneratedHandoff,
   type StructuredHandoff,
 } from "./handoffs.ts";
-import { loadPacketPolicy, generateTaskPacket, type GeneratedTaskPacket, type TaskPacket } from "./task-packets.ts";
+import {
+  loadPacketPolicy,
+  generateTaskPacket,
+  type GeneratedTaskPacket,
+  type TaskPacket,
+  type TaskPacketInput,
+} from "./task-packets.ts";
 import { loadRecoveryPolicy } from "./recovery-policy.ts";
 import { resolveRecoveryRuntimeDecision, type RuntimeRecoveryDecision } from "./recovery-runtime.ts";
 import {
@@ -53,6 +60,11 @@ import {
 export type QueueJobStatus = "queued" | "running" | "blocked" | "done" | "failed";
 export type QueuePriority = "low" | "medium" | "high";
 
+export interface QualityQueueInput {
+  sourcePacketId: string;
+  sourceHandoff: StructuredHandoff;
+}
+
 export interface QueueJob {
   id: string;
   goal: string;
@@ -79,6 +91,7 @@ export interface QueueJob {
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
+  qualityInput?: QualityQueueInput | null;
   scheduledWorkflowId?: string | null;
   scheduledRunKey?: string | null;
   linkedTaskId?: string | null;
@@ -622,6 +635,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     ),
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
     notes: [...(job.notes ?? [])],
+    qualityInput: job.qualityInput ?? null,
     linkedTaskId: job.linkedTaskId ?? null,
     packetId: job.packetId ?? null,
     selectedModelId: job.selectedModelId ?? null,
@@ -724,50 +738,105 @@ function defaultWorkTypeForTeam(team: TeamId): WorkType {
   }
 }
 
-function optionalStringArray(values: string[] | undefined): string[] | undefined {
-  return values && values.length > 0 ? values : undefined;
+function qualityLeadStructuredInputRequired(teamId: TeamId, assignedRole: HarnessRole): boolean {
+  return teamId === "quality" && assignedRole === "quality_lead";
 }
 
-async function previewPacketForJob(cwd: string, job: QueueJob, teamId: TeamId, assignedRole: HarnessRole): Promise<GeneratedTaskPacket> {
-  const [packetPolicy, teams, routingConfig] = await Promise.all([
-    loadPacketPolicy(cwd),
-    loadTeamDefinitions(cwd),
-    loadHarnessRoutingConfig(cwd),
+function resolveQualityQueueInput(job: QueueJob, teamId: TeamId, assignedRole: HarnessRole): QualityQueueInput | null {
+  if (!qualityLeadStructuredInputRequired(teamId, assignedRole)) {
+    return null;
+  }
+
+  const qualityInput = job.qualityInput;
+  if (!qualityInput) {
+    throw new Error("qualityInput with a structured worker_to_quality handoff is required for queued quality_lead jobs.");
+  }
+
+  if (typeof qualityInput.sourcePacketId !== "string" || qualityInput.sourcePacketId.trim().length === 0) {
+    throw new Error("qualityInput.sourcePacketId must be a non-empty string.");
+  }
+
+  validateStructuredHandoff(qualityInput.sourceHandoff);
+
+  if (qualityInput.sourceHandoff.handoffType !== "worker_to_quality") {
+    throw new Error("qualityInput.sourceHandoff must be a worker_to_quality handoff.");
+  }
+  if (qualityInput.sourceHandoff.toRole !== "quality_lead") {
+    throw new Error("qualityInput.sourceHandoff must target quality_lead.");
+  }
+  if (qualityInput.sourceHandoff.sourcePacketId !== qualityInput.sourcePacketId.trim()) {
+    throw new Error("qualityInput.sourcePacketId must match sourceHandoff.sourcePacketId.");
+  }
+  if (qualityInput.sourceHandoff.preservedPacket.packetId !== qualityInput.sourcePacketId.trim()) {
+    throw new Error("qualityInput.sourcePacketId must match sourceHandoff.preservedPacket.packetId.");
+  }
+
+  return {
+    sourcePacketId: qualityInput.sourcePacketId.trim(),
+    sourceHandoff: qualityInput.sourceHandoff,
+  };
+}
+
+function buildQualityLeadPacketInput(job: QueueJob, qualityInput: QualityQueueInput, taskId: string | null): TaskPacketInput {
+  const handoff = qualityInput.sourceHandoff;
+  const filesToInspect = uniqueStrings([
+    ...handoff.details.changedFiles,
+    ...handoff.details.unchangedInspected,
+    ...handoff.preservedPacket.filesToInspect,
+  ]);
+  const allowedPaths = uniqueStrings([
+    ...handoff.details.changedFiles,
+    ...handoff.details.unchangedInspected,
+    ...handoff.preservedPacket.allowedPaths,
   ]);
 
-  return generateTaskPacket(packetPolicy, teams, routingConfig, {
+  return {
     sourceGoalId: job.id,
-    parentTaskId: job.linkedTaskId ?? null,
-    parentPacketId: null,
-    assignedTeam: teamId,
-    assignedRole,
+    parentTaskId: taskId,
+    parentPacketId: qualityInput.sourcePacketId,
+    assignedTeam: "quality",
+    assignedRole: "quality_lead",
     title: job.goal,
-    scope: job.scope ?? job.goal,
-    workType: job.workType ?? defaultWorkTypeForTeam(teamId),
-    domains: job.domains,
-    allowedPaths: job.allowedPaths,
-    acceptanceCriteria: job.acceptanceCriteria ?? [],
+    goal: `Quality review for ${handoff.preservedPacket.goal}`,
+    scope: handoff.preservedPacket.scope,
+    nonGoals: handoff.preservedPacket.nonGoals,
+    workType: job.workType ?? "review_only",
+    domains: (job.domains && job.domains.length > 0 ? job.domains : (handoff.preservedPacket.domains as DomainId[])),
+    discoverySummary: uniqueStrings([
+      ...handoff.preservedPacket.discoverySummary,
+      `Structured quality input from handoff ${handoff.handoffId}.`,
+      `Source packet ${qualityInput.sourcePacketId}.`,
+    ]),
+    filesToInspect,
+    filesToModify: [],
+    allowedPaths,
+    disallowedPaths: handoff.preservedPacket.disallowedPaths,
+    acceptanceCriteria: (job.acceptanceCriteria && job.acceptanceCriteria.length > 0)
+      ? job.acceptanceCriteria
+      : handoff.preservedPacket.acceptanceCriteria,
+    evidenceExpectations: uniqueStrings([
+      ...handoff.preservedPacket.evidenceExpectations,
+      ...handoff.details.acceptanceCoverage.map((line) => `acceptance coverage: ${line}`),
+    ]),
+    validationExpectations: handoff.preservedPacket.validationExpectations,
+    expectedProof: uniqueStrings([...handoff.preservedPacket.expectedProof, ...handoff.details.expectedProof]),
+    wiringChecks: uniqueStrings([...handoff.preservedPacket.wiringChecks, ...handoff.details.wiringVerification]),
+    migrationPathNote: handoff.preservedPacket.migrationPathNote,
+    escalationInstructions: handoff.preservedPacket.escalationInstructions,
     dependencies: job.dependencies,
     routeReason: job.routeReason,
     budgetMode: job.budgetMode,
     modelOverride: job.modelOverride,
-  });
+  };
 }
 
-async function generatePacketForStartedTask(
-  cwd: string,
-  job: QueueJob,
-  teamId: TeamId,
-  assignedRole: HarnessRole,
-  taskId: string,
-): Promise<GeneratedTaskPacket> {
-  const [packetPolicy, teams, routingConfig] = await Promise.all([
-    loadPacketPolicy(cwd),
-    loadTeamDefinitions(cwd),
-    loadHarnessRoutingConfig(cwd),
-  ]);
+function buildPacketInputForJob(job: QueueJob, teamId: TeamId, assignedRole: HarnessRole, taskId: string | null): TaskPacketInput {
+  const qualityInput = resolveQualityQueueInput(job, teamId, assignedRole);
+  if (qualityInput) {
+    return buildQualityLeadPacketInput(job, qualityInput, taskId);
+  }
 
-  return generateTaskPacket(packetPolicy, teams, routingConfig, {
+  return {
     sourceGoalId: job.id,
     parentTaskId: taskId,
     parentPacketId: null,
@@ -783,7 +852,33 @@ async function generatePacketForStartedTask(
     routeReason: job.routeReason,
     budgetMode: job.budgetMode,
     modelOverride: job.modelOverride,
-  });
+  };
+}
+
+async function previewPacketForJob(cwd: string, job: QueueJob, teamId: TeamId, assignedRole: HarnessRole): Promise<GeneratedTaskPacket> {
+  const [packetPolicy, teams, routingConfig] = await Promise.all([
+    loadPacketPolicy(cwd),
+    loadTeamDefinitions(cwd),
+    loadHarnessRoutingConfig(cwd),
+  ]);
+
+  return generateTaskPacket(packetPolicy, teams, routingConfig, buildPacketInputForJob(job, teamId, assignedRole, job.linkedTaskId ?? null));
+}
+
+async function generatePacketForStartedTask(
+  cwd: string,
+  job: QueueJob,
+  teamId: TeamId,
+  assignedRole: HarnessRole,
+  taskId: string,
+): Promise<GeneratedTaskPacket> {
+  const [packetPolicy, teams, routingConfig] = await Promise.all([
+    loadPacketPolicy(cwd),
+    loadTeamDefinitions(cwd),
+    loadHarnessRoutingConfig(cwd),
+  ]);
+
+  return generateTaskPacket(packetPolicy, teams, routingConfig, buildPacketInputForJob(job, teamId, assignedRole, taskId));
 }
 
 function buildInitialHandoffIfSupported(
@@ -1215,6 +1310,7 @@ function compensateFailedQueueStartInState(state: QueueState, jobId: string, tas
 
 async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandoff: boolean): Promise<QueueRunnerResult> {
   const blockedJobIds: string[] = [];
+  const blockedJobReasons: string[] = [];
   const completionGatePolicy = await loadCompletionGatePolicy(cwd);
 
   while (true) {
@@ -1242,10 +1338,12 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
 
       const job = normalizeQueueJob(nextJob);
       if ((job.acceptanceCriteria ?? []).length === 0) {
-        blockJobInState(queueState, job.id, "Queue runner blocked the job because explicit acceptanceCriteria are required before task creation.");
+        const note = "Queue runner blocked the job because explicit acceptanceCriteria are required before task creation.";
+        blockJobInState(queueState, job.id, note);
         return {
           type: "blocked-before-start" as const,
           jobId: job.id,
+          reason: note,
         };
       }
 
@@ -1255,14 +1353,17 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
         return {
           type: "blocked-before-start" as const,
           jobId: job.id,
+          reason: unsupportedControlsNote,
         };
       }
 
       if (job.approvalRequired) {
-        blockJobInState(queueState, job.id, "Queue runner blocked the queued job because the approval boundary was hit before start (approvalRequired=true).");
+        const note = "Queue runner blocked the queued job because the approval boundary was hit before start (approvalRequired=true).";
+        blockJobInState(queueState, job.id, note);
         return {
           type: "blocked-before-start" as const,
           jobId: job.id,
+          reason: note,
         };
       }
 
@@ -1270,18 +1371,22 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
         const linkedTask = getTask(taskState, job.linkedTaskId);
         if (linkedTask) {
           if (jobExceededRetryBudget(job, linkedTask)) {
-            failJobInState(queueState, job.id, `Queue runner failed the queued job before restart because linked task ${linkedTask.id} exhausted budget.maxRetries.`);
+            const note = `Queue runner failed the queued job before restart because linked task ${linkedTask.id} exhausted budget.maxRetries.`;
+            failJobInState(queueState, job.id, note);
             return {
               type: "failed-before-start" as const,
               jobId: job.id,
+              reason: note,
             };
           }
 
           if (jobExceededFailedValidationBudget(job, linkedTask)) {
-            failJobInState(queueState, job.id, `Queue runner failed the queued job before restart because linked task ${linkedTask.id} exhausted budget.maxFailedValidations using retryCount plus the current validation failure.`);
+            const note = `Queue runner failed the queued job before restart because linked task ${linkedTask.id} exhausted budget.maxFailedValidations using retryCount plus the current validation failure.`;
+            failJobInState(queueState, job.id, note);
             return {
               type: "failed-before-start" as const,
               jobId: job.id,
+              reason: note,
             };
           }
         }
@@ -1332,10 +1437,12 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
           };
         }
 
-        blockJobInState(queueState, job.id, `Queue runner blocked the job before start: ${message}`);
+        const note = `Queue runner blocked the job before start: ${message}`;
+        blockJobInState(queueState, job.id, note);
         return {
           type: "blocked-before-start" as const,
           jobId: job.id,
+          reason: note,
         };
       }
     });
@@ -1381,7 +1488,9 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
         version: 1,
         ok: true,
         action: blockedJobIds.length > 0 ? "blocked" : "noop",
-        reason: blockedJobIds.length > 0 ? "Blocked invalid queued jobs; no runnable queued job remained." : "No eligible queued jobs were found.",
+        reason: blockedJobIds.length > 0
+          ? (blockedJobReasons[0] ?? "Blocked invalid queued jobs; no runnable queued job remained.")
+          : "No eligible queued jobs were found.",
         queuePaused: false,
         activeJobId: null,
         startedJob: null,
@@ -1414,6 +1523,7 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
 
     if (attempt.type === "blocked-before-start" || attempt.type === "failed-before-start") {
       blockedJobIds.push(attempt.jobId);
+      blockedJobReasons.push(attempt.reason);
       continue;
     }
 
