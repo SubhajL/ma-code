@@ -7,6 +7,8 @@ Included:
 - `g-coding`
 - `g-check`
 - `g-review`
+- `g-create`
+- `g-submit`
 - `auggie_discover` extension
 - `second_model_plan` extension restricted to Claude Opus 4.6 with explicit fallback to the main model
 
@@ -33,6 +35,8 @@ skills/
   g-coding/
   g-check/
   g-review/
+  g-create/
+  g-submit/
 extensions/
   auggie-discovery.ts
   second-model-opus.ts
@@ -62,7 +66,7 @@ See `docs/pi-log-convention.md`.
 ## Skill name collision note
 Pi keeps the first skill found for a duplicated skill name.
 
-If your Pi setup already loads `g-planning`, `g-coding`, `g-check`, or `g-review` from another source such as `~/.codex/skills`, disable that older source first or these package skills will be shadowed.
+If your Pi setup already loads `g-planning`, `g-coding`, `g-check`, `g-review`, `g-create`, or `g-submit` from another source such as `~/.codex/skills`, disable that older source first or these package skills will be shadowed.
 
 Practical options:
 - remove or disable the old skill source in Pi settings
@@ -71,4 +75,5 @@ Practical options:
 
 ## Notes
 - The skills are process-heavy by design and preserve the original `g-*` workflow shape.
+- `g-create` and `g-submit` keep the recognizable create/submit workflow names, but adapt them to bounded Pi-native Git/GitHub usage with Graphite-first guidance when `gt` is available rather than a hard Graphite-only dependency.
 - The extensions are intentionally small and only implement the runtime behaviors that a skill alone cannot enforce reliably.
