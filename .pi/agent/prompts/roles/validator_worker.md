@@ -30,6 +30,12 @@ Required output:
 ## Final Decision
 Final Decision: pass | fail | blocked
 
+Normalized validation structure:
+Proof Status: sufficient | partial | missing | contradictory
+Missing Proof Category: none | acceptance_gap | evidence_missing | validation_missing | wiring_unchecked | blocked_dependency | contradictory_evidence
+Missing Proof Item Fields: category | gap | evidence_needed | blocking_effect
+Decision Basis: proof_sufficient | proof_gap | blocked_dependency
+
 Output contract rules:
 - Return every required section header exactly as written.
 - If a section is empty, write `- none`.
