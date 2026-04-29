@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. safe-bash runtime guard unit tests",
+      "status": "PASS",
+      "detail": "safe-bash protected-path, hard-block, warn-level, and allow-path unit tests passed."
+    },
+    {
+      "name": "2. till-done task-discipline unit tests",
+      "status": "PASS",
+      "detail": "till-done mutation blocking, validation gate, lighter docs path, and active-task allow-path tests passed."
+    },
+    {
+      "name": "3. routing/team/packet/handoff helper unit tests",
+      "status": "PASS",
+      "detail": "routing, team activation, task packet, and handoff helper unit tests passed."
+    },
+    {
+      "name": "4. queue-runner bounded step unit tests",
+      "status": "PASS",
+      "detail": "queue-runner unit tests passed for empty/paused no-ops, deterministic single-job start/finalize, stop-condition enforcement for retries/runtime/failed validations/approval boundaries, unsupported-control blocking, compensation safety, and recovery reuse."
+    }
+  ]
+}

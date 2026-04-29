@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "activeTaskId": "task-1776571018255",
+  "activeTaskId": "task-1777442748746",
   "tasks": [
     {
       "id": "task-1776570384142",
@@ -21,13 +21,22 @@
         "updatedAt": "2026-04-19T03:46:31.691Z",
         "startedAt": "2026-04-19T03:46:27.604Z",
         "completedAt": "2026-04-19T03:46:31.691Z"
+      },
+      "taskClass": "implementation",
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
       }
     },
     {
       "id": "task-1776571018255",
       "title": "review gate check",
       "owner": "assistant",
-      "status": "in_progress",
+      "status": "blocked",
       "acceptance": [
         "Task can only be completed through proper review flow."
       ],
@@ -36,11 +45,1464 @@
       ],
       "dependencies": [],
       "retryCount": 0,
-      "notes": [],
+      "notes": [
+        "Superseded by current HARNESS-034 implementation work; keeping prior unrelated review-gate check visible instead of mutating against it."
+      ],
       "timestamps": {
         "createdAt": "2026-04-19T03:56:58.255Z",
-        "updatedAt": "2026-04-19T03:57:07.200Z",
+        "updatedAt": "2026-04-22T09:14:03.700Z",
         "startedAt": "2026-04-19T03:57:03.730Z"
+      },
+      "taskClass": "implementation",
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      }
+    },
+    {
+      "id": "task-1776849214153",
+      "title": "HARNESS-034 stop conditions in queue runner",
+      "owner": "assistant",
+      "status": "blocked",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Queue runner enforces bounded stop conditions for max retries, max runtime, max failed validations, and approval-boundary hits.",
+        "Queue runner records a terminal halted outcome when a configured stop condition is hit instead of looping blindly.",
+        "Queue runner tests cover each stop-condition path plus non-trigger behavior.",
+        "Relevant queue docs/schema/validation wiring are updated if the public queue-job contract changes."
+      ],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [
+        "Superseded by the user’s new priority to implement branch-first auto-branch behavior for safe mutation. Keeping HARNESS-034 visible so it can be resumed explicitly later."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-22T09:13:34.153Z",
+        "updatedAt": "2026-04-22T23:18:28.060Z",
+        "startedAt": "2026-04-22T09:14:12.982Z"
+      }
+    },
+    {
+      "id": "task-1776898496126",
+      "title": "Finish HARNESS-034 stop-condition enforcement in queue runner",
+      "owner": "assistant",
+      "status": "blocked",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Patch queue runner to correctly enforce maxFailedValidations using retry history plus current validation failure.",
+        "Add regression and observability tests for HARNESS-034 stop conditions.",
+        "Update HARNESS-034 docs to reflect supported enforced controls vs unsupported blocked controls.",
+        "Record evidence and known gaps before completion claim."
+      ],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [
+        "Duplicate of active HARNESS-034 task task-1776849214153; continuing under the already-active task to avoid overlapping task ownership."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-22T22:54:56.126Z",
+        "updatedAt": "2026-04-22T22:55:17.737Z"
+      }
+    },
+    {
+      "id": "task-1776899908058",
+      "title": "Implement branch-first auto-branching for tracked mutations on main",
+      "owner": "assistant",
+      "status": "blocked",
+      "taskClass": "implementation",
+      "acceptance": [
+        "safe-bash supports a branch-first path so first tracked mutation on main can create/switch to a task branch when safe instead of only hard-blocking.",
+        "Behavior remains blocked when repo state is unsafe, no active task exists, or protected paths are involved.",
+        "Extension unit tests and runtime validation cover the new branch-first behavior and updated messages.",
+        "Docs describe branch-first workflow, PR/CI loop, and remaining safety limits clearly."
+      ],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [
+        "Discovered implementation blocker while planning: the current session is on `main`, and repo-local `safe-bash` blocks all tracked-file edits and mutating bash on `main`, including the branch-creation commands needed to bootstrap the branch-first fix itself. Also observed tracked runtime bookkeeping dirtiness on `main` (`.pi/agent/state/runtime/tasks.json`, `logs/harness-actions.jsonl`), which the design must account for when auto-branching.",
+        "Implementation is blocked pending creation of a non-main branch in the repo root. The current `safe-bash` guard blocks all tracked-file edits and mutating bash on `main`, so the bootstrap branch must be created outside this guarded session before code changes can proceed."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-22T23:18:28.058Z",
+        "updatedAt": "2026-04-22T23:20:12.742Z",
+        "startedAt": "2026-04-22T23:18:31.750Z"
+      }
+    },
+    {
+      "id": "task-1776925553875",
+      "title": "Validate and land HARNESS-025 before HARNESS-034",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Validate split/harness-025-auto-task-branching with focused unit and bounded runtime checks.",
+        "Push split/harness-025-auto-task-branching and open/merge a PR if validation and review signals are sufficient.",
+        "Update HARNESS-034 branch onto latest main after HARNESS-025 lands and run appropriate validation.",
+        "Record evidence, commands run, and any unresolved risks or gaps."
+      ],
+      "evidence": [
+        "Created isolated worktree: /Users/subhajlimanond/dev/ma-code-worktrees/harness-025-auto-task-branching on split/harness-025-auto-task-branching.",
+        "Preflight: git status clean in HARNESS-025 worktree and branch verified as split/harness-025-auto-task-branching.",
+        "Focused unit attempt failed because local dependency resolution was unavailable in the worktree: node --import tsx --test tests/extension-units/safe-bash.test.ts -> ERR_MODULE_NOT_FOUND for tsx; npx tsx retry then failed on missing @mariozechner/pi-coding-agent.",
+        "Bounded runtime validation script ran and failed due provider routing issue: multiple checks returned model_not_supported for github-copilot/claude-opus-4.6; report generated at reports/validation/2026-04-23_phase-a-b-runtime-validation-script.md and .json.",
+        "Remote branch push/PR/merge follow-through could not proceed from this guarded main-root session because mutating git bash commands such as git push are blocked by safe-bash despite using a non-main worktree.",
+        "Fixed HARNESS-025 CI compile failure in .pi/agent/extensions/safe-bash.ts by replacing non-narrowing `if (!branchResult.ok)` / `if (!autoBranch.ok)` checks with explicit `=== false` discriminant checks for TypeScript union narrowing.",
+        "Local validation: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Pushed commit 1035af0ca6c7671208ac2c2026ed7ec6676e21aa to split/harness-025-auto-task-branching.",
+        "PR #19 CI is now fully green: Repo Static Checks SUCCESS, Dependency Review SUCCESS, Foundation Extension Compile SUCCESS, CodeQL SUCCESS, Routing Validators SUCCESS.",
+        "Merged PR #19 HARNESS-025 with squash; GitHub reports mergedAt 2026-04-23T10:24:28Z and merge commit ef02a353b524e49ede1d00f8f4c2bd9ba05cca70.",
+        "Updated split/harness-034-stop-conditions onto latest origin/main by rebasing in /Users/subhajlimanond/dev/ma-code-worktrees/harness-034-stop-conditions-main.",
+        "HARNESS-034 local validation passed after rebase: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "HARNESS-034 targeted validation passed after rebase: `bash scripts/validate-queue-runner.sh --skip-live` -> PASS; report at reports/validation/2026-04-23_queue-runner-validation-script.md and .json.",
+        "Created and pushed new rebased HARNESS-034 branch without force-push: split/harness-034-stop-conditions-rebased.",
+        "Opened HARNESS-034 PR against main: https://github.com/SubhajL/ma-code/pull/20."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-23T13:30:45.776Z"
+      },
+      "notes": [
+        "Planned sequence: (1) create/use isolated worktree for split/harness-025-auto-task-branching, (2) run preflight and bounded validation, (3) push branch and open PR if needed, (4) merge after checks, (5) update HARNESS-034 branch onto latest main, (6) run targeted validation on HARNESS-034 and record evidence.",
+        "Blocked on two external/runtime constraints before merge: (1) local HARNESS-025 validation cannot complete cleanly in this worktree without dependencies that are not available under current protected-path rules, and (2) bounded live validation fails because the repo-local validator route requests unsupported model github-copilot/claude-opus-4.6. Additionally, mutating git commands needed for push/PR/merge are blocked by safe-bash from this main-root guarded session even when targeting a non-main worktree.",
+        "Resuming HARNESS-025 to fix CI compile errors in safe-bash auto-branching so PR #19 can go green."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-23T06:25:53.876Z",
+        "updatedAt": "2026-04-23T13:30:48.677Z",
+        "startedAt": "2026-04-23T06:26:05.468Z",
+        "completedAt": "2026-04-23T13:30:48.677Z"
+      }
+    },
+    {
+      "id": "task-1776944644000",
+      "title": "HARNESS-035 and HARNESS-036 operator controls and workflow",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Queue/task/operator surfaces support read-only inspection of current queue and task state for daily operation.",
+        "Operator controls support pause/resume of queue processing through bounded runtime-safe tools or extensions.",
+        "Operator controls support a safe stop action that does not bypass task discipline or leave ambiguous active queue state.",
+        "Daily operator workflow is documented with commands, expected states, and safety notes.",
+        "Implementation is validated with targeted tests and/or scripts appropriate to the changed runtime controls."
+      ],
+      "evidence": [
+        "Implemented operator control tools in .pi/agent/extensions/queue-runner.ts: inspect_queue_state, pause_queue, resume_queue, and stop_queue_safely, while keeping run_next_queue_job as the bounded execution step.",
+        "Added unit coverage in tests/extension-units/queue-runner.test.ts for operator state inspection, pause/resume gating, and safe stop blocking of the active job/task.",
+        "Documented implemented operator control model and daily operator loop in .pi/agent/docs/operator_control_model.md and .pi/agent/docs/operator_workflow.md.",
+        "Validation passed: bash scripts/check-foundation-extension-compile.sh -> foundation-extension-compile-ok.",
+        "Validation passed: bash scripts/validate-queue-runner.sh --skip-live -> PASS; reports at reports/validation/2026-04-23_queue-runner-validation-script.md and .json.",
+        "Committed HARNESS-035/036 implementation on split/harness-035-036-operator-controls: 0a83edd HARNESS-035/036: add operator queue controls and workflow docs.",
+        "Opened PR #21: https://github.com/SubhajL/ma-code/pull/21.",
+        "PR #21 CI passed: Dependency Review, Repo Static Checks, Foundation Extension Compile, Routing Validators, and CodeQL succeeded.",
+        "Merged PR #21 with squash; GitHub reports mergedAt 2026-04-23T14:17:57Z and merge commit f392850180a42ab8ee0f4bbad6010a9aae296fb3.",
+        "Fast-forwarded local main to origin/main; latest history now includes f392850 HARNESS-035/036: add operator queue controls and workflow docs (#21)."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-23T14:18:38.906Z"
+      },
+      "notes": [
+        "Plan: extend queue-runner with operator-facing tools for state inspection, pause, resume, and safe stop; add unit coverage in queue-runner tests; document daily operator flow and control semantics in operator docs/workflow without changing protected runtime schema shape.",
+        "g-check review completed on local HARNESS-035/036 implementation. No blocking code or validation gaps found after compile and queue-runner validator passed. Cleaned transient local validation report artifacts so the worktree now contains only intended source/doc/test changes."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-23T11:44:04.000Z",
+        "updatedAt": "2026-04-23T14:18:45.229Z",
+        "startedAt": "2026-04-23T13:30:52.980Z",
+        "completedAt": "2026-04-23T14:18:45.229Z"
+      }
+    },
+    {
+      "id": "task-1776954488560",
+      "title": "HARNESS-038 integration-test core workflows",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Add first meaningful full-path integration proof for core harness workflows across docs-only, implementation-pass, validation-fail, recovery-path, and provider/tool-block scenarios.",
+        "Keep the integration coverage bounded, deterministic where possible, and aligned with existing runtime/task/queue safety controls.",
+        "Document any new integration-test entrypoint or workflow proof expectations needed to run or interpret HARNESS-038.",
+        "Validate HARNESS-038 with appropriate compile and targeted integration-test evidence before completion."
+      ],
+      "evidence": [
+        "Added new integration workflow proof file: tests/integration/core-workflows.test.ts covering docs-only, implementation pass, validation fail, recovery path, and blocked validation/provider-unavailable workflow visibility.",
+        "Added dedicated isolated validator: scripts/validate-core-workflows.sh; local run passed and wrote reports/validation/2026-04-23_core-workflows-validation-script.{md,json} before cleanup.",
+        "Wired the validator into README.md, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/validation_architecture.md, scripts/check-repo-static.sh, .github/workflows/ci.yml, and package.json.",
+        "Local validation passed: bash scripts/check-foundation-extension-compile.sh -> foundation-extension-compile-ok.",
+        "Local validation passed: bash scripts/validate-core-workflows.sh -> PASS.",
+        "Committed HARNESS-038 on split/harness-038-core-workflows: fea88b7 HARNESS-038: add core workflow integration proof.",
+        "Opened PR #22: https://github.com/SubhajL/ma-code/pull/22.",
+        "PR #22 CI passed: Dependency Review, Repo Static Checks, Foundation Extension Compile, Routing Validators, and CodeQL succeeded.",
+        "Merged PR #22 with squash; GitHub reports mergedAt 2026-04-24T00:45:34Z and merge commit 901a1a59068ee7597041e3e456a950af945274b8.",
+        "Fast-forwarded local main to origin/main; latest history now includes 901a1a5 HARNESS-038: add core workflow integration proof (#22)."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T00:46:02.729Z"
+      },
+      "notes": [
+        "Implementation approach for HARNESS-038: add a first bounded core-workflow integration test file plus a dedicated isolated validator script, then wire that validator into docs/static checks/CI for repeatable full-path proof.",
+        "g-check completed for HARNESS-038. Confirmed integration proof now includes a real safe-bash block plus bounded provider-failure recovery guidance, validator wiring is present, local compile/core-workflows validation pass, and transient report/runtime artifacts were cleaned before commit."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-23T14:28:08.560Z",
+        "updatedAt": "2026-04-24T00:46:06.762Z",
+        "startedAt": "2026-04-23T14:28:18.041Z",
+        "completedAt": "2026-04-24T00:46:06.762Z"
+      }
+    },
+    {
+      "id": "task-1776991219458",
+      "title": "HARNESS-039 worktree-aware mutation context for safe-bash and mutation tools",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Mutation safety evaluates the intended repo/worktree context rather than only the parent session cwd for bounded non-main worktree edits.",
+        "Bash mutation handling can safely recognize a bounded leading `cd <worktree> && ...` pattern (or equivalent explicit target context) before applying main-branch mutation blocks.",
+        "Write/edit mutation handling resolves target-path repo context so valid non-main worktree mutations are not misclassified as main-branch edits.",
+        "Unsafe or ambiguous cross-repo/cross-worktree mutation attempts remain blocked with clear reasons.",
+        "Unit/integration validation covers parent-cwd-on-main with target-worktree-on-branch cases plus ambiguous/unsafe rejection cases."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/extensions/safe-bash.ts, tests/extension-units/safe-bash.test.ts, tests/extension-units/test-utils.ts.",
+        "Implemented worktree-aware mutation context in safe-bash: write/edit resolve target path cwd, bounded leading `cd <path> && ...` bash commands classify against the target worktree, and cross-repo/non-repo targets are blocked using git common-dir checks with clear audit reasons.",
+        "Expanded safe-bash unit coverage for parent-session-on-main with target-worktree-on-branch write/edit and leading-`cd` bash cases, plus cross-repo and non-repo rejection paths; updated FakePi test utility to model per-cwd branch/common-dir state accurately including explicit null non-repo cases.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T01:17:37.224Z"
+      },
+      "notes": [
+        "Starting HARNESS-039. Initial plan: inspect safe-bash mutation checks for cwd assumptions, add bounded target-worktree resolution for write/edit and leading `cd <path> && ...` bash cases, preserve conservative blocking for ambiguous cases, and add unit/integration coverage for parent-cwd-on-main with target-worktree-on-branch behavior.",
+        "g-check on HARNESS-039 found one remaining acceptance gap: current target-cwd/worktree-aware mutation logic correctly handles same-repo worktrees, but does not yet conservatively block non-repo or cross-repo target paths. Need one more bounded fix plus tests before review can pass."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T00:40:19.458Z",
+        "updatedAt": "2026-04-24T01:17:40.268Z",
+        "startedAt": "2026-04-24T00:49:26.774Z",
+        "completedAt": "2026-04-24T01:17:40.268Z"
+      }
+    },
+    {
+      "id": "task-1776993548023",
+      "title": "Land HARNESS-039 worktree-aware mutation context changes",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Review HARNESS-039 diff and fix any remaining correctness or test issues before PR.",
+        "Create/push a HARNESS-039 branch and open a PR with clear summary and validation evidence.",
+        "Address CI/security/autobot review feedback with bounded fixes until required checks pass or an external blocker is explicit.",
+        "Merge the HARNESS-039 PR to main once checks/reviews are satisfied, then fast-forward local main and record evidence."
+      ],
+      "evidence": [
+        "Reviewed HARNESS-039 diff in /Users/subhajlimanond/dev/ma-code-worktrees/harness-039-worktree-context and reran focused validation before landing.",
+        "Validation passed: `cd /Users/subhajlimanond/dev/ma-code-worktrees/harness-039-worktree-context && bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `cd /Users/subhajlimanond/dev/ma-code-worktrees/harness-039-worktree-context && bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS.",
+        "Committed landing change on split/harness-039-worktree-context: `602af66 HARNESS-039: add worktree-aware mutation context`.",
+        "Pushed branch `split/harness-039-worktree-context` to origin and opened PR #23: https://github.com/SubhajL/ma-code/pull/23.",
+        "PR #23 checks all passed: Repo Static Checks SUCCESS, Dependency Review SUCCESS, Foundation Extension Compile SUCCESS, Routing Validators SUCCESS, and CodeQL SUCCESS.",
+        "No blocking GitHub review comments or security findings remained; only Dependency Review bot comment reported no vulnerabilities/license/OpenSSF issues.",
+        "Merged PR #23 with squash; `origin/main` and the worktree checked out on `main` now point to `7e8d3a333691bdcf39d5ad0cf2acfb8ed53fe268`.",
+        "Verified local main is current in the HARNESS-039 worktree (`git branch --show-current` -> `main`, `git rev-parse HEAD` -> `7e8d3a333691bdcf39d5ad0cf2acfb8ed53fe268`); root worktree could not checkout `main` simultaneously because that branch is already active in the dedicated HARNESS-039 worktree."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T01:22:53.232Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T01:19:08.023Z",
+        "updatedAt": "2026-04-24T01:22:58.642Z",
+        "startedAt": "2026-04-24T01:19:10.944Z",
+        "completedAt": "2026-04-24T01:22:58.642Z"
+      }
+    },
+    {
+      "id": "task-1776993856737",
+      "title": "Clean up HARNESS-039 worktree and restore repo root to main",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Remove or repurpose the dedicated HARNESS-039 worktree so `main` is no longer locked there.",
+        "Restore the repo root worktree to local `main` tracking the current `origin/main` commit.",
+        "Record the resulting worktree/branch state and any remaining cleanliness caveats as evidence."
+      ],
+      "evidence": [
+        "Removed the dedicated HARNESS-039 worktree with `git worktree remove /Users/subhajlimanond/dev/ma-code-worktrees/harness-039-worktree-context`, which released branch `main` from that auxiliary worktree.",
+        "Restored the repo root worktree to `main` and verified it is current with `origin/main`: `git checkout main`, `git merge --ff-only origin/main`, `git rev-parse HEAD` -> `7e8d3a333691bdcf39d5ad0cf2acfb8ed53fe268`.",
+        "Verified final worktree state with `git worktree list`: `/Users/subhajlimanond/dev/ma-code` is now the only worktree on `main`; the HARNESS-039 worktree path is gone.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files in the repo root: `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T01:24:56.682Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T01:24:16.737Z",
+        "updatedAt": "2026-04-24T01:24:59.851Z",
+        "startedAt": "2026-04-24T01:24:24.098Z",
+        "completedAt": "2026-04-24T01:24:59.851Z"
+      }
+    },
+    {
+      "id": "task-1776994041744",
+      "title": "Calibrate harness thinking policy and add integration-data tuning loop",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Routing config and resolve_harness_route support a bounded thinking-policy calibration layer so thinking can be adjusted deterministically before model cost/performance tuning.",
+        "A real integration-data path exists to record bounded cost/performance telemetry from harness validation runs without requiring repeated live-provider loops by default.",
+        "Docs describe the two-step workflow: calibrate thinking policy first, then use recorded integration data to tune cost/performance decisions.",
+        "Targeted unit/integration/validator coverage proves the new thinking-policy behavior and integration telemetry output."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/models.json, .pi/agent/extensions/harness-routing.ts, tests/extension-units/orchestration-helpers.test.ts, scripts/validate-harness-routing.sh, scripts/collect-harness-tuning-data.sh, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/validation_architecture.md, README.md.",
+        "Added a bounded machine-readable thinking-policy layer in .pi/agent/models.json and harness-routing.ts so route resolution calibrates thinking before model-cost tuning; critical roles keep a high-thinking floor while non-critical roles can shift deterministically by route reason and budget mode.",
+        "Extended helper/unit and harness-routing validator coverage to prove calibrated thinking decisions: backend budget pressure + conserve resolves to mini model with low thinking, critical roles stay high under cost pressure, and harder frontend work raises thinking before stronger-model tuning.",
+        "Implemented scripts/collect-harness-tuning-data.sh to run real local validators, measure elapsed time, capture PASS/FAIL telemetry plus current thinking-policy baseline, and emit a thinking-first cost/performance tuning report without repeated live-provider loops by default.",
+        "Docs updated to describe the two-step workflow: validate/calibrate thinking policy first, then use bounded integration telemetry for later cost/performance tuning decisions.",
+        "Validation passed: bash scripts/check-foundation-extension-compile.sh -> foundation-extension-compile-ok.",
+        "Validation passed: bash scripts/validate-harness-routing.sh -> Harness-routing validation PASS.",
+        "Validation passed: bash scripts/validate-extension-unit-tests.sh -> Extension unit-test validation PASS.",
+        "Validation passed: bash scripts/validate-core-workflows.sh -> core-workflows-validation: PASS.",
+        "Validation passed: bash scripts/collect-harness-tuning-data.sh -> PASS with real integration timings captured during the run (harness-routing validator 6174 ms, core-workflows validator 6938 ms)."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T01:34:22.427Z"
+      },
+      "notes": [
+        "Plan: (1) add a bounded thinking-policy calibration layer to harness routing so returned thinking is derived deterministically from role defaults plus reason/budget policy, (2) add focused unit/helper-validator coverage for the calibrated thinking decisions, (3) add a bounded integration telemetry script/report that runs existing validators, records real elapsed times and statuses, and emits tuning guidance without repeated live-provider loops by default, and (4) document the two-step workflow: calibrate thinking first, then tune cost/performance from recorded integration data."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T01:27:21.744Z",
+        "updatedAt": "2026-04-24T01:34:30.114Z",
+        "startedAt": "2026-04-24T01:27:24.845Z",
+        "completedAt": "2026-04-24T01:34:30.114Z"
+      }
+    },
+    {
+      "id": "task-1776995378503",
+      "title": "Land thinking-policy calibration and tuning telemetry changes",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Review the thinking-policy calibration and tuning-telemetry diff and fix any remaining correctness or validation issues before PR.",
+        "Commit and push the scoped changes on a dedicated branch without including unrelated runtime bookkeeping files.",
+        "Open a PR with clear summary and validation evidence, address any CI/security/review feedback, and merge once required checks pass.",
+        "Fast-forward local main to the merged commit and record evidence plus any remaining caveats."
+      ],
+      "evidence": [
+        "Reviewed scoped landing diff for thinking-policy calibration, routing validator coverage, telemetry script, and docs before commit; staged only intended source/test/doc/script files and excluded unrelated runtime bookkeeping files.",
+        "Committed landing change: `e82d6ea HARNESS-019: calibrate thinking policy before tuning`.",
+        "Pushed branch `task/task-1776994041744-calibrate-harness-thinking-policy-and-add-integr` and opened PR #24: https://github.com/SubhajL/ma-code/pull/24.",
+        "PR #24 checks all passed: Repo Static Checks SUCCESS, Dependency Review SUCCESS, Foundation Extension Compile SUCCESS, Routing Validators SUCCESS, and CodeQL SUCCESS.",
+        "No blocking GitHub review comments or security findings remained; only Dependency Review bot comment reported no vulnerabilities/license/OpenSSF issues.",
+        "Merged PR #24 with squash; local `main` and `origin/main` now both resolve to `48b4e910ae3d2fcca06eca2bff95a31f44705104`.",
+        "Verified repo root is on `main` after merge (`git branch --show-current` -> `main`) with remaining local dirtiness limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T01:53:26.327Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T01:49:38.503Z",
+        "updatedAt": "2026-04-24T01:53:30.959Z",
+        "startedAt": "2026-04-24T01:49:44.685Z",
+        "completedAt": "2026-04-24T01:53:30.959Z"
+      }
+    },
+    {
+      "id": "task-1776996257426",
+      "title": "HARNESS-016/040/041 operator UI, package ergonomics, and docs polish",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Add a bounded operator-facing UI/entry surface for the now-existing queue/recovery/testing foundation without introducing a complex widget system.",
+        "Improve package ergonomics so common harness validation and operator workflows are runnable through clear package scripts or equivalent documented entrypoints.",
+        "Update docs to present the post-core queue/recovery/testing harness as an operator-light system with a clear landing path, using terminology consistent with current implemented capabilities.",
+        "Run focused validation covering any new script/UI surface plus relevant existing compile/static/integration checks, and fix g-check issues found in review before completion."
+      ],
+      "evidence": [
+        "Changed files: scripts/harness-operator-status.ts, tests/integration/operator-surface.test.ts, scripts/validate-core-workflows.sh, package.json, README.md, .pi/agent/docs/operator_quickstart.md, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/operator_control_model.md, .pi/agent/docs/validation_architecture.md, .pi/agent/docs/file_map.md.",
+        "Implemented a lightweight operator-facing CLI status surface in scripts/harness-operator-status.ts with human-readable text and stable JSON output, intentionally bounded as a read-only UI layer rather than rich widgets or a daemon dashboard.",
+        "Improved package ergonomics in package.json with clear harness/operator scripts for status inspection plus common validator entrypoints and focused operator-surface integration testing.",
+        "Added operator/docs polish via a new quickstart doc and updates to README/operator workflow/control/validation docs so the post-queue/recovery/testing harness is described as operator-light with visible control points instead of overstated autonomy.",
+        "Extended scripts/validate-core-workflows.sh to compile and exercise the new operator status surface in isolated integration coverage and verify package/docs wiring for the operator entrypoints.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Validation passed: `bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T02:12:48.655Z"
+      },
+      "notes": [
+        "Plan: review the now-complete queue/recovery/testing foundation for the smallest missing Phase-J-style polish slice, then implement (1) a lightweight operator-facing CLI status surface instead of a complex widget UI, (2) clearer package.json entrypoints for common operator/validation flows, and (3) a concise operator quickstart/docs pass. Add focused proof for the new status surface and fix any g-check issues found before completion."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T02:04:17.426Z",
+        "updatedAt": "2026-04-24T02:12:52.500Z",
+        "startedAt": "2026-04-24T02:04:24.772Z",
+        "completedAt": "2026-04-24T02:12:52.500Z"
+      }
+    },
+    {
+      "id": "task-1776997899021",
+      "title": "Land HARNESS-016/040/041 operator UI, package, and docs polish",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Review the HARNESS-016/040/041 local changes and fix any remaining correctness or validation gaps before landing.",
+        "Commit and push only the intended operator UI/package/docs/test/validator changes from the dedicated worktree branch.",
+        "Open a PR, address any CI/security/review findings, and merge to main once checks pass.",
+        "Verify local main is current after merge and record evidence plus any remaining caveats."
+      ],
+      "evidence": [
+        "Reviewed the HARNESS-016/040/041 operator UI/package/docs diff in /Users/subhajlimanond/dev/ma-code-worktrees/harness-016-040-041-ui-package-docs and reran focused validation before landing.",
+        "Validation passed: `cd /Users/subhajlimanond/dev/ma-code-worktrees/harness-016-040-041-ui-package-docs && bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `cd /Users/subhajlimanond/dev/ma-code-worktrees/harness-016-040-041-ui-package-docs && bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Validation passed: `cd /Users/subhajlimanond/dev/ma-code-worktrees/harness-016-040-041-ui-package-docs && bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Validation passed: `cd /Users/subhajlimanond/dev/ma-code-worktrees/harness-016-040-041-ui-package-docs && bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS.",
+        "Committed landing change on split/harness-016-040-041-ui-package-docs: `91fcb23 HARNESS-016/040/041: add operator status surface`.",
+        "Pushed branch `split/harness-016-040-041-ui-package-docs` and opened PR #25: https://github.com/SubhajL/ma-code/pull/25.",
+        "PR #25 checks all passed: Repo Static Checks SUCCESS, Dependency Review SUCCESS, Foundation Extension Compile SUCCESS, Routing Validators SUCCESS, and CodeQL SUCCESS.",
+        "No blocking GitHub review comments or security findings remained; only the Dependency Review bot comment reported no vulnerabilities/license/OpenSSF issues.",
+        "Merged PR #25 with squash; `origin/main` and the dedicated HARNESS-016/040/041 worktree checked out on `main` now point to `7bdbe458621098df222f183f07a68c386f10c91f`.",
+        "Repo root remains on task branch `task/task-1776996257426-harness-016-040-041-operator-ui-package-ergonomi` with only runtime bookkeeping dirtiness in `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`; local `main` itself is current in the dedicated worktree."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T02:36:41.138Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T02:31:39.021Z",
+        "updatedAt": "2026-04-24T02:36:44.746Z",
+        "startedAt": "2026-04-24T02:31:42.696Z",
+        "completedAt": "2026-04-24T02:36:44.746Z"
+      }
+    },
+    {
+      "id": "task-1777001674077",
+      "title": "Clean up HARNESS-016/040/041 worktree and restore repo root to main",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Remove or repurpose the dedicated HARNESS-016/040/041 worktree so branch `main` is no longer locked there.",
+        "Restore the repo root worktree to local `main` at the latest `origin/main` commit.",
+        "Record the resulting branch/worktree state and any remaining local cleanliness caveats as evidence."
+      ],
+      "evidence": [
+        "Removed the dedicated HARNESS-016/040/041 worktree with `git worktree remove /Users/subhajlimanond/dev/ma-code-worktrees/harness-016-040-041-ui-package-docs`, which released branch `main` from that auxiliary worktree.",
+        "Restored the repo root worktree to `main` and verified it matches `origin/main`: `git checkout main`, `git merge --ff-only origin/main`, `git rev-parse HEAD` -> `7bdbe458621098df222f183f07a68c386f10c91f`.",
+        "Verified final worktree state with `git worktree list`: `/Users/subhajlimanond/dev/ma-code` is now the only worktree on `main`; the HARNESS-016/040/041 worktree path is gone.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files in the repo root: `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T03:35:35.685Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T03:34:34.077Z",
+        "updatedAt": "2026-04-24T03:35:47.895Z",
+        "startedAt": "2026-04-24T03:34:43.370Z",
+        "completedAt": "2026-04-24T03:35:47.895Z"
+      }
+    },
+    {
+      "id": "task-1777002077586",
+      "title": "Reconcile roadmap state against landed harness PRs",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "research",
+      "acceptance": [
+        "Identify which recently discussed HARNESS items are actually landed vs merely present as stale runtime tasks.",
+        "Call out intentionally deferred items that should not be selected next.",
+        "Recommend the next unfinished non-deferred harness item based on repo/GitHub state rather than stale task records."
+      ],
+      "evidence": [
+        "Confirmed merged PRs show recent landed harness items: PR #19 HARNESS-025 auto-task-branching, PR #20 HARNESS-034 stop conditions, PR #21 HARNESS-035/036 operator controls, PR #22 HARNESS-038 core workflows, PR #23 HARNESS-039 worktree-aware mutation context, PR #24 HARNESS-019 thinking calibration/tuning telemetry, and PR #25 HARNESS-016/040/041 bounded UI/package/docs polish.",
+        "Confirmed repo code contains landed auto-branch behavior in .pi/agent/extensions/safe-bash.ts with matching unit coverage in tests/extension-units/safe-bash.test.ts.",
+        "Confirmed stale runtime-task mismatch: task-1776849214153 and task-1776898496126 still show HARNESS-034 blocked despite PR #20 merged; task-1776899908058 still shows branch-first auto-branching blocked despite PR #19 merged and code/tests proving the behavior.",
+        "Confirmed backlog sequencing from pi_harness_implementation_backlog_REPO_LOCAL.md: HARNESS-010 remains intentionally deferred pending real long-running orchestrator pressure, HARNESS-024 was deferred only until HARNESS-032 single-runner path was implemented/validated, and HARNESS-040/041 remain broader Phase K packaging/docs work beyond the bounded slice landed in PR #25."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "lightweight",
+        "decision": "pass",
+        "source": "review",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "not_applicable",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T03:42:38.694Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T03:41:17.586Z",
+        "updatedAt": "2026-04-24T03:42:45.923Z",
+        "startedAt": "2026-04-24T03:42:23.838Z",
+        "completedAt": "2026-04-24T03:42:45.923Z"
+      }
+    },
+    {
+      "id": "task-1777002457634",
+      "title": "HARNESS-024 worktree helper scripts through merge to main",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Provide bounded worktree helper commands covering branch naming, worktree creation, status inspection, review/merge preparation, and cleanup without weakening existing main-branch/worktree safety expectations.",
+        "Add focused integration coverage and validator wiring proving the helper commands work in temp git repos and are surfaced through package/docs ergonomics.",
+        "Land HARNESS-024 via PR with appropriate local validation evidence, merge to main, and fast-forward local main while recording resulting branch/worktree state and any remaining risks."
+      ],
+      "evidence": [
+        "Implemented bounded HARNESS-024 helper surface in scripts/harness-worktree.ts with branch-name/create/status/review-prep/cleanup subcommands, conservative dirty/root cleanup blocking, default sibling `<repo>-worktrees` placement, and JSON/text output.",
+        "Added temp-git integration coverage in tests/integration/worktree-helper.test.ts for predictable branch/path naming, bounded worktree creation, review-prep summaries, and dirty cleanup rejection.",
+        "Wired package/docs/validator ergonomics in package.json, README.md, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/worktree_isolation_policy.md, .pi/agent/docs/validation_architecture.md, .pi/agent/docs/file_map.md, and scripts/validate-core-workflows.sh.",
+        "Local validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Local validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Local validation passed: `bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Committed implementation on branch task/task-1777002457634-harness-024-worktree-helper-scripts-through-merg as `b67316f HARNESS-024: add worktree helper scripts`.",
+        "Known gap: root package-script entrypoints still require dependencies to be installed locally; focused proof therefore relies on the isolated runtime inside validate-core-workflows rather than direct repo-root `npm run` execution in this no-node_modules state.",
+        "Pushed branch `split/harness-024-worktree-helpers` and opened PR #26: https://github.com/SubhajL/ma-code/pull/26.",
+        "PR #26 checks all passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #26 with squash; GitHub reports mergedAt `2026-04-24T04:01:19Z` and merge commit `7cab49dd8db4d08a5cbf753f7415e16f549dadf2`.",
+        "Verified local repo root is on `main` and fast-forwarded to the merged origin/main commit: `git rev-parse HEAD` == `git rev-parse origin/main` == `7cab49dd8db4d08a5cbf753f7415e16f549dadf2`.",
+        "Current local dirtiness remains limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`; no HARNESS-024 source/docs changes remain uncommitted."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T04:02:15.259Z"
+      },
+      "notes": [
+        "Plan: implement one bounded CLI helper surface in scripts/harness-worktree.ts with subcommands for branch-name/create/status/review-prep/cleanup; cover it with temp-repo integration tests; wire compile/validation/package/docs; then land from a dedicated worktree branch, merge PR, and fast-forward local main."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T03:47:37.634Z",
+        "updatedAt": "2026-04-24T04:02:19.932Z",
+        "startedAt": "2026-04-24T03:47:45.424Z",
+        "completedAt": "2026-04-24T04:02:19.932Z"
+      }
+    },
+    {
+      "id": "task-1777012144669",
+      "title": "HARNESS-033 scheduled workflow config and operator helper",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Add a machine-readable scheduled workflow configuration with conservative schedule types (`daily`, `weekday`, `manual-disabled`) and bounded recurring workflow definitions for daily review queue, repo audit run, backlog summarization, test triage, and safe docs cleanup.",
+        "Provide an operator-visible file-backed helper that can inspect due scheduled workflows and optionally materialize due workflows into queue jobs only through explicit operator action, without introducing a daemon or hidden background execution.",
+        "Add focused validation/tests plus package/docs wiring proving schedule parsing, due-work inspection/materialization, and safe duplicate/unsupported behavior; land via PR and fast-forward local main with evidence recorded."
+      ],
+      "evidence": [
+        "Implemented file-backed HARNESS-033 schedule config in .pi/agent/schedules/scheduled-workflows.json with conservative schedule types (`daily`, `weekday`, `manual-disabled`) and bounded recurring workflows for daily review queue, repo audit run, backlog summarization, test triage, and manual-disabled docs cleanup.",
+        "Added scripts/harness-scheduled-workflows.ts with operator-visible `status` and `materialize` flows, JSON/text output, duplicate-safe day-key materialization, runtime state tracking in `.pi/agent/state/runtime/scheduled-workflows.json`, and no daemon/background loop.",
+        "Extended queue provenance shape with optional `scheduledWorkflowId` / `scheduledRunKey` metadata in .pi/agent/extensions/queue-runner.ts and documented the queue/scheduled workflow contract in queue/autonomy/operator/validation/readme docs.",
+        "Added focused integration coverage in tests/integration/scheduled-workflows.test.ts for due/disabled status inspection, explicit materialization, duplicate blocking, and unsupported schedule rejection; wired it into scripts/validate-core-workflows.sh and package scripts.",
+        "Local validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Local validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Local validation passed: `bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Committed implementation on branch task/task-1777012144669-harness-033-scheduled-workflow-config-and-operat as `dd1e0c5 HARNESS-033: add scheduled workflow helper`.",
+        "Known gap: root package entrypoints for the new helper still require local dev dependencies (`tsx`) to be installed; proof in this environment relies on the isolated runtime inside validate-core-workflows rather than direct repo-root npm execution.",
+        "Pushed branch `split/harness-033-scheduled-workflows` and opened PR #27: https://github.com/SubhajL/ma-code/pull/27.",
+        "PR #27 checks all passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #27 with squash; GitHub reports mergedAt `2026-04-24T06:51:43Z` and merge commit `ea149e30f7d246f6b6308ef844e5f394bbf2b56c`.",
+        "Verified local repo root is on `main` and matches the merged origin/main commit: `git rev-parse HEAD` == `git rev-parse origin/main` == `ea149e30f7d246f6b6308ef844e5f394bbf2b56c`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`; no HARNESS-033 source/docs/test changes remain uncommitted."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T06:53:02.601Z"
+      },
+      "notes": [
+        "Plan: add file-backed schedule config/state under .pi/agent/schedules and .pi/agent/state/runtime, implement a bounded operator CLI in scripts/harness-scheduled-workflows.ts with status/materialize --apply flows, extend queue job metadata conservatively for scheduled workflow provenance, cover due/materialization/duplicate rejection in integration tests, and wire package/docs/core-workflow validation before PR/merge."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T06:29:04.669Z",
+        "updatedAt": "2026-04-24T06:53:22.710Z",
+        "startedAt": "2026-04-24T06:29:15.947Z",
+        "completedAt": "2026-04-24T06:53:22.710Z"
+      }
+    },
+    {
+      "id": "task-1777013897686",
+      "title": "HARNESS-039 close cost/performance tuning with scheduled workflow evidence",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Gather bounded timing/cost-ish evidence for core workflows, queue runner, and scheduled workflow dry runs, then update the tuning report path so the evidence is reviewable and repeatable.",
+        "Tune routing/thinking policy based on recorded evidence so cheaper adequate defaults are preferred while escalation/retry behavior remains explainable and bounded.",
+        "Document the before/after routing choices and land the tuning changes via PR with local validation evidence, then fast-forward local main to the merge commit."
+      ],
+      "evidence": [
+        "Updated `.pi/agent/models.json` to close HARNESS-039 with cheaper non-critical defaults: build_lead/frontend_worker/backend_worker now default to low thinking, build_lead gains a gpt-5.4-mini budget override path, `task_harder` raises thinking by two levels to preserve high-effort escalation, and balanced/conserve budget caps are stricter while critical roles keep a high-thinking floor.",
+        "Documented before/after routing choices directly in `.pi/agent/models.json` via `tuning_history`, capturing the prior defaults, the new tuned defaults, and the rationale from local timing evidence.",
+        "Expanded `scripts/collect-harness-tuning-data.sh` so the tuning report now gathers bounded evidence from harness-routing validation, queue-runner validation, core workflows, and a scheduled-workflow dry-run helper probe, then emits role-level cost-ish indices plus weak-value escalation notes.",
+        "Updated routing proof surfaces in `scripts/validate-harness-routing.sh`, `tests/extension-units/orchestration-helpers.test.ts`, `README.md`, `.pi/agent/docs/operator_workflow.md`, and `.pi/agent/docs/validation_architecture.md` to reflect the tuned defaults and the broader evidence path.",
+        "Local validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Local validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Local validation passed: `bash scripts/validate-harness-routing.sh` -> Harness-routing validation PASS.",
+        "Local validation passed: `bash scripts/collect-harness-tuning-data.sh` -> Harness tuning data collection PASS.",
+        "Committed implementation on branch task/task-1777013897686-harness-039-close-cost-performance-tuning-with-s as `a3f8e65 HARNESS-039: close routing cost tuning`.",
+        "Known gap: tuning remains bounded to local validator/helper evidence and cost-ish heuristics rather than provider-billed spend telemetry; that is intentional to avoid repeated live-provider loops by default.",
+        "Pushed branch `split/harness-039-cost-tuning` and opened PR #28: https://github.com/SubhajL/ma-code/pull/28.",
+        "PR #28 checks all passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #28 with squash; GitHub reports mergedAt `2026-04-24T07:16:56Z` and merge commit `9d492b506b8ae29a09fceded5c6ad19a4c627ab7`.",
+        "Verified local repo root is on `main` and matches the merged origin/main commit: `git rev-parse HEAD` == `git rev-parse origin/main` == `9d492b506b8ae29a09fceded5c6ad19a4c627ab7`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`; no HARNESS-039 tuning source/doc/test changes remain uncommitted."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T07:18:45.149Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T06:58:17.686Z",
+        "updatedAt": "2026-04-24T07:19:06.432Z",
+        "startedAt": "2026-04-24T06:58:29.152Z",
+        "completedAt": "2026-04-24T07:19:06.432Z"
+      }
+    },
+    {
+      "id": "task-1777015784691",
+      "title": "HARNESS-040 reusable harness package scaffolding and bootstrap path",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Separate reusable vs repo-local harness assets explicitly in a machine-readable package manifest with versioning rules, generated/runtime placeholders, and exclusions that prevent copying runtime history/state.",
+        "Add a bounded package/bootstrap helper and install scaffolding so another repo can adopt the harness repeatably without copying logs/reports/runtime history, including package.json merge support and explicit version records.",
+        "Add focused packaging validation/tests plus package/docs wiring proving the bootstrap path works on a temp target repo, then land via PR and fast-forward local main with evidence recorded."
+      ],
+      "evidence": [
+        "Added machine-readable package manifest `.pi/agent/package/harness-package.json` with explicit reusable assets, generated repo-local files, excluded paths, package version `0.1.0`, and installed-version record target.",
+        "Added bootstrap/install scaffolding via `scripts/harness-package.ts`, repo-local templates under `.pi/agent/package/templates/`, and install guide `.pi/agent/docs/harness_package_install.md` so another repo can adopt the harness without copying runtime history, logs, or reports.",
+        "Added focused packaging proof in `tests/integration/harness-package.test.ts` plus dedicated validator `scripts/validate-harness-package.sh`, package scripts, file-map/validation/operator/packaging docs, and CI wiring in `.github/workflows/ci.yml`.",
+        "Local validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Local validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Local validation passed: `bash scripts/validate-harness-package.sh` -> harness-package-validation: PASS.",
+        "Committed implementation on branch task/task-1777015784691-harness-040-reusable-harness-package-scaffolding as `829249a HARNESS-040: add harness package bootstrap`.",
+        "Known gap: this is repo-local bootstrap scaffolding, not a registry-published npm package or full cross-repo upgrade system; package adoption is file-copy based and intentionally conservative for now.",
+        "Pushed branch `split/harness-040-harness-package` and opened PR #29: https://github.com/SubhajL/ma-code/pull/29.",
+        "PR #29 checks all passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS (now including the harness-package validator), CodeQL PASS.",
+        "Merged PR #29 with squash; GitHub reports mergedAt `2026-04-24T07:53:42Z` and merge commit `2bbc20c8cb164eecf2ad74c11f5e85685407a962`.",
+        "Verified local repo root is on `main` and matches the merged origin/main commit: `git rev-parse HEAD` == `git rev-parse origin/main` == `2bbc20c8cb164eecf2ad74c11f5e85685407a962`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`; no HARNESS-040 source/docs/test/package changes remain uncommitted."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T08:07:23.101Z"
+      },
+      "notes": [
+        "Plan: add a machine-readable package manifest plus repo-local templates/placeholders under .pi/agent/package, implement scripts/harness-package.ts for manifest/bootstrap flows with explicit reusable/generated/excluded boundaries, add a dedicated harness-package validator and temp-target integration test, then wire package/docs/CI and land via PR."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T07:29:44.691Z",
+        "updatedAt": "2026-04-24T08:07:36.441Z",
+        "startedAt": "2026-04-24T07:30:11.069Z",
+        "completedAt": "2026-04-24T08:07:36.441Z"
+      }
+    },
+    {
+      "id": "task-1777018467786",
+      "title": "HARNESS-041 full operator documentation set",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "docs",
+      "acceptance": [
+        "Add operator-facing documentation covering install, provider setup, model routing, role guide, troubleshooting, safety rules, extension explanations, scheduled workflow operation, and package/install references using the now-landed harness surfaces rather than placeholders.",
+        "Update the operator-facing entrypoints and doc map so a new operator can find the full doc set from README and existing workflow/quickstart surfaces without relying on chat history.",
+        "Provide visible docs validation evidence and land the doc set via PR with local main fast-forwarded to the merge commit."
+      ],
+      "evidence": [
+        "Added a full operator doc set under `.pi/agent/docs/`: `operator_manual.md`, `operator_install_guide.md`, `operator_provider_setup.md`, `operator_model_routing_guide.md`, `operator_role_guide.md`, `operator_troubleshooting_guide.md`, `operator_safety_rules.md`, `operator_extension_guide.md`, and `operator_scheduled_workflows.md`.",
+        "Updated operator-facing entrypoints and references in `README.md`, `.pi/agent/docs/operator_quickstart.md`, `.pi/agent/docs/operator_workflow.md`, `.pi/agent/docs/harness_package_install.md`, and `.pi/agent/docs/file_map.md` so a new operator can find the doc set without chat-history archaeology.",
+        "Extended `scripts/validate-harness-package.sh` doc wiring checks so the package/install validator now also proves the new operator-doc entrypoints are present and linked from the package/install surfaces.",
+        "Local validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Local validation passed: `bash scripts/validate-harness-package.sh` -> harness-package-validation: PASS.",
+        "Committed documentation set on branch task/task-1777018467786-harness-041-full-operator-documentation-set as `e6c5e56 HARNESS-041: add full operator docs`.",
+        "Known gap: this is still documentation of the current bounded harness, not a promise of background daemon autonomy or widget UI that the repo intentionally does not implement yet.",
+        "Pushed branch `split/harness-041-operator-docs` and opened PR #30: https://github.com/SubhajL/ma-code/pull/30.",
+        "PR #30 checks all passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #30 with squash; GitHub reports mergedAt `2026-04-24T08:22:49Z` and merge commit `220071b1307778cf938553b35725383c3492acbe`.",
+        "Verified local repo root is on `main` and matches the merged origin/main commit: `git rev-parse HEAD` == `git rev-parse origin/main` == `220071b1307778cf938553b35725383c3492acbe`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`; no HARNESS-041 docs or validator-wiring changes remain uncommitted."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "lightweight",
+        "decision": "pass",
+        "source": "review",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "not_applicable",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-24T08:23:35.080Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-24T08:14:27.786Z",
+        "updatedAt": "2026-04-24T08:23:46.249Z",
+        "startedAt": "2026-04-24T08:14:36.685Z",
+        "completedAt": "2026-04-24T08:23:46.249Z"
+      }
+    },
+    {
+      "id": "task-1777074700202",
+      "title": "Continuous bounded execution maturity",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Identify the smallest meaningful next runtime slice for continuous bounded execution maturity without introducing an uncontrolled daemon or hidden loop.",
+        "Implement the bounded runtime/tooling/docs/tests changes needed for that slice, preserving existing safety, task-discipline, and approval boundaries.",
+        "Validate the change with focused compile/unit/integration/runner evidence and record changed files, validation output, and remaining risks.",
+        "If repo/runtime constraints permit, land the change via PR/merge workflow and restore local main to the merged commit."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/extensions/queue-runner.ts, scripts/harness-queue-session.ts, tests/extension-units/queue-runner.test.ts, tests/integration/queue-session.test.ts, scripts/validate-core-workflows.sh, package.json, README.md, .pi/agent/docs/operator_quickstart.md, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/bounded_autonomy_architecture.md, .pi/agent/docs/validation_architecture.md, .pi/agent/docs/file_map.md.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS.",
+        "Validation passed: `bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Validation passed: `bash scripts/validate-queue-runner.sh --skip-live` -> Queue-runner validation PASS.",
+        "Implementation summary: added an explicit bounded multi-step queue-session surface (`run_bounded_queue_session` plus `scripts/harness-queue-session.ts`) that reuses the existing one-step queue runner under explicit step/runtime limits and stops at the next waiting point, idle state, pause, blocked state, or configured limit without introducing a hidden daemon.",
+        "Known gap: this improves continuous bounded execution maturity for explicit operator-invoked sessions, but it is still not a background daemon or fully unattended long-running autonomy loop.",
+        "Committed bounded queue-session changes as `2b92461 HARNESS: add bounded queue session runner` on branch `task/task-1777074700202-continuous-bounded-execution-maturity`.",
+        "Opened PR #31: https://github.com/SubhajL/ma-code/pull/31.",
+        "PR #31 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #31 with squash; merge commit `3f188341a200ea6f5e6a2a0ba8cda3ad4433066e` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `3f188341a200ea6f5e6a2a0ba8cda3ad4433066e`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T00:07:13.572Z"
+      },
+      "notes": [
+        "Planning result: implement the smallest meaningful continuous-execution step as an explicit bounded queue-session surface rather than a hidden daemon. Proposed slice: add a new operator-facing queue session CLI that repeatedly advances `run_next_queue_job` under explicit `--max-steps` / `--max-runtime-seconds` limits, stops on paused/blocked/idle conditions, records a machine-readable summary, and preserves current queue/task safety semantics. Scope likely touches `.pi/agent/extensions/queue-runner.ts`, a new `scripts/harness-queue-session.ts`, focused unit/integration coverage, validator wiring, package scripts, and operator/autonomy docs.",
+        "Implementation in progress on auto-created task branch `task/task-1777074700202-continuous-bounded-execution-maturity`: added bounded queue-session runtime/tool surface in `.pi/agent/extensions/queue-runner.ts`, new operator CLI `scripts/harness-queue-session.ts`, package/validator wiring, queue-session unit/integration coverage, and operator/autonomy/validation docs updates. Next step is compile/test and fix any regressions before landing."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-24T23:51:40.202Z",
+        "updatedAt": "2026-04-25T00:07:16.866Z",
+        "startedAt": "2026-04-24T23:51:42.723Z",
+        "completedAt": "2026-04-25T00:07:16.866Z"
+      }
+    },
+    {
+      "id": "task-1777076487354",
+      "title": "Richer end-of-session summaries and operator triage ergonomics",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Identify the smallest bounded improvement to queue-session/operator ergonomics that makes end-of-session results easier to triage without introducing hidden autonomy or broad UI complexity.",
+        "Implement richer end-of-session summary data and operator-facing presentation for the bounded queue-session surface while preserving existing safety, queue, and approval semantics.",
+        "Add focused validation coverage and docs/package wiring updates so the richer summary surface is testable and discoverable.",
+        "If validation and repo/runtime conditions permit, land the change via PR, merge to main, and fast-forward local main while recording evidence and remaining risks."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/extensions/queue-runner.ts, scripts/harness-queue-session.ts, tests/extension-units/queue-runner.test.ts, tests/integration/queue-session.test.ts, scripts/validate-core-workflows.sh, README.md, .pi/agent/docs/operator_quickstart.md, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/validation_architecture.md.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS.",
+        "Validation passed: `bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Validation passed: `bash scripts/validate-queue-runner.sh --skip-live` -> Queue-runner validation PASS.",
+        "Implementation summary: enriched bounded queue-session results with machine-readable triage data (duration, action counts, touched job/task IDs, queued work remaining, recommended next action/reason) and updated the CLI/docs/tests so end-of-session operator triage is clearer without adding a hidden daemon.",
+        "Known gap: this improves end-of-session triage ergonomics for explicit bounded sessions, but it still does not provide a background control plane or automatic follow-up execution.",
+        "Committed richer queue-session triage changes as `862e96a HARNESS: enrich queue session triage summary` on branch `task/task-1777076487354-richer-end-of-session-summaries-and-operator-tri`.",
+        "Opened PR #32: https://github.com/SubhajL/ma-code/pull/32.",
+        "PR #32 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #32 with squash; merge commit `e7bd59a638526701797527a588e3b3b7ba367051` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `e7bd59a638526701797527a588e3b3b7ba367051`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T01:36:33.793Z"
+      },
+      "notes": [
+        "Plan: enrich the bounded queue-session result with a machine-readable triage summary instead of changing queue semantics. Add bounded session aggregates (duration, action counts, touched job IDs, remaining queued count) plus a stable recommended next action/reason derived from final queue/task state. Then update the queue-session CLI to render an operator-friendly end-of-session triage section, add focused unit/integration coverage for waiting/block/limit outcomes, wire docs/package wording where needed, validate, and land via PR if green."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-25T00:21:27.354Z",
+        "updatedAt": "2026-04-25T01:36:41.694Z",
+        "startedAt": "2026-04-25T00:21:29.825Z",
+        "completedAt": "2026-04-25T01:36:41.694Z"
+      }
+    },
+    {
+      "id": "task-1777082625304",
+      "title": "Shape harness role prompts and workflows from g-* skill patterns",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Identify the smallest repo-local prompt/doc/workflow changes that capture useful g-check, g-planning, g-coding, and g-review patterns without making harness correctness depend on external skills.",
+        "Update the relevant harness role prompts, planning/build/quality expectations, and architecture/drift review docs or workflow assets so those skill-derived patterns are explicit in repo-local behavior.",
+        "Add focused validation or wiring proof showing the updated prompt/doc/workflow surfaces are present and consistent with existing operator/runtime docs.",
+        "If validation and repo/runtime conditions permit, land the changes via PR, merge to main, and fast-forward local main while recording evidence and remaining risks."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/prompts/roles/planning_lead.md, .pi/agent/prompts/roles/orchestrator.md, .pi/agent/prompts/roles/quality_lead.md, .pi/agent/prompts/roles/reviewer_worker.md, .pi/agent/prompts/roles/validator_worker.md, .pi/agent/prompts/roles/build_lead.md, .pi/agent/prompts/roles/frontend_worker.md, .pi/agent/prompts/roles/backend_worker.md, .pi/agent/prompts/roles/infra_worker.md, .pi/agent/prompts/templates/plan-feature.md, .pi/agent/prompts/templates/review-diff.md, .pi/agent/prompts/templates/validate-task.md, .pi/agent/docs/architecture_review_workflow.md, .pi/agent/docs/operator_role_guide.md, .pi/agent/docs/codex_skill_patterns_for_pi_harness.md, .pi/agent/docs/validation_recovery_architecture.md, .pi/agent/docs/file_map.md, README.md, scripts/check-repo-static.sh.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Validation passed: `bash scripts/validate-harness-package.sh` -> harness-package-validation: PASS.",
+        "Implementation summary: encoded useful g-planning/g-coding/g-check/g-review patterns directly into repo-local role prompts, aligned planning/review/validation templates, added a dedicated architecture review workflow doc, and added static checks so the skill-derived wiring remains present without depending on external g-* skills at runtime.",
+        "Known gap: this shapes repo-local prompt/doc behavior and request templates, but it does not make external g-* skills executable runtime dependencies or add a new autonomous review engine.",
+        "Committed prompt/doc/template wiring changes as `1f07a80 HARNESS: wire g-skill patterns into prompts` on branch `task/task-1777082625304-shape-harness-role-prompts-and-workflows-from-g`.",
+        "Opened PR #33: https://github.com/SubhajL/ma-code/pull/33.",
+        "PR #33 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #33 with squash; merge commit `a0a8b8793a0d222f5787b688349de5259788e5d6` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `a0a8b8793a0d222f5787b688349de5259788e5d6`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T02:14:22.073Z"
+      },
+      "notes": [
+        "Implementation approach chosen: adapt useful g-* skill patterns into repo-local role prompts plus aligned planning/review/validation request templates and one new architecture review workflow doc, then add static-wiring checks so these expectations remain visible without making external g-* skills a runtime dependency."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-25T02:03:45.304Z",
+        "updatedAt": "2026-04-25T02:14:32.650Z",
+        "startedAt": "2026-04-25T02:03:50.485Z",
+        "completedAt": "2026-04-25T02:14:32.650Z"
+      }
+    },
+    {
+      "id": "task-1777086690069",
+      "title": "Add proposed HARNESS-042 through HARNESS-050 items into existing implementation backlog",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "docs",
+      "acceptance": [
+        "Insert the proposed HARNESS-042 through HARNESS-050 backlog entries into `pi_harness_implementation_backlog_REPO_LOCAL.md` under the correct existing phase sections.",
+        "Preserve the existing backlog style, numbering, and readability, including a short sequencing note if it helps future execution order.",
+        "Validate the backlog edit with at least repo static checks or equivalent lightweight proof, and if feasible land via PR/merge with local main fast-forwarded while recording evidence and remaining risks."
+      ],
+      "evidence": [
+        "Changed file: pi_harness_implementation_backlog_REPO_LOCAL.md.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Implementation summary: inserted proposed HARNESS-042 through HARNESS-050 backlog items into the existing backlog under the appropriate Phase F/H/I/J sections, added a backlog sequencing note, and updated the backlog's recommended next move to the new dependency-ordered roadmap.",
+        "Known gap: this is backlog planning/documentation only; it does not implement any of HARNESS-042 through HARNESS-050 themselves.",
+        "Committed backlog update as `02b464d docs: extend backlog with next harness roadmap` on branch `task/task-1777086690069-add-proposed-harness-042-through-harness-050-ite`.",
+        "Opened PR #34: https://github.com/SubhajL/ma-code/pull/34.",
+        "PR #34 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #34 with squash; merge commit `a61d00fa5be771c11aa1843201a80a11ffb0ad3e` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `a61d00fa5be771c11aa1843201a80a11ffb0ad3e`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "lightweight",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T03:17:23.819Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-25T03:11:30.069Z",
+        "updatedAt": "2026-04-25T03:17:29.325Z",
+        "startedAt": "2026-04-25T03:11:49.624Z",
+        "completedAt": "2026-04-25T03:17:29.325Z"
+      }
+    },
+    {
+      "id": "task-1777088381330",
+      "title": "Repair overwritten implementation backlog filename/content",
+      "owner": "assistant",
+      "status": "blocked",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Identify whether `pi_harness_implementation_backlog_REPO_LOCAL.md` was overwritten, renamed, or duplicated into `i_harness_implementation_backlog_REPO_LOCAL.md`.",
+        "Restore the intended backlog file state with the correct filename and content while keeping any newly added roadmap entries that should remain.",
+        "Validate the repaired backlog state with a lightweight check and record changed files, evidence, and any remaining risks."
+      ],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [
+        "Identified the accidental local overwrite: `pi_harness_implementation_backlog_REPO_LOCAL.md` has local edits that remove the recently landed HARNESS-042..050 roadmap sections and revert some prior backlog updates. The intended file still exists under the correct name; `i_harness_implementation_backlog_REPO_LOCAL.md` does not exist. Repair is currently blocked by repo safety controls because the session is on `main` with an unexpected dirty tracked file (`pi_harness_implementation_backlog_REPO_LOCAL.md`), so auto-branching and direct edits are both blocked until a non-main branch/worktree is created outside this guarded state or the user explicitly handles the branch transition."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-25T03:39:41.330Z",
+        "updatedAt": "2026-04-25T03:40:54.298Z",
+        "startedAt": "2026-04-25T03:39:46.556Z"
+      }
+    },
+    {
+      "id": "task-1777088806714",
+      "title": "HARNESS-042 expand multi-step queue/session validation scenarios",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Add at least five meaningful multi-step queue/session regression scenarios beyond the current baseline, covering the requested areas: multiple finalize/start transitions, blocked+failed visibility across runs, paused queue boundaries, recovery-action visibility, scheduled-workflow-created jobs through sessions, and maxSteps/maxRuntimeSeconds boundaries.",
+        "Update the relevant unit/integration validation surfaces and validator wording/wiring so HARNESS-042 proof is explicit and repeatable.",
+        "Validate the change with focused compile/static/unit/integration/queue-runner evidence, then land via PR/merge and fast-forward local main if repo/runtime conditions permit."
+      ],
+      "evidence": [
+        "Changed files: tests/integration/queue-session.test.ts, scripts/validate-core-workflows.sh.",
+        "Added new queue/session regression scenarios covering: finalize active job + skip invalid queued work + start next eligible job; blocked+failed visibility while starting new work; paused queue boundary before session start; recovery-action visibility after failed-job finalization; scheduled-workflow-created job provenance through a bounded session; and maxRuntimeSeconds boundary stopping before a second step.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> foundation-extension-compile-ok.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> repo-static-checks-ok.",
+        "Validation passed: `bash scripts/validate-core-workflows.sh` -> core-workflows-validation: PASS.",
+        "Validation passed: `bash scripts/validate-queue-runner.sh --skip-live` -> Queue-runner validation PASS.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> Extension unit-test validation PASS.",
+        "Known gap: HARNESS-042 strengthens regression proof only; it does not change bounded queue/session runtime behavior itself.",
+        "Committed HARNESS-042 coverage changes as `262ceff HARNESS-042: expand queue session regression coverage` on branch `task/task-1777088806714-harness-042-expand-multi-step-queue-session-vali`.",
+        "Opened PR #35: https://github.com/SubhajL/ma-code/pull/35.",
+        "PR #35 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #35 with squash; merge commit `e0423fa18f9b3d9704c5f69a835434902e783c57` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `e0423fa18f9b3d9704c5f69a835434902e783c57`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T03:57:05.090Z"
+      },
+      "notes": [
+        "Planned HARNESS-042 as a focused regression-coverage slice: expand `tests/integration/queue-session.test.ts` with multiple new multi-step queue/session scenarios rather than changing runtime behavior, and update queue-session validator wording in `scripts/validate-core-workflows.sh` so the proof surface explicitly mentions the broader scenarios."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-25T03:46:46.714Z",
+        "updatedAt": "2026-04-25T03:57:12.151Z",
+        "startedAt": "2026-04-25T03:46:51.336Z",
+        "completedAt": "2026-04-25T03:57:12.151Z"
+      }
+    },
+    {
+      "id": "task-1777102779839",
+      "title": "HARNESS-043 add executable prompt/template contract validation",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "A dedicated validator or structured static check enforces prompt/template contracts for the repo-local prompt layer.",
+        "Failures clearly identify which role prompt or template violated which contract, including required headers/output-decision lines/workflow references where applicable.",
+        "CI runs the contract check through existing validator/static-check wiring, and the current prompt/template inventory passes.",
+        "Land HARNESS-043 via PR/merge and fast-forward local main while recording evidence and remaining gaps."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/validation/prompt-contracts.json, scripts/validate-prompt-contracts.sh, scripts/check-repo-static.sh, package.json, README.md, .pi/agent/docs/validation_architecture.md, .pi/agent/docs/file_map.md, .pi/agent/prompts/roles/orchestrator.md, .pi/agent/prompts/roles/recovery_worker.md, .pi/agent/prompts/roles/reviewer_worker.md, .pi/agent/prompts/templates/review-diff.md.",
+        "Implementation summary: replaced brittle prompt/template substring checks with a dedicated executable validator driven by a machine-readable prompt-contract inventory. The validator enforces exact top-level output sections for every current role/template prompt, required decision/result lines where applicable, architecture-review workflow references for key review/orchestration/recovery surfaces, and prompt inventory drift detection.",
+        "Validation passed: `./scripts/validate-prompt-contracts.sh` -> `prompt-contract-validation: PASS (26 prompt files checked)`.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> `prompt-contract-validation: PASS (26 prompt files checked)` then `repo-static-checks-ok`.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> `foundation-extension-compile-ok`.",
+        "Validation passed: `npm run validate:prompt-contracts` -> `prompt-contract-validation: PASS (26 prompt files checked)`.",
+        "Known gap: prompt-contract validation is intentionally repo-local and line/header-based; it proves contract shape and required references, not semantic quality of every sentence in a prompt.",
+        "Committed HARNESS-043 changes as `97b4013 HARNESS-043: add prompt contract validator` on branch `task/task-1777102779839-harness-043-prompt-template-contracts`.",
+        "Opened PR #36: https://github.com/SubhajL/ma-code/pull/36.",
+        "PR #36 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #36 with squash; merge commit `1faaf9420bc59d745e667a55f67a22844c431145` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `1faaf9420bc59d745e667a55f67a22844c431145`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T07:51:23.189Z"
+      },
+      "notes": [
+        "Planning HARNESS-043 with g-planning workflow. Auggie discovery was attempted first but unavailable due credits, so planning fell back to local inspection. Second-model planning was used to sanity-check the approach. Chosen bounded design: add a dedicated executable prompt-contract validator driven by a machine-readable contract file, enforce exact top-level header inventories plus required decision lines and architecture-workflow references for key prompts/templates, wire it into repo-static/CI/package ergonomics, and make only the minimal prompt text edits needed for current inventory to pass."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-25T07:39:39.839Z",
+        "updatedAt": "2026-04-25T07:51:26.117Z",
+        "startedAt": "2026-04-25T07:39:41.746Z",
+        "completedAt": "2026-04-25T07:51:26.117Z"
+      }
+    },
+    {
+      "id": "task-1777105888170",
+      "title": "HARNESS-044 tighten task-packet planning completeness",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Task-packet docs, policy, schema, and generator are aligned around clearer planning-derived completeness fields: goal, non-goals when relevant, files to inspect vs modify, validation ideas / expected proof, wiring checks, migration-path note for architectural changes, and stronger escalation instructions.",
+        "Generated task packets make planning-derived expectations more explicit and less guess-driven while remaining bounded and readable.",
+        "Task-packet validation catches missing completeness requirements and the current packet inventory / sample outputs pass.",
+        "Land HARNESS-044 via PR/merge and fast-forward local main while recording evidence and remaining gaps."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/extensions/task-packets.ts, .pi/agent/packets/packet-policy.json, .pi/agent/state/schemas/task-packet.schema.json, scripts/validate-task-packets.sh, tests/extension-units/orchestration-helpers.test.ts, .pi/agent/extensions/handoffs.ts, .pi/agent/state/schemas/handoff.schema.json, .pi/agent/docs/team_orchestration_architecture.md, .pi/agent/docs/operator_workflow.md, .pi/agent/docs/validation_architecture.md, .pi/agent/prompts/roles/build_lead.md, .pi/agent/prompts/templates/dispatch-build.md, .pi/agent/prompts/templates/handoff-for-worker.md.",
+        "Implementation summary: tightened task-packet completeness by adding explicit packet fields for `goal`, `nonGoals`, `filesToInspect`, `filesToModify`, `expectedProof`, and `migrationPathNote`; strengthened packet-policy defaults and escalation wording; updated packet rendering and validation; and preserved the new planning fields through build-to-worker handoff summaries so downstream execution does not lose packet clarity.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> `foundation-extension-compile-ok`.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> `prompt-contract-validation: PASS (26 prompt files checked)` then `repo-static-checks-ok`.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> `Extension unit-test validation PASS`.",
+        "Validation passed: `bash scripts/validate-task-packets.sh` -> `Task-packets validation PASS`.",
+        "Validation passed: `bash scripts/validate-handoffs.sh` -> `Handoffs validation PASS`.",
+        "Validation passed: `bash scripts/validate-queue-runner.sh --skip-live` -> `Queue-runner validation PASS`.",
+        "Known gap: queue jobs still do not store first-class planning completeness fields themselves; when queue-generated packets lack explicit file plans, the packet generator now falls back to bounded inspect/modify guidance derived from allowed paths or domains rather than inventing broader runtime state.",
+        "Committed HARNESS-044 changes as `2053d67 HARNESS-044: tighten task packet completeness` on branch `task/task-1777105888170-harness-044-tighten-task-packet-planning-complet`.",
+        "Opened PR #37: https://github.com/SubhajL/ma-code/pull/37.",
+        "PR #37 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #37 with squash; merge commit `19034abb46323d12caa53d1eff61998b9c1c9b36` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `19034abb46323d12caa53d1eff61998b9c1c9b36`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T08:49:37.200Z"
+      },
+      "notes": [
+        "Planning HARNESS-044 with g-planning workflow. Auggie discovery was attempted first but unavailable due credits, so planning fell back to local inspection/rg. Second-model planning was used to sanity-check the approach. Chosen bounded design: keep task packets readable but add explicit planning-completeness fields (`goal`, `nonGoals`, `filesToInspect`, `filesToModify`, `expectedProof`, `migrationPathNote`), strengthen packet-policy defaults and escalation wording, update the packet schema/generator/rendering/validator/tests/docs, and preserve backward compatibility for existing call sites through generator defaults where possible instead of broad runtime redesign."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-25T08:31:28.170Z",
+        "updatedAt": "2026-04-25T08:49:43.355Z",
+        "startedAt": "2026-04-25T08:31:30.821Z",
+        "completedAt": "2026-04-25T08:49:43.355Z"
+      }
+    },
+    {
+      "id": "task-1777120707282",
+      "title": "HARNESS-045 tighten handoff completeness from planning/quality structure",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Handoff policy, schema, docs, and templates are aligned around stronger completeness for discovery summary, scope boundaries, evidence expectations, wiring checks, review risks to challenge, exact validation questions / expected proof, and migration-path mention when architectural recommendations are escalated.",
+        "Handoff validation catches missing required structure for the strengthened planning/quality expectations.",
+        "Quality/review/validation handoffs become more actionable while remaining bounded and readable.",
+        "Land HARNESS-045 via PR/merge and fast-forward local main while recording evidence and remaining gaps."
+      ],
+      "evidence": [
+        "Changed files: .pi/agent/extensions/handoffs.ts, .pi/agent/handoffs/handoff-policy.json, .pi/agent/state/schemas/handoff.schema.json, scripts/validate-handoffs.sh, tests/extension-units/orchestration-helpers.test.ts, .pi/agent/prompts/templates/handoff-for-quality.md, .pi/agent/prompts/templates/handoff-for-review.md, .pi/agent/prompts/templates/handoff-for-validation.md, .pi/agent/prompts/templates/handoff-for-recovery.md, .pi/agent/prompts/roles/quality_lead.md, .pi/agent/validation/prompt-contracts.json, .pi/agent/docs/team_orchestration_architecture.md, .pi/agent/docs/validation_architecture.md, .pi/agent/docs/operator_workflow.md.",
+        "Implementation summary: tightened handoff completeness by making handoff policy drive stronger required packet/detail structure, enriching worker/quality/review/validator/recovery rendered handoffs with preserved discovery/scope/evidence/wiring context, requiring exact validation questions for validator handoffs, and adding explicit migration-path notes for recovery escalations.",
+        "Validation passed: `bash scripts/check-foundation-extension-compile.sh` -> `foundation-extension-compile-ok`.",
+        "Validation passed: `bash scripts/check-repo-static.sh` -> `prompt-contract-validation: PASS (26 prompt files checked)` then `repo-static-checks-ok`.",
+        "Validation passed: `bash scripts/validate-extension-unit-tests.sh` -> `Extension unit-test validation PASS`.",
+        "Validation passed: `bash scripts/validate-task-packets.sh` -> `Task-packets validation PASS`.",
+        "Validation passed: `bash scripts/validate-handoffs.sh` -> `Handoffs validation PASS`.",
+        "Validation passed: `bash scripts/validate-queue-runner.sh --skip-live` -> `Queue-runner validation PASS`.",
+        "Known gap: some handoff completeness still relies on preserved packet context rather than separate detail objects for every concept, which is intentional to keep handoffs bounded and avoid duplicating the packet contract.",
+        "Committed HARNESS-045 changes as `16da5b8 HARNESS-045: tighten handoff completeness` on branch `task/task-1777120707282-harness-045-tighten-handoff-completeness-from-pl`.",
+        "Opened PR #38: https://github.com/SubhajL/ma-code/pull/38.",
+        "PR #38 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #38 with squash; merge commit `4bd62e00ff53550e9ca56d54886c271ed7d99c2f` on `main`.",
+        "Verified local repo root is on `main` and matches `origin/main`: `git rev-parse HEAD` == `git rev-parse origin/main` == `4bd62e00ff53550e9ca56d54886c271ed7d99c2f`.",
+        "Remaining local dirtiness is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json` and `logs/harness-actions.jsonl`."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-25T12:55:58.919Z"
+      },
+      "notes": [],
+      "timestamps": {
+        "createdAt": "2026-04-25T12:38:27.282Z",
+        "updatedAt": "2026-04-25T12:56:11.098Z",
+        "startedAt": "2026-04-25T12:38:31.381Z",
+        "completedAt": "2026-04-25T12:56:11.098Z"
+      }
+    },
+    {
+      "id": "task-1777437808698",
+      "title": "Add g-create and g-submit skill ports to pi-g-skills",
+      "owner": "assistant",
+      "status": "done",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Add bounded Pi skill ports for `g-create` and `g-submit` under `packages/pi-g-skills/skills/` so these skills are actually installed alongside the existing g-* skills.",
+        "Update package docs/routing/wiring surfaces so the repo no longer claims only four skills if six are intended, and explicit `/skill:g-create` and `/skill:g-submit` commands are preserved rather than rejected by the routing helper.",
+        "Add focused validation proving the new skills are present and wired without breaking existing skill-routing behavior.",
+        "Record evidence and remaining gaps before claiming completion."
+      ],
+      "evidence": [
+        "Created dedicated worktree for g-create/g-submit skill addition: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1777437808698-g-create-g-submit-skills` on branch `split/task-1777437808698-g-create-g-submit-skills` from `origin/main`.",
+        "Verified new worktree is clean and aligned with `origin/main`: branch `split/task-1777437808698-g-create-g-submit-skills`, `git rev-parse HEAD` == `git rev-parse origin/main` == `4bd62e00ff53550e9ca56d54886c271ed7d99c2f`.",
+        "Kept current dirty local-main files isolated in the repo root rather than carrying them into the new worktree. Root dirt remains: tracked `.pi/agent/state/runtime/tasks.json`, `logs/harness-actions.jsonl`; untracked `reports/validation/2026-04-29_*`.",
+        "Rationale: current local-main dirt appears to be runtime bookkeeping and transient validation-report artifacts, not intended source inputs for the g-create/g-submit skill implementation. Carrying them into the new worktree would widen scope and risk mixing unrelated state with the bounded skills task.",
+        "Implemented bounded Pi skill ports `packages/pi-g-skills/skills/g-create/SKILL.md` and `packages/pi-g-skills/skills/g-submit/SKILL.md` in dedicated worktree `/Users/subhajlimanond/dev/ma-code-worktrees/task-1777437808698-g-create-g-submit-skills` on branch `split/task-1777437808698-g-create-g-submit-skills`.",
+        "Updated package/docs/routing wiring for the new skills: `packages/pi-g-skills/README.md`, `packages/pi-g-skills/docs/porting-matrix.md`, `.pi/settings.json`, `.pi/agent/extensions/g-skill-auto-route.ts`, and `scripts/validate-skill-routing.sh`.",
+        "Validation passed in the worktree: `bash scripts/validate-skill-routing.sh --skip-live` -> `Skill-routing validation PASS`.",
+        "Validation passed in the worktree: project-local Pi command discovery now includes `skill:g-create` and `skill:g-submit` after adding `../packages/pi-g-skills/skills` to `.pi/settings.json`.",
+        "Validation passed in the worktree: `git diff --check` -> no output.",
+        "Manual g-check-style working-tree review found no required fixes; only low-risk follow-up is optional live provider-backed routing proof for `g-create`/`g-submit` if/when one bounded live run is worth the spend.",
+        "Committed skill-port and live-proof changes on `split/task-1777437808698-g-create-g-submit-skills` as `3a61406 skills: add g-create and g-submit ports`.",
+        "Validation passed in worktree: `bash scripts/validate-skill-routing.sh --skip-live` -> `Skill-routing validation PASS`.",
+        "Validation passed in worktree with one bounded provider-backed run: `bash scripts/validate-skill-routing.sh` -> `Skill-routing validation PASS`; report at `reports/validation/2026-04-29_skill-routing-validation-script.{md,json}` showed `7. live create route` PASS and `8. live submit route` PASS.",
+        "Validation passed in worktree: project-local `pi --mode rpc --no-session` command discovery now includes `skill:g-create` and `skill:g-submit` from `packages/pi-g-skills/skills/...` after loading the package skill path in `.pi/settings.json`.",
+        "Validation passed in worktree: `git diff --check` -> no output.",
+        "Opened PR #39: https://github.com/SubhajL/ma-code/pull/39.",
+        "PR #39 checks passed: Repo Static Checks PASS, Dependency Review PASS, Foundation Extension Compile PASS, Routing Validators PASS, CodeQL PASS.",
+        "Merged PR #39 with squash; GitHub reports mergedAt `2026-04-29T05:32:29Z` and local `origin/main` advanced to `5f4c57fd8a0ebb76dc6d36d94d89c9227106709a`.",
+        "Synced repo root back to `main` and fast-forwarded it to the merged commit: `git -C /Users/subhajlimanond/dev/ma-code checkout main` and `git -C /Users/subhajlimanond/dev/ma-code merge --ff-only origin/main`.",
+        "Repo root now matches `origin/main` at `5f4c57fd8a0ebb76dc6d36d94d89c9227106709a`; remaining local dirt is limited to runtime bookkeeping files `.pi/agent/state/runtime/tasks.json`, `logs/harness-actions.jsonl`, and untracked validation reports created earlier in the root worktree."
+      ],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pass",
+        "source": "validator",
+        "checklist": {
+          "acceptance": "met",
+          "tests": "met",
+          "diff_review": "met",
+          "evidence": "met"
+        },
+        "approvalRef": null,
+        "updatedAt": "2026-04-29T05:33:23.322Z"
+      },
+      "notes": [
+        "Discovery confirms this repo/package currently ports only g-planning, g-coding, g-check, and g-review. `packages/pi-g-skills/README.md`, `docs/porting-matrix.md`, and `.pi/agent/extensions/g-skill-auto-route.ts` all reflect only those four skills. So the recurring `/skill:g-create` / `/skill:g-submit` issue is real: the skills were not implemented here. Implementation is currently blocked because the session is on dirty `main`; safe-bash rejects branch creation/mutating bash until work proceeds on a non-main branch/worktree."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-29T04:43:28.698Z",
+        "updatedAt": "2026-04-29T05:33:23.324Z",
+        "startedAt": "2026-04-29T04:43:32.914Z",
+        "completedAt": "2026-04-29T05:33:23.324Z"
+      }
+    },
+    {
+      "id": "task-1777442748746",
+      "title": "Assess and land current dirty local-main files to remote main",
+      "owner": "assistant",
+      "status": "in_progress",
+      "taskClass": "implementation",
+      "acceptance": [
+        "Review the current dirty local-main file set and explicitly decide which files are intended to be landed versus kept local/transient.",
+        "Move the intended changes onto a non-main branch or worktree, preserving repo safety and active-task discipline.",
+        "Land the approved changes to remote main through the normal PR/merge flow and sync local main afterward.",
+        "Record evidence, changed files, validation, and any unresolved risks or exclusions before completion."
+      ],
+      "evidence": [],
+      "dependencies": [],
+      "retryCount": 0,
+      "validation": {
+        "tier": "standard",
+        "decision": "pending",
+        "source": null,
+        "checklist": null,
+        "approvalRef": null,
+        "updatedAt": null
+      },
+      "notes": [
+        "Planning completed under g-planning. Discovery path: local fallback after auggie_discover timeout plus second_model_plan sanity check. Current dirty set on main is `.pi/agent/state/runtime/tasks.json` (protected runtime state), `logs/harness-actions.jsonl` (tracked audit log), and untracked `reports/validation/2026-04-29_*` validation artifacts. Conservative plan: first classify which files are truly intended to land, then move the approved subset onto a non-main branch/worktree, review/stage only that subset, run diff-focused validation, open PR, merge, and sync local main. Important ambiguity remains: whether the protected runtime-state file and generated validation reports are intentionally meant to be committed versus kept local/transient."
+      ],
+      "timestamps": {
+        "createdAt": "2026-04-29T06:05:48.746Z",
+        "updatedAt": "2026-04-29T06:07:06.066Z",
+        "startedAt": "2026-04-29T06:05:52.799Z"
       }
     }
   ]

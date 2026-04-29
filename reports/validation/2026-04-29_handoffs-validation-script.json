@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. helper-level handoff generation",
+      "status": "PASS",
+      "detail": "Deterministic helper-level handoff generation checks passed."
+    },
+    {
+      "name": "2. handoff schema and policy sanity",
+      "status": "PASS",
+      "detail": "Handoff schema and policy sanity checks passed."
+    },
+    {
+      "name": "3. handoffs extension TypeScript compile",
+      "status": "PASS",
+      "detail": "handoffs.ts compiled successfully with its extension dependencies."
+    },
+    {
+      "name": "4. live generate_handoff tool probe",
+      "status": "SKIP",
+      "detail": "Live probe skipped by default to avoid unnecessary provider-backed validation spend."
+    }
+  ]
+}
