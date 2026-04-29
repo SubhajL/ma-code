@@ -82,6 +82,10 @@ Related docs:
 - bounded autonomy architecture: `.pi/agent/docs/bounded_autonomy_architecture.md`
 - phase capability map: `.pi/agent/docs/harness_phase_capability_map.md`
 - architecture review workflow: `.pi/agent/docs/architecture_review_workflow.md`
+- architecture/drift review artifacts:
+  - `.pi/agent/prompts/templates/request-architecture-review.md`
+  - `.pi/agent/prompts/templates/assess-drift-capability.md`
+  - `.pi/agent/prompts/templates/propose-migration-path.md`
 
 ## Validation workflow
 Use the validator script for repeatable Phase A/B checks:

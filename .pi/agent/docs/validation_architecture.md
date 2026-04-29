@@ -170,6 +170,10 @@ This script is responsible for the bounded regression path for:
 - exact template top-level output sections under `.pi/agent/prompts/templates/*.md`
 - required decision/result lines where the prompt contract includes them
 - required architecture review workflow references for the prompts/templates that should carry that review discipline
+- reusable architecture/drift review artifact templates such as:
+  - `.pi/agent/prompts/templates/request-architecture-review.md`
+  - `.pi/agent/prompts/templates/assess-drift-capability.md`
+  - `.pi/agent/prompts/templates/propose-migration-path.md`
 - prompt/template inventory drift where a file exists without a declared contract or a stale contract points at a missing file
 
 It should be used when changes affect repo-local role prompts, prompt-entry templates, or the prompt-contract inventory itself.

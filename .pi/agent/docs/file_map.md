@@ -11,6 +11,9 @@
 
 ## Update prompt-entry workflows
 - `.pi/agent/prompts/templates/*.md`
+- `.pi/agent/prompts/templates/request-architecture-review.md`
+- `.pi/agent/prompts/templates/assess-drift-capability.md`
+- `.pi/agent/prompts/templates/propose-migration-path.md`
 - `.pi/agent/validation/prompt-contracts.json`
 
 ## Update routing defaults
