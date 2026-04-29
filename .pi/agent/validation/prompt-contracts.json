@@ -249,6 +249,24 @@
         "## Suggested Immediate Action"
       ]
     },
+    ".pi/agent/prompts/templates/assess-drift-capability.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Capability or Surface",
+        "## Intended Claim",
+        "## Implemented Evidence",
+        "## Drift Classification",
+        "## Impact",
+        "## Tactical Fix Direction",
+        "## Strategic Escalation Threshold"
+      ],
+      "requiredLines": [
+        "Drift Classification: acceptable | tactical | strategic"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
+      ]
+    },
     ".pi/agent/prompts/templates/plan-feature.md": {
       "kind": "template",
       "exactTopLevelHeaders": [
@@ -263,6 +281,24 @@
         "## Wiring Checks",
         "## Risks",
         "## Validation Ideas"
+      ]
+    },
+    ".pi/agent/prompts/templates/propose-migration-path.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Current Constraint",
+        "## Proposed Change",
+        "## Benefits",
+        "## Risks / Costs",
+        "## Migration Steps",
+        "## Rollout Checks",
+        "## Backout Notes"
+      ],
+      "requiredLines": [
+        "Backout Decision: revert | pause | proceed_with_guardrails"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
       ]
     },
     ".pi/agent/prompts/templates/queue-job.md": {
@@ -287,6 +323,20 @@
         "## Provider or Model Change",
         "## Rollback Recommendation",
         "## Escalation Recommendation"
+      ]
+    },
+    ".pi/agent/prompts/templates/request-architecture-review.md": {
+      "kind": "template",
+      "exactTopLevelHeaders": [
+        "## Review Goal",
+        "## Intended Behavior",
+        "## Scope Boundaries",
+        "## Evidence To Inspect",
+        "## Drift Questions",
+        "## Deliverable Expectations"
+      ],
+      "requiredSubstrings": [
+        ".pi/agent/docs/architecture_review_workflow.md"
       ]
     },
     ".pi/agent/prompts/templates/request-retry.md": {

@@ -29,6 +29,17 @@ A useful architecture/drift review should include:
 - strategic changes only when the tactical path is insufficient
 - a bounded migration path when a large change is proposed
 
+## Reusable review artifacts
+Use these repo-local templates when you want concrete architecture-review inputs or outputs instead of hand-wavy freeform requests:
+- architecture review request: `.pi/agent/prompts/templates/request-architecture-review.md`
+- drift/capability assessment: `.pi/agent/prompts/templates/assess-drift-capability.md`
+- migration-path proposal: `.pi/agent/prompts/templates/propose-migration-path.md`
+
+Recommended use:
+- use `request-architecture-review.md` to scope intended behavior, evidence to inspect, and the drift questions that matter
+- use `assess-drift-capability.md` when a capability claim or maturity label needs a concrete acceptable/tactical/strategic drift judgment
+- use `propose-migration-path.md` when a large change is justified and the review must stay rollout-aware rather than abstract
+
 ## Tactical vs strategic rule
 Prefer tactical recommendations first.
 

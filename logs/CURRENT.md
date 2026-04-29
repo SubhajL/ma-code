@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-04-29_local-main-dirty-files-landing.md`
+- `logs/coding/2026-04-29_harness-046-architecture-review-artifacts.md`
 
 ## Current planning log
-- `reports/planning/2026-04-29_local-main-dirty-files-landing-plan.md`
+- `reports/planning/2026-04-29_harness-046-architecture-review-artifacts-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

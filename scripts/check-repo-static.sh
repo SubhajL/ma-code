@@ -33,6 +33,9 @@ required_files=(
   "scripts/validate-core-workflows.sh"
   "scripts/validate-prompt-contracts.sh"
   ".pi/agent/docs/architecture_review_workflow.md"
+  ".pi/agent/prompts/templates/request-architecture-review.md"
+  ".pi/agent/prompts/templates/assess-drift-capability.md"
+  ".pi/agent/prompts/templates/propose-migration-path.md"
   ".pi/agent/validation/prompt-contracts.json"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
@@ -69,7 +72,20 @@ for rel in [
 ]:
     with (root / rel).open("r", encoding="utf-8") as f:
         json.load(f)
-assert "tactical vs strategic rule" in (root / ".pi/agent/docs/architecture_review_workflow.md").read_text(encoding="utf-8").lower()
+workflow_doc = (root / ".pi/agent/docs/architecture_review_workflow.md").read_text(encoding="utf-8")
+validation_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
+file_map_doc = (root / ".pi/agent/docs/file_map.md").read_text(encoding="utf-8")
+readme_doc = (root / "README.md").read_text(encoding="utf-8")
+assert "tactical vs strategic rule" in workflow_doc.lower()
+for needle in [
+    "request-architecture-review.md",
+    "assess-drift-capability.md",
+    "propose-migration-path.md",
+]:
+    assert needle in workflow_doc
+    assert needle in validation_doc
+    assert needle in file_map_doc
+    assert needle in readme_doc
 PY
 
 "$REPO_ROOT/scripts/validate-prompt-contracts.sh"
