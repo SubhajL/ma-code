@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-export type SkillName = "g-planning" | "g-coding" | "g-check" | "g-review";
+export type SkillName = "g-planning" | "g-coding" | "g-check" | "g-review" | "g-create" | "g-submit";
 
 export interface SkillRoute {
   skill: SkillName;
@@ -11,7 +11,7 @@ export interface SkillRoute {
 
 const pendingRoutes: Array<SkillRoute | null> = [];
 
-const EXPLICIT_SKILL_COMMAND = /^\/skill:(g-planning|g-coding|g-check|g-review)\b/i;
+const EXPLICIT_SKILL_COMMAND = /^\/skill:(g-planning|g-coding|g-check|g-review|g-create|g-submit)\b/i;
 
 export const SKILL_PATTERNS: Array<{ skill: SkillName; reason: string; patterns: RegExp[] }> = [
   {
@@ -39,6 +39,32 @@ export const SKILL_PATTERNS: Array<{ skill: SkillName; reason: string; patterns:
       /\bworking\s+tree\s+review\b/i,
       /\bpr\s+review\b/i,
       /\bcommit\s+review\b/i,
+    ],
+  },
+  {
+    skill: "g-submit",
+    reason: "matched PR submission intent",
+    patterns: [
+      /\bg-submit\b/i,
+      /\bsubmit\s+(the\s+)?pr\b/i,
+      /\bsubmit\s+(a\s+)?pull\s+request\b/i,
+      /\bcreate\s+(a\s+)?pr\b/i,
+      /\bopen\s+(a\s+)?pr\b/i,
+      /\bpublish\s+(the\s+)?pr\b/i,
+      /\bprepare\s+(a\s+)?pr\b/i,
+    ],
+  },
+  {
+    skill: "g-create",
+    reason: "matched branch/commit creation intent",
+    patterns: [
+      /\bg-create\b/i,
+      /\bgt\s+create\b/i,
+      /\bcreate\s+(the\s+)?commit\b/i,
+      /\bprepare\s+(the\s+)?commit\b/i,
+      /\bstage\s+and\s+commit\b/i,
+      /\bcreate\s+(the\s+)?branch\b/i,
+      /\bprepare\s+(the\s+)?branch\b/i,
     ],
   },
   {

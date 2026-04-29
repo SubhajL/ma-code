@@ -192,11 +192,13 @@ probe_unavailable() {
 }
 
 build_skill_args() {
-  printf -- '--no-skills --skill %q --skill %q --skill %q --skill %q' \
+  printf -- '--no-skills --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q' \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-planning" \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-coding" \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-check" \
-    "$REPO_ROOT/packages/pi-g-skills/skills/g-review"
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-review" \
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-create" \
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-submit"
 }
 
 setup_temp_runtime() {
@@ -233,7 +235,11 @@ const cases = [
   { input: "implement a docs-only clarification task", expectedSkill: "g-coding", expectedTransformed: true },
   { input: "review changes", expectedSkill: "g-check", expectedTransformed: true },
   { input: "review architecture", expectedSkill: "g-review", expectedTransformed: true },
+  { input: "create a PR for this branch", expectedSkill: "g-submit", expectedTransformed: true },
+  { input: "prepare the commit for these ready changes", expectedSkill: "g-create", expectedTransformed: true },
   { input: "/skill:g-coding implement a docs-only clarification task", expectedSkill: "g-coding", expectedTransformed: false },
+  { input: "/skill:g-submit create a PR for this branch", expectedSkill: "g-submit", expectedTransformed: false },
+  { input: "/skill:g-create prepare the commit for these ready changes", expectedSkill: "g-create", expectedTransformed: false },
   { input: "review", expectedSkill: null, expectedTransformed: null }
 ];
 
@@ -270,7 +276,7 @@ EOF
     local detail="All required route cases matched expected skill selection, including explicit /skill preservation and bare-review non-match guard."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper results written to: $out\n- route cases covered:\n  - planning intent\n  - coding intent\n  - bounded review intent\n  - architecture review intent\n  - explicit /skill:g-coding preservation\n  - bare review non-match guard"
+    append_check_section "$name" "PASS" "$cmd" "- helper results written to: $out\n- route cases covered:\n  - planning intent\n  - coding intent\n  - bounded review intent\n  - architecture review intent\n  - PR submission intent\n  - branch/commit creation intent\n  - explicit /skill:g-coding preservation\n  - explicit /skill:g-submit preservation\n  - explicit /skill:g-create preservation\n  - bare review non-match guard"
   else
     local detail="Helper-level route classification failed."
     record_result "$name" "FAIL" "$detail"
@@ -448,6 +454,76 @@ check_6_live_explicit_skill() {
   fi
 }
 
+check_7_live_create() {
+  local name="7. live create route"
+  if [[ $SKIP_LIVE -eq 1 ]]; then
+    local detail="Live create probe skipped by option."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run without \`--skip-live\` when one bounded live proof is needed"
+    return
+  fi
+  local out="$TMP_ROOT/check_7_live_create.txt"
+  local prompt="prepare the commit for these ready changes and return only the required top-level section headers exactly."
+  local cmd="$PI_BIN --tools read,grep,find,ls --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts $(build_skill_args) --print \"$prompt\""
+
+  if run_live_probe "$prompt" "$out" 45 \
+    && assert_contains "$out" "## Discovery Path" \
+    && assert_contains "$out" "## Review Set" \
+    && assert_contains "$out" "## Creation Command" \
+    && assert_contains "$out" "## Pi Log Update"; then
+    local detail="Raw create prompt routed to g-create-shaped output."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- observed headers included:\n  - ## Discovery Path\n  - ## Review Set\n  - ## Creation Command\n  - ## Pi Log Update"
+  elif probe_unavailable "$out"; then
+    local detail="Live create probe skipped because model/provider access is unavailable in this environment."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "$cmd" "- probe output:\n$(cat "$out" 2>/dev/null)"
+  else
+    local detail="Live create route probe failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- probe output:\n$(cat "$out" 2>/dev/null)"
+  fi
+}
+
+check_8_live_submit() {
+  local name="8. live submit route"
+  if [[ $SKIP_LIVE -eq 1 ]]; then
+    local detail="Live submit probe skipped by option."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run without \`--skip-live\` when one bounded live proof is needed"
+    return
+  fi
+  local out="$TMP_ROOT/check_8_live_submit.txt"
+  local prompt="create a PR for this branch and return only the required top-level section headers exactly."
+  local cmd="$PI_BIN --tools read,grep,find,ls --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts $(build_skill_args) --print \"$prompt\""
+
+  if run_live_probe "$prompt" "$out" 45 \
+    && assert_contains "$out" "## Discovery Path" \
+    && assert_contains "$out" "## Repo / Stack State" \
+    && assert_contains "$out" "## Submission Plan" \
+    && assert_contains "$out" "## Pi Log Update"; then
+    local detail="Raw submit prompt routed to g-submit-shaped output."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- observed headers included:\n  - ## Discovery Path\n  - ## Repo / Stack State\n  - ## Submission Plan\n  - ## Pi Log Update"
+  elif probe_unavailable "$out"; then
+    local detail="Live submit probe skipped because model/provider access is unavailable in this environment."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "$cmd" "- probe output:\n$(cat "$out" 2>/dev/null)"
+  else
+    local detail="Live submit route probe failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- probe output:\n$(cat "$out" 2>/dev/null)"
+  fi
+}
+
 finalize_report() {
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF
@@ -467,6 +543,8 @@ check_3_live_planning
 check_4_live_coding
 check_5_live_review_architecture
 check_6_live_explicit_skill
+check_7_live_create
+check_8_live_submit
 finalize_report
 write_json_summary
 

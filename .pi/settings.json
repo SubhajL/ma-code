@@ -12,6 +12,7 @@
     "agent/extensions"
   ],
   "skills": [
+    "../packages/pi-g-skills/skills",
     "agent/skills"
   ],
   "prompts": [
