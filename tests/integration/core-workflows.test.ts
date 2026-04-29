@@ -3,9 +3,13 @@ import test from "node:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/handoffs.ts";
+import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 import recoveryRuntime from "../../.pi/agent/extensions/recovery-runtime.ts";
 import safeBash from "../../.pi/agent/extensions/safe-bash.ts";
+import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
+import { loadTeamDefinitions } from "../../.pi/agent/extensions/team-activation.ts";
 import tillDone from "../../.pi/agent/extensions/till-done.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo } from "../extension-units/test-utils.ts";
 
@@ -73,6 +77,51 @@ async function readTaskState(cwd: string) {
       validation: { decision: string; source: string | null };
     }>;
   };
+}
+
+async function createWorkerToQualityHandoff(cwd: string) {
+  const [routingConfig, packetPolicy, handoffPolicy, teams] = await Promise.all([
+    loadHarnessRoutingConfig(cwd),
+    loadPacketPolicy(cwd),
+    loadHandoffPolicy(cwd),
+    loadTeamDefinitions(cwd),
+  ]);
+
+  const sourcePacket = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "job-build-source",
+    parentTaskId: "task-build-source",
+    parentPacketId: null,
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    title: "Implement source change for quality review",
+    goal: "Provide structured build output for a bounded quality transition.",
+    scope: "Only inspect queue-runner and core-workflow proof files for the quality transition.",
+    nonGoals: ["Do not broaden into recovery or scheduler redesign."],
+    workType: "implementation",
+    domains: ["backend"],
+    filesToInspect: [".pi/agent/extensions/queue-runner.ts", "tests/integration/core-workflows.test.ts"],
+    filesToModify: [".pi/agent/extensions/queue-runner.ts"],
+    allowedPaths: [".pi/agent/extensions/queue-runner.ts", "tests/integration/core-workflows.test.ts"],
+    acceptanceCriteria: ["Structured queue-to-quality input stays bounded and reviewable."],
+    expectedProof: ["A queued quality job can start from structured worker_to_quality input."],
+    migrationPathNote: "Not applicable; keep the change in the existing queue-runner quality transition.",
+  }).packet;
+
+  return generateHandoff(handoffPolicy, {
+    handoffType: "worker_to_quality",
+    sourcePacket,
+    fromRole: "backend_worker",
+    toRole: "quality_lead",
+    changedFiles: [".pi/agent/extensions/queue-runner.ts"],
+    unchangedInspected: ["tests/integration/core-workflows.test.ts"],
+    acceptanceCoverage: ["Structured queue-to-quality start path is covered."],
+    evidence: ["Validation output: PASS"],
+    commandsRun: ["bash scripts/validate-core-workflows.sh"],
+    wiringVerification: ["worker_to_quality preserves packet scope and changed-file context."],
+    expectedProof: ["Quality packet derives inspect scope from structured handoff data."],
+    openQuestions: ["none"],
+    validationQuestions: ["Does the quality packet stay inside the structured changed-file scope?"],
+  }).handoff;
 }
 
 test("docs-only workflow allows lighter review validation and completion", async () => {
@@ -198,6 +247,79 @@ test("validation fail workflow keeps the failed task visible with validator evid
   assert.equal(failed.details.task.status, "failed");
   assert.equal(taskState.tasks[0]?.validation.decision, "fail");
   assert.match((taskState.tasks[0]?.notes ?? []).join("\n"), /tests failed/i);
+});
+
+test("quality workflow can start from a queued structured worker_to_quality handoff", async () => {
+  const { cwd, runNextQueueJob } = await setupCoreWorkflowRepo();
+  const handoff = await createWorkerToQualityHandoff(cwd);
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-quality-structured",
+        goal: "Run bounded quality review from structured handoff input",
+        priority: "high",
+        status: "queued",
+        team: "quality",
+        assignedRole: "quality_lead",
+        workType: "review_only",
+        acceptanceCriteria: ["Quality job starts from structured worker_to_quality input"],
+        qualityInput: {
+          sourcePacketId: handoff.sourcePacketId,
+          sourceHandoff: handoff,
+        },
+      },
+    ],
+  });
+
+  const started = await runNextQueueJob({ owner: "assistant" });
+
+  assert.equal(started.details.action, "started");
+  assert.equal(started.details.packet.assignedTeam, "quality");
+  assert.equal(started.details.packet.assignedRole, "quality_lead");
+  assert.equal(started.details.packet.source.parentPacketId, handoff.sourcePacketId);
+  assert.deepEqual(started.details.packet.allowedPaths, [
+    ".pi/agent/extensions/queue-runner.ts",
+    "tests/integration/core-workflows.test.ts",
+  ]);
+  assert.deepEqual(started.details.packet.filesToInspect, [
+    ".pi/agent/extensions/queue-runner.ts",
+    "tests/integration/core-workflows.test.ts",
+  ]);
+  assert.equal(started.details.initialHandoff, null);
+});
+
+test("quality queue job blocks when structured worker_to_quality input is missing", async () => {
+  const { cwd, runNextQueueJob } = await setupCoreWorkflowRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-quality-missing-input",
+        goal: "Try to run quality review without structured handoff input",
+        priority: "high",
+        status: "queued",
+        team: "quality",
+        assignedRole: "quality_lead",
+        workType: "review_only",
+        acceptanceCriteria: ["Runtime should block missing structured quality input"],
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const queueState = await readQueueState(cwd);
+
+  assert.equal(result.details.action, "blocked");
+  assert.match(String(result.details.reason), /structured worker_to_quality handoff/i);
+  assert.equal(queueState.jobs[0]?.status, "blocked");
+  assert.match((queueState.jobs[0]?.notes ?? []).join("\n"), /qualityInput/i);
 });
 
 test("recovery path finalizes a failed queue job with a bounded retry recommendation", async () => {
