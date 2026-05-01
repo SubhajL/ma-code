@@ -194,19 +194,21 @@ Example:
   - `maxRetries`
   - `maxRuntimeMinutes`
   - `maxFailedValidations`
+  - `maxUnresolvedBlockers`
   - `maxCostUsd`
   - `maxFilesChanged`
 - values should be conservative and reviewable
-- current executable behavior in HARNESS-034:
+- current executable behavior in HARNESS-049:
   - `budget.maxRetries` is enforced conservatively before restarting a queued job with an existing linked failed task
   - `budget.maxRuntimeMinutes` is enforced on an active running job using the queue job `startedAt` timestamp
   - `budget.maxFailedValidations` is enforced conservatively from the current linked task validation outcome because there is not yet a dedicated failed-validation counter in runtime state
+  - `budget.maxUnresolvedBlockers` is enforced before queued start/restart using the visible count of blocked queue jobs plus blocked tasks in runtime state
   - unsupported `budget.maxCostUsd` and `budget.maxFilesChanged` still block the job clearly instead of being silently ignored
 
 ### `stop_conditions`
 - optional list of conditions that should force stop, pause, or escalation
 - should be explicit and reviewable
-- current executable behavior in HARNESS-034:
+- current executable behavior in HARNESS-049:
   - `approval_boundary_hit` is the only supported `stop_conditions` token in the bounded queue runner
   - the actual approval-boundary signal comes from queue-job `approvalRequired: true`
   - other free-form `stop_conditions` values still block the job clearly as unsupported controls
@@ -266,7 +268,7 @@ Important executable fields:
   - HARNESS-048 adds one narrow exception for supported quality-lane pickup paths: queued `quality_lead` and queued `validator_worker` quality jobs may carry `qualityInput.sourceHandoff`, and the runner derives those bounded packet fields from the structured handoff instead of ad hoc queue-job prose
 - `budget`, `stop_conditions`
   - these remain part of the queue contract
-  - HARNESS-034 enforces `maxRetries`, `maxRuntimeMinutes`, `maxFailedValidations`, and the `approval_boundary_hit`/`approvalRequired` stop boundary
+  - HARNESS-049 enforces `maxRetries`, `maxRuntimeMinutes`, `maxFailedValidations`, `maxUnresolvedBlockers`, and the `approval_boundary_hit`/`approvalRequired` stop boundary
   - unsupported free-form `stop_conditions` plus unsupported `maxCostUsd` and `maxFilesChanged` still block clearly
 
 Runtime-populated linkage and observability fields:

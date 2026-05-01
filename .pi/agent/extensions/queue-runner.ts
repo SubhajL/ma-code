@@ -77,6 +77,7 @@ export interface QueueJob {
     maxRetries?: number;
     maxRuntimeMinutes?: number;
     maxFailedValidations?: number;
+    maxUnresolvedBlockers?: number;
     maxCostUsd?: number;
     maxFilesChanged?: number;
   };
@@ -663,7 +664,7 @@ function unsupportedControlBlockNote(job: QueueJob): string | null {
     unsupportedParts.push(`unsupported stop_conditions (${unsupportedStopConditions.join("; ")})`);
   }
 
-  return `Queue runner blocked the job because ${unsupportedParts.join(" and ")} are not supported by HARNESS-034 stop-condition enforcement.`;
+  return `Queue runner blocked the job because ${unsupportedParts.join(" and ")} are not supported by HARNESS-049 stop-condition enforcement.`;
 }
 
 function taskFailedValidationCount(task: TaskRecord): number {
@@ -690,6 +691,21 @@ function jobExceededRuntimeBudget(job: QueueJob, now: Date = new Date()): boolea
   if (Number.isNaN(startedAt.getTime())) return false;
 
   return now.getTime() - startedAt.getTime() > maxRuntimeMinutes * 60_000;
+}
+
+function countVisibleUnresolvedBlockers(queueState: QueueState, taskState: TaskState): number {
+  const blockedJobs = queueState.jobs.filter((job) => job.status === "blocked").length;
+  const blockedTasks = taskState.tasks.filter((task) => task.status === "blocked").length;
+  return blockedJobs + blockedTasks;
+}
+
+function jobExceededUnresolvedBlockerBudget(job: QueueJob, queueState: QueueState, taskState: TaskState): { count: number; max: number } | null {
+  const maxUnresolvedBlockers = job.budget?.maxUnresolvedBlockers;
+  if (maxUnresolvedBlockers === undefined) return null;
+
+  const count = countVisibleUnresolvedBlockers(queueState, taskState);
+  if (count <= maxUnresolvedBlockers) return null;
+  return { count, max: maxUnresolvedBlockers };
 }
 
 function ensureRoleBelongsToTeam(team: TeamDefinition, role: HarnessRole): void {
@@ -1443,6 +1459,17 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
 
       if (job.approvalRequired) {
         const note = "Queue runner blocked the queued job because the approval boundary was hit before start (approvalRequired=true).";
+        blockJobInState(queueState, job.id, note);
+        return {
+          type: "blocked-before-start" as const,
+          jobId: job.id,
+          reason: note,
+        };
+      }
+
+      const unresolvedBlockerBudget = jobExceededUnresolvedBlockerBudget(job, queueState, taskState);
+      if (unresolvedBlockerBudget) {
+        const note = `Queue runner blocked the queued job because ${unresolvedBlockerBudget.count} visible unresolved blockers exceeded budget.maxUnresolvedBlockers=${unresolvedBlockerBudget.max}.`;
         blockJobInState(queueState, job.id, note);
         return {
           type: "blocked-before-start" as const,
