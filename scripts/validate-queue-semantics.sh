@@ -267,7 +267,9 @@ required_snippets = [
     '## Who may create jobs',
     'Blocked is not the same as failed.',
     '- `qualityInput`',
-    'structured `worker_to_quality` handoff object',
+    'structured `worker_to_quality` handoff',
+    'structured `quality_to_validator` handoff',
+    'queued `validator_worker` quality jobs',
 ]
 missing = [snippet for snippet in required_snippets if snippet not in doc]
 assert not missing, f"missing expected queue doc snippets: {missing}"

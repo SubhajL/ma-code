@@ -250,18 +250,20 @@ Important executable fields:
   - optional explicit starting role
   - if omitted, the queue runner uses the selected team's lead role
 - `qualityInput`
-  - optional structured runtime input for the bounded queue→quality path
-  - current HARNESS-048 slice uses it for queued `quality_lead` jobs only
+  - optional structured runtime input for the bounded HARNESS-048 quality-lane pickup paths
+  - current HARNESS-048 slices use it for:
+    - queued `quality_lead` jobs via a structured `worker_to_quality` handoff
+    - queued `validator_worker` quality jobs via a structured `quality_to_validator` handoff
   - required fields:
     - `sourcePacketId`
-    - `sourceHandoff` (structured `worker_to_quality` handoff object)
-  - the queue runner consumes this structured object directly to derive the quality packet scope, inspect paths, and parent packet linkage
+    - `sourceHandoff` (structured handoff object whose `handoffType` and `toRole` must match the queued supported quality role)
+  - the queue runner consumes this structured object directly to derive packet scope, inspect paths, expected proof context, and parent packet linkage for the targeted bounded pickup path
   - missing or malformed `qualityInput` blocks the targeted quality transition instead of falling back to ad hoc prose fields
 - `routeReason`, `budgetMode`, `modelOverride`
   - optional routing controls passed through to task-packet generation
 - queue jobs do **not** carry packet-override lists for `disallowedPaths`, `discoverySummary`, `crossModelPlanningNote`, `evidenceExpectations`, `validationExpectations`, `wiringChecks`, or `escalationInstructions`
   - HARNESS-032 uses the task-packet policy defaults for those bounded fields instead of duplicating them in queue state
-  - HARNESS-048 adds one narrow exception for quality-lane pickup: queued `quality_lead` jobs may carry `qualityInput.sourceHandoff`, and the runner derives those bounded packet fields from the structured handoff instead of ad hoc queue-job prose
+  - HARNESS-048 adds one narrow exception for supported quality-lane pickup paths: queued `quality_lead` and queued `validator_worker` quality jobs may carry `qualityInput.sourceHandoff`, and the runner derives those bounded packet fields from the structured handoff instead of ad hoc queue-job prose
 - `budget`, `stop_conditions`
   - these remain part of the queue contract
   - HARNESS-034 enforces `maxRetries`, `maxRuntimeMinutes`, `maxFailedValidations`, and the `approval_boundary_hit`/`approvalRequired` stop boundary

@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-04-29_harness-048-structured-queue-quality.md`
+- `logs/coding/2026-04-29_harness-048-structured-quality-next-step.md`
 
 ## Current planning log
-- `reports/planning/2026-04-29_harness-048-structured-queue-quality-plan.md`
+- `reports/planning/2026-04-29_harness-048-structured-quality-next-step-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the current bounded HARNESS-048 structured queue→quality runtime slice.
+- These files capture the bounded HARNESS-048 slice 2 implementation work for structured quality→validator runtime transitions.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

@@ -738,18 +738,25 @@ function defaultWorkTypeForTeam(team: TeamId): WorkType {
   }
 }
 
-function qualityLeadStructuredInputRequired(teamId: TeamId, assignedRole: HarnessRole): boolean {
-  return teamId === "quality" && assignedRole === "quality_lead";
+function qualityStructuredInputRole(teamId: TeamId, assignedRole: HarnessRole): "quality_lead" | "validator_worker" | null {
+  if (teamId !== "quality") return null;
+  if (assignedRole === "quality_lead") return "quality_lead";
+  if (assignedRole === "validator_worker") return "validator_worker";
+  return null;
 }
 
 function resolveQualityQueueInput(job: QueueJob, teamId: TeamId, assignedRole: HarnessRole): QualityQueueInput | null {
-  if (!qualityLeadStructuredInputRequired(teamId, assignedRole)) {
+  const supportedRole = qualityStructuredInputRole(teamId, assignedRole);
+  if (!supportedRole) {
     return null;
   }
 
   const qualityInput = job.qualityInput;
   if (!qualityInput) {
-    throw new Error("qualityInput with a structured worker_to_quality handoff is required for queued quality_lead jobs.");
+    if (supportedRole === "quality_lead") {
+      throw new Error("qualityInput with a structured worker_to_quality handoff is required for queued quality_lead jobs.");
+    }
+    throw new Error("qualityInput with a structured quality_to_validator handoff is required for queued validator_worker quality jobs.");
   }
 
   if (typeof qualityInput.sourcePacketId !== "string" || qualityInput.sourcePacketId.trim().length === 0) {
@@ -758,12 +765,27 @@ function resolveQualityQueueInput(job: QueueJob, teamId: TeamId, assignedRole: H
 
   validateStructuredHandoff(qualityInput.sourceHandoff);
 
-  if (qualityInput.sourceHandoff.handoffType !== "worker_to_quality") {
-    throw new Error("qualityInput.sourceHandoff must be a worker_to_quality handoff.");
+  if (supportedRole === "quality_lead") {
+    if (qualityInput.sourceHandoff.handoffType !== "worker_to_quality") {
+      throw new Error("qualityInput.sourceHandoff must be a worker_to_quality handoff.");
+    }
+    if (qualityInput.sourceHandoff.toRole !== "quality_lead") {
+      throw new Error("qualityInput.sourceHandoff must target quality_lead.");
+    }
   }
-  if (qualityInput.sourceHandoff.toRole !== "quality_lead") {
-    throw new Error("qualityInput.sourceHandoff must target quality_lead.");
+
+  if (supportedRole === "validator_worker") {
+    if (qualityInput.sourceHandoff.handoffType !== "quality_to_validator") {
+      throw new Error("qualityInput.sourceHandoff must be a quality_to_validator handoff.");
+    }
+    if (qualityInput.sourceHandoff.fromRole !== "quality_lead") {
+      throw new Error("qualityInput.sourceHandoff must come from quality_lead.");
+    }
+    if (qualityInput.sourceHandoff.toRole !== "validator_worker") {
+      throw new Error("qualityInput.sourceHandoff must target validator_worker.");
+    }
   }
+
   if (qualityInput.sourceHandoff.sourcePacketId !== qualityInput.sourcePacketId.trim()) {
     throw new Error("qualityInput.sourcePacketId must match sourceHandoff.sourcePacketId.");
   }
@@ -830,9 +852,71 @@ function buildQualityLeadPacketInput(job: QueueJob, qualityInput: QualityQueueIn
   };
 }
 
+function buildValidatorPacketInput(job: QueueJob, qualityInput: QualityQueueInput, taskId: string | null): TaskPacketInput {
+  const handoff = qualityInput.sourceHandoff;
+  const filesToInspect = uniqueStrings([
+    ...handoff.preservedPacket.filesToInspect,
+    ...handoff.details.filesToInspect.filter((line) => line.toLowerCase() !== "none"),
+  ]);
+  const allowedPaths = uniqueStrings([
+    ...handoff.preservedPacket.allowedPaths,
+    ...filesToInspect,
+  ]);
+
+  return {
+    sourceGoalId: job.id,
+    parentTaskId: taskId,
+    parentPacketId: qualityInput.sourcePacketId,
+    assignedTeam: "quality",
+    assignedRole: "validator_worker",
+    title: job.goal,
+    goal: handoff.preservedPacket.goal,
+    scope: handoff.preservedPacket.scope,
+    nonGoals: handoff.preservedPacket.nonGoals,
+    workType: job.workType ?? "review_only",
+    domains: (job.domains && job.domains.length > 0 ? job.domains : (handoff.preservedPacket.domains as DomainId[])),
+    discoverySummary: uniqueStrings([
+      ...handoff.preservedPacket.discoverySummary,
+      `Structured validator input from handoff ${handoff.handoffId}.`,
+      `Source packet ${qualityInput.sourcePacketId}.`,
+    ]),
+    filesToInspect,
+    filesToModify: [],
+    allowedPaths,
+    disallowedPaths: handoff.preservedPacket.disallowedPaths,
+    acceptanceCriteria: (job.acceptanceCriteria && job.acceptanceCriteria.length > 0)
+      ? job.acceptanceCriteria
+      : handoff.preservedPacket.acceptanceCriteria,
+    evidenceExpectations: handoff.preservedPacket.evidenceExpectations,
+    validationExpectations: uniqueStrings([
+      ...handoff.preservedPacket.validationExpectations,
+      ...handoff.details.validationScope
+        .filter((line) => line.toLowerCase() !== "none")
+        .map((line) => `validation scope: ${line}`),
+      ...handoff.details.validationQuestions
+        .filter((line) => line.toLowerCase() !== "none")
+        .map((line) => `validation question: ${line}`),
+      ...handoff.details.knownGaps
+        .filter((line) => line.toLowerCase() !== "none")
+        .map((line) => `known gap: ${line}`),
+    ]),
+    expectedProof: uniqueStrings([...handoff.preservedPacket.expectedProof, ...handoff.details.expectedProof]),
+    wiringChecks: handoff.preservedPacket.wiringChecks,
+    migrationPathNote: handoff.preservedPacket.migrationPathNote,
+    escalationInstructions: handoff.preservedPacket.escalationInstructions,
+    dependencies: job.dependencies,
+    routeReason: job.routeReason,
+    budgetMode: job.budgetMode,
+    modelOverride: job.modelOverride,
+  };
+}
+
 function buildPacketInputForJob(job: QueueJob, teamId: TeamId, assignedRole: HarnessRole, taskId: string | null): TaskPacketInput {
   const qualityInput = resolveQualityQueueInput(job, teamId, assignedRole);
   if (qualityInput) {
+    if (assignedRole === "validator_worker") {
+      return buildValidatorPacketInput(job, qualityInput, taskId);
+    }
     return buildQualityLeadPacketInput(job, qualityInput, taskId);
   }
 
