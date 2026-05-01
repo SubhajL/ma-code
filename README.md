@@ -99,6 +99,7 @@ Key outputs:
 - runbook: `.pi/agent/docs/runtime_validation_runbook.md`
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
 - validation reports: `reports/validation/`
+  - scan validator reports in this order: `Summary Table` -> `Final Decision` -> `Detailed Results`
 - current coding log pointer: `logs/CURRENT.md`
 - local semantic fixture validator for HARNESS-051 slice 1: `scripts/validate-prompt-semantics.sh`
 - bounded live-proof wrapper for HARNESS-051 slice 2: `scripts/validate-prompt-semantics-live.sh`

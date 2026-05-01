@@ -82,7 +82,9 @@ file_map_doc = (root / ".pi/agent/docs/file_map.md").read_text(encoding="utf-8")
 readme_doc = (root / "README.md").read_text(encoding="utf-8")
 validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architecture.md").read_text(encoding="utf-8")
 prompt_semantics_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
+operator_workflow_doc = (root / ".pi/agent/docs/operator_workflow.md").read_text(encoding="utf-8")
 operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(encoding="utf-8")
+core_workflows_validator = (root / "scripts/validate-core-workflows.sh").read_text(encoding="utf-8")
 reviewer_prompt = (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_text(encoding="utf-8")
 validator_prompt = (root / ".pi/agent/prompts/roles/validator_worker.md").read_text(encoding="utf-8")
 review_template = (root / ".pi/agent/prompts/templates/review-diff.md").read_text(encoding="utf-8")
@@ -126,6 +128,20 @@ for needle in [
 ]:
     assert needle in file_map_doc
     assert needle in readme_doc
+    assert needle in prompt_semantics_doc
+for needle in [
+    "## How to Read This Report",
+    "## Final Decision",
+    "Operator Next Step",
+]:
+    assert needle in core_workflows_validator
+for needle in [
+    "Scan validator reports in this order:",
+    "Summary Table",
+    "Final Decision",
+    "Detailed Results",
+]:
+    assert needle in operator_workflow_doc
     assert needle in prompt_semantics_doc
 PY
 

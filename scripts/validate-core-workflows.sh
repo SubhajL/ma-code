@@ -407,9 +407,26 @@ main() {
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF
 
+## How to Read This Report
+- Scan validator reports in this order:
+  1. Summary Table
+  2. Final Decision
+  3. Detailed Results
+- Use Summary Table for the quick pass/fail view across all core workflow surfaces.
+- Use Final Decision for the operator-facing verdict, failed-check count, and recommended next step.
+- Use Detailed Results only when you need the raw command/evidence for one check.
+
 ## Detailed Results
 EOF
   cat "$DETAILS_FILE" >> "$REPORT_PATH"
+  cat >> "$REPORT_PATH" <<EOF
+
+## Final Decision
+- Overall status: $( [[ $FAILED_CHECKS -eq 0 ]] && echo PASS || echo FAIL )
+- Failed checks: $FAILED_CHECKS
+- Summary JSON: $SUMMARY_JSON_PATH
+- Operator Next Step: $( [[ $FAILED_CHECKS -eq 0 ]] && echo "Use this report plus the current coding log as bounded validation evidence; drill into Detailed Results only if you want raw command output." || echo "Start with the Summary Table, then inspect the failing Detailed Results sections before rerunning broader validation." )
+EOF
   write_json_summary
 
   if [[ $FAILED_CHECKS -gt 0 ]]; then
