@@ -181,10 +181,11 @@ This script is responsible for the bounded regression path for:
 It should be used when changes affect repo-local role prompts, prompt-entry templates, or the prompt-contract inventory itself.
 
 ### Dedicated prompt semantic-fixture validator
-Current dedicated semantic-fixture script:
+Current dedicated semantic-fixture scripts:
 - `scripts/validate-prompt-semantics.sh`
+- `scripts/validate-prompt-semantics-live.sh`
 
-This script is responsible for the bounded regression path for:
+These scripts are responsible for the bounded regression path for:
 - local semantic conformance fixtures for the critical role-output surfaces:
   - `orchestrator`
   - `quality_lead`
@@ -201,11 +202,14 @@ This script is responsible for the bounded regression path for:
 - deterministic rejection of failing examples without provider calls
 
 Boundary notes:
-- this validator is additive to `scripts/validate-prompt-contracts.sh`; it does not replace shape validation
-- HARNESS-051 slice 1 keeps this validator local-only and fixture-driven; live provider-backed proof belongs to the later HARNESS-051 slice 2 path
+- `scripts/validate-prompt-semantics.sh` is additive to `scripts/validate-prompt-contracts.sh`; it does not replace shape validation
+- HARNESS-051 slice 1 keeps the local semantic validator fixture-driven
+- `scripts/validate-prompt-semantics-live.sh` is the later HARNESS-051 slice 2 path for one bounded provider-backed proof
+- the live wrapper always runs the local semantic validator first and refuses the live probe when local validation fails
+- the live wrapper performs exactly one inventory-backed live probe and captures markdown/JSON reports under `reports/validation/`
 - default static-gate execution can be staged in later once the dedicated semantic validator proves stable and low-noise enough for the default local gate
 
-It should be used when changes affect bounded semantic fixture expectations for the critical prompt surfaces or the semantic fixture inventory itself.
+It should be used when changes affect bounded semantic fixture expectations for the critical prompt surfaces or the semantic fixture inventory itself, and the live wrapper should be used only when one bounded provider-backed proof is worth the spend.
 
 ### Dedicated skill-routing validator
 Current dedicated routing script:

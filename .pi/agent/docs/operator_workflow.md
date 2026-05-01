@@ -171,6 +171,7 @@ For this repo, use this default order:
   - compile/typecheck/lint
   - deterministic helper-level tests
 - then one live provider-backed validator run only when local evidence is not enough
+  - for HARNESS-051 prompt semantics, `bash scripts/validate-prompt-semantics-live.sh` enforces the required local-first gate and performs one bounded live proof without automatic retries
 
 Repeated live `pi ...` validator reruns are not the default.
 Use them only when:
@@ -197,6 +198,8 @@ When a repeated live rerun is used, record:
 - `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-queue-runner.sh`
 - `scripts/validate-core-workflows.sh`
+- `scripts/validate-prompt-semantics.sh`
+- `scripts/validate-prompt-semantics-live.sh`
 - `scripts/validate-harness-package.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
@@ -263,6 +266,8 @@ Choose the validator that matches the change:
 - use `./scripts/validate-recovery-runtime.sh` for explicit retry / rollback / stop runtime decision changes
 - use `./scripts/validate-queue-runner.sh` for bounded queue start/finalize behavior, stop-condition enforcement (retries/runtime/failed validations/approval boundaries), unsupported-control blocking, and queue-runner wiring changes; it attempts one bounded live probe by default when possible, and `--skip-live` is available for CI/static runs
 - use `./scripts/validate-core-workflows.sh` for isolated end-to-end task/queue workflow coverage across docs-only completion, implementation pass, validation fail visibility, recovery finalization, and provider/tool-block handling
+- use `./scripts/validate-prompt-semantics.sh` for local semantic fixture changes to critical prompt surfaces or the semantic fixture inventory
+- use `bash ./scripts/validate-prompt-semantics-live.sh` when one bounded provider-backed semantic proof is needed after the local semantic validator is already green
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
 - use `./scripts/validate-harness-routing.sh` for executable harness-routing changes
 - use `./scripts/collect-harness-tuning-data.sh` after harness-routing/core-workflow/queue-runner/scheduled-workflow changes when you want a bounded thinking-first cost/performance tuning report from local validator timings, scheduled-workflow dry runs, and role-level cost-ish routing summaries

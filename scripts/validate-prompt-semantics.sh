@@ -4,8 +4,43 @@ IFS=$'\n\t'
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SEMANTICS_FILE="$REPO_ROOT/.pi/agent/validation/prompt-semantics.json"
-CONTRACT_FILE="$REPO_ROOT/.pi/agent/validation/prompt-contracts.json"
+SEMANTICS_FILE_DEFAULT="$REPO_ROOT/.pi/agent/validation/prompt-semantics.json"
+CONTRACT_FILE_DEFAULT="$REPO_ROOT/.pi/agent/validation/prompt-contracts.json"
+SEMANTICS_FILE="$SEMANTICS_FILE_DEFAULT"
+CONTRACT_FILE="$CONTRACT_FILE_DEFAULT"
+
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") [options]
+
+Options:
+  --fixtures <path>   Validate a custom prompt-semantics fixtures file
+  --contracts <path>  Validate against a custom prompt-contract inventory
+  -h, --help          Show this help text
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --fixtures)
+      SEMANTICS_FILE="$2"
+      shift 2
+      ;;
+    --contracts)
+      CONTRACT_FILE="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
 
 "${PYTHON_BIN:-python3}" - <<'PY' "$SEMANTICS_FILE" "$CONTRACT_FILE"
 import json
@@ -78,7 +113,7 @@ def section_has_content(lines: list[str]) -> bool:
 
 
 def find_line(text: str, prefix: str):
-    pattern = re.compile(rf"^{re.escape(prefix)}:\s*(.+)$", re.MULTILINE)
+    pattern = re.compile(rf"^(?:-\s*)?{re.escape(prefix)}:\s*(.+)$", re.MULTILINE)
     match = pattern.search(text)
     return match.group(1).strip() if match else None
 

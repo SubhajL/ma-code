@@ -89,6 +89,7 @@
 - `scripts/validate-queue-runner.sh`
 - `scripts/validate-prompt-contracts.sh`
 - `scripts/validate-prompt-semantics.sh`
+- `scripts/validate-prompt-semantics-live.sh`
 - `scripts/validate-harness-package.sh`
 - `reports/validation/*.md`
 - `reports/validation/*.json`
