@@ -5,6 +5,12 @@
     "These fixtures validate contract-bearing semantic fields, not whole prose blobs.",
     "Minor descriptive wording may vary; exact matching is reserved for contractual lines and parser-oriented item formats."
   ],
+  "liveProof": {
+    "id": "validator_worker_live_pass",
+    "role": "validator_worker",
+    "promptPath": ".pi/agent/prompts/roles/validator_worker.md",
+    "scenarioPrompt": "Use only the facts below. Do not inspect files, do not mention tool use, and do not add extra top-level headers. Facts already established:\n- Discovery path: local semantic validator passed before this bounded live proof\n- Acceptance criteria satisfied: exactly one provider-backed live proof was run\n- Evidence review: markdown report `reports/validation/prompt-semantics-live-validation-script.md` and summary JSON `reports/validation/prompt-semantics-live-validation-script.json` were captured\nRequired exact lines:\n- include `Proof Status: sufficient`\n- include `Missing Proof Category: none`\n- include `Decision Basis: proof_sufficient`\n- include `Final Decision: pass`\n- make the `Missing Proof` section exactly `- none`"
+  },
   "fixtures": [
     {
       "id": "orchestrator_golden_route",

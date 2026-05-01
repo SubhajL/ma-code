@@ -33,6 +33,7 @@ required_files=(
   "scripts/validate-core-workflows.sh"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
+  "scripts/validate-prompt-semantics-live.sh"
   ".pi/agent/docs/architecture_review_workflow.md"
   ".pi/agent/prompts/templates/request-architecture-review.md"
   ".pi/agent/prompts/templates/assess-drift-capability.md"
@@ -120,6 +121,7 @@ for needle in validator_needles:
     assert needle in operator_role_doc
 for needle in [
     "scripts/validate-prompt-semantics.sh",
+    "scripts/validate-prompt-semantics-live.sh",
     ".pi/agent/validation/prompt-semantics.json",
 ]:
     assert needle in file_map_doc

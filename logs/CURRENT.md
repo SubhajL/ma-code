@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-01_harness-051-semantic-conformance-fixtures.md`
+- `logs/coding/2026-05-01_harness-051-live-proof.md`
 
 ## Current planning log
-- `reports/planning/2026-05-01_harness-051-semantic-conformance-fixtures-plan.md`
+- `reports/planning/2026-05-01_harness-051-live-proof-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded HARNESS-051 slice 1 implementation work for semantic conformance fixtures on critical prompt surfaces.
+- These files capture the bounded HARNESS-051 slice 2 implementation work for the local-first single-live-proof semantic validation path.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.
