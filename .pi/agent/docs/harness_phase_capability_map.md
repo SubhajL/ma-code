@@ -37,6 +37,7 @@ So the most accurate answer is:
 Current repo-local reality is still narrower than the full Phase I target, but HARNESS-049 now enforces the supported stop controls directly:
 - bounded single-step queue advancement exists via `run_next_queue_job`
 - supported queue-job controls enforced directly in `.pi/agent/extensions/queue-runner.ts` are `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, `budget.maxUnresolvedBlockers`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- `budget.maxUnresolvedBlockers` now uses normalized visible blocker units, counts a blocked job plus its linked blocked task once, snapshots queued pickup once per runner pass, and re-checks active jobs on the next bounded runner step
 - unsupported controls remain blocked explicitly, including `budget.maxCostUsd`, `budget.maxFilesChanged`, and unsupported free-form `stop_conditions`
 - queue-runner decisions are logged to `logs/harness-actions.jsonl`
 
@@ -203,6 +204,7 @@ Current repo-local attachment in this slice:
 - bounded single-step queue advancement now exists via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts`
 - the tool finalizes one `running` job if its linked task is terminal, otherwise starts at most one eligible queued job
 - supported HARNESS-049 controls are enforced directly: `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, `budget.maxUnresolvedBlockers`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- `budget.maxUnresolvedBlockers` now uses normalized visible blocker units, counts a blocked job plus its linked blocked task once, snapshots queued pickup once per runner pass, and re-checks active jobs on the next bounded runner step
 - file-backed scheduled workflow definitions now exist in `.pi/agent/schedules/scheduled-workflows.json` with explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
 - scheduled workflows remain operator-driven and duplicate-safe rather than daemon-driven
 - unsupported controls remain blocked explicitly rather than silently ignored

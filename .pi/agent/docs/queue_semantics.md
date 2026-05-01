@@ -202,7 +202,10 @@ Example:
   - `budget.maxRetries` is enforced conservatively before restarting a queued job with an existing linked failed task
   - `budget.maxRuntimeMinutes` is enforced on an active running job using the queue job `startedAt` timestamp
   - `budget.maxFailedValidations` is enforced conservatively from the current linked task validation outcome because there is not yet a dedicated failed-validation counter in runtime state
-  - `budget.maxUnresolvedBlockers` is enforced before queued start/restart using the visible count of blocked queue jobs plus blocked tasks in runtime state
+  - `budget.maxUnresolvedBlockers` is enforced before queued start/restart and re-checked on active running jobs using a normalized visible blocker count from runtime state
+    - blocked queue jobs and blocked tasks are counted as distinct blocker units by default
+    - a blocked queue job plus its linked blocked task count as one blocker unit, not two
+    - queued-start enforcement snapshots that normalized count once per runner pass so newly blocked jobs in the same pass do not inflate later queued decisions
   - unsupported `budget.maxCostUsd` and `budget.maxFilesChanged` still block the job clearly instead of being silently ignored
 
 ### `stop_conditions`
@@ -448,12 +451,14 @@ Current executable behavior:
 - `run_next_queue_job` fails queued restart attempts when an existing linked failed task already exhausted `budget.maxRetries`
 - `run_next_queue_job` fails queued restart attempts when the current linked task validation outcome already exhausted `budget.maxFailedValidations`
 - `run_next_queue_job` fails an active running job when `budget.maxRuntimeMinutes` is exceeded
+- `run_next_queue_job` blocks queued start/restart and active running jobs when normalized visible unresolved blockers exceed `budget.maxUnresolvedBlockers`
 - unsupported `maxCostUsd` and `maxFilesChanged` still block clearly because they are not yet executable in the bounded runner
 
 Current bounded interpretation:
 - exceeding retry budget -> `failed`
 - exceeding runtime budget -> `failed`
 - exceeding failed-validation budget -> `failed`
+- exceeding unresolved-blocker budget -> `blocked`
 - unsupported cost/file-change budget -> `blocked`
 
 If no budget is provided, the system should still apply conservative default limits in any future autonomy implementation.

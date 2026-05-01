@@ -693,19 +693,56 @@ function jobExceededRuntimeBudget(job: QueueJob, now: Date = new Date()): boolea
   return now.getTime() - startedAt.getTime() > maxRuntimeMinutes * 60_000;
 }
 
-function countVisibleUnresolvedBlockers(queueState: QueueState, taskState: TaskState): number {
-  const blockedJobs = queueState.jobs.filter((job) => job.status === "blocked").length;
-  const blockedTasks = taskState.tasks.filter((task) => task.status === "blocked").length;
-  return blockedJobs + blockedTasks;
+interface VisibleUnresolvedBlockerSummary {
+  count: number;
+  blockerKeys: string[];
+  blockedJobIds: string[];
+  blockedTaskIds: string[];
 }
 
-function jobExceededUnresolvedBlockerBudget(job: QueueJob, queueState: QueueState, taskState: TaskState): { count: number; max: number } | null {
+function summarizeVisibleUnresolvedBlockers(queueState: QueueState, taskState: TaskState): VisibleUnresolvedBlockerSummary {
+  const blockedJobs = queueState.jobs.filter((job) => job.status === "blocked");
+  const blockedTasks = taskState.tasks.filter((task) => task.status === "blocked");
+  const blockedTasksById = new Set(blockedTasks.map((task) => task.id));
+  const linkedBlockedTaskIds = new Set<string>();
+  const blockerKeys = new Set<string>();
+
+  for (const job of blockedJobs) {
+    if (job.linkedTaskId && blockedTasksById.has(job.linkedTaskId)) {
+      linkedBlockedTaskIds.add(job.linkedTaskId);
+      blockerKeys.add(`linked:${job.linkedTaskId}`);
+      continue;
+    }
+
+    blockerKeys.add(`job:${job.id}`);
+  }
+
+  for (const task of blockedTasks) {
+    if (linkedBlockedTaskIds.has(task.id)) continue;
+    blockerKeys.add(`task:${task.id}`);
+  }
+
+  return {
+    count: blockerKeys.size,
+    blockerKeys: [...blockerKeys],
+    blockedJobIds: blockedJobs.map((job) => job.id),
+    blockedTaskIds: blockedTasks.map((task) => task.id),
+  };
+}
+
+function formatVisibleUnresolvedBlockerCount(count: number): string {
+  return `${count} visible unresolved blocker${count === 1 ? "" : "s"}`;
+}
+
+function jobExceededUnresolvedBlockerBudget(
+  job: QueueJob,
+  blockerSummary: Pick<VisibleUnresolvedBlockerSummary, "count">,
+): { count: number; max: number } | null {
   const maxUnresolvedBlockers = job.budget?.maxUnresolvedBlockers;
   if (maxUnresolvedBlockers === undefined) return null;
 
-  const count = countVisibleUnresolvedBlockers(queueState, taskState);
-  if (count <= maxUnresolvedBlockers) return null;
-  return { count, max: maxUnresolvedBlockers };
+  if (blockerSummary.count <= maxUnresolvedBlockers) return null;
+  return { count: blockerSummary.count, max: maxUnresolvedBlockers };
 }
 
 function ensureRoleBelongsToTeam(team: TeamDefinition, role: HarnessRole): void {
@@ -1412,9 +1449,11 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
   const blockedJobIds: string[] = [];
   const blockedJobReasons: string[] = [];
   const completionGatePolicy = await loadCompletionGatePolicy(cwd);
+  let unresolvedBlockerSnapshot: VisibleUnresolvedBlockerSummary | null = null;
 
   while (true) {
     const attempt = await withCoordinatedQueueTaskMutation(cwd, async ({ queueState, taskState }) => {
+      unresolvedBlockerSnapshot ??= summarizeVisibleUnresolvedBlockers(queueState, taskState);
       if (queueState.paused) {
         return {
           type: "paused" as const,
@@ -1467,9 +1506,9 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
         };
       }
 
-      const unresolvedBlockerBudget = jobExceededUnresolvedBlockerBudget(job, queueState, taskState);
+      const unresolvedBlockerBudget = jobExceededUnresolvedBlockerBudget(job, unresolvedBlockerSnapshot);
       if (unresolvedBlockerBudget) {
-        const note = `Queue runner blocked the queued job because ${unresolvedBlockerBudget.count} visible unresolved blockers exceeded budget.maxUnresolvedBlockers=${unresolvedBlockerBudget.max}.`;
+        const note = `Queue runner blocked the queued job because ${formatVisibleUnresolvedBlockerCount(unresolvedBlockerBudget.count)} exceeded budget.maxUnresolvedBlockers=${unresolvedBlockerBudget.max}.`;
         blockJobInState(queueState, job.id, note);
         return {
           type: "blocked-before-start" as const,
@@ -1780,6 +1819,29 @@ export async function runNextQueueJob(cwd: string, input: { owner?: string; allo
           return {
             type: "stopped-active-job" as const,
             stopAction: "finalized" as const,
+            finalizedJob: stopped.job,
+            linkedTask: stopped.task,
+            queuePaused: coordinatedQueueState.paused,
+          };
+        }
+
+        const unresolvedBlockerBudget = jobExceededUnresolvedBlockerBudget(
+          normalizedJob,
+          summarizeVisibleUnresolvedBlockers(coordinatedQueueState, taskState),
+        );
+        if (unresolvedBlockerBudget) {
+          const note = `Queue runner blocked the active job because ${formatVisibleUnresolvedBlockerCount(unresolvedBlockerBudget.count)} exceeded budget.maxUnresolvedBlockers=${unresolvedBlockerBudget.max}.`;
+          const stopped = stopLinkedTaskAndQueueJobInState(
+            coordinatedQueueState,
+            taskState,
+            normalizedJob.id,
+            linkedTask.id,
+            "blocked",
+            note,
+          );
+          return {
+            type: "stopped-active-job" as const,
+            stopAction: "blocked" as const,
             finalizedJob: stopped.job,
             linkedTask: stopped.task,
             queuePaused: coordinatedQueueState.paused,
