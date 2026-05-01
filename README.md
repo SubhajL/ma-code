@@ -100,6 +100,8 @@ Key outputs:
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
 - validation reports: `reports/validation/`
 - current coding log pointer: `logs/CURRENT.md`
+- local semantic fixture validator for HARNESS-051 slice 1: `scripts/validate-prompt-semantics.sh`
+- semantic fixture inventory: `.pi/agent/validation/prompt-semantics.json`
 
 Direct repo-root operator/package ergonomics:
 ```bash
@@ -118,6 +120,7 @@ npm run test:worktree-helper
 npm run test:harness-package
 npm run validate:core-workflows
 npm run validate:prompt-contracts
+npm run validate:prompt-semantics
 npm run validate:harness-package
 ```
 
