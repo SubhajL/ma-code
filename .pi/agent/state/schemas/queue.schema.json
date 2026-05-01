@@ -196,6 +196,7 @@
             "type": "string"
           },
           "qualityInput": {
+            "description": "Structured runtime input for supported bounded quality-lane pickups. Current supported paths are queued quality_lead jobs via worker_to_quality and queued validator_worker jobs via quality_to_validator.",
             "type": [
               "object",
               "null"
@@ -209,6 +210,7 @@
                 "type": "string"
               },
               "sourceHandoff": {
+                "description": "Structured handoff object whose handoffType and toRole must match the queued supported quality role.",
                 "$ref": "./handoff.schema.json"
               }
             },

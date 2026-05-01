@@ -52,6 +52,7 @@ Current behavior is intentionally narrow:
 - task creation/claim/start reuses `till-done` task semantics
 - packet generation, optional initial handoff generation, and recovery recommendations reuse the existing executable helper surfaces
 - queued `quality_lead` jobs may now consume a structured `qualityInput.sourceHandoff` (`worker_to_quality`) object directly, using its preserved packet and changed-file fields for packet derivation instead of ad hoc prose summaries; missing required structure blocks the transition visibly
+- queued quality-team `validator_worker` jobs may now consume a structured `qualityInput.sourceHandoff` (`quality_to_validator`) object directly, using its preserved packet, inspect scope, and proof context for packet derivation instead of ad hoc prose summaries; missing required structure blocks the transition visibly
 - queued jobs now enforce `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and `approvalRequired` approval-boundary stops in the bounded runner
 - unsupported free-form `stop_conditions` and unsupported budget fields such as `maxCostUsd`/`maxFilesChanged` are still blocked explicitly rather than being silently ignored
 

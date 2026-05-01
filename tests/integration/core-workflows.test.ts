@@ -124,6 +124,47 @@ async function createWorkerToQualityHandoff(cwd: string) {
   }).handoff;
 }
 
+async function createQualityToValidatorHandoff(cwd: string) {
+  const [routingConfig, packetPolicy, handoffPolicy, teams] = await Promise.all([
+    loadHarnessRoutingConfig(cwd),
+    loadPacketPolicy(cwd),
+    loadHandoffPolicy(cwd),
+    loadTeamDefinitions(cwd),
+  ]);
+
+  const sourcePacket = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "job-quality-source",
+    parentTaskId: "task-quality-source",
+    parentPacketId: "packet-build-parent",
+    assignedTeam: "quality",
+    assignedRole: "quality_lead",
+    title: "Assess bounded quality output for validator pickup",
+    goal: "Provide structured quality_to_validator input for a bounded validator transition.",
+    scope: "Only inspect queue-runner and core-workflow proof files for validator pickup.",
+    nonGoals: ["Do not broaden into reviewer pickup or recovery redesign."],
+    workType: "review_only",
+    domains: ["backend"],
+    filesToInspect: [".pi/agent/extensions/queue-runner.ts", "tests/integration/core-workflows.test.ts"],
+    filesToModify: [],
+    allowedPaths: [".pi/agent/extensions/queue-runner.ts", "tests/integration/core-workflows.test.ts"],
+    acceptanceCriteria: ["Structured quality_to_validator input stays bounded and reviewable."],
+    expectedProof: ["A queued validator job can start from structured quality_to_validator input."],
+    migrationPathNote: "Not applicable; keep the change in the existing queue-runner quality transition.",
+  }).packet;
+
+  return generateHandoff(handoffPolicy, {
+    handoffType: "quality_to_validator",
+    sourcePacket,
+    fromRole: "quality_lead",
+    toRole: "validator_worker",
+    filesToInspect: [".pi/agent/extensions/queue-runner.ts", "tests/integration/core-workflows.test.ts"],
+    validationScope: ["Validate structured queued validator pickup from a quality handoff."],
+    expectedProof: ["Validator packet derives inspect scope, expected proof, and parent packet linkage from structured handoff data."],
+    validationQuestions: ["Does the validator packet stay inside the preserved quality packet inspect scope?"],
+    knownGaps: ["Reviewer pickup remains intentionally unsupported in this slice."],
+  }).handoff;
+}
+
 test("docs-only workflow allows lighter review validation and completion", async () => {
   const { cwd, taskUpdate } = await setupCoreWorkflowRepo();
 
@@ -318,6 +359,79 @@ test("quality queue job blocks when structured worker_to_quality input is missin
 
   assert.equal(result.details.action, "blocked");
   assert.match(String(result.details.reason), /structured worker_to_quality handoff/i);
+  assert.equal(queueState.jobs[0]?.status, "blocked");
+  assert.match((queueState.jobs[0]?.notes ?? []).join("\n"), /qualityInput/i);
+});
+
+test("validator workflow can start from a queued structured quality_to_validator handoff", async () => {
+  const { cwd, runNextQueueJob } = await setupCoreWorkflowRepo();
+  const handoff = await createQualityToValidatorHandoff(cwd);
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-validator-structured",
+        goal: "Run bounded validator review from structured quality handoff input",
+        priority: "high",
+        status: "queued",
+        team: "quality",
+        assignedRole: "validator_worker",
+        workType: "review_only",
+        acceptanceCriteria: ["Validator job starts from structured quality_to_validator input"],
+        qualityInput: {
+          sourcePacketId: handoff.sourcePacketId,
+          sourceHandoff: handoff,
+        },
+      },
+    ],
+  });
+
+  const started = await runNextQueueJob({ owner: "assistant" });
+
+  assert.equal(started.details.action, "started");
+  assert.equal(started.details.packet.assignedTeam, "quality");
+  assert.equal(started.details.packet.assignedRole, "validator_worker");
+  assert.equal(started.details.packet.source.parentPacketId, handoff.sourcePacketId);
+  assert.deepEqual(started.details.packet.allowedPaths, [
+    ".pi/agent/extensions/queue-runner.ts",
+    "tests/integration/core-workflows.test.ts",
+  ]);
+  assert.deepEqual(started.details.packet.filesToInspect, [
+    ".pi/agent/extensions/queue-runner.ts",
+    "tests/integration/core-workflows.test.ts",
+  ]);
+  assert.equal(started.details.initialHandoff, null);
+});
+
+test("validator queue job blocks when structured quality_to_validator input is missing", async () => {
+  const { cwd, runNextQueueJob } = await setupCoreWorkflowRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-validator-missing-input",
+        goal: "Try to run validator review without structured handoff input",
+        priority: "high",
+        status: "queued",
+        team: "quality",
+        assignedRole: "validator_worker",
+        workType: "review_only",
+        acceptanceCriteria: ["Runtime should block missing structured validator input"],
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const queueState = await readQueueState(cwd);
+
+  assert.equal(result.details.action, "blocked");
+  assert.match(String(result.details.reason), /structured quality_to_validator handoff/i);
   assert.equal(queueState.jobs[0]?.status, "blocked");
   assert.match((queueState.jobs[0]?.notes ?? []).join("\n"), /qualityInput/i);
 });
