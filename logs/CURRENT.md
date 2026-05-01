@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-01_harness-049-stop-controls.md`
+- `logs/coding/2026-05-01_harness-049-blocker-followup.md`
 
 ## Current planning log
-- `reports/planning/2026-05-01_harness-049-stop-controls-plan.md`
+- `reports/planning/2026-05-01_harness-049-blocker-followup-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded HARNESS-049 implementation work for deterministic unresolved-blocker stop-budget enforcement.
+- These files capture the bounded HARNESS-049 follow-up work for normalized unresolved-blocker counting and active-job stop-budget enforcement.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

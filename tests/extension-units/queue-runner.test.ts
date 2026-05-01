@@ -8,7 +8,7 @@ import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-rou
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
 import { loadTeamDefinitions } from "../../.pi/agent/extensions/team-activation.ts";
-import tillDone from "../../.pi/agent/extensions/till-done.ts";
+import tillDone, { writeTaskState, type TaskRecord } from "../../.pi/agent/extensions/till-done.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo, readAuditLog } from "./test-utils.ts";
 
 async function setupQueueRunnerRepo() {
@@ -108,6 +108,15 @@ async function readTaskState(cwd: string) {
     activeTaskId: string | null;
     tasks: Array<{ id: string; status: string; owner: string | null; dependencies?: string[]; notes?: string[] }>;
   };
+}
+
+async function appendBlockedTaskRecord(cwd: string, task: TaskRecord) {
+  const state = await readTaskState(cwd);
+  await writeTaskState(cwd, {
+    version: 1,
+    activeTaskId: state.activeTaskId,
+    tasks: [...(state.tasks as TaskRecord[]), task],
+  });
 }
 
 async function createWorkerToQualityHandoff(cwd: string) {
@@ -979,7 +988,7 @@ test("queue runner blocks unsupported budget fields and unsupported free-form st
   assert.equal(startedJob?.status, "running");
 });
 
-test("queue runner blocks queued jobs whose maxUnresolvedBlockers budget is already exceeded and starts the next eligible job", async () => {
+test("queue runner blocks queued jobs whose maxUnresolvedBlockers budget is already exceeded and starts the next eligible job from the same blocker snapshot", async () => {
   const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
 
   const blockedTask = await taskUpdate({
@@ -1033,7 +1042,7 @@ test("queue runner blocks queued jobs whose maxUnresolvedBlockers budget is alre
         domains: ["backend"],
         allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
         acceptanceCriteria: ["Job starts when visible unresolved blockers are at or under budget"],
-        budget: { maxUnresolvedBlockers: 3 },
+        budget: { maxUnresolvedBlockers: 2 },
       },
     ],
   });
@@ -1050,6 +1059,64 @@ test("queue runner blocks queued jobs whose maxUnresolvedBlockers budget is alre
   assert.equal(blockedJob?.status, "blocked");
   assert.match(blockedJob?.notes?.at(-1) ?? "", /maxUnresolvedBlockers/i);
   assert.match(blockedJob?.notes?.at(-1) ?? "", /2 visible unresolved blockers/i);
+  assert.equal(startedJob?.status, "running");
+});
+
+test("queue runner deduplicates a blocked job and its linked blocked task when enforcing maxUnresolvedBlockers", async () => {
+  const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
+
+  const blockedTask = await taskUpdate({
+    action: "create",
+    title: "linked blocked task",
+    acceptance: ["Blocked task remains visible for deduplicated stop-control accounting"],
+  });
+  const blockedTaskId = (blockedTask as any).details.task.id as string;
+  await taskUpdate({ action: "claim", id: blockedTaskId, owner: "assistant" });
+  await taskUpdate({ action: "block", id: blockedTaskId, note: "waiting on linked blocker" });
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-linked-blocker",
+        goal: "Remain visible as one unresolved blocker unit",
+        priority: "low",
+        status: "blocked",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Linked blocked queue job stays visible"],
+        linkedTaskId: blockedTaskId,
+        notes: ["blocked earlier for the same linked task"],
+      },
+      {
+        id: "job-budget-allowed-deduped",
+        goal: "Start when one linked blocker pair counts once",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Linked blocked job/task pair counts as one unresolved blocker"],
+        budget: { maxUnresolvedBlockers: 1 },
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const startedJob = queueState.jobs.find((job) => job.id === "job-budget-allowed-deduped");
+
+  assert.equal(details.action, "started");
+  assert.deepEqual(details.blockedJobIds, []);
+  assert.equal(details.startedJob.id, "job-budget-allowed-deduped");
   assert.equal(startedJob?.status, "running");
 });
 
@@ -1414,6 +1481,76 @@ test("queue runner coordinates queue and linked task stop when approval boundary
   assert.equal(linkedTask?.status, "blocked");
   assert.match(queueState.jobs[0]?.notes?.at(-1) ?? "", /approval boundary/i);
   assert.match(linkedTask?.notes?.at(-1) ?? "", /approval boundary/i);
+});
+
+test("queue runner blocks the active job when normalized visible unresolved blockers exceed maxUnresolvedBlockers", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-active-blocker-stop",
+        goal: "Stop active job when unresolved blocker budget is exceeded",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Exceeded unresolved blocker budget blocks both queue and linked task together"],
+        budget: { maxUnresolvedBlockers: 0 },
+      },
+    ],
+  });
+
+  const start = await runNextQueueJob({ owner: "assistant" });
+  const startedJob = (start as any).details.startedJob;
+  const taskId = startedJob.linkedTaskId as string;
+
+  await appendBlockedTaskRecord(cwd, {
+    id: "task-external-blocker",
+    title: "external visible blocker",
+    owner: "assistant",
+    status: "blocked",
+    taskClass: "implementation",
+    acceptance: ["Blocked task remains visible for active stop-control accounting"],
+    evidence: [],
+    dependencies: [],
+    retryCount: 0,
+    validation: {
+      tier: "standard",
+      decision: "pending",
+      source: null,
+      checklist: null,
+      approvalRef: null,
+      updatedAt: null,
+    },
+    notes: ["waiting on external dependency"],
+    timestamps: {
+      createdAt: "2026-05-01T00:00:00.000Z",
+      updatedAt: "2026-05-01T00:00:00.000Z",
+    },
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const taskState = await readTaskState(cwd);
+  const linkedTask = taskState.tasks.find((task) => task.id === taskId);
+
+  assert.equal(details.action, "blocked");
+  assert.deepEqual(details.blockedJobIds, ["job-active-blocker-stop"]);
+  assert.equal(details.activeJobId, null);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "blocked");
+  assert.equal(linkedTask?.status, "blocked");
+  assert.match(queueState.jobs[0]?.notes?.at(-1) ?? "", /maxUnresolvedBlockers/i);
+  assert.match(queueState.jobs[0]?.notes?.at(-1) ?? "", /1 visible unresolved blocker/i);
+  assert.match(linkedTask?.notes?.at(-1) ?? "", /maxUnresolvedBlockers/i);
 });
 
 test("queue runner coordinates queue and linked task failure when active runtime exceeds maxRuntimeMinutes", async () => {

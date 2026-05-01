@@ -54,6 +54,7 @@ Current behavior is intentionally narrow:
 - queued `quality_lead` jobs may now consume a structured `qualityInput.sourceHandoff` (`worker_to_quality`) object directly, using its preserved packet and changed-file fields for packet derivation instead of ad hoc prose summaries; missing required structure blocks the transition visibly
 - queued quality-team `validator_worker` jobs may now consume a structured `qualityInput.sourceHandoff` (`quality_to_validator`) object directly, using its preserved packet, inspect scope, and proof context for packet derivation instead of ad hoc prose summaries; missing required structure blocks the transition visibly
 - queued jobs now enforce `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, `budget.maxUnresolvedBlockers`, and `approvalRequired` approval-boundary stops in the bounded runner
+- `budget.maxUnresolvedBlockers` now uses normalized visible blocker units, deduplicates a blocked job from its linked blocked task, snapshots queued pickup once per runner pass, and re-checks active jobs on the next bounded runner step
 - unsupported free-form `stop_conditions` and unsupported budget fields such as `maxCostUsd`/`maxFilesChanged` are still blocked explicitly rather than being silently ignored
 
 This is still not a free-running daemon or hidden scheduler.

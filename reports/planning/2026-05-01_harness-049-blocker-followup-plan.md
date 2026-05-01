@@ -1,0 +1,42 @@
+# Planning Log — harness-049-blocker-followup
+
+- Date: 2026-05-01
+- Goal: Close the two known HARNESS-049 unresolved-blocker gaps with the smallest deterministic follow-up slice.
+- Scope:
+  - add RED-first unit coverage for active-running enforcement and linked blocked job/task deduplication
+  - refine queue-runner blocker counting to use unique visible blocker units
+  - re-check `budget.maxUnresolvedBlockers` on active jobs in the bounded runner path
+  - update queue semantics/autonomy/capability docs to describe the refined behavior
+- Files to modify:
+  - `.pi/agent/extensions/queue-runner.ts`
+    - add normalized blocker counting and active-job budget recheck
+  - `tests/extension-units/queue-runner.test.ts`
+    - add negative-path regression coverage first
+  - `.pi/agent/docs/queue_semantics.md`
+    - document deduped blocker semantics and active-job enforcement
+  - `.pi/agent/docs/bounded_autonomy_architecture.md`
+    - align bounded-stop-control description
+  - `.pi/agent/docs/harness_phase_capability_map.md`
+    - align supported HARNESS-049 behavior summary
+  - `logs/CURRENT.md`
+    - point to the new active coding/planning logs
+  - `logs/coding/2026-05-01_harness-049-blocker-followup.md`
+    - record discovery and RED/GREEN evidence
+- Acceptance criteria:
+  - Active running jobs with `budget.maxUnresolvedBlockers` are blocked deterministically on the next bounded runner step when the normalized visible blocker count exceeds the budget.
+  - Visible unresolved blocker counting deduplicates a blocked queue job against its linked blocked task so one blocker situation is not counted twice.
+  - Focused queue-runner validation proves RED then GREEN and passes repeatedly enough to catch flakiness.
+- Likely failure modes:
+  - counting logic accidentally undercounts standalone blocked tasks or jobs
+  - active-job enforcement finalizes as failed instead of blocked, diverging from stop-control intent
+  - docs/tests keep stale raw-count wording after normalized counting is added
+- Validation plan:
+  - RED: `bash scripts/validate-queue-runner.sh --skip-live`
+  - GREEN/fast gates:
+    - `bash scripts/validate-queue-runner.sh --skip-live`
+    - `bash scripts/check-foundation-extension-compile.sh`
+    - `bash scripts/validate-extension-unit-tests.sh`
+    - `bash scripts/check-repo-static.sh`
+    - `git diff --check`
+  - Flake check:
+    - `bash scripts/validate-queue-runner.sh --skip-live` x3 total passing runs after GREEN
