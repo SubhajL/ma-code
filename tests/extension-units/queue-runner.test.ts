@@ -923,7 +923,7 @@ test("queue runner blocks jobs without acceptance criteria and starts the next e
 });
 
 
-test("queue runner blocks unsupported budget fields and unsupported free-form stop_conditions but allows supported HARNESS-034 controls", async () => {
+test("queue runner blocks unsupported budget fields and unsupported free-form stop_conditions but allows supported HARNESS-049 controls", async () => {
   const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
 
   await writeQueue(cwd, {
@@ -947,7 +947,7 @@ test("queue runner blocks unsupported budget fields and unsupported free-form st
       },
       {
         id: "job-supported-controls",
-        goal: "Allow supported HARNESS-034 stop controls",
+        goal: "Allow supported HARNESS-049 stop controls",
         priority: "medium",
         status: "queued",
         team: "build",
@@ -976,6 +976,80 @@ test("queue runner blocks unsupported budget fields and unsupported free-form st
   assert.match(blockedJob?.notes?.at(-1) ?? "", /maxCostUsd/i);
   assert.match(blockedJob?.notes?.at(-1) ?? "", /maxFilesChanged/i);
   assert.match(blockedJob?.notes?.at(-1) ?? "", /stop after first validation failure/i);
+  assert.equal(startedJob?.status, "running");
+});
+
+test("queue runner blocks queued jobs whose maxUnresolvedBlockers budget is already exceeded and starts the next eligible job", async () => {
+  const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
+
+  const blockedTask = await taskUpdate({
+    action: "create",
+    title: "visible blocked task",
+    acceptance: ["Blocked task remains visible for stop-control accounting"],
+  });
+  const blockedTaskId = (blockedTask as any).details.task.id as string;
+  await taskUpdate({ action: "claim", id: blockedTaskId, owner: "assistant" });
+  await taskUpdate({ action: "block", id: blockedTaskId, note: "waiting on clarification" });
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-existing-blocker",
+        goal: "Remain visible as a blocked queue job",
+        priority: "low",
+        status: "blocked",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Existing blocked queue job stays visible"],
+        notes: ["blocked earlier for bounded investigation"],
+      },
+      {
+        id: "job-budget-blocked",
+        goal: "Stop when visible unresolved blockers exceed the configured budget",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Job blocks when visible unresolved blockers exceed the configured budget"],
+        budget: { maxUnresolvedBlockers: 0 },
+      },
+      {
+        id: "job-budget-allowed",
+        goal: "Continue when visible unresolved blockers stay within the configured budget",
+        priority: "medium",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Job starts when visible unresolved blockers are at or under budget"],
+        budget: { maxUnresolvedBlockers: 3 },
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const blockedJob = queueState.jobs.find((job) => job.id === "job-budget-blocked");
+  const startedJob = queueState.jobs.find((job) => job.id === "job-budget-allowed");
+
+  assert.equal(details.action, "started");
+  assert.deepEqual(details.blockedJobIds, ["job-budget-blocked"]);
+  assert.equal(details.startedJob.id, "job-budget-allowed");
+  assert.equal(blockedJob?.status, "blocked");
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /maxUnresolvedBlockers/i);
+  assert.match(blockedJob?.notes?.at(-1) ?? "", /2 visible unresolved blockers/i);
   assert.equal(startedJob?.status, "running");
 });
 

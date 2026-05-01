@@ -34,9 +34,9 @@ So the most accurate answer is:
 - **Phase I = bounded autonomy exists**
 - **Phase J = bounded autonomy becomes practical to operate daily**
 
-Current repo-local reality is still narrower than the full Phase I target, but HARNESS-034 now enforces the supported stop controls directly:
+Current repo-local reality is still narrower than the full Phase I target, but HARNESS-049 now enforces the supported stop controls directly:
 - bounded single-step queue advancement exists via `run_next_queue_job`
-- supported queue-job controls enforced directly in `.pi/agent/extensions/queue-runner.ts` are `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- supported queue-job controls enforced directly in `.pi/agent/extensions/queue-runner.ts` are `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, `budget.maxUnresolvedBlockers`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
 - unsupported controls remain blocked explicitly, including `budget.maxCostUsd`, `budget.maxFilesChanged`, and unsupported free-form `stop_conditions`
 - queue-runner decisions are logged to `logs/harness-actions.jsonl`
 
@@ -202,7 +202,7 @@ Meaning:
 Current repo-local attachment in this slice:
 - bounded single-step queue advancement now exists via `run_next_queue_job` in `.pi/agent/extensions/queue-runner.ts`
 - the tool finalizes one `running` job if its linked task is terminal, otherwise starts at most one eligible queued job
-- supported HARNESS-034 controls are enforced directly: `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
+- supported HARNESS-049 controls are enforced directly: `budget.maxRetries`, `budget.maxRuntimeMinutes`, `budget.maxFailedValidations`, `budget.maxUnresolvedBlockers`, and the approval boundary (`approvalRequired=true` / `approval_boundary_hit`)
 - file-backed scheduled workflow definitions now exist in `.pi/agent/schedules/scheduled-workflows.json` with explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
 - scheduled workflows remain operator-driven and duplicate-safe rather than daemon-driven
 - unsupported controls remain blocked explicitly rather than silently ignored
@@ -212,7 +212,7 @@ This is the first phase where “almost hands-free” starts becoming a defensib
 
 A careful description would be:
 
-> The harness can perform bounded, queue-driven, semi-autonomous work one step at a time, with direct enforcement for max retries, runtime, failed validations, and approval-boundary stops while unsupported controls remain blocked.
+> The harness can perform bounded, queue-driven, semi-autonomous work one step at a time, with direct enforcement for max retries, runtime, failed validations, unresolved-blocker budgets, and approval-boundary stops while unsupported controls remain blocked.
 
 That is much better than saying:
 
