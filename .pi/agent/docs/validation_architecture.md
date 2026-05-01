@@ -541,7 +541,12 @@ New validator outputs should continue to use:
 - JSON for machine-readable summaries
 - explicit check names and pass/fail states
 
-This keeps future validation comparable across phases.
+Scan validator reports in this order:
+1. `Summary Table`
+2. `Final Decision`
+3. `Detailed Results`
+
+This keeps future validation comparable across phases and gives operators a stable drill-down path.
 
 ### Attachment rule 4 — require cleanup and bounded side effects
 Future validators should preserve the current discipline of:

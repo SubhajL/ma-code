@@ -1,0 +1,41 @@
+# Planning Log — harness-050-report-polish
+
+- Date: 2026-05-02
+- Goal: Land the smallest HARNESS-050 operator/report polish slice by standardizing one operator-facing validator report surface and documenting how to scan it.
+- Scope:
+  - add explicit report-surface expectations for `scripts/validate-core-workflows.sh`
+  - confirm the missing behavior first via failing static expectations and direct report inspection
+  - implement bounded report polish and operator/docs wording
+  - rerun cheap local checks, then land via PR/merge and sync local main
+- Files to modify:
+  - `scripts/validate-core-workflows.sh`
+    - add scan-friendly report sections for operator use
+  - `scripts/check-repo-static.sh`
+    - enforce the new bounded report-surface expectations
+  - `.pi/agent/docs/operator_workflow.md`
+    - document the report scan order and when to drill into details
+  - `.pi/agent/docs/validation_architecture.md`
+    - align report-surface conventions for validator outputs
+  - `README.md`
+    - point operators to the report location/scan pattern at a high level if needed
+  - `logs/CURRENT.md`
+    - point to the active HARNESS-050 paired logs
+  - `logs/coding/2026-05-02_harness-050-report-polish.md`
+    - record discovery, RED/GREEN evidence, and review notes
+- Acceptance criteria:
+  - the chosen validator report surface becomes easier to scan without widening into UI-heavy work
+  - a static expectation or focused test fails before implementation because the report surface is currently missing the chosen section(s)
+  - docs/operator wording stays aligned with the polished report structure
+  - cheap local checks pass and the change lands through PR/merge with local main synced
+- Likely failure modes:
+  - polishing one report surface but leaving docs/static expectations inconsistent
+  - adding broad styling or unrelated validator refactors that widen scope
+  - validating only static strings without running the actual validator once
+- Validation plan:
+  - RED: `bash scripts/check-repo-static.sh`
+  - direct proof after implementation: `bash scripts/validate-core-workflows.sh`
+  - cheap gates:
+    - `bash scripts/check-repo-static.sh`
+    - `git diff --check`
+  - flake target:
+    - `bash scripts/check-repo-static.sh` x3 after GREEN because that is the direct changed expectation gate; run `bash scripts/validate-core-workflows.sh` once for real report proof

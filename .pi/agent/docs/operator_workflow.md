@@ -220,6 +220,16 @@ When a repeated live rerun is used, record:
 - markdown report: `reports/validation/*.md`
 - JSON summary: `reports/validation/*.json`
 
+Scan validator reports in this order:
+1. `Summary Table`
+2. `Final Decision`
+3. `Detailed Results`
+
+Use that scan order to answer three operator questions quickly:
+- did anything fail?
+- what is the bounded verdict / next step?
+- which exact command or evidence needs drill-down?
+
 ## When to run validation
 Run the validator script when:
 - changing `.pi/settings.json`
@@ -312,6 +322,10 @@ For tasks completed through `task_update`, the current completion gate also expe
 3. inspect:
    - `reports/validation/...-script.md`
    - `reports/validation/...-script.json`
+   - scan the markdown report in this order:
+     1. `Summary Table`
+     2. `Final Decision`
+     3. `Detailed Results`
 4. summarize evidence in current coding log
 5. note any gaps instead of hiding them
 
