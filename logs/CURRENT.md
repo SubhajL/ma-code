@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-04-29_harness-048-structured-quality-next-step.md`
+- `logs/coding/2026-05-01_harness-051-semantic-conformance-fixtures.md`
 
 ## Current planning log
-- `reports/planning/2026-04-29_harness-048-structured-quality-next-step-plan.md`
+- `reports/planning/2026-05-01_harness-051-semantic-conformance-fixtures-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded HARNESS-048 slice 2 implementation work for structured quality→validator runtime transitions.
+- These files capture the bounded HARNESS-051 slice 1 implementation work for semantic conformance fixtures on critical prompt surfaces.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

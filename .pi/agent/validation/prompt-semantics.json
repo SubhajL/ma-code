@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "notes": [
+    "HARNESS-051 slice 1 semantic fixtures are local-only and deterministic.",
+    "These fixtures validate contract-bearing semantic fields, not whole prose blobs.",
+    "Minor descriptive wording may vary; exact matching is reserved for contractual lines and parser-oriented item formats."
+  ],
+  "fixtures": [
+    {
+      "id": "orchestrator_golden_route",
+      "role": "orchestrator",
+      "expect": "pass",
+      "content": "## Goal\n- add bounded semantic conformance fixtures\n\n## Team Routing\n- planning first\n- quality later\n\n## Task Packets\n- packet needed for reviewer follow-up\n\n## Risks\n- none\n\n## Completion Decision\n- route to planning for bounded local validation work\nDecision: route\n\n## Next Action\n- create the bounded semantic validator task packet"
+    },
+    {
+      "id": "orchestrator_failing_bad_decision",
+      "role": "orchestrator",
+      "expect": "fail",
+      "expectedErrors": ["orchestrator.invalid_decision"],
+      "content": "## Goal\n- add bounded semantic conformance fixtures\n\n## Team Routing\n- planning first\n\n## Task Packets\n- none\n\n## Risks\n- none\n\n## Completion Decision\n- tries to use an unsupported completion state\nDecision: approve\n\n## Next Action\n- none"
+    },
+    {
+      "id": "quality_lead_golden_send_to_validation",
+      "role": "quality_lead",
+      "expect": "pass",
+      "content": "## Review Scope\n- inspect reviewer-facing severity and file reference structure\n\n## Validation Scope\n- verify proof status and missing-proof fields stay usable\n\n## Evidence Gaps\n- none\n\n## Decision\n- send to validation after review scope is preserved\nDecision: send_to_validation\n\n## Next Action\n- generate bounded validator handoff"
+    },
+    {
+      "id": "quality_lead_failing_empty_review_scope",
+      "role": "quality_lead",
+      "expect": "fail",
+      "expectedErrors": ["quality_lead.empty_review_scope"],
+      "content": "## Review Scope\n- none\n\n## Validation Scope\n- verify proof status and missing-proof fields stay usable\n\n## Evidence Gaps\n- reviewer scope was not made concrete\n\n## Decision\n- send to review without an actionable review scope\nDecision: send_to_review\n\n## Next Action\n- none"
+    },
+    {
+      "id": "reviewer_worker_golden_changes_required",
+      "role": "reviewer_worker",
+      "expect": "pass",
+      "content": "## Summary\n- bounded review found one required fix\n\n## Findings by Severity\n- HIGH: validator output parser cannot trust missing-proof examples yet\n\n## Required Fixes\n- severity: HIGH | summary: add parser coverage for missing-proof item fields | file_ref: scripts/validate-prompt-semantics.sh | fix_direction: validate each required missing-proof key explicitly | validation_needed: bash scripts/validate-prompt-semantics.sh\n\n## Optional Improvements\n- summary: add one more orchestrator negative fixture | file_ref: .pi/agent/validation/prompt-semantics.json | benefit: broader semantic drift coverage | follow_up: add after slice 1 lands\n\n## Risk Notes\n- fixture format should stay parser-oriented and bounded\nReview Verdict: changes_required\nSeverity Buckets: CRITICAL | HIGH | MEDIUM | LOW\nSeverity Summary: CRITICAL=0 HIGH=1 MEDIUM=0 LOW=0\nRequired Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed\nOptional Improvement Item Fields: summary | file_ref | benefit | follow_up"
+    },
+    {
+      "id": "reviewer_worker_failing_bad_required_fix_item",
+      "role": "reviewer_worker",
+      "expect": "fail",
+      "expectedErrors": ["reviewer_worker.bad_required_fix_item"],
+      "content": "## Summary\n- bounded review found one required fix\n\n## Findings by Severity\n- HIGH: validator output parser cannot trust missing-proof examples yet\n\n## Required Fixes\n- severity: HIGH | summary: add parser coverage for missing-proof item fields | file_ref: scripts/validate-prompt-semantics.sh | validation_needed: bash scripts/validate-prompt-semantics.sh\n\n## Optional Improvements\n- none\n\n## Risk Notes\n- fixture format should stay parser-oriented and bounded\nReview Verdict: changes_required\nSeverity Buckets: CRITICAL | HIGH | MEDIUM | LOW\nSeverity Summary: CRITICAL=0 HIGH=1 MEDIUM=0 LOW=0\nRequired Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed\nOptional Improvement Item Fields: summary | file_ref | benefit | follow_up"
+    },
+    {
+      "id": "validator_worker_golden_fail",
+      "role": "validator_worker",
+      "expect": "pass",
+      "content": "## Discovery Path\n- local fallback after bounded Auggie timeout\n\n## Acceptance Criteria Check\n- semantic validator rejects malformed reviewer fix items\n\n## Evidence Review\n- fixture inventory includes both golden and failing reviewer examples\n\n## Validation Result\n- semantic validation is insufficient because one malformed reviewer item still passes\nProof Status: partial\n\n## Missing Proof\n- category: validation_missing | gap: malformed reviewer required-fix item is not rejected yet | evidence_needed: semantic validator must enforce all required fix item keys | blocking_effect: cannot claim semantic fixture coverage is sufficient\n\n## Final Decision\n- fail until malformed reviewer item is rejected\nFinal Decision: fail\nMissing Proof Category: validation_missing\nMissing Proof Item Fields: category | gap | evidence_needed | blocking_effect\nDecision Basis: proof_gap"
+    },
+    {
+      "id": "validator_worker_failing_pass_with_missing_proof",
+      "role": "validator_worker",
+      "expect": "fail",
+      "expectedErrors": ["validator_worker.pass_with_missing_proof"],
+      "content": "## Discovery Path\n- local fallback after bounded Auggie timeout\n\n## Acceptance Criteria Check\n- semantic validator rejects malformed reviewer fix items\n\n## Evidence Review\n- fixture inventory includes both golden and failing reviewer examples\n\n## Validation Result\n- claims proof is sufficient despite unresolved missing proof\nProof Status: sufficient\n\n## Missing Proof\n- category: validation_missing | gap: malformed reviewer required-fix item is not rejected yet | evidence_needed: semantic validator must enforce all required fix item keys | blocking_effect: cannot claim semantic fixture coverage is sufficient\n\n## Final Decision\n- pass\nFinal Decision: pass\nMissing Proof Category: validation_missing\nMissing Proof Item Fields: category | gap | evidence_needed | blocking_effect\nDecision Basis: proof_sufficient"
+    },
+    {
+      "id": "recovery_worker_golden_escalate_with_migration",
+      "role": "recovery_worker",
+      "expect": "pass",
+      "content": "## Failure Summary\n- semantic validator surface is not yet stable enough for the default static gate\n\n## Likely Causes\n- the new validator has not yet proven a low false-positive rate\n\n## Recovery Options\n- keep semantic validation as an explicit command for the first landing\n- migration path: promote semantic validation into check-repo-static.sh only after stable low-noise runs\n\n## Recommended Action\n- escalate after the bounded migration path is documented\nRecommended Action: escalate"
+    },
+    {
+      "id": "recovery_worker_failing_escalate_without_migration",
+      "role": "recovery_worker",
+      "expect": "fail",
+      "expectedErrors": ["recovery_worker.escalate_without_migration_path"],
+      "content": "## Failure Summary\n- semantic validator surface is not yet stable enough for the default static gate\n\n## Likely Causes\n- the new validator has not yet proven a low false-positive rate\n\n## Recovery Options\n- keep semantic validation as an explicit command for the first landing\n- revisit static-gate promotion later\n\n## Recommended Action\n- escalate immediately\nRecommended Action: escalate"
+    }
+  ]
+}

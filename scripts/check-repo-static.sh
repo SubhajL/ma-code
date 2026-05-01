@@ -32,11 +32,13 @@ required_files=(
   "scripts/validate-queue-runner.sh"
   "scripts/validate-core-workflows.sh"
   "scripts/validate-prompt-contracts.sh"
+  "scripts/validate-prompt-semantics.sh"
   ".pi/agent/docs/architecture_review_workflow.md"
   ".pi/agent/prompts/templates/request-architecture-review.md"
   ".pi/agent/prompts/templates/assess-drift-capability.md"
   ".pi/agent/prompts/templates/propose-migration-path.md"
   ".pi/agent/validation/prompt-contracts.json"
+  ".pi/agent/validation/prompt-semantics.json"
   ".github/workflows/ci.yml"
   ".github/workflows/security.yml"
   ".github/dependabot.yml"
@@ -63,6 +65,7 @@ for rel in [
     ".pi/agent/handoffs/handoff-policy.json",
     ".pi/agent/validation/completion-gate-policy.json",
     ".pi/agent/validation/prompt-contracts.json",
+    ".pi/agent/validation/prompt-semantics.json",
     ".pi/agent/state/schemas/tasks.schema.json",
     ".pi/agent/state/schemas/queue.schema.json",
     ".pi/agent/state/schemas/task-packet.schema.json",
@@ -77,6 +80,7 @@ validation_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(
 file_map_doc = (root / ".pi/agent/docs/file_map.md").read_text(encoding="utf-8")
 readme_doc = (root / "README.md").read_text(encoding="utf-8")
 validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architecture.md").read_text(encoding="utf-8")
+prompt_semantics_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(encoding="utf-8")
 reviewer_prompt = (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_text(encoding="utf-8")
 validator_prompt = (root / ".pi/agent/prompts/roles/validator_worker.md").read_text(encoding="utf-8")
@@ -114,6 +118,13 @@ for needle in validator_needles:
     assert needle in validate_template
     assert needle in validation_recovery_doc
     assert needle in operator_role_doc
+for needle in [
+    "scripts/validate-prompt-semantics.sh",
+    ".pi/agent/validation/prompt-semantics.json",
+]:
+    assert needle in file_map_doc
+    assert needle in readme_doc
+    assert needle in prompt_semantics_doc
 PY
 
 "$REPO_ROOT/scripts/validate-prompt-contracts.sh"

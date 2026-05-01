@@ -180,6 +180,33 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect repo-local role prompts, prompt-entry templates, or the prompt-contract inventory itself.
 
+### Dedicated prompt semantic-fixture validator
+Current dedicated semantic-fixture script:
+- `scripts/validate-prompt-semantics.sh`
+
+This script is responsible for the bounded regression path for:
+- local semantic conformance fixtures for the critical role-output surfaces:
+  - `orchestrator`
+  - `quality_lead`
+  - `reviewer_worker`
+  - `validator_worker`
+  - `recovery_worker`
+- machine-readable semantic fixture inventory under `.pi/agent/validation/prompt-semantics.json`
+- parser-oriented checks on contract-bearing fields such as:
+  - orchestrator decision usability
+  - quality lead routing decision usability
+  - reviewer severity/fix item usability
+  - validator proof/missing-proof/final-decision usability
+  - recovery recommended-action and escalation/migration-path usability
+- deterministic rejection of failing examples without provider calls
+
+Boundary notes:
+- this validator is additive to `scripts/validate-prompt-contracts.sh`; it does not replace shape validation
+- HARNESS-051 slice 1 keeps this validator local-only and fixture-driven; live provider-backed proof belongs to the later HARNESS-051 slice 2 path
+- default static-gate execution can be staged in later once the dedicated semantic validator proves stable and low-noise enough for the default local gate
+
+It should be used when changes affect bounded semantic fixture expectations for the critical prompt surfaces or the semantic fixture inventory itself.
+
 ### Dedicated skill-routing validator
 Current dedicated routing script:
 - `scripts/validate-skill-routing.sh`
