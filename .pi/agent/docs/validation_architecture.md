@@ -182,13 +182,13 @@ This script is responsible for the bounded regression path for:
 It should be used when changes affect repo-local role prompts, prompt-entry templates, or the prompt-contract inventory itself.
 
 ### Static prompt/docs adaptation checks
-Current repo-static checks also enforce the Phase 1 prompt/docs adaptation surfaces for:
-- Graphify optional fallback policy and role ownership
+Current repo-static checks also enforce the baseline prompt/docs adaptation surfaces for:
+- Graphify optional fallback policy, role ownership, and adapter-doc consistency
 - product planning from grill-style clarification to PRD to vertical-slice backlog
 - deep-module refactoring vocabulary and deletion-test guidance
 - behavior-first TDD with one failing behavior test, one minimal implementation, and boundary-only mocking by default
 
-These checks live in `scripts/check-repo-static.sh` because the Phase 1 prompt/docs adaptation still needs cheap static enforcement even now that the repo also has a bounded runtime Graphify adapter and a dedicated Graphify validator.
+These checks live in `scripts/check-repo-static.sh` because the repo still needs cheap static enforcement for the Graphify policy/docs layer even though it also has a bounded runtime Graphify adapter and a dedicated Graphify validator.
 
 ### Dedicated prompt semantic-fixture validator
 Current dedicated semantic-fixture scripts:
@@ -391,6 +391,8 @@ This script is responsible for the canonical Graphify validator path for:
 - `tests/integration/graphify-adapter.test.ts`
 - Graphify skepticism/routing prompt-contract enforcement in the targeted role prompts
 - one optional installed-CLI smoke via `--smoke` when explicit real-CLI proof is needed
+
+Related cheap static enforcement in `scripts/check-repo-static.sh` keeps the docs/policy layer aligned by checking the Graphify discovery policy doc, the Graphify adapter doc, README/operator references, and the `validate:graphify-discovery` package alias.
 
 It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, or Graphify prompt skepticism/routing policy.
 
