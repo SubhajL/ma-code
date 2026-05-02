@@ -187,6 +187,10 @@ for needle in [
     "--mcp",
     "--neo4j-push",
     "not a live web-search replacement",
+    "## Manual tiny-fixture smoke",
+    "run the adapter against a tiny fixture repo",
+    "git status --short --ignored=matching",
+    "generated report/artifact files stay out of the source diff",
 ]:
     assert needle in graphify_adapter_doc
 assert ".pi/agent/artifacts/" in gitignore_doc
