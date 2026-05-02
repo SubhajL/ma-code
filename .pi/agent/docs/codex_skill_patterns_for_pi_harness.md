@@ -15,6 +15,9 @@ Adapt patterns, not Codex-specific infrastructure.
 Do adopt:
 - good planning discipline
 - Auggie-first semantic discovery with bounded fallback
+- optional Graphify report inspection for broad codebase or curated local research-corpus discovery when installed, scoped, and safe
+- product-planning discipline from grill-style clarification through PRD synthesis to vertical-slice backlog slices
+- behavior-first TDD with one failing behavior test, one minimal implementation, and boundary-only mocking by default
 - wiring verification
 - evidence-backed review
 - severity-ordered findings
@@ -25,6 +28,7 @@ Do not import as-is:
 - Graphite-specific workflow assumptions
 - Codex token-setting rules as literal harness policy
 - Taskmaster-specific MCP flow as a required runtime dependency
+- Graphify auto-install, watch mode, hooks, MCP servers, Neo4j push, or generated artifacts in source diffs by default
 
 ## Useful ideas by skill
 
@@ -35,6 +39,8 @@ Do not import as-is:
 | `g-planning` | explicit files-to-change and validation ideas | makes downstream execution less ad hoc | `planning_lead`, `build_lead`, task packets |
 | `g-planning` | wiring verification planning | prevents uncalled or unregistered code | planning/build roles, task packets, task evidence |
 | `g-coding` | smallest relevant failing/passing validation loop | keeps implementation grounded in proof | build workers, operator workflow, task evidence |
+| `g-coding` | behavior-first one-test-at-a-time tracer bullets | prevents speculative horizontal test batches | build workers, operator workflow, task evidence |
+| `g-coding` | public-interface tests and boundary-only mocking | keeps tests refactor-resistant | build workers, validation docs, task evidence |
 | `g-coding` | skeptical self-review before handoff | lowers shallow completion claims | build workers, quality flow |
 | `g-coding` | wiring verification before done | catches library-code-without-call-site failures | build workers, validator expectations, task evidence |
 | `g-check` | severity-ordered review findings | makes review decisions easier to act on | `reviewer_worker`, quality flow |
@@ -43,6 +49,9 @@ Do not import as-is:
 | `g-review` | intended-vs-implemented drift analysis | useful for architecture and system reviews | review docs, recovery/quality architecture |
 | `g-review` | tactical vs strategic recommendations | keeps architecture advice bounded | `reviewer_worker`, `recovery_worker`, architecture docs |
 | `g-review` | require migration path for big changes | reduces risky abstract redesign advice | planning/review docs, recovery decisions |
+| Graphify pattern | persistent graph/report for broad corpus discovery | helps system-analysis when direct search is too narrow | `research_worker`, planning docs, operator workflow |
+| PRD/issues patterns | grill-style clarification and vertical slices | turns fuzzy product intent into bounded backlog work | planning docs, task packets, queue jobs |
+| Deep-module patterns | interface/seam/depth/deletion-test vocabulary | makes refactor planning testable and less hand-wavy | architecture review docs, reviewer behavior |
 
 ## Patterns adopted now
 

@@ -82,6 +82,10 @@ Related docs:
 - bounded autonomy architecture: `.pi/agent/docs/bounded_autonomy_architecture.md`
 - phase capability map: `.pi/agent/docs/harness_phase_capability_map.md`
 - architecture review workflow: `.pi/agent/docs/architecture_review_workflow.md`
+- Graphify optional discovery/research policy: `.pi/agent/docs/graphify_discovery_research.md`
+- product planning workflow: `.pi/agent/docs/product_planning_workflow.md`
+- behavior-first TDD workflow: `.pi/agent/docs/tdd_behavior_first_workflow.md`
+- deep-module refactoring workflow: `.pi/agent/docs/deep_module_refactoring_workflow.md`
 - architecture/drift review artifacts:
   - `.pi/agent/prompts/templates/request-architecture-review.md`
   - `.pi/agent/prompts/templates/assess-drift-capability.md`

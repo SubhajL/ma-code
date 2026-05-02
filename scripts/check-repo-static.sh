@@ -35,6 +35,10 @@ required_files=(
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
   ".pi/agent/docs/architecture_review_workflow.md"
+  ".pi/agent/docs/graphify_discovery_research.md"
+  ".pi/agent/docs/product_planning_workflow.md"
+  ".pi/agent/docs/deep_module_refactoring_workflow.md"
+  ".pi/agent/docs/tdd_behavior_first_workflow.md"
   ".pi/agent/prompts/templates/request-architecture-review.md"
   ".pi/agent/prompts/templates/assess-drift-capability.md"
   ".pi/agent/prompts/templates/propose-migration-path.md"
@@ -84,6 +88,13 @@ validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architectu
 prompt_semantics_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 operator_workflow_doc = (root / ".pi/agent/docs/operator_workflow.md").read_text(encoding="utf-8")
 operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(encoding="utf-8")
+graphify_doc = (root / ".pi/agent/docs/graphify_discovery_research.md").read_text(encoding="utf-8")
+product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
+deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
+tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
+g_coding_skill = (root / "packages/pi-g-skills/skills/g-coding/SKILL.md").read_text(encoding="utf-8")
+planning_lead_prompt = (root / ".pi/agent/prompts/roles/planning_lead.md").read_text(encoding="utf-8")
+research_worker_prompt = (root / ".pi/agent/prompts/roles/research_worker.md").read_text(encoding="utf-8")
 core_workflows_validator = (root / "scripts/validate-core-workflows.sh").read_text(encoding="utf-8")
 reviewer_prompt = (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_text(encoding="utf-8")
 validator_prompt = (root / ".pi/agent/prompts/roles/validator_worker.md").read_text(encoding="utf-8")
@@ -129,6 +140,34 @@ for needle in [
     assert needle in file_map_doc
     assert needle in readme_doc
     assert needle in prompt_semantics_doc
+for needle in [
+    "Graphify is an optional discovery fallback, not a required harness dependency.",
+    "Graphify is not a live web-search replacement for Exa.",
+    "Graphify should be run by research/system-analysis lanes and consumed by planning lanes.",
+]:
+    assert needle in graphify_doc
+    assert needle in operator_workflow_doc
+    assert needle in operator_role_doc
+    assert needle in planning_lead_prompt
+    assert needle in research_worker_prompt
+for needle in [
+    "Product planning flows from grill-style clarification to PRD to vertical-slice backlog.",
+    "Vertical slices must be independently demonstrable or verifiable.",
+]:
+    assert needle in product_planning_doc
+    assert needle in operator_workflow_doc
+for needle in [
+    "Use behavior-first TDD: one failing behavior test, one minimal implementation, then repeat.",
+    "Do not batch speculative tests ahead of implementation.",
+    "Mock only system boundaries by default.",
+]:
+    assert needle in tdd_behavior_doc
+    assert needle in g_coding_skill
+for needle in [
+    "The interface is the test surface.",
+    "Use the deletion test to distinguish shallow modules from deep modules.",
+]:
+    assert needle in deep_module_doc
 for needle in [
     "## How to Read This Report",
     "## Final Decision",

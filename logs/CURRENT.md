@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-02_harness-050-report-polish.md`
+- `logs/coding/2026-05-02_graphify-product-planning-phase1.md`
 
 ## Current planning log
-- `reports/planning/2026-05-02_harness-050-report-polish-plan.md`
+- `reports/planning/2026-05-02_graphify-product-planning-phase1-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded HARNESS-050 work for operator/report surface polish on the core-workflows validator path.
+- These files capture Phase 1 prompt/docs adaptation for Graphify optional fallback, product-planning workflow, deep-module refactoring vocabulary, and behavior-first TDD guidance.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

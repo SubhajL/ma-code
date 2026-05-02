@@ -71,6 +71,10 @@
 - `.pi/agent/docs/validation_recovery_architecture.md`
 - `.pi/agent/docs/architecture_review_workflow.md`
 - `.pi/agent/docs/audit_logging_convention.md`
+- `.pi/agent/docs/graphify_discovery_research.md`
+- `.pi/agent/docs/product_planning_workflow.md`
+- `.pi/agent/docs/deep_module_refactoring_workflow.md`
+- `.pi/agent/docs/tdd_behavior_first_workflow.md`
 - `.pi/agent/skills/validation-checklist/SKILL.md`
 - `scripts/harness-operator-status.ts`
 - `scripts/harness-queue-session.ts`

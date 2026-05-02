@@ -125,9 +125,21 @@ These patterns should now guide planning, implementation, and review even before
 
 ### Codebase discovery
 - use Auggie MCP first when it is available and non-blocking
-- if Auggie is unavailable, errors, or cannot be bounded safely, fall back immediately to local tools
+- Graphify is an optional discovery fallback, not a required harness dependency.
+- Graphify is not a live web-search replacement for Exa.
+- Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
+- use Graphify only when it is installed, scoped, safe, and useful for broad codebase or curated local research-corpus discovery
+- if Auggie is unavailable, errors, or cannot be bounded safely, fall back immediately to appropriate local tools or scoped Graphify report inspection
 - local fallback means targeted `read`, `grep`/`rg`, `find`, and direct file inspection
 - record which discovery path was used when it matters to planning or validation evidence
+
+### Product planning discipline
+- Product planning flows from grill-style clarification to PRD to vertical-slice backlog.
+- Vertical slices must be independently demonstrable or verifiable.
+- use grill-style clarification when product goals, users, constraints, or success criteria are unclear
+- synthesize PRDs with problem statement, solution, user stories, implementation decisions, testing decisions, out-of-scope items, and further notes
+- split PRDs into thin tracer-bullet slices that cut through required layers end-to-end instead of horizontal layer-only batches
+- mark slices HITL when human product, architecture, design, auth, secrets, or deployment judgment is required; mark AFK only when scope and validation are clear
 
 ### Planning discipline
 For medium- or high-risk work, planning should make these explicit:
@@ -146,6 +158,13 @@ When relevant, implementation evidence should include:
 - changed files
 - wiring verification for new runtime components
 - known gaps instead of hidden assumptions
+
+For TDD work:
+- use behavior-first TDD: one failing behavior test, one minimal implementation, then repeat
+- do not batch speculative tests ahead of implementation
+- prefer tests through public interfaces and observable behavior
+- mock only system boundaries by default
+- refactor only while GREEN, then rerun the relevant tests after each refactor step
 
 ### Review discipline
 Review and validation outputs should prefer:

@@ -50,6 +50,14 @@ Use strict tests-first sequencing:
 5. run fast quality gates
 6. repeat
 
+Use behavior-first TDD: one failing behavior test, one minimal implementation, then repeat.
+Do not batch speculative tests ahead of implementation.
+Mock only system boundaries by default.
+Prefer tests through public interfaces and observable behavior rather than private helpers, internal call order, or owned-collaborator mocks.
+Refactor only while GREEN, then rerun the relevant tests after each refactor step.
+
+Before coding a non-trivial slice, identify the first tracer-bullet behavior, the public interface that proves it, any boundary dependencies that require fakes/mocks, and the behaviors intentionally left out of scope.
+
 Do not skip directly to implementation unless the user explicitly asks for a non-TDD exception.
 
 ## RED / GREEN evidence (required)
