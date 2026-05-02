@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-02_graphify-prompt-guidance.md`
+- `logs/coding/2026-05-02_graphify-manual-smoke-doc.md`
 
 ## Current planning log
-- `reports/planning/2026-05-02_graphify-prompt-guidance-plan.md`
+- `reports/planning/2026-05-02_graphify-manual-smoke-doc-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded Priority 4 Graphify prompt-guidance work.
+- These files capture the bounded Priority 5 Graphify manual smoke doc work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.
