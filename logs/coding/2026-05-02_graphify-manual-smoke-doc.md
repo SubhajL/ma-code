@@ -47,7 +47,19 @@
 - Manual smoke documentation now points operators at the existing tiny-fixture `--smoke` path and expected source-diff cleanliness checks.
 
 ## Next Action
-- Commit, PR, merge, and sync local main.
+- PR #55 submitted; monitor checks, merge, and sync local main.
+
+## Submission Summary
+- Submission branch: `split/task-1777735492664-graphify-manual-smoke-doc`
+- Submitted commit: `59d365149a56f7acb2757de534626b997c406b2d`
+- PR: `#55` — `https://github.com/SubhajL/ma-code/pull/55`
+- Submission path: standard GitHub fallback (`git push -u origin ...` + `gh pr create ...`)
+- PR validation summary:
+  - `bash scripts/check-repo-static.sh`
+  - `bash scripts/validate-graphify-discovery.sh`
+  - `bash scripts/validate-graphify-discovery.sh --smoke`
+  - `git diff --check`
+- Known caveat at submit time: CI/check results had not yet been re-polled after PR creation.
 
 ## Review (2026-05-02 22:31:28 +07) - working-tree
 
