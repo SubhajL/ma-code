@@ -51,7 +51,19 @@
 - Prompt guidance is enforced by prompt-contract validation and scoped to the requested roles.
 
 ## Next Action
-- Commit, submit PR, merge, and sync local main.
+- PR #54 submitted; monitor checks, merge, and sync local main.
+
+## Submission Summary
+- Submission branch: `split/task-1777734409343-graphify-prompt-guidance`
+- Submitted commit: `5cd6ef19e930421533d5bdf9d9ce8c39034b1f76`
+- PR: `#54` — `https://github.com/SubhajL/ma-code/pull/54`
+- Submission path: standard GitHub fallback (`git push -u origin ...` + `gh pr create ...`)
+- PR validation summary:
+  - `bash scripts/validate-prompt-contracts.sh`
+  - `bash scripts/validate-graphify-discovery.sh`
+  - `bash scripts/check-repo-static.sh`
+  - `git diff --check`
+- Known caveat at submit time: CI/check results had not yet been re-polled after PR creation.
 
 ## Review (2026-05-02 22:13:50 +07) - working-tree
 
