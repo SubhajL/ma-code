@@ -26,11 +26,13 @@
   - `secrets/`
   - `private-customer-data/`
 - Large corpus scans require explicit approval through `approvedLargeCorpus: true` after human approval or scope narrowing.
-- Background/side-effect modes are blocked by default:
+- Background/side-effect modes and managed-output bypasses are blocked by default:
   - `--watch`
   - `--mcp`
   - `--neo4j-push`
   - `hook` / `install`
+  - `--output` / `--out` / `-o` in `extraArgs`
+- Semantic/deep/multimodal/URL-style extraction flags are blocked by default; add a new explicit approval field before enabling any such mode.
 
 ## Evidence rules
 - Every scan writes `metadata.json` with:

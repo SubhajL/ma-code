@@ -158,6 +158,25 @@ test("blocks Graphify background or side-effect modes by default", async () => {
   assert.deepEqual(result.details.forbiddenArgs, ["--watch"]);
 });
 
+test("blocks output override and semantic/deep extraction extra args by default", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-forbidden-extra-args-");
+  await writeFile(join(cwd, "index.ts"), "export const value = 1;\n");
+
+  for (const extraArgs of [["--output=/tmp/graphify-out"], ["--deep"], ["--semantic"], ["--multimodal"], ["--url", "https://example.test"]]) {
+    const result = await tool.execute(
+      "tool-call-id",
+      { action: "scan", taskId: "task-forbidden-extra", sourcePath: ".", approvedLargeCorpus: true, extraArgs },
+      undefined,
+      undefined,
+      makeCtx(cwd),
+    );
+
+    assert.match(textContent(result), /forbidden by default/);
+    assert.equal(result.details.status, "blocked_forbidden_args");
+  }
+});
+
 test("keeps scan output inside the managed Graphify artifact directory", async () => {
   const tool = registerGraphifyTool();
   const cwd = await makeTempRepo("graphify-managed-output-");

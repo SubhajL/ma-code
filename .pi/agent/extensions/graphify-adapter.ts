@@ -30,6 +30,27 @@ const FORBIDDEN_ARGS = new Set([
   "hooks",
   "install",
   "--install-hook",
+  "--output",
+  "output",
+  "--out",
+  "out",
+  "-o",
+  "--deep",
+  "deep",
+  "--semantic",
+  "semantic",
+  "--multimodal",
+  "multimodal",
+  "--url",
+  "url",
+  "--urls",
+  "urls",
+  "--pdf",
+  "pdf",
+  "--image",
+  "image",
+  "--video",
+  "video",
 ]);
 
 const GraphifyAdapterSchema = Type.Object({
@@ -40,7 +61,7 @@ const GraphifyAdapterSchema = Type.Object({
   query: Type.Optional(Type.String({ description: "Query or topic to summarize from an existing graph.json artifact." })),
   approvedLargeCorpus: Type.Optional(Type.Boolean({ description: "Set true only after explicit human approval for a large corpus scan." })),
   maxFilesWithoutApproval: Type.Optional(Type.Integer({ minimum: 1, maximum: 100000 })),
-  extraArgs: Type.Optional(Type.Array(Type.String(), { description: "Additional safe one-shot Graphify CLI args. Watch/MCP/hooks/Neo4j push are blocked." })),
+  extraArgs: Type.Optional(Type.Array(Type.String(), { description: "Additional safe one-shot Graphify CLI args. Watch/MCP/hooks/Neo4j push, output overrides, and semantic/multimodal/deep/url extraction are blocked." })),
   timeoutMs: Type.Optional(Type.Integer({ minimum: 1000, maximum: 300000 })),
 });
 
@@ -258,7 +279,10 @@ function graphifyArgs(sourcePath: string, outputPath: string, extraArgs: string[
 }
 
 function findForbiddenArgs(extraArgs: string[] | undefined): string[] {
-  return (extraArgs ?? []).filter((arg) => FORBIDDEN_ARGS.has(arg.toLowerCase()));
+  return (extraArgs ?? []).filter((arg) => {
+    const normalized = arg.toLowerCase().split("=", 1)[0];
+    return FORBIDDEN_ARGS.has(normalized) || FORBIDDEN_ARGS.has(arg.toLowerCase());
+  });
 }
 
 async function statusResult() {

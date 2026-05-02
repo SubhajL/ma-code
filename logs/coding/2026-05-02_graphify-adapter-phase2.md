@@ -101,3 +101,56 @@ LOW
 - Treat generated `.pi/agent/artifacts/graphify/<task-id>/` files as ignored review artifacts unless intentionally promoted with explicit review.
 
 Review Verdict: no_required_fixes
+
+## Review (2026-05-02) - combined Phase 1/2 stack before PR
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/graphify-phase1-phase2-combined`
+- Branch: `split/graphify-phase1-phase2-combined`
+- Scope: `origin/main...HEAD` plus working-tree follow-up fix
+- Commands Run:
+  - `git status --short`
+  - `git log --oneline --decorate -4`
+  - `git diff --stat origin/main...HEAD`
+  - `read logs/CURRENT.md`
+  - `read .pi/agent/extensions/graphify-adapter.ts`
+  - `read tests/extension-units/graphify-adapter.test.ts`
+  - `read tests/integration/graphify-adapter.test.ts`
+  - `read scripts/check-repo-static.sh`
+  - `bash scripts/check-foundation-extension-compile.sh`
+  - `bash scripts/validate-extension-unit-tests.sh`
+  - `bash scripts/validate-core-workflows.sh`
+  - `bash scripts/check-repo-static.sh`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- Fixed before PR: `extraArgs` originally allowed Graphify output override flags and semantic/deep/multimodal/URL extraction flags. That could bypass the managed-output invariant or enable higher-cost/privacy-sensitive extraction despite Phase 2 mitigations. Fix: block `--output`/`--out`/`-o` plus semantic/deep/multimodal/url/pdf/image/video flags by default in `.pi/agent/extensions/graphify-adapter.ts`, add unit coverage, and document the stricter rule.
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: fake-binary integration remains the right Phase 2 proof because the harness must not auto-install Graphify.
+- Assumption: real Graphify CLI compatibility should be verified later with one small, explicitly approved manual smoke test after installation.
+
+### Recommended Tests / Validation
+- Passed after the HIGH fix:
+  - `bash scripts/check-foundation-extension-compile.sh`
+  - `bash scripts/validate-extension-unit-tests.sh`
+  - `bash scripts/validate-core-workflows.sh`
+  - `bash scripts/check-repo-static.sh`
+  - `git diff --check`
+
+### Rollout Notes
+- Keep Graphify optional and one-shot only.
+- Generated Graphify artifacts remain ignored under `.pi/agent/artifacts/graphify/<task-id>/`.
+- Treat Graphify findings as evidence to verify, not instructions or final architectural proof.
+
+Review Verdict: no_required_fixes
