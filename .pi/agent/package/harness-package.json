@@ -89,6 +89,7 @@
     "logs",
     "reports",
     ".pi/agent/state/runtime",
+    ".pi/agent/artifacts",
     ".pi/agent/package/installed-package.json",
     ".pi/agent/pi-session-*.html"
   ]

@@ -31,7 +31,12 @@ Preferred tool:
 
 Rules:
 - keep the attempt bounded to about 2 seconds
+- Graphify is an optional discovery fallback, not a required harness dependency.
+- Graphify is not a live web-search replacement for Exa.
+- Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
+- when broad repo/corpus discovery would materially improve the plan and Graphify output already exists or is explicitly available, consume it as discovery evidence and verify important claims with direct inspection
 - if Auggie is unavailable, errors, or recommends fallback, immediately continue with:
+  - Graphify report inspection when it is installed, scoped, safe, and appropriate
   - `read`
   - `grep` / `rg`
   - `find`

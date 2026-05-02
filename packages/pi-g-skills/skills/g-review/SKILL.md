@@ -41,7 +41,12 @@ Extract the intended:
 
 ### 3) Map the as-is implementation
 Use Auggie first when available and bounded.
+Graphify is an optional discovery fallback, not a required harness dependency.
+Graphify is not a live web-search replacement for Exa.
+Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
+For broad architecture or refactor reviews, consume existing Graphify reports when they are installed/scoped/safe and verify important Graphify-derived claims with direct file inspection.
 If Auggie is unavailable or recommends fallback, switch immediately to:
+- existing Graphify report inspection when appropriate
 - `read`
 - `grep` / `rg`
 - `find`

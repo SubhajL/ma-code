@@ -180,6 +180,15 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect repo-local role prompts, prompt-entry templates, or the prompt-contract inventory itself.
 
+### Static prompt/docs adaptation checks
+Current repo-static checks also enforce the Phase 1 prompt/docs adaptation surfaces for:
+- Graphify optional fallback policy and role ownership
+- product planning from grill-style clarification to PRD to vertical-slice backlog
+- deep-module refactoring vocabulary and deletion-test guidance
+- behavior-first TDD with one failing behavior test, one minimal implementation, and boundary-only mocking by default
+
+These checks live in `scripts/check-repo-static.sh` because the Phase 1 work is prompt/docs-only and does not introduce a runtime Graphify adapter or new skill ports.
+
 ### Dedicated prompt semantic-fixture validator
 Current dedicated semantic-fixture scripts:
 - `scripts/validate-prompt-semantics.sh`
@@ -595,3 +604,5 @@ Use this architecture to answer validation questions quickly:
 - if the question is about how to test, check the validator layer
 - if the question is about what counts as proof, check report conventions and evidence linkage
 - if the question is about a future feature, attach it additively and document its boundary explicitly
+
+- Graphify adapter safety proof: `tests/extension-units/graphify-adapter.test.ts` via `scripts/validate-extension-unit-tests.sh`, plus fake-binary integration via `tests/integration/graphify-adapter.test.ts` in `scripts/validate-core-workflows.sh`.

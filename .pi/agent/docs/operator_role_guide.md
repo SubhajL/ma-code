@@ -16,11 +16,18 @@ It also notes the main repo-local expectations shaped from the useful `g-*` skil
 - should clarify scope before build work starts
 - should make plans decision-complete enough that builders do not have to guess the real objective
 - should identify files to inspect/change, validation ideas, and wiring checks explicitly
+- Graphify is an optional discovery fallback, not a required harness dependency.
+- Graphify is not a live web-search replacement for Exa.
+- Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
+- should verify important Graphify-derived claims before turning them into implementation plans or task packets
 
 ### research_worker
 - good for read-heavy bounded analysis
 - cheapest normal lane for research-like work
-- should record whether discovery used Auggie-first or local fallback
+- should record whether discovery used Auggie-first, scoped Graphify report inspection, or local fallback
+- Graphify is an optional discovery fallback, not a required harness dependency.
+- Graphify is not a live web-search replacement for Exa.
+- Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
 
 ### docs_worker
 - good for docs-only or operator-facing wording work
