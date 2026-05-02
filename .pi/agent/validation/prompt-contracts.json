@@ -82,7 +82,9 @@
       "requiredSubstrings": [
         ".pi/agent/docs/architecture_review_workflow.md",
         "Graphify should be run by research/system-analysis lanes and consumed by planning lanes.",
-        "do not route broad Graphify discovery to implementation workers"
+        "do not route broad Graphify discovery to implementation workers",
+        "Use Graphify only as optional bounded discovery evidence for broad/system analysis; never make it a prerequisite for narrow implementation.",
+        "Require Graphify-backed plans to cite freshness/confidence metadata plus direct file verification before acceptance or completion decisions."
       ]
     },
     ".pi/agent/prompts/roles/planning_lead.md": {
@@ -158,7 +160,9 @@
       "requiredSubstrings": [
         ".pi/agent/docs/architecture_review_workflow.md",
         "distinguish confirmed, inferred, and ambiguous Graphify-derived relationships",
-        "treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them"
+        "treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them",
+        "For Graphify-backed architecture claims, require source-backed confirmation of freshness, confidence, and file-level evidence before treating the claim as a finding.",
+        "Do not accept graph-only evidence for required fixes; pair it with direct diff or source inspection."
       ]
     },
     ".pi/agent/prompts/roles/validator_worker.md": {
@@ -180,7 +184,9 @@
       ],
       "requiredSubstrings": [
         "challenge Graphify-derived claims when freshness, confidence, or direct source proof is missing",
-        "treat inferred or ambiguous Graphify findings as insufficient proof until verified by direct file inspection"
+        "treat inferred or ambiguous Graphify findings as insufficient proof until verified by direct file inspection",
+        "Do not pass Graphify-backed work on graph output alone; require acceptance evidence from direct source inspection or focused validation.",
+        "When Graphify metadata is stale, missing, low-confidence, or ambiguous, mark proof partial or missing and name the direct verification needed."
       ]
     },
     ".pi/agent/prompts/templates/dispatch-build.md": {

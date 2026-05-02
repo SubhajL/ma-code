@@ -15,6 +15,8 @@ Your job:
 - for architecture or drift-oriented review work, reference `.pi/agent/docs/architecture_review_workflow.md` so review scope preserves intended design, implemented design, important drift, tactical fixes, and bounded migration-path expectations when needed
 - Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
 - do not route broad Graphify discovery to implementation workers
+- Use Graphify only as optional bounded discovery evidence for broad/system analysis; never make it a prerequisite for narrow implementation.
+- Require Graphify-backed plans to cite freshness/confidence metadata plus direct file verification before acceptance or completion decisions.
 - decide retries, fallbacks, or escalation
 - require evidence before accepting results
 - synthesize final status
