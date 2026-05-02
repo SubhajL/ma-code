@@ -120,6 +120,27 @@ test("queries an existing managed graph.json with freshness and edge-confidence 
   assert.equal(result.details.citationPolicy.inferred, "lead_only_verify_before_planning_or_acceptance");
 });
 
+test("queries a real-CLI nested managed graphify-out graph.json", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-nested-query-");
+  const outputDir = join(cwd, ".pi", "agent", "artifacts", "graphify", "task-nested-query");
+  await mkdir(join(outputDir, "source-snapshot", "graphify-out"), { recursive: true });
+  await writeFile(
+    join(outputDir, "metadata.json"),
+    JSON.stringify({ generatedAt: "2026-05-02T00:00:00.000Z", headCommit: "nested123", sourcePath: cwd, outputPath: outputDir }, null, 2),
+  );
+  await writeFile(
+    join(outputDir, "source-snapshot", "graphify-out", "graph.json"),
+    JSON.stringify({ edges: [{ from: "src/a.ts", to: "src/b.ts", confidence: "EXTRACTED" }] }, null, 2),
+  );
+
+  const result = await tool.execute("tool-call-id", { action: "query", taskId: "task-nested-query" }, undefined, undefined, makeCtx(cwd));
+
+  assert.equal(result.details.status, "completed");
+  assert.match(result.details.graphPath, /graphify-out\/graph\.json$/);
+  assert.equal(result.details.graphFreshness.headCommit, "nested123");
+});
+
 test("requires explicit approval before scanning a large corpus", async () => {
   const tool = registerGraphifyTool();
   const cwd = await makeTempRepo("graphify-large-");
@@ -193,7 +214,7 @@ test("keeps scan output inside the managed Graphify artifact directory", async (
   assert.equal(rejected.details.status, "blocked_unmanaged_output_path");
 
   const { binaryPath } = await makeFakeGraphifyBinary(
-    "const fs = require('node:fs'); const path = require('node:path'); const args = process.argv.slice(2); const out = args[args.indexOf('--output') + 1]; fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, 'graph.json'), JSON.stringify({ edges: [] })); console.log(JSON.stringify({ ok: true }));\n",
+    "const fs = require('node:fs'); const path = require('node:path'); const args = process.argv.slice(2); if (args[0] !== 'update') process.exit(7); const out = path.join(args[1], 'graphify-out'); fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, 'graph.json'), JSON.stringify({ edges: [] })); console.log(JSON.stringify({ ok: true }));\n",
   );
 
   await withEnv({ GRAPHIFY_BIN: binaryPath }, async () => {
@@ -207,9 +228,12 @@ test("keeps scan output inside the managed Graphify artifact directory", async (
 
     assert.equal(accepted.details.status, "completed");
     assert.match(accepted.details.outputPath, /\.pi\/agent\/artifacts\/graphify\/task-managed$/);
+    assert.match(accepted.details.graphPath, /\.pi\/agent\/artifacts\/graphify\/task-managed\/source-snapshot\/graphify-out\/graph\.json$/);
     const metadataRaw = await readFile(join(accepted.details.outputPath, "metadata.json"), "utf8");
     const metadata = JSON.parse(metadataRaw);
     assert.equal(metadata.outputPath, accepted.details.outputPath);
+    assert.equal(metadata.graphifyCommand, "update");
+    assert.equal(metadata.graphifyWorkingDirectory, accepted.details.outputPath);
     assert.equal(metadata.edgeConfidencePolicy.inferred, "lead_only_verify_before_planning_or_acceptance");
   });
 });

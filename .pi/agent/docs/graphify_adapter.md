@@ -10,14 +10,14 @@
 - Tool: `graphify_adapter`
 - Actions:
   - `status`: detect whether a `graphify` binary is available.
-  - `scan`: run one bounded one-shot scan into a managed artifact directory.
-  - `query`: read an existing managed `graph.json` and summarize confidence/freshness evidence.
+  - `scan`: run one bounded one-shot scan into a managed artifact directory using the installed CLI shape `graphify update <managed-source-snapshot>`.
+  - `query`: read an existing managed `graph.json`, `graphify-out/graph.json`, or real-CLI `source-snapshot/graphify-out/graph.json` and summarize confidence/freshness evidence.
 
 ## Safety controls
 - No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`.
 - Managed generated output only: `.pi/agent/artifacts/graphify/<task-id>/`.
 - Generated artifacts are ignored by `.gitignore` and excluded from harness packaging via `.pi/agent/package/harness-package.json`.
-- Protected/sensitive paths are excluded by wrapper arguments and file-count logic:
+- Protected/sensitive paths are excluded by file-count logic and by copying only an allowed sanitized source snapshot into the managed artifact directory before running `graphify update`:
   - `.env*`
   - `.git/`
   - `node_modules/`
@@ -36,6 +36,10 @@
 
 ## Evidence rules
 - Every scan writes `metadata.json` with:
+  - `graphifyCommand: update`
+  - `graphifyWorkingDirectory`
+  - `sanitizedSourcePath`
+  - real CLI graph path under `source-snapshot/graphify-out/graph.json`
   - `generatedAt`
   - `headCommit`
   - `sourcePath`

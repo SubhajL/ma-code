@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { spawn } from "node:child_process";
 import { constants, existsSync } from "node:fs";
-import { access, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, delimiter, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { Type } from "@sinclair/typebox";
 
@@ -163,6 +163,37 @@ async function countCorpusFiles(root: string, current = root): Promise<number> {
   return count;
 }
 
+async function copySanitizedCorpus(sourcePath: string, snapshotPath: string): Promise<void> {
+  await rm(snapshotPath, { recursive: true, force: true });
+  const sourceStat = await stat(sourcePath);
+  if (sourceStat.isFile()) {
+    await mkdir(snapshotPath, { recursive: true });
+    await cp(sourcePath, join(snapshotPath, basename(sourcePath)), { force: true });
+    return;
+  }
+
+  await mkdir(snapshotPath, { recursive: true });
+  await copySanitizedDirectory(sourcePath, sourcePath, snapshotPath);
+}
+
+async function copySanitizedDirectory(root: string, current: string, destinationRoot: string): Promise<void> {
+  const entries = await readdir(current, { withFileTypes: true });
+  for (const entry of entries) {
+    const source = join(current, entry.name);
+    const rel = relative(root, source) || entry.name;
+    if (isProtectedRelativePath(rel)) continue;
+
+    const destination = join(destinationRoot, rel);
+    if (entry.isDirectory()) {
+      await mkdir(destination, { recursive: true });
+      await copySanitizedDirectory(root, source, destinationRoot);
+    } else if (entry.isFile()) {
+      await mkdir(resolve(destination, ".."), { recursive: true });
+      await cp(source, destination, { force: true });
+    }
+  }
+}
+
 async function findGraphifyBinary(): Promise<{ installed: boolean; binaryPath?: string; reason?: string }> {
   const configured = process.env.GRAPHIFY_BIN?.trim();
   if (configured) {
@@ -271,9 +302,21 @@ async function loadMetadata(outputPath: string) {
   }
 }
 
-function graphifyArgs(sourcePath: string, outputPath: string, extraArgs: string[] | undefined) {
-  const args = ["scan", sourcePath, "--output", outputPath, "--format", "json"];
-  for (const pattern of SENSITIVE_EXCLUDES) args.push("--exclude", pattern);
+function findManagedGraphPath(outputPath: string): string | null {
+  const direct = join(outputPath, "graph.json");
+  if (existsSync(direct)) return direct;
+
+  const realCliPath = join(outputPath, "graphify-out", "graph.json");
+  if (existsSync(realCliPath)) return realCliPath;
+
+  const snapshotCliPath = join(outputPath, "source-snapshot", "graphify-out", "graph.json");
+  if (existsSync(snapshotCliPath)) return snapshotCliPath;
+
+  return null;
+}
+
+function graphifyArgs(snapshotPath: string, extraArgs: string[] | undefined) {
+  const args = ["update", snapshotPath];
   for (const arg of extraArgs ?? []) args.push(arg);
   return args;
 }
@@ -314,11 +357,11 @@ async function queryResult(params: GraphifyParams, cwd: string) {
     };
   }
 
-  const graphPath = join(output.output, "graph.json");
-  if (!existsSync(graphPath)) {
+  const graphPath = findManagedGraphPath(output.output);
+  if (!graphPath) {
     return {
-      content: [{ type: "text" as const, text: `No managed Graphify graph.json found at ${graphPath}. Run a bounded scan first or provide an existing managed artifact.` }],
-      details: { status: "missing_graph", graphPath, outputPath: output.output },
+      content: [{ type: "text" as const, text: `No managed Graphify graph.json found under ${output.output}. Run a bounded scan first or provide an existing managed artifact.` }],
+      details: { status: "missing_graph", outputPath: output.output },
     };
   }
 
@@ -411,6 +454,8 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
   }
 
   await mkdir(output.output, { recursive: true });
+  const snapshotPath = join(output.output, "source-snapshot");
+  await copySanitizedCorpus(source.source, snapshotPath);
   const generatedAt = new Date().toISOString();
   const headCommit = await currentHeadCommit(cwd);
   const metadata = {
@@ -418,6 +463,9 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
     headCommit,
     sourcePath: source.source,
     outputPath: output.output,
+    sanitizedSourcePath: snapshotPath,
+    graphifyCommand: "update",
+    graphifyWorkingDirectory: output.output,
     fileCount,
     excludes: SENSITIVE_EXCLUDES,
     edgeConfidencePolicy: citationPolicy(),
@@ -430,8 +478,8 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
   };
   await writeFile(join(output.output, "metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`);
 
-  const args = graphifyArgs(source.source, output.output, params.extraArgs);
-  const result = await runCommand(detection.binaryPath, args, cwd, params.timeoutMs ?? DEFAULT_TIMEOUT_MS, signal);
+  const args = graphifyArgs(snapshotPath, params.extraArgs);
+  const result = await runCommand(detection.binaryPath, args, output.output, params.timeoutMs ?? DEFAULT_TIMEOUT_MS, signal);
   if (result.code !== 0 || result.timedOut || result.aborted) {
     return {
       content: [
@@ -461,7 +509,7 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
       args,
       outputPath: output.output,
       metadataPath: join(output.output, "metadata.json"),
-      graphPath: join(output.output, "graph.json"),
+      graphPath: findManagedGraphPath(output.output) ?? join(snapshotPath, "graphify-out", "graph.json"),
       graphFreshness: { generatedAt, headCommit, sourcePath: source.source },
       citationPolicy: citationPolicy(),
       fileCount,
