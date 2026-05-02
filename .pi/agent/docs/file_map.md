@@ -45,6 +45,7 @@
 - `.pi/agent/docs/queue_semantics.md`
 
 ## Update extension behavior and runtime controls
+- Graphify adapter: `.pi/agent/extensions/graphify-adapter.ts`, `.pi/agent/docs/graphify_adapter.md`, `tests/extension-units/graphify-adapter.test.ts`, `tests/integration/graphify-adapter.test.ts`
 - `.pi/agent/extensions/*.spec.md`
 - `.pi/agent/extensions/*.ts`
 - `.pi/agent/extensions/bin/*`

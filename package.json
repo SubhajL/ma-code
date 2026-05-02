@@ -30,7 +30,8 @@
     "validate:prompt-semantics": "./scripts/validate-prompt-semantics.sh",
     "validate:prompt-semantics:live": "bash scripts/validate-prompt-semantics-live.sh",
     "validate:harness-package": "./scripts/validate-harness-package.sh",
-    "validate:tuning-data": "./scripts/collect-harness-tuning-data.sh"
+    "validate:tuning-data": "./scripts/collect-harness-tuning-data.sh",
+    "test:graphify-adapter": "node --import tsx --test tests/extension-units/graphify-adapter.test.ts tests/integration/graphify-adapter.test.ts"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

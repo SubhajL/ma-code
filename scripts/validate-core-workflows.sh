@@ -189,7 +189,7 @@ setup_temp_runtime() {
 }
 JSON
 
-  cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner,graphify-adapter}.ts "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -200,7 +200,7 @@ JSON
   cp "$REPO_ROOT/.pi/agent/schedules/scheduled-workflows.json" "$workdir/.pi/agent/schedules/scheduled-workflows.json"
   cp "$REPO_ROOT/tests/extension-units/test-utils.ts" "$workdir/tests/extension-units/"
   cp "$REPO_ROOT/scripts/"{harness-operator-status,harness-queue-session,harness-scheduled-workflows,harness-worktree}.ts "$workdir/scripts/"
-  cp "$REPO_ROOT/tests/integration/"{core-workflows,operator-surface,queue-session,scheduled-workflows,worktree-helper}.test.ts "$workdir/tests/integration/"
+  cp "$REPO_ROOT/tests/integration/"{core-workflows,operator-surface,queue-session,scheduled-workflows,worktree-helper,graphify-adapter}.test.ts "$workdir/tests/integration/"
 
   (
     cd "$workdir"
@@ -222,7 +222,7 @@ check_1_compile_core_workflow_extensions() {
   local name="1. core workflow extensions compile together"
   local out="$TMP_ROOT/check_1_compile_core_workflow_extensions.txt"
   local runtime_dir="$TMP_ROOT/core-workflows-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts scripts/harness-operator-status.ts scripts/harness-queue-session.ts scripts/harness-scheduled-workflows.ts scripts/harness-worktree.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts .pi/agent/extensions/graphify-adapter.ts scripts/harness-operator-status.ts scripts/harness-queue-session.ts scripts/harness-scheduled-workflows.ts scripts/harness-worktree.ts"
 
   if (
     cd "$runtime_dir" &&
@@ -236,6 +236,7 @@ check_1_compile_core_workflow_extensions() {
       .pi/agent/extensions/recovery-policy.ts \
       .pi/agent/extensions/recovery-runtime.ts \
       .pi/agent/extensions/queue-runner.ts \
+      .pi/agent/extensions/graphify-adapter.ts \
       scripts/harness-operator-status.ts \
       scripts/harness-queue-session.ts \
       scripts/harness-scheduled-workflows.ts \
@@ -348,8 +349,27 @@ check_6_scheduled_workflow_integration() {
   fi
 }
 
-check_7_operator_surface_wiring() {
-  local name="7. operator/queue-session/schedule/worktree/package/docs wiring"
+check_7_graphify_adapter_integration() {
+  local name="7. Graphify adapter fake-binary integration"
+  local out="$TMP_ROOT/check_7_graphify_adapter_integration.txt"
+  local runtime_dir="$TMP_ROOT/core-workflows-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/integration/graphify-adapter.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/integration/graphify-adapter.test.ts" "$out"; then
+    local detail="Graphify adapter integration test passed with a fake binary, managed artifact output, exclusion arguments, and metadata proof."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="Graphify adapter fake-binary integration test failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
+check_8_operator_surface_wiring() {
+  local name="8. operator/queue-session/schedule/worktree/package/docs wiring"
   local out="$TMP_ROOT/check_6_operator_surface_wiring.txt"
   local cmd="$PYTHON_BIN $TMP_ROOT/check_6_operator_surface_wiring.py"
 
@@ -402,7 +422,8 @@ main() {
   check_4_queue_session_integration
   check_5_worktree_helper_integration
   check_6_scheduled_workflow_integration
-  check_7_operator_surface_wiring
+  check_7_graphify_adapter_integration
+  check_8_operator_surface_wiring
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF

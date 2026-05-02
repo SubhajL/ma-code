@@ -357,3 +357,5 @@ It does not validate future items like:
 - long-running autonomy beyond bounded operator-invoked queue steps/sessions
 
 When those exist, they should add new validation scripts or extend the current validator in bounded ways.
+
+- For Graphify adapter changes, use `bash scripts/validate-extension-unit-tests.sh` and `bash scripts/validate-core-workflows.sh`; confirm generated artifacts stay under ignored `.pi/agent/artifacts/graphify/<task-id>/`.

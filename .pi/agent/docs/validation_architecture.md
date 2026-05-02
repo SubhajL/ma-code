@@ -604,3 +604,5 @@ Use this architecture to answer validation questions quickly:
 - if the question is about how to test, check the validator layer
 - if the question is about what counts as proof, check report conventions and evidence linkage
 - if the question is about a future feature, attach it additively and document its boundary explicitly
+
+- Graphify adapter safety proof: `tests/extension-units/graphify-adapter.test.ts` via `scripts/validate-extension-unit-tests.sh`, plus fake-binary integration via `tests/integration/graphify-adapter.test.ts` in `scripts/validate-core-workflows.sh`.

@@ -2,3 +2,6 @@
 *.zip
 node_modules/
 .pi/agent/pi-session-*.html
+
+.pi/agent/artifacts/
+**/logs/harness-actions.jsonl
