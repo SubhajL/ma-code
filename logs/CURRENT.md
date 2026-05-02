@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-02_graphify-discovery-validator.md`
+- `logs/coding/2026-05-02_graphify-docs-refresh.md`
 
 ## Current planning log
-- `reports/planning/2026-05-02_graphify-discovery-validator-plan.md`
+- `reports/planning/2026-05-02_graphify-docs-refresh-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded Graphify discovery validator consolidation work.
+- These files capture the bounded Graphify docs refresh work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.
