@@ -83,6 +83,7 @@ It runs bounded checks against the implemented runtime behavior.
 Primary assets:
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`
+- `scripts/validate-graphify-discovery.sh`
 - `scripts/validate-prompt-contracts.sh`
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
@@ -187,7 +188,7 @@ Current repo-static checks also enforce the Phase 1 prompt/docs adaptation surfa
 - deep-module refactoring vocabulary and deletion-test guidance
 - behavior-first TDD with one failing behavior test, one minimal implementation, and boundary-only mocking by default
 
-These checks live in `scripts/check-repo-static.sh` because the Phase 1 work is prompt/docs-only and does not introduce a runtime Graphify adapter or new skill ports.
+These checks live in `scripts/check-repo-static.sh` because the Phase 1 prompt/docs adaptation still needs cheap static enforcement even now that the repo also has a bounded runtime Graphify adapter and a dedicated Graphify validator.
 
 ### Dedicated prompt semantic-fixture validator
 Current dedicated semantic-fixture scripts:
@@ -378,6 +379,20 @@ This script is responsible for the bounded regression path for:
 - provider/tool-block handling with blocked task/job preservation
 
 It should be used when changes affect end-to-end core workflow behavior or its validator wiring.
+
+### Dedicated Graphify validator
+Current dedicated Graphify script:
+- `scripts/validate-graphify-discovery.sh`
+- package alias: `validate:graphify-discovery`
+
+This script is responsible for the canonical Graphify validator path for:
+- focused compile proof for `.pi/agent/extensions/graphify-adapter.ts`
+- `tests/extension-units/graphify-adapter.test.ts`
+- `tests/integration/graphify-adapter.test.ts`
+- Graphify skepticism/routing prompt-contract enforcement in the targeted role prompts
+- one optional installed-CLI smoke via `--smoke` when explicit real-CLI proof is needed
+
+It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, or Graphify prompt skepticism/routing policy.
 
 ### Dedicated harness-package validator
 Current dedicated harness-package script:
@@ -605,4 +620,4 @@ Use this architecture to answer validation questions quickly:
 - if the question is about what counts as proof, check report conventions and evidence linkage
 - if the question is about a future feature, attach it additively and document its boundary explicitly
 
-- Graphify adapter safety proof: `tests/extension-units/graphify-adapter.test.ts` via `scripts/validate-extension-unit-tests.sh`, plus fake-binary integration via `tests/integration/graphify-adapter.test.ts` in `scripts/validate-core-workflows.sh`.
+- Graphify adapter safety proof: `scripts/validate-graphify-discovery.sh` as the canonical command, covering focused compile proof, Graphify unit tests, Graphify integration tests, and optional installed-CLI smoke via `--smoke`.

@@ -17,6 +17,8 @@ Your job:
 - give concrete fix direction instead of vague criticism
 - separate required fixes from optional suggestions
 - when the review scope is architectural or drift-oriented, follow `.pi/agent/docs/architecture_review_workflow.md`, compare intended design vs implemented design, call out important drift, and separate tactical fixes from strategic change recommendations
+- distinguish confirmed, inferred, and ambiguous Graphify-derived relationships
+- treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them
 - if recommending a large architectural change, require a bounded migration path and rollout logic
 
 You must NOT:
