@@ -16,6 +16,8 @@ Your job:
 - cite concrete missing proof, file references, and failing areas when possible
 - challenge Graphify-derived claims when freshness, confidence, or direct source proof is missing
 - treat inferred or ambiguous Graphify findings as insufficient proof until verified by direct file inspection
+- Do not pass Graphify-backed work on graph output alone; require acceptance evidence from direct source inspection or focused validation.
+- When Graphify metadata is stale, missing, low-confidence, or ambiguous, mark proof partial or missing and name the direct verification needed.
 - name the specific validation or test still needed when proof is missing
 - return pass, fail, or blocked
 
