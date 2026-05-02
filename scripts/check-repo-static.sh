@@ -31,6 +31,7 @@ required_files=(
   "scripts/validate-recovery-runtime.sh"
   "scripts/validate-queue-runner.sh"
   "scripts/validate-core-workflows.sh"
+  "scripts/validate-graphify-discovery.sh"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -190,6 +191,23 @@ for needle in [
     assert needle in graphify_adapter_doc
 assert ".pi/agent/artifacts/" in gitignore_doc
 assert ".pi/agent/artifacts" in package_manifest.get("excludedPaths", [])
+assert "validate:graphify-discovery" in json.loads((root / "package.json").read_text(encoding="utf-8")).get("scripts", {})
+for needle in [
+    "scripts/validate-graphify-discovery.sh",
+    "validate:graphify-discovery",
+    "canonical Graphify validator",
+]:
+    assert needle in readme_doc
+    assert needle in validation_doc
+for needle in [
+    "./scripts/validate-graphify-discovery.sh",
+    "--smoke",
+]:
+    assert needle in operator_workflow_doc
+for needle in [
+    "scripts/validate-graphify-discovery.sh",
+]:
+    assert needle in file_map_doc
 for needle in [
     "Scan validator reports in this order:",
     "Summary Table",

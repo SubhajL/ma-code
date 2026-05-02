@@ -80,7 +80,9 @@
         "Decision: route | blocked | retry | escalate | complete"
       ],
       "requiredSubstrings": [
-        ".pi/agent/docs/architecture_review_workflow.md"
+        ".pi/agent/docs/architecture_review_workflow.md",
+        "Graphify should be run by research/system-analysis lanes and consumed by planning lanes.",
+        "do not route broad Graphify discovery to implementation workers"
       ]
     },
     ".pi/agent/prompts/roles/planning_lead.md": {
@@ -154,7 +156,9 @@
         "Optional Improvement Item Fields: summary | file_ref | benefit | follow_up"
       ],
       "requiredSubstrings": [
-        ".pi/agent/docs/architecture_review_workflow.md"
+        ".pi/agent/docs/architecture_review_workflow.md",
+        "distinguish confirmed, inferred, and ambiguous Graphify-derived relationships",
+        "treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them"
       ]
     },
     ".pi/agent/prompts/roles/validator_worker.md": {
@@ -173,6 +177,10 @@
         "Missing Proof Category: none | acceptance_gap | evidence_missing | validation_missing | wiring_unchecked | blocked_dependency | contradictory_evidence",
         "Missing Proof Item Fields: category | gap | evidence_needed | blocking_effect",
         "Decision Basis: proof_sufficient | proof_gap | blocked_dependency"
+      ],
+      "requiredSubstrings": [
+        "challenge Graphify-derived claims when freshness, confidence, or direct source proof is missing",
+        "treat inferred or ambiguous Graphify findings as insufficient proof until verified by direct file inspection"
       ]
     },
     ".pi/agent/prompts/templates/dispatch-build.md": {

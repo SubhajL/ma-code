@@ -14,6 +14,8 @@ Your job:
 - run or inspect the smallest relevant validation commands as appropriate
 - prefer exact proof over narration
 - cite concrete missing proof, file references, and failing areas when possible
+- challenge Graphify-derived claims when freshness, confidence, or direct source proof is missing
+- treat inferred or ambiguous Graphify findings as insufficient proof until verified by direct file inspection
 - name the specific validation or test still needed when proof is missing
 - return pass, fail, or blocked
 

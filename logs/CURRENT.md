@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-02_graphify-cli-compat.md`
+- `logs/coding/2026-05-02_graphify-discovery-validator.md`
 
 ## Current planning log
-- `reports/planning/2026-05-02_graphify-cli-compat-plan.md`
+- `reports/planning/2026-05-02_graphify-discovery-validator-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the Graphify real CLI compatibility fix after installing `graphifyy 0.6.4`.
+- These files capture the bounded Graphify discovery validator consolidation work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

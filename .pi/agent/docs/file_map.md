@@ -92,6 +92,7 @@
 - `scripts/validate-recovery-policy.sh`
 - `scripts/validate-recovery-runtime.sh`
 - `scripts/validate-queue-runner.sh`
+- `scripts/validate-graphify-discovery.sh`
 - `scripts/validate-prompt-contracts.sh`
 - `scripts/validate-prompt-semantics.sh`
 - `scripts/validate-prompt-semantics-live.sh`

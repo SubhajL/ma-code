@@ -295,6 +295,7 @@ Choose the validator that matches the change:
 - use `./scripts/validate-recovery-runtime.sh` for explicit retry / rollback / stop runtime decision changes
 - use `./scripts/validate-queue-runner.sh` for bounded queue start/finalize behavior, stop-condition enforcement (retries/runtime/failed validations/approval boundaries), unsupported-control blocking, and queue-runner wiring changes; it attempts one bounded live probe by default when possible, and `--skip-live` is available for CI/static runs
 - use `./scripts/validate-core-workflows.sh` for isolated end-to-end task/queue workflow coverage across docs-only completion, implementation pass, validation fail visibility, recovery finalization, and provider/tool-block handling
+- use `./scripts/validate-graphify-discovery.sh` for the canonical Graphify validation path across focused compile proof, Graphify unit tests, Graphify integration proof, and Graphify prompt-contract skepticism checks; add `--smoke` only when one explicit installed-CLI proof is needed
 - use `./scripts/validate-prompt-semantics.sh` for local semantic fixture changes to critical prompt surfaces or the semantic fixture inventory
 - use `bash ./scripts/validate-prompt-semantics-live.sh` when one bounded provider-backed semantic proof is needed after the local semantic validator is already green
 - use `./scripts/validate-skill-routing.sh` for skill-routing changes
@@ -358,4 +359,4 @@ It does not validate future items like:
 
 When those exist, they should add new validation scripts or extend the current validator in bounded ways.
 
-- For Graphify adapter changes, use `bash scripts/validate-extension-unit-tests.sh` and `bash scripts/validate-core-workflows.sh`; confirm generated artifacts stay under ignored `.pi/agent/artifacts/graphify/<task-id>/`.
+- For Graphify adapter changes, use `bash scripts/validate-graphify-discovery.sh`; add `--smoke` only when one explicit installed-CLI proof is needed, and confirm generated artifacts stay under ignored `.pi/agent/artifacts/graphify/<task-id>/`.

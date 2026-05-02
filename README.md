@@ -109,6 +109,7 @@ Key outputs:
 - local semantic fixture validator for HARNESS-051 slice 1: `scripts/validate-prompt-semantics.sh`
 - bounded live-proof wrapper for HARNESS-051 slice 2: `scripts/validate-prompt-semantics-live.sh`
 - semantic fixture inventory: `.pi/agent/validation/prompt-semantics.json`
+- canonical Graphify validator: `scripts/validate-graphify-discovery.sh` (`--smoke` adds one explicit installed-CLI proof)
 
 Direct repo-root operator/package ergonomics:
 ```bash
@@ -126,6 +127,7 @@ npm run test:scheduled-workflows
 npm run test:worktree-helper
 npm run test:harness-package
 npm run validate:core-workflows
+npm run validate:graphify-discovery
 npm run validate:prompt-contracts
 npm run validate:prompt-semantics
 npm run validate:prompt-semantics:live

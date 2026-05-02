@@ -26,6 +26,7 @@
     "validate:harness-routing": "./scripts/validate-harness-routing.sh",
     "validate:queue-runner": "./scripts/validate-queue-runner.sh --skip-live",
     "validate:core-workflows": "./scripts/validate-core-workflows.sh",
+    "validate:graphify-discovery": "./scripts/validate-graphify-discovery.sh",
     "validate:prompt-contracts": "./scripts/validate-prompt-contracts.sh",
     "validate:prompt-semantics": "./scripts/validate-prompt-semantics.sh",
     "validate:prompt-semantics:live": "bash scripts/validate-prompt-semantics-live.sh",
