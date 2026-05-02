@@ -49,4 +49,13 @@
 - Lightweight validation passed.
 
 ## Next Action
-- Ready for review or commit if the user wants the docs landed.
+- Submitted as PR #53 and awaiting merge/check confirmation.
+
+## Submission Summary
+- Submission task: `task-1777733550576`
+- Branch pushed: `split/task-1777733302334-graphify-docs-refresh`
+- Commit submitted: `8f771273a8774055acac131e37198536b00678ae`
+- PR: `#53` — `https://github.com/SubhajL/ma-code/pull/53`
+- Submission path: standard GitHub fallback (`git push -u origin ...` + `gh pr create ...`)
+- Validation referenced in PR: `bash scripts/check-repo-static.sh`
+- Known caveat at submit time: CI/check results had not yet been re-polled after PR creation.
