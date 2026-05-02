@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -25,7 +26,7 @@ async function withEnv<T>(updates: Record<string, string | undefined>, fn: () =>
   }
 }
 
-test("Graphify adapter invokes a fake binary in one-shot managed-artifact mode", async () => {
+test("Graphify adapter invokes fake binary with real CLI update shape in managed artifact cwd", async () => {
   const cwd = await makeTempRepo("graphify-integration-");
   await mkdir(join(cwd, "src"), { recursive: true });
   await writeFile(join(cwd, "src", "entry.ts"), "export const entry = true;\n");
@@ -36,7 +37,7 @@ test("Graphify adapter invokes a fake binary in one-shot managed-artifact mode",
   const argLog = join(fakeRoot, "args.json");
   await writeFile(
     fakeBinary,
-    `#!/usr/bin/env node\nconst fs = require('node:fs');\nconst path = require('node:path');\nconst args = process.argv.slice(2);\nfs.writeFileSync(${JSON.stringify(argLog)}, JSON.stringify(args, null, 2));\nconst output = args[args.indexOf('--output') + 1];\nfs.mkdirSync(output, { recursive: true });\nfs.writeFileSync(path.join(output, 'graph.json'), JSON.stringify({ edges: [{ from: 'src/entry.ts', to: 'README.md', confidence: 'EXTRACTED' }] }, null, 2));\nconsole.log(JSON.stringify({ ok: true, output }));\n`,
+    `#!/usr/bin/env node\nconst fs = require('node:fs');\nconst path = require('node:path');\nconst args = process.argv.slice(2);\nfs.writeFileSync(${JSON.stringify(argLog)}, JSON.stringify({ args, cwd: process.cwd() }, null, 2));\nconst output = path.join(args[1], 'graphify-out');\nfs.mkdirSync(output, { recursive: true });\nfs.writeFileSync(path.join(output, 'graph.json'), JSON.stringify({ edges: [{ from: 'src/entry.ts', to: 'README.md', confidence: 'EXTRACTED' }] }, null, 2));\nconsole.log(JSON.stringify({ ok: true, output }));\n`,
   );
   await chmod(fakeBinary, 0o755);
 
@@ -47,7 +48,7 @@ test("Graphify adapter invokes a fake binary in one-shot managed-artifact mode",
   await withEnv({ GRAPHIFY_BIN: fakeBinary }, async () => {
     const result = await tool.execute(
       "tool-call-id",
-      { action: "scan", taskId: "task-integration", sourcePath: "src", approvedLargeCorpus: true, extraArgs: ["--mode", "ast-only"] },
+      { action: "scan", taskId: "task-integration", sourcePath: ".", approvedLargeCorpus: true },
       undefined,
       undefined,
       makeCtx(cwd),
@@ -56,18 +57,19 @@ test("Graphify adapter invokes a fake binary in one-shot managed-artifact mode",
     assert.match(textContent(result), /Graphify scan completed/);
     assert.equal(result.details.status, "completed");
     assert.match(result.details.outputPath, /\.pi\/agent\/artifacts\/graphify\/task-integration$/);
+    assert.match(result.details.graphPath, /\.pi\/agent\/artifacts\/graphify\/task-integration\/source-snapshot\/graphify-out\/graph\.json$/);
 
-    const args = JSON.parse(await readFile(argLog, "utf8"));
-    assert.deepEqual(args.slice(0, 5), ["scan", join(cwd, "src"), "--output", result.details.outputPath, "--format"]);
-    assert.ok(args.includes("--exclude"));
-    assert.ok(args.includes(".env*"));
-    assert.ok(args.includes(".pi/agent/state/runtime/"));
-    assert.ok(args.includes("--mode"));
-    assert.ok(args.includes("ast-only"));
+    const invocation = JSON.parse(await readFile(argLog, "utf8"));
+    assert.deepEqual(invocation.args, ["update", join(result.details.outputPath, "source-snapshot")]);
+    assert.equal(await realpath(invocation.cwd), await realpath(result.details.outputPath));
+    assert.equal(existsSync(join(result.details.outputPath, "source-snapshot", ".env.local")), false);
+    assert.equal(existsSync(join(result.details.outputPath, "source-snapshot", "src", "entry.ts")), true);
 
     const metadata = JSON.parse(await readFile(join(result.details.outputPath, "metadata.json"), "utf8"));
-    assert.equal(metadata.sourcePath, join(cwd, "src"));
-    assert.equal(metadata.outputPath, result.details.outputPath);
+    assert.equal(metadata.sourcePath, cwd);
+    assert.equal(metadata.graphifyCommand, "update");
+    assert.equal(metadata.graphifyWorkingDirectory, result.details.outputPath);
+    assert.equal(metadata.sanitizedSourcePath, join(result.details.outputPath, "source-snapshot"));
     assert.equal(metadata.edgeConfidencePolicy.ambiguous, "requires_direct_file_inspection_before_use");
   });
 });
