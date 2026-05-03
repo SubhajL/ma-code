@@ -46,6 +46,7 @@
 
 ## Update extension behavior and runtime controls
 - Discovery policy helper: `.pi/agent/extensions/discovery-policy.ts`, `.pi/agent/docs/discovery_policy.md`, `tests/extension-units/discovery-policy.test.ts`
+- New-session persistence patch: `.pi/agent/extensions/new-session-persistence.ts`, `tests/integration/pi-new-session-persistence.test.mjs`
 - Graphify adapter: `.pi/agent/extensions/graphify-adapter.ts`, `.pi/agent/docs/graphify_adapter.md`, `tests/extension-units/graphify-adapter.test.ts`, `tests/integration/graphify-adapter.test.ts`
 - `.pi/agent/extensions/*.spec.md`
 - `.pi/agent/extensions/*.ts`
