@@ -18,7 +18,6 @@
     "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",
     "test:operator-surface": "node --import tsx --test tests/integration/operator-surface.test.ts",
     "test:queue-session": "node --import tsx --test tests/integration/queue-session.test.ts",
-    "test:new-session-persistence": "tsx --test tests/integration/pi-new-session-persistence.test.mjs",
     "test:scheduled-workflows": "node --import tsx --test tests/integration/scheduled-workflows.test.ts",
     "test:worktree-helper": "node --import tsx --test tests/integration/worktree-helper.test.ts",
     "test:harness-package": "node --import tsx --test tests/integration/harness-package.test.ts",
