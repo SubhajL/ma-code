@@ -45,6 +45,7 @@
 - `.pi/agent/docs/queue_semantics.md`
 
 ## Update extension behavior and runtime controls
+- Discovery policy helper: `.pi/agent/extensions/discovery-policy.ts`, `.pi/agent/docs/discovery_policy.md`, `tests/extension-units/discovery-policy.test.ts`
 - Graphify adapter: `.pi/agent/extensions/graphify-adapter.ts`, `.pi/agent/docs/graphify_adapter.md`, `tests/extension-units/graphify-adapter.test.ts`, `tests/integration/graphify-adapter.test.ts`
 - `.pi/agent/extensions/*.spec.md`
 - `.pi/agent/extensions/*.ts`
@@ -84,6 +85,7 @@
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 - `scripts/validate-phase-a-b.sh`
+- `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-harness-routing.sh`
 - `scripts/validate-team-activation.sh`

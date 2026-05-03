@@ -4,7 +4,7 @@ Canonical discovery policy: `.pi/agent/docs/discovery_policy.md`
 
 ## Purpose
 
-This policy chooses the smallest credible discovery path for a task before planning, implementation, review, or validation. It is a documentation and prompt-wiring surface only; it does not change runtime behavior.
+This policy chooses the smallest credible discovery path for a task before planning, implementation, review, or validation. The executable helper in `.pi/agent/extensions/discovery-policy.ts` exposes the same choice as `select_discovery_policy`; it only selects and explains a path, and it does not execute discovery tools automatically.
 
 ## Selection order
 
@@ -36,6 +36,15 @@ This policy chooses the smallest credible discovery path for a task before plann
 - Do not use Exa for secrets, private repo facts, or claims that can be verified directly in local files.
 - Record source URLs or enough citation detail when Exa materially affects a decision.
 
+## Executable helper
+
+- Helper: `.pi/agent/extensions/discovery-policy.ts`
+- Tool: `select_discovery_policy`
+- Unit proof: `tests/extension-units/discovery-policy.test.ts`
+- Validator coverage: `scripts/validate-extension-unit-tests.sh`
+- Use the helper when a worker or orchestrator needs a deterministic recommendation before choosing among Auggie, Graphify, local read/rg/find, and Exa.
+- The helper is advisory and bounded: it returns the selected path, fallbacks, rationale, and required verification reminders. It does not call Auggie, Graphify, local tools, or Exa itself.
+
 ## Evidence expectations
 
 - Record which discovery path was used when it affects planning, validation, or risk.
@@ -44,6 +53,6 @@ This policy chooses the smallest credible discovery path for a task before plann
 
 ## Non-goals
 
-- No runtime selector helper is introduced by this policy.
+- No automatic discovery execution is introduced by this policy.
 - No new requirement that every task run every discovery tool.
 - No change to queue, task, routing, or validation behavior.

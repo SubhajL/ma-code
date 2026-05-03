@@ -38,6 +38,8 @@ required_files=(
   ".pi/agent/docs/architecture_review_workflow.md"
   ".pi/agent/docs/graphify_discovery_research.md"
   ".pi/agent/docs/discovery_policy.md"
+  ".pi/agent/extensions/discovery-policy.ts"
+  "tests/extension-units/discovery-policy.test.ts"
   ".pi/agent/docs/product_planning_workflow.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
@@ -108,6 +110,10 @@ reviewer_prompt = (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_tex
 validator_prompt = (root / ".pi/agent/prompts/roles/validator_worker.md").read_text(encoding="utf-8")
 review_template = (root / ".pi/agent/prompts/templates/review-diff.md").read_text(encoding="utf-8")
 validate_template = (root / ".pi/agent/prompts/templates/validate-task.md").read_text(encoding="utf-8")
+discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts").read_text(encoding="utf-8")
+extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
+foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
+package_json = json.loads((root / "package.json").read_text(encoding="utf-8"))
 assert "tactical vs strategic rule" in workflow_doc.lower()
 for needle in [
     "request-architecture-review.md",
@@ -168,6 +174,37 @@ for needle in [
     assert needle in operator_workflow_doc
     assert needle in file_map_doc
 for needle in [
+    "selectDiscoveryPolicy",
+    "select_discovery_policy",
+    "repo_semantic",
+    "broad_structure",
+    "exact_verification",
+    "external_current_info",
+]:
+    assert needle in discovery_policy_extension
+for needle in [
+    ".pi/agent/extensions/discovery-policy.ts",
+    "select_discovery_policy",
+    "tests/extension-units/discovery-policy.test.ts",
+    "scripts/validate-extension-unit-tests.sh",
+]:
+    assert needle in discovery_policy_doc
+for needle in [
+    ".pi/agent/extensions/discovery-policy.ts",
+    "select_discovery_policy",
+]:
+    assert needle in operator_workflow_doc
+    assert needle in validation_doc
+for needle in [
+    ".pi/agent/extensions/discovery-policy.ts",
+    "tests/extension-units/discovery-policy.test.ts",
+]:
+    assert needle in file_map_doc
+assert "discovery-policy.ts" in extension_unit_validator
+assert "discovery-policy.test.ts" in extension_unit_validator
+assert "discovery-policy.ts" in foundation_compile_validator
+assert "test:discovery-policy" in package_json.get("scripts", {})
+for needle in [
     "Graphify is an optional discovery fallback, not a required harness dependency.",
     "Graphify is not a live web-search replacement for Exa.",
     "Graphify should be run by research/system-analysis lanes and consumed by planning lanes.",
@@ -217,7 +254,7 @@ for needle in [
     assert needle in graphify_adapter_doc
 assert ".pi/agent/artifacts/" in gitignore_doc
 assert ".pi/agent/artifacts" in package_manifest.get("excludedPaths", [])
-assert "validate:graphify-discovery" in json.loads((root / "package.json").read_text(encoding="utf-8")).get("scripts", {})
+assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",
     "validate:graphify-discovery",

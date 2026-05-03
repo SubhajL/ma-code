@@ -199,6 +199,7 @@ setup_temp_runtime() {
 JSON
 
   cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner,graphify-adapter}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/discovery-policy.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -319,6 +320,25 @@ check_5_graphify_adapter_unit_tests() {
   fi
 }
 
+check_6_discovery_policy_unit_tests() {
+  local name="6. discovery-policy selector unit tests"
+  local out="$TMP_ROOT/check_6_discovery_policy_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/unit-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/discovery-policy.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/extension-units/discovery-policy.test.ts" "$out"; then
+    local detail="discovery-policy selector tests passed for Auggie, Graphify, local read/rg/find, Exa, and unavailable-index fallback choices."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="discovery-policy selector unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
 setup_temp_runtime
 write_header
 check_1_safe_bash_unit_tests
@@ -326,6 +346,7 @@ check_2_till_done_unit_tests
 check_3_orchestration_helper_unit_tests
 check_4_queue_runner_unit_tests
 check_5_graphify_adapter_unit_tests
+check_6_discovery_policy_unit_tests
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"
