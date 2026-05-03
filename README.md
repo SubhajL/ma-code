@@ -78,6 +78,7 @@ So Phase F should be read as:
 - not yet “almost hands-free programming” by itself
 
 Related docs:
+- discovery policy: `.pi/agent/docs/discovery_policy.md`
 - Graphify adapter: `.pi/agent/docs/graphify_adapter.md`
 - validation architecture: `.pi/agent/docs/validation_architecture.md`
 - bounded autonomy architecture: `.pi/agent/docs/bounded_autonomy_architecture.md`

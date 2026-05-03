@@ -73,6 +73,7 @@
 - `.pi/agent/docs/architecture_review_workflow.md`
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/docs/graphify_discovery_research.md`
+- `.pi/agent/docs/discovery_policy.md` — Canonical discovery policy for choosing among Auggie, Graphify, local read/rg/find, and Exa.
 - `.pi/agent/docs/product_planning_workflow.md`
 - `.pi/agent/docs/deep_module_refactoring_workflow.md`
 - `.pi/agent/docs/tdd_behavior_first_workflow.md`

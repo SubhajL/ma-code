@@ -37,6 +37,7 @@ required_files=(
   "scripts/validate-prompt-semantics-live.sh"
   ".pi/agent/docs/architecture_review_workflow.md"
   ".pi/agent/docs/graphify_discovery_research.md"
+  ".pi/agent/docs/discovery_policy.md"
   ".pi/agent/docs/product_planning_workflow.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
@@ -89,6 +90,8 @@ readme_doc = (root / "README.md").read_text(encoding="utf-8")
 validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architecture.md").read_text(encoding="utf-8")
 prompt_semantics_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 operator_workflow_doc = (root / ".pi/agent/docs/operator_workflow.md").read_text(encoding="utf-8")
+discovery_policy_doc = (root / ".pi/agent/docs/discovery_policy.md").read_text(encoding="utf-8")
+orchestrator_prompt = (root / ".pi/agent/prompts/roles/orchestrator.md").read_text(encoding="utf-8")
 operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(encoding="utf-8")
 graphify_discovery_doc = (root / ".pi/agent/docs/graphify_discovery_research.md").read_text(encoding="utf-8")
 graphify_adapter_doc = (root / ".pi/agent/docs/graphify_adapter.md").read_text(encoding="utf-8")
@@ -145,6 +148,25 @@ for needle in [
     assert needle in file_map_doc
     assert needle in readme_doc
     assert needle in prompt_semantics_doc
+for needle in [
+    "Canonical discovery policy: `.pi/agent/docs/discovery_policy.md`",
+    "Auggie",
+    "Graphify",
+    "local read/rg/find",
+    "Exa",
+    "Use Auggie first for bounded repo-local semantic discovery",
+    "Use Graphify for broad repo/corpus structure discovery",
+    "Use local read/rg/find for exact verification",
+    "Use Exa for current external web information",
+]:
+    assert needle in discovery_policy_doc
+for needle in [
+    ".pi/agent/docs/discovery_policy.md",
+    "Canonical discovery policy",
+]:
+    assert needle in orchestrator_prompt
+    assert needle in operator_workflow_doc
+    assert needle in file_map_doc
 for needle in [
     "Graphify is an optional discovery fallback, not a required harness dependency.",
     "Graphify is not a live web-search replacement for Exa.",

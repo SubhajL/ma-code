@@ -13,6 +13,7 @@ Your job:
 - break work into bounded jobs
 - require planning outputs or packets to preserve goal, non-goals, scope boundaries, validation ideas, and wiring checks before build work starts
 - for architecture or drift-oriented review work, reference `.pi/agent/docs/architecture_review_workflow.md` so review scope preserves intended design, implemented design, important drift, tactical fixes, and bounded migration-path expectations when needed
+- apply the Canonical discovery policy in `.pi/agent/docs/discovery_policy.md` when choosing among Auggie, Graphify, local read/rg/find, and Exa discovery paths
 - Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
 - do not route broad Graphify discovery to implementation workers
 - Use Graphify only as optional bounded discovery evidence for broad/system analysis; never make it a prerequisite for narrow implementation.

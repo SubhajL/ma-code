@@ -124,11 +124,14 @@ Record evidence in:
 These patterns should now guide planning, implementation, and review even before later phases are fully implemented.
 
 ### Codebase discovery
+- Canonical discovery policy: `.pi/agent/docs/discovery_policy.md`
+- use that policy when choosing among Auggie, Graphify, local read/rg/find, and Exa
 - use Auggie MCP first when it is available and non-blocking
 - Graphify is an optional discovery fallback, not a required harness dependency.
 - Graphify is not a live web-search replacement for Exa.
 - Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
 - use Graphify only when it is installed, scoped, safe, and useful for broad codebase or curated local research-corpus discovery
+- use Exa for current external web information rather than local repo facts
 - if Auggie is unavailable, errors, or cannot be bounded safely, fall back immediately to appropriate local tools or scoped Graphify report inspection
 - local fallback means targeted `read`, `grep`/`rg`, `find`, and direct file inspection
 - record which discovery path was used when it matters to planning or validation evidence
