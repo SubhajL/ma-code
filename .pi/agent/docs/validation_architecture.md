@@ -221,6 +221,17 @@ Boundary notes:
 
 It should be used when changes affect bounded semantic fixture expectations for the critical prompt surfaces or the semantic fixture inventory itself, and the live wrapper should be used only when one bounded provider-backed proof is worth the spend.
 
+### Discovery-policy selector helper proof
+Current helper and proof surfaces:
+- `.pi/agent/extensions/discovery-policy.ts`
+- `tests/extension-units/discovery-policy.test.ts`
+- `scripts/validate-extension-unit-tests.sh`
+- package alias: `test:discovery-policy`
+
+The `select_discovery_policy` helper is responsible for deterministic advisory selection among Auggie, Graphify, local read/rg/find, and Exa. It returns a selected path, ordered fallbacks, rationale, and required verification reminders without executing any discovery tool.
+
+It should be validated when changes affect `.pi/agent/docs/discovery_policy.md`, discovery selection semantics, or helper/tool wiring.
+
 ### Dedicated skill-routing validator
 Current dedicated routing script:
 - `scripts/validate-skill-routing.sh`

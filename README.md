@@ -49,6 +49,7 @@ Implemented here:
 - file-backed scheduled workflow definitions plus explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`
 - file-backed package/bootstrap scaffolding via `.pi/agent/package/harness-package.json` and `scripts/harness-package.ts`
 - same-runtime probe bridge for shared model/account-path child sessions
+- executable discovery-policy selector helper via `.pi/agent/extensions/discovery-policy.ts` / `select_discovery_policy`
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
 - validation reports and file map
 

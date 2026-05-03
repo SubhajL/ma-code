@@ -125,7 +125,8 @@ These patterns should now guide planning, implementation, and review even before
 
 ### Codebase discovery
 - Canonical discovery policy: `.pi/agent/docs/discovery_policy.md`
-- use that policy when choosing among Auggie, Graphify, local read/rg/find, and Exa
+- executable helper: `select_discovery_policy` from `.pi/agent/extensions/discovery-policy.ts`
+- use that policy/helper when choosing among Auggie, Graphify, local read/rg/find, and Exa
 - use Auggie MCP first when it is available and non-blocking
 - Graphify is an optional discovery fallback, not a required harness dependency.
 - Graphify is not a live web-search replacement for Exa.
@@ -263,6 +264,7 @@ Run the validator script when:
 - changing `till-done.ts`
 - changing `.pi/agent/validation/completion-gate-policy.json`
 - changing `.pi/agent/extensions/g-skill-auto-route.ts`
+- changing `.pi/agent/extensions/discovery-policy.ts` or `.pi/agent/docs/discovery_policy.md`
 - changing `.pi/agent/extensions/recovery-policy.ts`
 - changing `.pi/agent/extensions/recovery-runtime.ts`
 - changing `.pi/agent/extensions/queue-runner.ts`
@@ -291,6 +293,7 @@ Choose the validator that matches the change:
 - use `npm run harness:queue-session -- --max-steps <n>` when you want bounded multi-step queue advancement without a hidden daemon; it stops at the next waiting point, blocked state, pause, idle state, or configured limit and returns a richer triage summary with action counts, touched job IDs, and a recommended next action
 - use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation
 - use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
+- use `./scripts/validate-extension-unit-tests.sh` plus `./scripts/check-foundation-extension-compile.sh` for discovery-policy helper changes
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes
 - use `./scripts/validate-extension-unit-tests.sh` for extension unit-test coverage across safety/task-discipline/orchestration helper surfaces
