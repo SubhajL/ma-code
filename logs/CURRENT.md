@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-03_pr-gate-helper.md`
+- `logs/coding/2026-05-04_graphify-selector-slice1.md`
 
 ## Current planning log
-- `reports/planning/2026-05-03_pr-gate-helper-plan.md`
+- `reports/planning/2026-05-04_graphify-selector-slice1-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded GitHub PR CI/security gate helper work.
+- These files capture the bounded Graphify discovery selector slice 1 work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

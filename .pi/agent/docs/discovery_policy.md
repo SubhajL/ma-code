@@ -23,6 +23,7 @@ This policy chooses the smallest credible discovery path for a task before plann
 ### Graphify
 - Best for broad local repository/corpus shape, architecture review, dependency exploration, and curated local research material.
 - Optional only: Graphify is not required for narrow implementation tasks.
+- When broad-structure discovery is needed and Graphify is available but no fresh graph is reported, run `graphify_adapter` with `action: "preflight"` first, then run a bounded scan only if preflight passes and graph evidence is still useful.
 - Follow `.pi/agent/docs/graphify_adapter.md` and `.pi/agent/docs/graphify_discovery_research.md` for safety, artifacts, confidence, and freshness notes.
 - Graphify is not a live web-search replacement for Exa.
 
