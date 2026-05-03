@@ -57,3 +57,14 @@
 ## Risks
 - Overbuilding a policy engine; mitigate by using one small deterministic function and one tool.
 - Selection conditions too vague; mitigate with explicit bounded input fields and rationale in output.
+
+## Slice 2 Plan — Graphify validator selector coverage
+- Goal: keep the canonical Graphify validator responsible for Graphify adapter proof plus the Graphify fallback branch of the discovery-policy selector helper.
+- Non-goals: no runtime selector behavior changes, no live Graphify smoke by default, no prompt wording changes beyond docs/static validator references.
+- TDD sequence:
+  1. Add a failing `scripts/validate-graphify-discovery.sh` check that runs `tests/extension-units/discovery-policy.test.ts` inside the isolated Graphify runtime.
+  2. Confirm failure because the Graphify validator does not yet copy the selector extension/test into its temp runtime.
+  3. Copy/compile `discovery-policy.ts`, copy/run `discovery-policy.test.ts`, and keep the installed-CLI smoke optional.
+  4. Add static/doc wiring checks proving the selector test remains in the Graphify validator path.
+  5. Validate with the Graphify validator, repo static checks, compile, and diff check before PR.
+- Acceptance: `scripts/validate-graphify-discovery.sh` fails before wiring, passes after wiring, docs/static checks describe and enforce the selector coverage, and the change lands through normal PR/merge flow.

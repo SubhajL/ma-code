@@ -81,6 +81,7 @@ Expected result:
 
 ## Validation
 - Unit: `tests/extension-units/graphify-adapter.test.ts`
+- Discovery selector: `tests/extension-units/discovery-policy.test.ts` is included in `scripts/validate-graphify-discovery.sh` so Graphify fallback-selection behavior is covered with the adapter validation path.
 - Integration: `tests/integration/graphify-adapter.test.ts`
 - Gates:
   - `bash scripts/check-foundation-extension-compile.sh`

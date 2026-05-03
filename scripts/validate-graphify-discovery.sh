@@ -192,8 +192,10 @@ setup_temp_runtime() {
 JSON
 
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-adapter.ts" "$workdir/.pi/agent/extensions/graphify-adapter.ts"
+  cp "$REPO_ROOT/.pi/agent/extensions/discovery-policy.ts" "$workdir/.pi/agent/extensions/discovery-policy.ts"
   cp "$REPO_ROOT/tests/extension-units/test-utils.ts" "$workdir/tests/extension-units/test-utils.ts"
   cp "$REPO_ROOT/tests/extension-units/graphify-adapter.test.ts" "$workdir/tests/extension-units/graphify-adapter.test.ts"
+  cp "$REPO_ROOT/tests/extension-units/discovery-policy.test.ts" "$workdir/tests/extension-units/discovery-policy.test.ts"
   cp "$REPO_ROOT/tests/integration/graphify-adapter.test.ts" "$workdir/tests/integration/graphify-adapter.test.ts"
 
   (
@@ -213,22 +215,22 @@ run_test_file() {
 }
 
 check_1_compile_graphify_adapter() {
-  local name="1. Graphify adapter compile"
+  local name="1. Graphify adapter and discovery selector compile"
   local out="$TMP_ROOT/check_1_compile_graphify_adapter.txt"
   local runtime_dir="$TMP_ROOT/graphify-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/graphify-adapter.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/discovery-policy.ts"
 
   if (
     cd "$runtime_dir" &&
     npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
-      .pi/agent/extensions/graphify-adapter.ts >"$out" 2>&1
+      .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/discovery-policy.ts >"$out" 2>&1
   ); then
-    local detail="graphify-adapter.ts compiles in an isolated runtime package."
+    local detail="graphify-adapter.ts and discovery-policy.ts compile in an isolated runtime package."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
-    local detail="Graphify adapter compile check failed."
+    local detail="Graphify adapter/discovery selector compile check failed."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
     append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -294,8 +296,27 @@ check_4_graphify_prompt_contracts() {
   fi
 }
 
-check_5_graphify_smoke() {
-  local name="5. explicit installed-CLI smoke"
+check_5_discovery_policy_selector_unit_tests() {
+  local name="5. discovery-policy selector unit tests"
+  local out="$TMP_ROOT/check_5_discovery_policy_selector_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/graphify-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/discovery-policy.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/extension-units/discovery-policy.test.ts" "$out"; then
+    local detail="Discovery-policy selector unit tests passed inside the canonical Graphify validator, proving Graphify fallback choices are validated with the adapter path."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="Discovery-policy selector unit tests failed or were not copied into the Graphify validator runtime."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
+check_6_graphify_smoke() {
+  local name="6. explicit installed-CLI smoke"
   if [[ $RUN_SMOKE -eq 0 ]]; then
     local detail="Installed-CLI smoke skipped by default; rerun with --smoke for one bounded real-CLI proof."
     record_result "$name" "SKIP" "$detail"
@@ -304,11 +325,11 @@ check_5_graphify_smoke() {
     return
   fi
 
-  local out="$TMP_ROOT/check_5_graphify_smoke.txt"
+  local out="$TMP_ROOT/check_6_graphify_smoke.txt"
   local runtime_dir="$TMP_ROOT/graphify-runtime"
-  local cmd="cd $runtime_dir && $NODE_BIN --import tsx $TMP_ROOT/check_5_graphify_smoke.mts"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx $TMP_ROOT/check_6_graphify_smoke.mts"
 
-  cat > "$TMP_ROOT/check_5_graphify_smoke.mts" <<'EOF'
+  cat > "$TMP_ROOT/check_6_graphify_smoke.mts" <<'EOF'
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile, access } from 'node:fs/promises';
@@ -346,7 +367,7 @@ EOF
 
   if (
     cd "$runtime_dir" &&
-    GRAPHIFY_SMOKE_ROOT="$TMP_ROOT" "$NODE_BIN" --import tsx "$TMP_ROOT/check_5_graphify_smoke.mts" >"$out" 2>&1
+    GRAPHIFY_SMOKE_ROOT="$TMP_ROOT" "$NODE_BIN" --import tsx "$TMP_ROOT/check_6_graphify_smoke.mts" >"$out" 2>&1
   ); then
     local detail="Installed-CLI smoke passed: the adapter ran against a tiny temp repo and generated managed artifacts stayed excluded from source diff."
     record_result "$name" "PASS" "$detail"
@@ -367,7 +388,8 @@ main() {
   check_2_graphify_unit_tests
   check_3_graphify_integration_test
   check_4_graphify_prompt_contracts
-  check_5_graphify_smoke
+  check_5_discovery_policy_selector_unit_tests
+  check_6_graphify_smoke
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF

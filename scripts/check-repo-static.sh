@@ -106,6 +106,7 @@ research_worker_prompt = (root / ".pi/agent/prompts/roles/research_worker.md").r
 gitignore_doc = (root / ".gitignore").read_text(encoding="utf-8")
 package_manifest = json.loads((root / ".pi/agent/package/harness-package.json").read_text(encoding="utf-8"))
 core_workflows_validator = (root / "scripts/validate-core-workflows.sh").read_text(encoding="utf-8")
+graphify_validator = (root / "scripts/validate-graphify-discovery.sh").read_text(encoding="utf-8")
 reviewer_prompt = (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_text(encoding="utf-8")
 validator_prompt = (root / ".pi/agent/prompts/roles/validator_worker.md").read_text(encoding="utf-8")
 review_template = (root / ".pi/agent/prompts/templates/review-diff.md").read_text(encoding="utf-8")
@@ -262,6 +263,21 @@ for needle in [
 ]:
     assert needle in readme_doc
     assert needle in validation_doc
+for needle in [
+    "discovery-policy.ts",
+    "discovery-policy.test.ts",
+    "check_5_discovery_policy_selector_unit_tests",
+]:
+    assert needle in graphify_validator
+for needle in [
+    "discovery-policy selector tests for Graphify fallback choices",
+    "discovery-policy Graphify fallback selection",
+]:
+    assert needle in validation_doc
+for needle in [
+    "discovery-policy selector tests for Graphify fallback choices",
+]:
+    assert needle in operator_workflow_doc
 for needle in [
     "./scripts/validate-graphify-discovery.sh",
     "--smoke",

@@ -102,3 +102,71 @@ LOW
 - No queue/task/routing behavior changes expected.
 
 Review Verdict: no_required_fixes
+
+## Work Summary (2026-05-03 12:45 local) - Graphify validator selector coverage
+
+### Goal
+- Continue from the exported session and complete Slice 2 by wiring the discovery-policy selector helper into the canonical Graphify validator path.
+
+### Files Changed and Why
+- `scripts/validate-graphify-discovery.sh` — added isolated runtime copy/compile coverage for `discovery-policy.ts` and a new `discovery-policy.test.ts` check before the optional smoke check.
+- `scripts/check-repo-static.sh` — added static assertions that the Graphify validator and docs keep discovery-policy selector coverage wired.
+- `.pi/agent/docs/validation_architecture.md`, `.pi/agent/docs/operator_workflow.md`, `.pi/agent/docs/graphify_adapter.md`, `.pi/agent/docs/file_map.md`, `README.md` — updated operator/validation docs to describe selector coverage in the Graphify validator.
+
+### RED Evidence
+- `bash scripts/validate-graphify-discovery.sh --report /tmp/graphify-red.md --summary-json /tmp/graphify-red.json` -> `graphify-discovery-validation: FAIL (1 checks failed)`.
+- Expected failure: new check `5. discovery-policy selector unit tests` failed with `Could not find 'tests/extension-units/discovery-policy.test.ts'`, proving the canonical Graphify validator did not yet carry selector-helper coverage.
+
+### GREEN Evidence
+- `bash scripts/validate-graphify-discovery.sh --report /tmp/graphify-green.md --summary-json /tmp/graphify-green.json` -> `graphify-discovery-validation: PASS`.
+- After renaming the optional smoke temp file from check 5 to check 6, reran `bash scripts/validate-graphify-discovery.sh --report /tmp/graphify-green-2.md --summary-json /tmp/graphify-green-2.json` -> `graphify-discovery-validation: PASS`.
+- `bash scripts/check-repo-static.sh` -> `prompt-contract-validation: PASS (29 prompt files checked)` and `repo-static-checks-ok`.
+- `bash scripts/check-foundation-extension-compile.sh` -> `foundation-extension-compile-ok`.
+- `git diff --check` -> no output.
+
+### Wiring Verification
+- The Graphify validator now copies `.pi/agent/extensions/discovery-policy.ts` and `tests/extension-units/discovery-policy.test.ts` into its isolated runtime.
+- The Graphify validator compiles `graphify-adapter.ts` and `discovery-policy.ts` together.
+- The Graphify validator runs `tests/extension-units/discovery-policy.test.ts` as check 5 before optional installed-CLI smoke.
+- Static checks assert the validator contains `discovery-policy.ts`, `discovery-policy.test.ts`, and `check_5_discovery_policy_selector_unit_tests`, plus matching docs language.
+
+### Behavior Changes and Risk Notes
+- No runtime behavior changed; this is validator/static/docs wiring only.
+- The optional installed-CLI smoke remains opt-in and was not run for this local proof.
+
+## Review (2026-05-03 12:55 local) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1777786911516-graphify-validator-discovery-policy`
+- Branch: `task/task-1777786911516-graphify-validator-discovery-policy`
+- Scope: working-tree
+- Commands Run: `git status --short`, `git diff --name-only`, `git diff --stat`, `git diff -- scripts/validate-graphify-discovery.sh`, `git diff -- scripts/check-repo-static.sh`, `bash scripts/validate-graphify-discovery.sh --report /tmp/graphify-green-2.md --summary-json /tmp/graphify-green-2.json`, `bash scripts/check-repo-static.sh`, `bash scripts/check-foundation-extension-compile.sh`, `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: the dedicated Graphify validator should cover the selector helper only for Graphify fallback-selection behavior, not become the owner of all discovery-policy validation.
+- Assumption: keeping the installed-CLI smoke opt-in remains correct because the added selector check is local and deterministic.
+
+### Recommended Tests / Validation
+- Already run: `bash scripts/validate-graphify-discovery.sh --report /tmp/graphify-green-2.md --summary-json /tmp/graphify-green-2.json`.
+- Already run: `bash scripts/check-repo-static.sh`.
+- Already run: `bash scripts/check-foundation-extension-compile.sh`.
+- Already run: `git diff --check`.
+
+### Rollout Notes
+- Validator-only/docs/static change; no runtime selector or Graphify adapter behavior changes.
+- Optional real-CLI smoke remains available via `--smoke` but was intentionally not used for this local proof.
+
+Review Verdict: no_required_fixes
