@@ -10,11 +10,12 @@
 - Tool: `graphify_adapter`
 - Actions:
   - `status`: detect whether a `graphify` binary is available.
+  - `preflight`: dry-run scan validation for source/output/approval/forbidden-argument constraints and file count; returns a command preview and install detection without creating a source snapshot, metadata, graph artifacts, or a Graphify process.
   - `scan`: run one bounded one-shot scan into a managed artifact directory using the installed CLI shape `graphify update <managed-source-snapshot>`.
   - `query`: read an existing managed `graph.json`, `graphify-out/graph.json`, or real-CLI `source-snapshot/graphify-out/graph.json` and summarize confidence/freshness evidence. Query responses include `details.querySummary` with minimal structured fields for query, graph/output paths, edge count, node count, confidence counts, freshness status, and direct-verification reminder.
 
 ## Safety controls
-- No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`.
+- No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`; `preflight` records missing/install status but still does not install or run Graphify.
 - Managed generated output only: `.pi/agent/artifacts/graphify/<task-id>/`.
 - Generated artifacts are ignored by `.gitignore` and excluded from harness packaging via `.pi/agent/package/harness-package.json`.
 - Protected/sensitive paths are excluded by file-count logic and by copying only an allowed sanitized source snapshot into the managed artifact directory before running `graphify update`:
