@@ -118,6 +118,17 @@ test("queries an existing managed graph.json with freshness and edge-confidence 
   assert.match(textContent(result), /verify important Graphify-derived claims with direct file inspection/);
   assert.equal(result.details.graphFreshness.headCommit, "abc123");
   assert.equal(result.details.citationPolicy.inferred, "lead_only_verify_before_planning_or_acceptance");
+  assert.deepEqual(result.details.querySummary, {
+    query: "module seams",
+    graphPath: result.details.graphPath,
+    outputPath: result.details.outputPath,
+    edgeCount: 3,
+    nodeCount: 4,
+    edgeConfidenceCounts: { EXTRACTED: 1, INFERRED: 1, AMBIGUOUS: 1, UNKNOWN: 0 },
+    freshnessStatus: "metadata_present",
+    verificationRequired: true,
+    verificationReminder: "Verify important Graphify-derived claims with direct file inspection before implementation, acceptance, or architecture decisions.",
+  });
 });
 
 test("queries a real-CLI nested managed graphify-out graph.json", async () => {

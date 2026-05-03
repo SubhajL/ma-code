@@ -278,10 +278,15 @@ function citationPolicy() {
   };
 }
 
+const QUERY_VERIFICATION_REMINDER = "Verify important Graphify-derived claims with direct file inspection before implementation, acceptance, or architecture decisions.";
+
+function graphEdges(graph: unknown): unknown[] {
+  return graph && typeof graph === "object" && Array.isArray((graph as { edges?: unknown[] }).edges) ? (graph as { edges: unknown[] }).edges : [];
+}
+
 function edgeConfidenceCounts(graph: unknown) {
   const counts = { EXTRACTED: 0, INFERRED: 0, AMBIGUOUS: 0, UNKNOWN: 0 };
-  const edges = graph && typeof graph === "object" && Array.isArray((graph as { edges?: unknown[] }).edges) ? (graph as { edges: unknown[] }).edges : [];
-  for (const edge of edges) {
+  for (const edge of graphEdges(graph)) {
     const record = edge && typeof edge === "object" ? (edge as Record<string, unknown>) : {};
     const raw = String(record.confidence ?? record.kind ?? record.type ?? record.provenance ?? "UNKNOWN").toUpperCase();
     if (raw.includes("EXTRACTED") || raw.includes("CONFIRMED")) counts.EXTRACTED += 1;
@@ -290,6 +295,32 @@ function edgeConfidenceCounts(graph: unknown) {
     else counts.UNKNOWN += 1;
   }
   return counts;
+}
+
+function graphNodeCount(graph: unknown) {
+  const nodes = new Set<string>();
+  for (const edge of graphEdges(graph)) {
+    const record = edge && typeof edge === "object" ? (edge as Record<string, unknown>) : {};
+    for (const key of ["from", "to", "source", "target"] as const) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) nodes.add(value);
+    }
+  }
+  return nodes.size;
+}
+
+function querySummary(params: GraphifyParams, graph: unknown, graphPath: string, outputPath: string, counts: ReturnType<typeof edgeConfidenceCounts>, metadata: unknown) {
+  return {
+    query: params.query ?? "summary",
+    graphPath,
+    outputPath,
+    edgeCount: graphEdges(graph).length,
+    nodeCount: graphNodeCount(graph),
+    edgeConfidenceCounts: counts,
+    freshnessStatus: metadata ? "metadata_present" : "metadata_missing",
+    verificationRequired: true,
+    verificationReminder: QUERY_VERIFICATION_REMINDER,
+  };
 }
 
 async function loadMetadata(outputPath: string) {
@@ -391,6 +422,7 @@ async function queryResult(params: GraphifyParams, cwd: string) {
       edgeConfidenceCounts: counts,
       citationPolicy: citationPolicy(),
       graphFreshness: metadata ?? { freshness: "unknown", note: "metadata missing" },
+      querySummary: querySummary(params, graph, graphPath, output.output, counts, metadata),
     },
   };
 }
