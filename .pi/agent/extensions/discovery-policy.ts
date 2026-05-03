@@ -97,11 +97,20 @@ export function selectDiscoveryPolicy(input: DiscoveryPolicyInput): DiscoveryPol
       );
     }
 
+    if (graphifyAvailable) {
+      return selection(
+        "graphify",
+        auggieAvailable ? ["auggie", "local"] : ["local"],
+        ["Graphify is available but no fresh graph was reported; for broad structure discovery, run graphify_adapter preflight first, then run a bounded scan if preflight passes and graph evidence is still useful."],
+        ["Run graphify_adapter action=preflight before any scan, keep output under the managed artifact path, and verify important Graphify-derived claims with direct file inspection."],
+      );
+    }
+
     if (auggieAvailable) {
       return selection(
         "auggie",
         ["local"],
-        ["Graphify is unavailable or stale; use Auggie for bounded repo-local semantic discovery before local verification."],
+        ["Graphify is unavailable; use Auggie for bounded repo-local semantic discovery before local verification."],
         ["Cross-check Auggie summaries with direct file verification."],
       );
     }

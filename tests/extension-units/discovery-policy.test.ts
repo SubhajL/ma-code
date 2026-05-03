@@ -28,6 +28,20 @@ test("discovery-policy selects Graphify for broad structure when bounded and ava
   assert.ok(result.requiredVerification.some((item) => item.includes("freshness/confidence")));
 });
 
+test("discovery-policy recommends Graphify setup for broad structure when available but not fresh", () => {
+  const result = selectDiscoveryPolicy({
+    need: "broad_structure",
+    auggieAvailable: false,
+    graphifyAvailable: true,
+    graphifyFresh: false,
+  });
+
+  assert.equal(result.selectedTool, "graphify");
+  assert.match(result.rationale.join("\n"), /preflight/i);
+  assert.match(result.rationale.join("\n"), /scan/i);
+  assert.ok(result.requiredVerification.some((item) => item.includes("graphify_adapter") && item.includes("preflight")));
+});
+
 test("discovery-policy selects local read/rg/find for exact verification", () => {
   const result = selectDiscoveryPolicy({
     need: "exact_verification",
