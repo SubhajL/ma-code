@@ -397,15 +397,16 @@ Current dedicated Graphify script:
 - package alias: `validate:graphify-discovery`
 
 This script is responsible for the canonical Graphify validator path for:
-- focused compile proof for `.pi/agent/extensions/graphify-adapter.ts`
+- focused compile proof for `.pi/agent/extensions/graphify-adapter.ts` and `.pi/agent/extensions/discovery-policy.ts`
 - `tests/extension-units/graphify-adapter.test.ts`
+- `tests/extension-units/discovery-policy.test.ts` so Graphify fallback selection remains covered by the dedicated Graphify validator
 - `tests/integration/graphify-adapter.test.ts`
 - Graphify skepticism/routing prompt-contract enforcement in the targeted role prompts
 - one optional installed-CLI smoke via `--smoke` when explicit real-CLI proof is needed
 
-Related cheap static enforcement in `scripts/check-repo-static.sh` keeps the docs/policy layer aligned by checking the Graphify discovery policy doc, the Graphify adapter doc, README/operator references, and the `validate:graphify-discovery` package alias.
+Related cheap static enforcement in `scripts/check-repo-static.sh` keeps the docs/policy layer aligned by checking the Graphify discovery policy doc, the Graphify adapter doc, README/operator references, discovery-policy selector test wiring, and the `validate:graphify-discovery` package alias.
 
-It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, or Graphify prompt skepticism/routing policy.
+It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, discovery-policy Graphify fallback selection, or Graphify prompt skepticism/routing policy.
 
 ### Dedicated harness-package validator
 Current dedicated harness-package script:
@@ -633,4 +634,4 @@ Use this architecture to answer validation questions quickly:
 - if the question is about what counts as proof, check report conventions and evidence linkage
 - if the question is about a future feature, attach it additively and document its boundary explicitly
 
-- Graphify adapter safety proof: `scripts/validate-graphify-discovery.sh` as the canonical command, covering focused compile proof, Graphify unit tests, Graphify integration tests, and optional installed-CLI smoke via `--smoke`.
+- Graphify adapter safety proof: `scripts/validate-graphify-discovery.sh` as the canonical command, covering focused compile proof, Graphify unit tests, discovery-policy selector tests for Graphify fallback choices, Graphify integration tests, and optional installed-CLI smoke via `--smoke`.

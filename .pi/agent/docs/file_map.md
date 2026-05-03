@@ -46,7 +46,7 @@
 
 ## Update extension behavior and runtime controls
 - Discovery policy helper: `.pi/agent/extensions/discovery-policy.ts`, `.pi/agent/docs/discovery_policy.md`, `tests/extension-units/discovery-policy.test.ts`
-- Graphify adapter: `.pi/agent/extensions/graphify-adapter.ts`, `.pi/agent/docs/graphify_adapter.md`, `tests/extension-units/graphify-adapter.test.ts`, `tests/integration/graphify-adapter.test.ts`
+- Graphify adapter: `.pi/agent/extensions/graphify-adapter.ts`, `.pi/agent/docs/graphify_adapter.md`, `tests/extension-units/graphify-adapter.test.ts`, `tests/extension-units/discovery-policy.test.ts` for Graphify fallback-selector coverage in `scripts/validate-graphify-discovery.sh`, `tests/integration/graphify-adapter.test.ts`
 - `.pi/agent/extensions/*.spec.md`
 - `.pi/agent/extensions/*.ts`
 - `.pi/agent/extensions/bin/*`
