@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-03_session-new-persistence.md`
+- `logs/coding/2026-05-03_discovery-policy-helper.md`
 
 ## Current planning log
-- `reports/planning/2026-05-03_session-new-persistence-plan.md`
+- `reports/planning/2026-05-03_discovery-policy-helper-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
