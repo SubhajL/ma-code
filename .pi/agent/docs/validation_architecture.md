@@ -404,9 +404,11 @@ This script is responsible for the canonical Graphify validator path for:
 - Graphify skepticism/routing prompt-contract enforcement in the targeted role prompts
 - one optional installed-CLI smoke via `--smoke` when explicit real-CLI proof is needed
 
-Related cheap static enforcement in `scripts/check-repo-static.sh` keeps the docs/policy layer aligned by checking the Graphify discovery policy doc, the Graphify adapter doc, README/operator references, discovery-policy selector test wiring, and the `validate:graphify-discovery` package alias.
+Related cheap static enforcement in `scripts/check-repo-static.sh` keeps the docs/policy layer aligned by checking the Graphify discovery policy doc, the Graphify adapter doc, the Graphify final runbook, README/operator references, discovery-policy selector test wiring, and the `validate:graphify-discovery` package alias.
 
-It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, discovery-policy Graphify fallback selection, or Graphify prompt skepticism/routing policy.
+Graphify final runbook: `.pi/agent/docs/graphify_final_runbook.md` captures the final operator checklist for optional-use decisions, preflight, bounded scan, query verification, evidence, and cleanup boundaries.
+
+It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, discovery-policy Graphify fallback selection, Graphify final runbook/checklist guidance, or Graphify prompt skepticism/routing policy.
 
 ### Dedicated harness-package validator
 Current dedicated harness-package script:

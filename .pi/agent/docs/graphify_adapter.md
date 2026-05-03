@@ -4,6 +4,7 @@
 - Optional bounded discovery/corpus-analysis fallback for broad repo inspection or curated local research corpora.
 - Best owned by `research_worker` for first-pass system analysis; planning/review/validation roles consume findings only after direct source verification for important claims.
 - Graphify is not a live web-search replacement; keep Exa or dedicated search tools first for current external information.
+- Final operator runbook: `.pi/agent/docs/graphify_final_runbook.md`.
 
 ## Runtime surface
 - Extension: `.pi/agent/extensions/graphify-adapter.ts`
