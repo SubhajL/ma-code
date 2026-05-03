@@ -32,6 +32,7 @@ required_files=(
   "scripts/validate-queue-runner.sh"
   "scripts/validate-core-workflows.sh"
   "scripts/validate-graphify-discovery.sh"
+  "scripts/harness-pr-gate.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -116,6 +117,7 @@ validate_template = (root / ".pi/agent/prompts/templates/validate-task.md").read
 discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts").read_text(encoding="utf-8")
 extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
 foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
+pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
 package_json = json.loads((root / "package.json").read_text(encoding="utf-8"))
 assert "tactical vs strategic rule" in workflow_doc.lower()
 for needle in [
@@ -257,6 +259,26 @@ for needle in [
     assert needle in graphify_adapter_doc
 assert ".pi/agent/artifacts/" in gitignore_doc
 assert ".pi/agent/artifacts" in package_manifest.get("excludedPaths", [])
+assert "harness:pr-gate" in package_json.get("scripts", {})
+assert "test:pr-gate" in package_json.get("scripts", {})
+for needle in [
+    "gh pr checks",
+    "--watch",
+    "DEFAULT_INTERVAL_SECONDS = 180",
+    "recommendedNextAction",
+]:
+    assert needle in pr_gate_helper
+for needle in [
+    "harness:pr-gate",
+    "180 seconds",
+]:
+    assert needle in readme_doc
+    assert needle in operator_workflow_doc
+for needle in [
+    "scripts/harness-pr-gate.ts",
+]:
+    assert needle in file_map_doc
+    assert needle in validation_doc
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",

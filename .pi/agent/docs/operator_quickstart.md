@@ -62,6 +62,14 @@ npm run harness:schedules
 npm run harness:schedules:json
 ```
 
+Check PR CI/security gates without `gh --watch`:
+```bash
+npm run harness:pr-gate -- --pr <number> --max-attempts 20
+npm run harness:pr-gate:json -- --pr <number> --once
+```
+
+The PR gate helper polls once every 3 minutes by default, surfaces CI/security status plus review/comment triage, and stops on pass, failure, or the bounded attempt limit.
+
 Materialize due workflows only through explicit operator action:
 ```bash
 node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run

@@ -25,6 +25,7 @@ npm run harness:queue-session -- --max-steps 3
 npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
 npm run harness:schedules
 npm run harness:schedules:json
+npm run harness:pr-gate -- --pr <number> --max-attempts 20
 ```
 
 Related operator docs:
@@ -86,6 +87,16 @@ After merge or explicit abandonment, remove only a clean linked worktree:
 ```bash
 npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
 ```
+
+For PR CI/security gate checks, use the bounded helper instead of `gh pr checks --watch`:
+```bash
+npm run harness:pr-gate -- --pr <number> --max-attempts 20
+npm run harness:pr-gate:json -- --pr <number> --once
+```
+- the default interval is 180 seconds, so checks are polled once every 3 minutes
+- the helper calls `gh pr checks` without `--watch`
+- it reports CI/security checks plus review/comment triage and classifies Dependency Review success bot comments as benign
+- if the helper reports `fix_required`, inspect the failed check or non-benign comment, make one bounded fix, then rerun the helper
 
 ### 3. Make or review one bounded change set
 Examples:

@@ -85,6 +85,7 @@
 - `scripts/harness-package.ts`
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
+- `scripts/harness-pr-gate.ts`
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-skill-routing.sh`
