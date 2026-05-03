@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -150,6 +150,36 @@ test("queries a real-CLI nested managed graphify-out graph.json", async () => {
   assert.equal(result.details.status, "completed");
   assert.match(result.details.graphPath, /graphify-out\/graph\.json$/);
   assert.equal(result.details.graphFreshness.headCommit, "nested123");
+});
+
+test("preflights a Graphify scan without creating artifacts or invoking Graphify", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-preflight-");
+  await mkdir(join(cwd, "src"), { recursive: true });
+  await writeFile(join(cwd, "src", "one.ts"), "export const one = 1;\n");
+  await writeFile(join(cwd, "src", "two.ts"), "export const two = 2;\n");
+
+  await withEnv({ GRAPHIFY_BIN: undefined, PATH: "" }, async () => {
+    const result = await tool.execute(
+      "tool-call-id",
+      { action: "preflight", taskId: "task-preflight", sourcePath: "src", maxFilesWithoutApproval: 5 },
+      undefined,
+      undefined,
+      makeCtx(cwd),
+    );
+
+    assert.match(textContent(result), /Graphify preflight ok/);
+    assert.equal(result.details.status, "preflight_ok");
+    assert.equal(result.details.wouldRun, false);
+    assert.equal(result.details.wouldCreateArtifacts, false);
+    assert.equal(result.details.fileCount, 2);
+    assert.equal(result.details.installed, false);
+    assert.deepEqual(result.details.commandPreview, ["graphify", "update", "<managed-source-snapshot>"]);
+    assert.match(result.details.outputPath, /\.pi\/agent\/artifacts\/graphify\/task-preflight$/);
+
+    await assert.rejects(stat(result.details.outputPath));
+    await assert.rejects(readFile(join(cwd, ".pi", "agent", "artifacts", "graphify", "task-preflight", "metadata.json"), "utf8"));
+  });
 });
 
 test("requires explicit approval before scanning a large corpus", async () => {

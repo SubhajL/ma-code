@@ -54,7 +54,7 @@ const FORBIDDEN_ARGS = new Set([
 ]);
 
 const GraphifyAdapterSchema = Type.Object({
-  action: Type.Union([Type.Literal("status"), Type.Literal("scan"), Type.Literal("query")]),
+  action: Type.Union([Type.Literal("status"), Type.Literal("scan"), Type.Literal("query"), Type.Literal("preflight")]),
   sourcePath: Type.Optional(Type.String({ description: "Repo-local source path to scan. Defaults to the repo root." })),
   taskId: Type.Optional(Type.String({ description: "Task identifier used to derive the managed artifact directory." })),
   outputPath: Type.Optional(Type.String({ description: "Optional output path. Must be under .pi/agent/artifacts/graphify/." })),
@@ -65,7 +65,7 @@ const GraphifyAdapterSchema = Type.Object({
   timeoutMs: Type.Optional(Type.Integer({ minimum: 1000, maximum: 300000 })),
 });
 
-type GraphifyAction = "status" | "scan" | "query";
+type GraphifyAction = "status" | "scan" | "query" | "preflight";
 
 type GraphifyParams = {
   action: GraphifyAction;
@@ -427,25 +427,31 @@ async function queryResult(params: GraphifyParams, cwd: string) {
   };
 }
 
-async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSignal | undefined) {
+async function validateScanRequest(params: GraphifyParams, cwd: string) {
   const source = normalizeSourcePath(cwd, params.sourcePath);
   if (!source.ok) {
-    return { content: [{ type: "text" as const, text: source.reason }], details: { status: "blocked_source_path", sourcePath: source.source } };
+    return { ok: false as const, result: { content: [{ type: "text" as const, text: source.reason }], details: { status: "blocked_source_path", sourcePath: source.source } } };
   }
 
   const output = resolveManagedOutputPath(cwd, params.taskId, params.outputPath);
   if (!output.ok) {
     return {
-      content: [{ type: "text" as const, text: output.reason }],
-      details: { status: "blocked_unmanaged_output_path", outputPath: output.output, managedRoot: output.root },
+      ok: false as const,
+      result: {
+        content: [{ type: "text" as const, text: output.reason }],
+        details: { status: "blocked_unmanaged_output_path", outputPath: output.output, managedRoot: output.root },
+      },
     };
   }
 
   const forbiddenArgs = findForbiddenArgs(params.extraArgs);
   if (forbiddenArgs.length > 0) {
     return {
-      content: [{ type: "text" as const, text: `Graphify advanced/background behavior is forbidden by default: ${forbiddenArgs.join(", ")}` }],
-      details: { status: "blocked_forbidden_args", forbiddenArgs },
+      ok: false as const,
+      result: {
+        content: [{ type: "text" as const, text: `Graphify advanced/background behavior is forbidden by default: ${forbiddenArgs.join(", ")}` }],
+        details: { status: "blocked_forbidden_args", forbiddenArgs },
+      },
     };
   }
 
@@ -454,23 +460,75 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
     sourceStat = await stat(source.source);
   } catch {
     return {
-      content: [{ type: "text" as const, text: `Graphify sourcePath does not exist: ${source.source}` }],
-      details: { status: "blocked_missing_source_path", sourcePath: source.source },
+      ok: false as const,
+      result: {
+        content: [{ type: "text" as const, text: `Graphify sourcePath does not exist: ${source.source}` }],
+        details: { status: "blocked_missing_source_path", sourcePath: source.source },
+      },
     };
   }
   const fileCount = sourceStat.isDirectory() ? await countCorpusFiles(source.source) : 1;
   const maxFiles = params.maxFilesWithoutApproval ?? DEFAULT_MAX_FILES_WITHOUT_APPROVAL;
   if (fileCount > maxFiles && params.approvedLargeCorpus !== true) {
     return {
-      content: [
-        {
-          type: "text" as const,
-          text: `Graphify scan sees ${fileCount} files, exceeding threshold ${maxFiles}; this large corpus requires explicit approval before scanning. Narrow sourcePath or set approvedLargeCorpus only after human approval.`,
-        },
-      ],
-      details: { status: "blocked_approval_required", fileCount, maxFilesWithoutApproval: maxFiles, sourcePath: source.source },
+      ok: false as const,
+      result: {
+        content: [
+          {
+            type: "text" as const,
+            text: `Graphify scan sees ${fileCount} files, exceeding threshold ${maxFiles}; this large corpus requires explicit approval before scanning. Narrow sourcePath or set approvedLargeCorpus only after human approval.`,
+          },
+        ],
+        details: { status: "blocked_approval_required", fileCount, maxFilesWithoutApproval: maxFiles, sourcePath: source.source },
+      },
     };
   }
+
+  return { ok: true as const, source: source.source, output: output.output, managedRoot: output.root, fileCount, maxFiles };
+}
+
+async function preflightResult(params: GraphifyParams, cwd: string) {
+  const validation = await validateScanRequest(params, cwd);
+  if (!validation.ok) return validation.result;
+
+  const detection = await findGraphifyBinary();
+  const commandPreview = ["graphify", ...graphifyArgs("<managed-source-snapshot>", params.extraArgs)];
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: [
+          `Graphify preflight ok for ${validation.fileCount} files.`,
+          `Source: ${validation.source}`,
+          `Managed output: ${validation.output}`,
+          "Dry-run only: no source snapshot, metadata, graph artifacts, or Graphify process were created.",
+        ].join("\n"),
+      },
+    ],
+    details: {
+      status: "preflight_ok",
+      wouldRun: false,
+      wouldCreateArtifacts: false,
+      sourcePath: validation.source,
+      outputPath: validation.output,
+      managedRoot: validation.managedRoot,
+      fileCount: validation.fileCount,
+      maxFilesWithoutApproval: validation.maxFiles,
+      approvedLargeCorpus: params.approvedLargeCorpus === true,
+      installed: detection.installed,
+      binaryPath: detection.binaryPath,
+      reason: detection.reason,
+      commandPreview,
+      excludes: SENSITIVE_EXCLUDES,
+      citationPolicy: citationPolicy(),
+      note: "Preflight validates the bounded scan request but does not execute Graphify or create managed artifacts.",
+    },
+  };
+}
+
+async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSignal | undefined) {
+  const validation = await validateScanRequest(params, cwd);
+  if (!validation.ok) return validation.result;
 
   const detection = await findGraphifyBinary();
   if (!detection.installed || !detection.binaryPath) {
@@ -485,20 +543,20 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
     };
   }
 
-  await mkdir(output.output, { recursive: true });
-  const snapshotPath = join(output.output, "source-snapshot");
-  await copySanitizedCorpus(source.source, snapshotPath);
+  await mkdir(validation.output, { recursive: true });
+  const snapshotPath = join(validation.output, "source-snapshot");
+  await copySanitizedCorpus(validation.source, snapshotPath);
   const generatedAt = new Date().toISOString();
   const headCommit = await currentHeadCommit(cwd);
   const metadata = {
     generatedAt,
     headCommit,
-    sourcePath: source.source,
-    outputPath: output.output,
+    sourcePath: validation.source,
+    outputPath: validation.output,
     sanitizedSourcePath: snapshotPath,
     graphifyCommand: "update",
-    graphifyWorkingDirectory: output.output,
-    fileCount,
+    graphifyWorkingDirectory: validation.output,
+    fileCount: validation.fileCount,
     excludes: SENSITIVE_EXCLUDES,
     edgeConfidencePolicy: citationPolicy(),
     freshnessEvidence: `Graphify report generated from HEAD ${headCommit} at ${generatedAt}`,
@@ -508,10 +566,10 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
       "INFERRED and AMBIGUOUS edges are leads only until verified by direct file inspection.",
     ],
   };
-  await writeFile(join(output.output, "metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`);
+  await writeFile(join(validation.output, "metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`);
 
   const args = graphifyArgs(snapshotPath, params.extraArgs);
-  const result = await runCommand(detection.binaryPath, args, output.output, params.timeoutMs ?? DEFAULT_TIMEOUT_MS, signal);
+  const result = await runCommand(detection.binaryPath, args, validation.output, params.timeoutMs ?? DEFAULT_TIMEOUT_MS, signal);
   if (result.code !== 0 || result.timedOut || result.aborted) {
     return {
       content: [
@@ -520,7 +578,7 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
           text: `Graphify scan failed.${result.timedOut ? " Timed out." : ""}\nstdout:\n${truncate(result.stdout)}\nstderr:\n${truncate(result.stderr)}`,
         },
       ],
-      details: { status: result.timedOut ? "timed_out" : "failed", code: result.code, outputPath: output.output, fileCount },
+      details: { status: result.timedOut ? "timed_out" : "failed", code: result.code, outputPath: validation.output, fileCount: validation.fileCount },
     };
   }
 
@@ -529,8 +587,8 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
       {
         type: "text" as const,
         text: [
-          `Graphify scan completed in managed output path: ${output.output}`,
-          `Graph freshness: commit=${headCommit} source=${source.source} generatedAt=${generatedAt}`,
+          `Graphify scan completed in managed output path: ${validation.output}`,
+          `Graph freshness: commit=${headCommit} source=${validation.source} generatedAt=${generatedAt}`,
           "Cite output as confirmed / inferred / ambiguous; verify important claims with direct file inspection.",
         ].join("\n"),
       },
@@ -539,12 +597,12 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
       status: "completed",
       binaryPath: detection.binaryPath,
       args,
-      outputPath: output.output,
-      metadataPath: join(output.output, "metadata.json"),
-      graphPath: findManagedGraphPath(output.output) ?? join(snapshotPath, "graphify-out", "graph.json"),
-      graphFreshness: { generatedAt, headCommit, sourcePath: source.source },
+      outputPath: validation.output,
+      metadataPath: join(validation.output, "metadata.json"),
+      graphPath: findManagedGraphPath(validation.output) ?? join(snapshotPath, "graphify-out", "graph.json"),
+      graphFreshness: { generatedAt, headCommit, sourcePath: validation.source },
       citationPolicy: citationPolicy(),
-      fileCount,
+      fileCount: validation.fileCount,
       stdout: truncate(result.stdout, 2000),
       stderr: truncate(result.stderr, 2000),
     },
@@ -567,6 +625,7 @@ export default function (pi: ExtensionAPI) {
     async execute(_toolCallId, params: GraphifyParams, signal, _onUpdate, ctx) {
       if (params.action === "status") return statusResult();
       if (params.action === "query") return queryResult(params, ctx.cwd);
+      if (params.action === "preflight") return preflightResult(params, ctx.cwd);
       return scanResult(params, ctx.cwd, signal);
     },
   });
