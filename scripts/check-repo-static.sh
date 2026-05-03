@@ -44,6 +44,7 @@ required_files=(
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
   ".pi/agent/docs/graphify_adapter.md"
+  ".pi/agent/docs/graphify_final_runbook.md"
   ".pi/agent/prompts/templates/request-architecture-review.md"
   ".pi/agent/prompts/templates/assess-drift-capability.md"
   ".pi/agent/prompts/templates/propose-migration-path.md"
@@ -97,6 +98,7 @@ orchestrator_prompt = (root / ".pi/agent/prompts/roles/orchestrator.md").read_te
 operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(encoding="utf-8")
 graphify_discovery_doc = (root / ".pi/agent/docs/graphify_discovery_research.md").read_text(encoding="utf-8")
 graphify_adapter_doc = (root / ".pi/agent/docs/graphify_adapter.md").read_text(encoding="utf-8")
+graphify_final_runbook_doc = (root / ".pi/agent/docs/graphify_final_runbook.md").read_text(encoding="utf-8")
 product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
@@ -285,8 +287,32 @@ for needle in [
     assert needle in operator_workflow_doc
 for needle in [
     "scripts/validate-graphify-discovery.sh",
+    ".pi/agent/docs/graphify_final_runbook.md",
 ]:
     assert needle in file_map_doc
+for needle in [
+    ".pi/agent/docs/graphify_final_runbook.md",
+    "Final operator runbook",
+]:
+    assert needle in graphify_adapter_doc
+for needle in [
+    "# Graphify Final Runbook",
+    "## Final Operator Checklist",
+    "1. Confirm Graphify is optional and appropriate",
+    "2. Run preflight before scan",
+    "3. Run a bounded scan only after approval gates pass",
+    "4. Query and verify before planning or acceptance",
+    "5. Record evidence and cleanup boundaries",
+    "Do not use Graphify as a live web-search replacement",
+    "Do not commit generated Graphify artifacts",
+    "bash scripts/validate-graphify-discovery.sh",
+]:
+    assert needle in graphify_final_runbook_doc
+for needle in [
+    "Graphify final runbook",
+    ".pi/agent/docs/graphify_final_runbook.md",
+]:
+    assert needle in validation_doc
 for needle in [
     "Scan validator reports in this order:",
     "Summary Table",
