@@ -50,6 +50,7 @@ Implemented here:
 - file-backed package/bootstrap scaffolding via `.pi/agent/package/harness-package.json` and `scripts/harness-package.ts`
 - same-runtime probe bridge for shared model/account-path child sessions
 - executable discovery-policy selector helper via `.pi/agent/extensions/discovery-policy.ts` / `select_discovery_policy`
+- repo-local `/new` session persistence patch via `.pi/agent/extensions/new-session-persistence.ts` so replacement sessions keep scoped models, the selected model, and thinking level
 - task-class-aware validation checklist logic and proof-based completion gates in `till-done.ts`
 - validation reports and file map
 
