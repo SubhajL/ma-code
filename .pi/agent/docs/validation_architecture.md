@@ -320,6 +320,19 @@ This script is responsible for the bounded operator/build support path for:
 
 Its focused proof currently runs through `scripts/validate-core-workflows.sh` via worktree-helper integration coverage in temp git repos.
 
+### PR CI/security gate helper proof
+Current bounded PR gate helper script:
+- `scripts/harness-pr-gate.ts`
+
+This script is responsible for the operator PR gate path for:
+- polling `gh pr checks` without `--watch`
+- waiting 180 seconds between polling attempts by default
+- stopping on terminal pass, terminal failure, or a bounded max-attempt limit
+- summarizing CI/security checks plus review/comment triage
+- treating successful Dependency Review bot comments as benign while surfacing non-bot comments and requested changes as fix-required signals
+
+Its focused proof currently runs through `scripts/validate-core-workflows.sh` via PR-gate integration coverage with fake `gh` command runners.
+
 ### Dedicated team-activation validator
 Current dedicated team-activation script:
 - `scripts/validate-team-activation.sh`

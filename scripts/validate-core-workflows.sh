@@ -199,8 +199,8 @@ JSON
   cp "$REPO_ROOT/.pi/agent/recovery/recovery-policy.json" "$workdir/.pi/agent/recovery/recovery-policy.json"
   cp "$REPO_ROOT/.pi/agent/schedules/scheduled-workflows.json" "$workdir/.pi/agent/schedules/scheduled-workflows.json"
   cp "$REPO_ROOT/tests/extension-units/test-utils.ts" "$workdir/tests/extension-units/"
-  cp "$REPO_ROOT/scripts/"{harness-operator-status,harness-queue-session,harness-scheduled-workflows,harness-worktree}.ts "$workdir/scripts/"
-  cp "$REPO_ROOT/tests/integration/"{core-workflows,operator-surface,queue-session,scheduled-workflows,worktree-helper,graphify-adapter}.test.ts "$workdir/tests/integration/"
+  cp "$REPO_ROOT/scripts/"{harness-operator-status,harness-queue-session,harness-scheduled-workflows,harness-worktree,harness-pr-gate}.ts "$workdir/scripts/"
+  cp "$REPO_ROOT/tests/integration/"{core-workflows,operator-surface,queue-session,scheduled-workflows,worktree-helper,graphify-adapter,pr-gate}.test.ts "$workdir/tests/integration/"
 
   (
     cd "$workdir"
@@ -222,7 +222,7 @@ check_1_compile_core_workflow_extensions() {
   local name="1. core workflow extensions compile together"
   local out="$TMP_ROOT/check_1_compile_core_workflow_extensions.txt"
   local runtime_dir="$TMP_ROOT/core-workflows-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts .pi/agent/extensions/graphify-adapter.ts scripts/harness-operator-status.ts scripts/harness-queue-session.ts scripts/harness-scheduled-workflows.ts scripts/harness-worktree.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts .pi/agent/extensions/graphify-adapter.ts scripts/harness-operator-status.ts scripts/harness-queue-session.ts scripts/harness-scheduled-workflows.ts scripts/harness-worktree.ts scripts/harness-pr-gate.ts"
 
   if (
     cd "$runtime_dir" &&
@@ -240,9 +240,10 @@ check_1_compile_core_workflow_extensions() {
       scripts/harness-operator-status.ts \
       scripts/harness-queue-session.ts \
       scripts/harness-scheduled-workflows.ts \
-      scripts/harness-worktree.ts >"$out" 2>&1
+      scripts/harness-worktree.ts \
+      scripts/harness-pr-gate.ts >"$out" 2>&1
   ); then
-    local detail="safe-bash, till-done, queue-runner, and the operator-facing status/queue-session/scheduled-workflow/worktree helper scripts compile together with their routing/team/packet/handoff/recovery dependencies in an isolated runtime package."
+    local detail="safe-bash, till-done, queue-runner, and the operator-facing status/queue-session/scheduled-workflow/worktree/PR-gate helper scripts compile together with their routing/team/packet/handoff/recovery dependencies in an isolated runtime package."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -368,9 +369,28 @@ check_7_graphify_adapter_integration() {
   fi
 }
 
-check_8_operator_surface_wiring() {
-  local name="8. operator/queue-session/schedule/worktree/package/docs wiring"
-  local out="$TMP_ROOT/check_6_operator_surface_wiring.txt"
+check_8_pr_gate_integration() {
+  local name="8. PR gate helper integration surface"
+  local out="$TMP_ROOT/check_8_pr_gate_integration.txt"
+  local runtime_dir="$TMP_ROOT/core-workflows-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/integration/pr-gate.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/integration/pr-gate.test.ts" "$out"; then
+    local detail="PR gate helper integration tests passed for no-watch polling, 180-second intervals, terminal pass/fail handling, and comment/review triage."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="PR gate helper integration tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
+check_9_operator_surface_wiring() {
+  local name="9. operator/queue-session/schedule/worktree/PR-gate package/docs wiring"
+  local out="$TMP_ROOT/check_9_operator_surface_wiring.txt"
   local cmd="$PYTHON_BIN $TMP_ROOT/check_6_operator_surface_wiring.py"
 
   cat > "$TMP_ROOT/check_6_operator_surface_wiring.py" <<'PY'
@@ -385,28 +405,30 @@ checks = {
     'package.json:harness:schedules': 'harness:schedules' in scripts,
     'package.json:harness:queue-session': 'harness:queue-session' in scripts,
     'package.json:harness:worktree': 'harness:worktree' in scripts,
+    'package.json:harness:pr-gate': 'harness:pr-gate' in scripts,
     'package.json:test:operator-surface': 'test:operator-surface' in scripts,
     'package.json:test:queue-session': 'test:queue-session' in scripts,
     'package.json:test:scheduled-workflows': 'test:scheduled-workflows' in scripts,
     'package.json:test:worktree-helper': 'test:worktree-helper' in scripts,
-    'README.md': 'harness:queue-session' in (root / 'README.md').read_text(encoding='utf-8'),
+    'package.json:test:pr-gate': 'test:pr-gate' in scripts,
+    'README.md': 'harness:queue-session' in (root / 'README.md').read_text(encoding='utf-8') and 'harness:pr-gate' in (root / 'README.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/operator_quickstart.md': 'harness:queue-session' in (root / '.pi/agent/docs/operator_quickstart.md').read_text(encoding='utf-8'),
-    '.pi/agent/docs/operator_workflow.md': 'harness:queue-session' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/operator_workflow.md': 'harness:queue-session' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8') and 'harness:pr-gate' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/bounded_autonomy_architecture.md': 'scheduled workflow' in (root / '.pi/agent/docs/bounded_autonomy_architecture.md').read_text(encoding='utf-8').lower(),
     '.pi/agent/docs/validation_architecture.md': 'scheduled workflow' in (root / '.pi/agent/docs/validation_architecture.md').read_text(encoding='utf-8').lower(),
 }
 missing = [name for name, ok in checks.items() if not ok]
 assert not missing, f'missing operator/schedule/worktree wiring in: {missing}'
-print('operator-queue-session-schedule-worktree-wiring-ok')
+print('operator-queue-session-schedule-worktree-pr-gate-wiring-ok')
 PY
 
   if "$PYTHON_BIN" "$TMP_ROOT/check_6_operator_surface_wiring.py" "$REPO_ROOT" >"$out" 2>&1; then
-    local detail="operator status, queue-session, scheduled workflow, and worktree helper wiring is present in package scripts, README, and validation/operator docs."
+    local detail="operator status, queue-session, scheduled workflow, worktree, and PR gate helper wiring is present in package scripts, README, and validation/operator docs."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
-    local detail="operator/queue-session/schedule/worktree package/docs wiring is incomplete."
+    local detail="operator/queue-session/schedule/worktree/PR gate package/docs wiring is incomplete."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
     append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -423,7 +445,8 @@ main() {
   check_5_worktree_helper_integration
   check_6_scheduled_workflow_integration
   check_7_graphify_adapter_integration
-  check_8_operator_surface_wiring
+  check_8_pr_gate_integration
+  check_9_operator_surface_wiring
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF

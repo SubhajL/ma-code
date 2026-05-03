@@ -122,12 +122,14 @@ npm run harness:queue-session -- --max-steps 3
 npm run harness:schedules
 npm run harness:package
 npm run harness:worktree -- status
+npm run harness:pr-gate -- --pr 63 --max-attempts 20
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
 npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
+npm run test:pr-gate
 npm run test:harness-package
 npm run validate:core-workflows
 npm run validate:graphify-discovery
@@ -176,6 +178,14 @@ npm run harness:worktree -- create --id HARNESS-024 --slug "worktree helpers"
 npm run harness:worktree -- review-prep --path ../ma-code-worktrees/harness-024-worktree-helpers
 npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
 ```
+
+PR CI/security gate helper examples:
+```bash
+npm run harness:pr-gate -- --pr 63 --max-attempts 20
+npm run harness:pr-gate:json -- --pr 63 --once
+```
+
+The PR gate helper polls `gh pr checks` without `--watch`; default polling waits 180 seconds between attempts and reports CI/security checks plus review/comment triage.
 
 Operator docs:
 - `.pi/agent/docs/operator_manual.md`
