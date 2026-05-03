@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-03_discovery-policy-helper.md`
+- `logs/coding/2026-05-03_graphify-structured-query.md`
 
 ## Current planning log
-- `reports/planning/2026-05-03_discovery-policy-helper-plan.md`
+- `reports/planning/2026-05-03_graphify-structured-query-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded discovery-policy helper implementation work.
+- These files capture the bounded Slice 3 Graphify structured query output work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

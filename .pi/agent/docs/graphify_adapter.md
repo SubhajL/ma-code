@@ -11,7 +11,7 @@
 - Actions:
   - `status`: detect whether a `graphify` binary is available.
   - `scan`: run one bounded one-shot scan into a managed artifact directory using the installed CLI shape `graphify update <managed-source-snapshot>`.
-  - `query`: read an existing managed `graph.json`, `graphify-out/graph.json`, or real-CLI `source-snapshot/graphify-out/graph.json` and summarize confidence/freshness evidence.
+  - `query`: read an existing managed `graph.json`, `graphify-out/graph.json`, or real-CLI `source-snapshot/graphify-out/graph.json` and summarize confidence/freshness evidence. Query responses include `details.querySummary` with minimal structured fields for query, graph/output paths, edge count, node count, confidence counts, freshness status, and direct-verification reminder.
 
 ## Safety controls
 - No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`.
