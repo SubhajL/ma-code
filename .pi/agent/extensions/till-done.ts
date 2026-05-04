@@ -92,7 +92,23 @@ export interface TaskUpdateParams {
   validationDecision?: "pass" | "fail" | "blocked";
   validationChecklist?: ValidationChecklist;
   graphifyValidation?: GraphifyValidationDecisionInput;
+  graphifyEvidence?: GraphifyEvidenceInput;
   approvalRef?: string;
+}
+
+export interface GraphifyEvidenceInput {
+  graphifyBackedClaim?: boolean;
+  claimScope?: "graphify_backed_claim" | "architecture_review" | "other";
+  policy?: (typeof GRAPHIFY_VALIDATION_POLICIES)[number];
+  required?: boolean;
+  freshnessOrCadenceChecked?: boolean;
+  latestRelevantGraphQueried?: boolean;
+  importantClaimsSourceVerified?: boolean;
+  graphifyValidationState?: string;
+  graphifyOrchestrationAction?: string;
+  graphifyAdapterAction?: string;
+  graphifyArtifactPath?: string;
+  sourceVerificationNotes?: string[];
 }
 
 export interface TaskUpdateResult {
@@ -116,6 +132,21 @@ const ValidationChecklistSchema = Type.Object({
 });
 
 const GRAPHIFY_CLAIM_SCOPES = ["graphify_backed_claim", "architecture_review", "other"] as const;
+
+const GraphifyEvidenceInputSchema = Type.Object({
+  graphifyBackedClaim: Type.Optional(Type.Boolean()),
+  claimScope: Type.Optional(StringEnum(GRAPHIFY_CLAIM_SCOPES)),
+  policy: Type.Optional(StringEnum(GRAPHIFY_VALIDATION_POLICIES)),
+  required: Type.Optional(Type.Boolean()),
+  freshnessOrCadenceChecked: Type.Optional(Type.Boolean()),
+  latestRelevantGraphQueried: Type.Optional(Type.Boolean()),
+  importantClaimsSourceVerified: Type.Optional(Type.Boolean()),
+  graphifyValidationState: Type.Optional(Type.String()),
+  graphifyOrchestrationAction: Type.Optional(Type.String()),
+  graphifyAdapterAction: Type.Optional(Type.String()),
+  graphifyArtifactPath: Type.Optional(Type.String()),
+  sourceVerificationNotes: Type.Optional(Type.Array(Type.String())),
+});
 
 const GraphifyValidationInputSchema = Type.Object({
   graphifyBackedClaim: Type.Boolean(),
@@ -156,6 +187,7 @@ const TaskUpdateSchema = Type.Object({
   validationDecision: Type.Optional(StringEnum(VALIDATION_DECISIONS)),
   validationChecklist: Type.Optional(ValidationChecklistSchema),
   graphifyValidation: Type.Optional(GraphifyValidationInputSchema),
+  graphifyEvidence: Type.Optional(GraphifyEvidenceInputSchema),
   approvalRef: Type.Optional(Type.String()),
 });
 
@@ -283,6 +315,24 @@ function hasGraphifyBackedAcceptance(task: TaskRecord): boolean {
 
 function graphifyDecisionEvidence(state: string, reason: string): string {
   return `Graphify validation decision: ${state}; ${reason}`;
+}
+
+function graphifyValidationFromEvidence(evidence: GraphifyEvidenceInput, graphifyRequiredByAcceptance: boolean): GraphifyValidationDecisionInput {
+  const orchestrationAction = evidence.graphifyOrchestrationAction?.trim();
+  const adapterAction = evidence.graphifyAdapterAction?.trim();
+  const latestRelevantGraphQueried = evidence.latestRelevantGraphQueried === true || orchestrationAction === "query_graph" || adapterAction === "query";
+  const freshnessOrCadenceChecked = evidence.freshnessOrCadenceChecked === true || orchestrationAction === "check_freshness" || adapterAction === "freshness";
+
+  return {
+    graphifyBackedClaim: evidence.graphifyBackedClaim === true || graphifyRequiredByAcceptance,
+    claimScope: evidence.claimScope,
+    policy: evidence.policy,
+    required: evidence.required,
+    latestRelevantGraphQueried,
+    freshnessOrCadenceChecked,
+    importantClaimsSourceVerified: evidence.importantClaimsSourceVerified === true,
+    explicitFailure: evidence.graphifyValidationState === "fail" || evidence.graphifyValidationState === "blocked",
+  };
 }
 
 function isMutatingBash(command: string): boolean {
@@ -682,7 +732,9 @@ export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams
     }
 
     const graphifyRequiredByAcceptance = hasGraphifyBackedAcceptance(task);
-    const graphifyInput = params.graphifyValidation ?? (graphifyRequiredByAcceptance ? { graphifyBackedClaim: true, required: true } : undefined);
+    const graphifyInput = params.graphifyValidation
+      ?? (params.graphifyEvidence ? graphifyValidationFromEvidence(params.graphifyEvidence, graphifyRequiredByAcceptance) : undefined)
+      ?? (graphifyRequiredByAcceptance ? { graphifyBackedClaim: true, required: true } : undefined);
     const graphifyDecision = graphifyInput
       ? decideGraphifyValidation({
           ...graphifyInput,

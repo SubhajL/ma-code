@@ -160,6 +160,7 @@ Current checks include:
 - `till-done.ts` task-discipline checks
 - review-before-done task transition checks
 - validation-before-done completion-gate checks
+- Graphify-backed validation checks where `task_update validate` can consume structured `graphifyEvidence` orchestration evidence as latest relevant graph query or freshness/cadence proof plus explicit important-claims source verification
 - lighter docs/research validation-path checks
 - validator fail/blocked rejection-flow checks
 - explicit manual override checks
