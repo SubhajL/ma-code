@@ -146,6 +146,10 @@ Record evidence in:
 ## Cross-phase working patterns
 These patterns should now guide planning, implementation, and review even before later phases are fully implemented.
 
+### Graphify evidence lifecycle drift guard
+- Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+- This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
+
 ### Codebase discovery
 - Canonical discovery policy: `.pi/agent/docs/discovery_policy.md`
 - executable helper: `select_discovery_policy` from `.pi/agent/extensions/discovery-policy.ts`

@@ -99,6 +99,10 @@ Related docs:
   - `.pi/agent/prompts/templates/assess-drift-capability.md`
   - `.pi/agent/prompts/templates/propose-migration-path.md`
 
+## Graphify evidence lifecycle drift guard
+The Graphify evidence lifecycle is: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
+
 ## Validation workflow
 Use the validator script for repeatable Phase A/B checks:
 

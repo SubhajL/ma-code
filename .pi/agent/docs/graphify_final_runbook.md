@@ -5,6 +5,10 @@
 - Keep Graphify optional, bounded, and evidence-oriented.
 - Make the safe path explicit from discovery decision through preflight, scan, query, direct verification, evidence recording, and cleanup.
 
+## Graphify evidence lifecycle drift guard
+Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
+
 ## Preconditions
 - Use the discovery policy first: Auggie remains preferred for bounded semantic repo discovery when available.
 - Use Graphify only for broad repo/corpus structure discovery when local graph evidence is useful and scoped.
