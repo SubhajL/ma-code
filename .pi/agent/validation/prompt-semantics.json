@@ -76,6 +76,45 @@
       "expect": "fail",
       "expectedErrors": ["recovery_worker.escalate_without_migration_path"],
       "content": "## Failure Summary\n- semantic validator surface is not yet stable enough for the default static gate\n\n## Likely Causes\n- the new validator has not yet proven a low false-positive rate\n\n## Recovery Options\n- keep semantic validation as an explicit command for the first landing\n- revisit static-gate promotion later\n\n## Recommended Action\n- escalate immediately\nRecommended Action: escalate"
+    },
+    {
+      "id": "frontend_worker_golden_tdd_evidence",
+      "role": "frontend_worker",
+      "expect": "pass",
+      "content": "## Task\n- add loading-state TDD coverage for a bounded button interaction\n\n## Changes Made\n- added one failing behavior test for the loading indicator\n- implemented the smallest UI wiring change to satisfy the test\n\n## Files Changed\n- src/components/status-button.tsx\n- tests/status-button.test.tsx\n\n## Evidence\n- RED: `pnpm test -- status-button.test.tsx` failed because the loading label was missing\n- GREEN: `pnpm test -- status-button.test.tsx` passed after wiring the loading label\n- Validation: `git diff --check`\n\n## Risks or Follow-ups\n- none\nStatus: done"
+    },
+    {
+      "id": "frontend_worker_failing_narration_only_done",
+      "role": "frontend_worker",
+      "expect": "fail",
+      "expectedErrors": ["frontend_worker.narration_only_evidence"],
+      "content": "## Task\n- tweak button loading behavior\n\n## Changes Made\n- described the intended UI update\n\n## Files Changed\n- src/components/status-button.tsx\n\n## Evidence\n- narration only: described the work and claimed it was done without RED/GREEN command output\n\n## Risks or Follow-ups\n- none\nStatus: done"
+    },
+    {
+      "id": "backend_worker_golden_tdd_evidence",
+      "role": "backend_worker",
+      "expect": "pass",
+      "content": "## Task\n- add bounded TDD coverage for a retry-policy branch\n\n## Changes Made\n- added one failing behavior test for retry budget exhaustion\n- implemented the smallest branch update to return the expected error\n\n## Files Changed\n- .pi/agent/extensions/recovery-runtime.ts\n- tests/extension-units/recovery-runtime.test.ts\n\n## Evidence\n- RED: `npx --yes tsx --test tests/extension-units/recovery-runtime.test.ts` failed because the retry branch still returned pass\n- GREEN: `npx --yes tsx --test tests/extension-units/recovery-runtime.test.ts` passed after tightening the retry branch\n- Validation: `git diff --check`\n\n## Risks or Follow-ups\n- none\nStatus: done"
+    },
+    {
+      "id": "backend_worker_failing_narration_only_done",
+      "role": "backend_worker",
+      "expect": "fail",
+      "expectedErrors": ["backend_worker.narration_only_evidence"],
+      "content": "## Task\n- tighten retry budget behavior\n\n## Changes Made\n- narrated the intended backend fix\n\n## Files Changed\n- .pi/agent/extensions/recovery-runtime.ts\n\n## Evidence\n- narration only: summarized the code change and claimed completion without concrete RED/GREEN output\n\n## Risks or Follow-ups\n- none\nStatus: done"
+    },
+    {
+      "id": "infra_worker_golden_tdd_validation",
+      "role": "infra_worker",
+      "expect": "pass",
+      "content": "## Task\n- add bounded validator coverage for a script-level regression\n\n## Changes Made\n- added one failing validator scenario for the script contract\n- implemented the smallest script change that satisfied the scenario\n\n## Files Changed\n- scripts/validate-prompt-semantics.sh\n- .pi/agent/validation/prompt-semantics.json\n\n## Validation\n- RED: `bash scripts/validate-prompt-semantics.sh` failed because the new worker fixture role was unsupported\n- GREEN: `bash scripts/validate-prompt-semantics.sh` passed after the validator accepted the worker fixture\n- Validation: `git diff --check`\n\n## Risks or Follow-ups\n- none\nStatus: done"
+    },
+    {
+      "id": "infra_worker_failing_narration_only_done",
+      "role": "infra_worker",
+      "expect": "fail",
+      "expectedErrors": ["infra_worker.narration_only_validation"],
+      "content": "## Task\n- update a validator script\n\n## Changes Made\n- described the script work in prose only\n\n## Files Changed\n- scripts/validate-prompt-semantics.sh\n\n## Validation\n- narration only: claimed the script was done without command output or RED/GREEN validation evidence\n\n## Risks or Follow-ups\n- none\nStatus: done"
     }
   ]
 }

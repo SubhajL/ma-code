@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_tdd-slice-packet-field.md`
+- `logs/coding/2026-05-04_build-worker-semantic-fixtures.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_tdd-slice-packet-field-plan.md`
+- `reports/planning/2026-05-04_build-worker-semantic-fixtures-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the optional typed `tddSlice` packet-field slice.
+- These files capture the build-worker semantic TDD fixture slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

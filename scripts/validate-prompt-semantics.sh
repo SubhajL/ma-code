@@ -59,6 +59,9 @@ ROLE_PATHS = {
     "reviewer_worker": ".pi/agent/prompts/roles/reviewer_worker.md",
     "validator_worker": ".pi/agent/prompts/roles/validator_worker.md",
     "recovery_worker": ".pi/agent/prompts/roles/recovery_worker.md",
+    "frontend_worker": ".pi/agent/prompts/roles/frontend_worker.md",
+    "backend_worker": ".pi/agent/prompts/roles/backend_worker.md",
+    "infra_worker": ".pi/agent/prompts/roles/infra_worker.md",
 }
 
 ALLOWED = {
@@ -70,7 +73,17 @@ ALLOWED = {
     "missing_proof_category": {"none", "acceptance_gap", "evidence_missing", "validation_missing", "wiring_unchecked", "blocked_dependency", "contradictory_evidence"},
     "decision_basis": {"proof_sufficient", "proof_gap", "blocked_dependency"},
     "recommended_action": {"retry_same_lane", "retry_stronger_model", "switch_provider", "rollback", "stop", "escalate"},
+    "worker_status": {"done", "blocked", "escalated"},
 }
+
+NARRATION_ONLY_PHRASES = (
+    "narration only",
+    "narrative only",
+    "described the work",
+    "described the script work",
+    "summarized the code change",
+    "claimed completion without",
+)
 
 
 def role_headers(role: str) -> list[str]:
@@ -137,6 +150,45 @@ def parse_structured_items(lines: list[str], required_fields: list[str], error_c
         missing = [field for field in required_fields if not fields.get(field)]
         if missing:
             errors.append(error_code)
+    return errors
+
+
+def contains_command_marker(text: str) -> bool:
+    return bool(re.search(r"`[^`]+`|\b(?:bash|npm|pnpm|npx|node|pytest|go test|cargo test|git diff --check)\b", text, re.IGNORECASE))
+
+
+def contains_failure_marker(text: str) -> bool:
+    return bool(re.search(r"\b(?:red|fail|failed|error)\b", text, re.IGNORECASE))
+
+
+def contains_success_marker(text: str) -> bool:
+    return bool(re.search(r"\b(?:green|pass|passed|succeeded|success)\b", text, re.IGNORECASE))
+
+
+def validate_build_worker(role: str, text: str, proof_section: str):
+    errors, sections = validate_common(role, text)
+    status = find_line(text, "Status")
+    if status not in ALLOWED["worker_status"]:
+        errors.append(f"{role}.invalid_status")
+        return errors
+    if status != "done":
+        return errors
+
+    proof_lines = sections.get(proof_section, [])
+    proof_key = proof_section.lower().replace(" ", "_")
+    if not section_has_content(proof_lines):
+        errors.append(f"{role}.done_without_{proof_key}")
+        return errors
+
+    proof_text = "\n".join(nonblank(proof_lines)).lower()
+    if any(phrase in proof_text for phrase in NARRATION_ONLY_PHRASES):
+        errors.append(f"{role}.narration_only_{proof_key}")
+    if not contains_command_marker(proof_text):
+        errors.append(f"{role}.missing_command_{proof_key}")
+    if not contains_failure_marker(proof_text):
+        errors.append(f"{role}.missing_failure_{proof_key}")
+    if not contains_success_marker(proof_text):
+        errors.append(f"{role}.missing_success_{proof_key}")
     return errors
 
 
@@ -239,12 +291,27 @@ def validate_recovery_worker(text: str):
     return errors
 
 
+def validate_frontend_worker(text: str):
+    return validate_build_worker("frontend_worker", text, "Evidence")
+
+
+def validate_backend_worker(text: str):
+    return validate_build_worker("backend_worker", text, "Evidence")
+
+
+def validate_infra_worker(text: str):
+    return validate_build_worker("infra_worker", text, "Validation")
+
+
 VALIDATORS = {
     "orchestrator": validate_orchestrator,
     "quality_lead": validate_quality_lead,
     "reviewer_worker": validate_reviewer_worker,
     "validator_worker": validate_validator_worker,
     "recovery_worker": validate_recovery_worker,
+    "frontend_worker": validate_frontend_worker,
+    "backend_worker": validate_backend_worker,
+    "infra_worker": validate_infra_worker,
 }
 
 failures: list[str] = []
