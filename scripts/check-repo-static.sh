@@ -127,9 +127,16 @@ product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").re
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
 g_coding_skill = (root / "packages/pi-g-skills/skills/g-coding/SKILL.md").read_text(encoding="utf-8")
+g_planning_skill = (root / "packages/pi-g-skills/skills/g-planning/SKILL.md").read_text(encoding="utf-8")
 team_orchestration_doc = (root / ".pi/agent/docs/team_orchestration_architecture.md").read_text(encoding="utf-8")
 planning_lead_prompt = (root / ".pi/agent/prompts/roles/planning_lead.md").read_text(encoding="utf-8")
+build_lead_prompt = (root / ".pi/agent/prompts/roles/build_lead.md").read_text(encoding="utf-8")
+frontend_worker_prompt = (root / ".pi/agent/prompts/roles/frontend_worker.md").read_text(encoding="utf-8")
+backend_worker_prompt = (root / ".pi/agent/prompts/roles/backend_worker.md").read_text(encoding="utf-8")
+infra_worker_prompt = (root / ".pi/agent/prompts/roles/infra_worker.md").read_text(encoding="utf-8")
 research_worker_prompt = (root / ".pi/agent/prompts/roles/research_worker.md").read_text(encoding="utf-8")
+validation_checklist_skill = (root / ".pi/agent/skills/validation-checklist/SKILL.md").read_text(encoding="utf-8")
+packet_policy_doc = (root / ".pi/agent/packets/packet-policy.json").read_text(encoding="utf-8")
 gitignore_doc = (root / ".gitignore").read_text(encoding="utf-8")
 package_manifest = json.loads((root / ".pi/agent/package/harness-package.json").read_text(encoding="utf-8"))
 core_workflows_validator = (root / "scripts/validate-core-workflows.sh").read_text(encoding="utf-8")
@@ -442,6 +449,62 @@ for needle in [
     "Use the deletion test to distinguish shallow modules from deep modules.",
 ]:
     assert needle in deep_module_doc
+for needle in [
+    "For non-trivial implementation work, make the TDD slice contract explicit:",
+    "first tracer-bullet behavior",
+    "public interface that proves it",
+    "boundary dependencies and mock/fake plan",
+    "behaviors intentionally left out of scope",
+]:
+    assert needle in g_planning_skill
+for needle in [
+    "for implementation planning, make the TDD slice contract explicit: first tracer-bullet behavior, public interface that proves it, boundary dependencies/mock plan, and behaviors intentionally left out of scope",
+    ".pi/agent/docs/tdd_behavior_first_workflow.md",
+    ".pi/agent/docs/deep_module_refactoring_workflow.md",
+]:
+    assert needle in planning_lead_prompt
+for needle in [
+    "preserve the TDD slice contract from planning: first tracer-bullet behavior, public interface that proves it, boundary dependencies/mock plan, and behaviors intentionally left out of scope",
+    "when tests are relevant, preserve RED/GREEN proof expectations, the named behavior under test, the public interface used, any non-boundary mock justification, and the post-GREEN refactor check in the packet",
+]:
+    assert needle in build_lead_prompt
+worker_tdd_needles = [
+    "Use behavior-first TDD: one failing behavior test, one minimal implementation, then repeat.",
+    "Do not batch speculative tests ahead of implementation.",
+    "Prefer tests through public interfaces and observable behavior.",
+    "Mock only system boundaries by default; justify stronger mocking explicitly when needed.",
+    "Refactor only while GREEN, then rerun the relevant tests after each refactor step.",
+]
+for prompt in [frontend_worker_prompt, backend_worker_prompt, infra_worker_prompt]:
+    for needle in worker_tdd_needles:
+        assert needle in prompt
+for needle in [
+    "Challenge tests that target private helpers, internal call order, or owned collaborators without a justified boundary reason.",
+    "When tests are relevant, require RED/GREEN evidence or an explicit explanation of why RED was not practical.",
+    ".pi/agent/docs/deep_module_refactoring_workflow.md",
+]:
+    assert needle in reviewer_prompt
+for needle in [
+    "Treat tests that depend on private helpers, internal call order, or unjustified owned-collaborator mocks as weak proof.",
+    "When tests are relevant, require RED/GREEN evidence or an explicit explanation of why RED was not practical.",
+    ".pi/agent/docs/deep_module_refactoring_workflow.md",
+]:
+    assert needle in validator_prompt
+for needle in [
+    "When tests are relevant, confirm evidence includes RED/GREEN commands or an explicit reason RED was not practical.",
+    "Challenge tests that depend on private helpers, internal call order, or unjustified owned-collaborator mocks.",
+    "Confirm the named behavior under test and the public interface are explicit when behavior-first TDD is claimed.",
+]:
+    assert needle in validation_checklist_skill
+for needle in [
+    "Record RED and GREEN commands when tests are relevant, or state explicitly why RED was not practical.",
+    "Name the single behavior under test and the public interface proving it.",
+    "Justify any non-boundary mock and note the post-GREEN refactor check.",
+    "For implementation planning, make the TDD slice contract explicit: first tracer-bullet behavior, public interface, boundary dependencies/mock plan, and intentionally excluded behaviors.",
+    "Preserve the TDD slice contract from planning: first tracer-bullet behavior, public interface, boundary dependencies/mock plan, and intentionally excluded behaviors.",
+    "Reject weak proof when tests depend on private helpers, internal call order, or unjustified owned-collaborator mocks.",
+]:
+    assert needle in packet_policy_doc
 for needle in [
     "## How to Read This Report",
     "## Final Decision",

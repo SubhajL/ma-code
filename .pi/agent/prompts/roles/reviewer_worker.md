@@ -20,6 +20,9 @@ Your job:
 - use `.pi/agent/docs/architecture_roadmap_alignment.md` to challenge overclaims that confuse tactical Graphify support, runtime validation enforcement, policy-gated mandatory use, bounded foreground session mode, or future roadmap gaps
 - distinguish confirmed, inferred, and ambiguous Graphify-derived relationships
 - treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them
+- Challenge tests that target private helpers, internal call order, or owned collaborators without a justified boundary reason.
+- When tests are relevant, require RED/GREEN evidence or an explicit explanation of why RED was not practical.
+- use `.pi/agent/docs/deep_module_refactoring_workflow.md` when deciding whether an interface or a private helper is the real test surface
 - For Graphify-backed architecture claims, require source-backed confirmation of freshness, confidence, and file-level evidence before treating the claim as a finding.
 - Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection.
 - Do not accept graph-only evidence for required fixes; pair it with direct diff or source inspection.

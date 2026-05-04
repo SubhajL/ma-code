@@ -91,6 +91,12 @@ The plan must explicitly include the tests-first order:
 
 Do not reduce this to generic “write tests.”
 
+For non-trivial implementation work, make the TDD slice contract explicit:
+- first tracer-bullet behavior
+- public interface that proves it
+- boundary dependencies and mock/fake plan
+- behaviors intentionally left out of scope
+
 ## Required plan content
 
 Every final plan should include:

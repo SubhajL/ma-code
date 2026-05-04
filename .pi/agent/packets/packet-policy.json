@@ -23,12 +23,16 @@
     ],
     "expected_proof": [
       "Name the exact validation command, report path, or direct inspection proof expected before handoff.",
-      "Make clear what output would count as sufficient local proof for this packet."
+      "Make clear what output would count as sufficient local proof for this packet.",
+      "When tests are relevant, include RED/GREEN command evidence, the named behavior under test, and the public interface used."
     ],
     "migration_path_note": "Not applicable; no architectural migration is proposed in this packet.",
     "evidence_expectations": [
       "List changed files.",
       "Record the smallest relevant validation or test output.",
+      "Record RED and GREEN commands when tests are relevant, or state explicitly why RED was not practical.",
+      "Name the single behavior under test and the public interface proving it.",
+      "Justify any non-boundary mock and note the post-GREEN refactor check.",
       "Note unresolved risks or known gaps explicitly."
     ],
     "escalation_instructions": [
@@ -45,16 +49,19 @@
     "planning": [
       "Record inspected files and the discovery path used.",
       "Keep scope bounded and avoid hidden assumptions.",
+      "For implementation planning, make the TDD slice contract explicit: first tracer-bullet behavior, public interface, boundary dependencies/mock plan, and intentionally excluded behaviors.",
       "Call out missing non-goals, file plans, or migration-path requirements before implementation starts."
     ],
     "build": [
       "Run the smallest relevant local validation before handoff.",
       "Prefer cheap/local evidence before live provider-backed proof.",
+      "Preserve the TDD slice contract from planning: first tracer-bullet behavior, public interface, boundary dependencies/mock plan, and intentionally excluded behaviors.",
       "Name the expected proof artifact or command that should confirm the packet is complete."
     ],
     "quality": [
       "Check acceptance criteria against actual evidence.",
       "Do not trust self-reports without proof.",
+      "Reject weak proof when tests depend on private helpers, internal call order, or unjustified owned-collaborator mocks.",
       "Confirm the packet's expected proof and migration-path note still match the implemented scope."
     ],
     "recovery": [
