@@ -202,6 +202,7 @@ JSON
   cp "$REPO_ROOT/.pi/agent/extensions/discovery-policy.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestration-decision.ts" "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestrator.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -387,8 +388,28 @@ check_8_graphify_orchestration_decision_unit_tests() {
   fi
 }
 
+check_9_graphify_orchestrator_unit_tests() {
+  local name="9. Graphify orchestrator runtime command unit tests"
+  local out="$TMP_ROOT/check_9_graphify_orchestrator_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/unit-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-orchestrator.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/extension-units/graphify-orchestrator.test.ts" "$out"; then
+    local detail="Graphify orchestrator runtime command tests passed for graphify_adapter preflight/scan/freshness/query delegation, local fallback, and forbidden watch args."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="Graphify orchestrator runtime command unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
 check_7_graphify_validation_decision_unit_tests
 check_8_graphify_orchestration_decision_unit_tests
+check_9_graphify_orchestrator_unit_tests
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"

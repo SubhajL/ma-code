@@ -136,6 +136,7 @@ validate_template = (root / ".pi/agent/prompts/templates/validate-task.md").read
 discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts").read_text(encoding="utf-8")
 graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-validation-decision.ts").read_text(encoding="utf-8")
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
+graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
 extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
 foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
@@ -235,6 +236,9 @@ assert "graphify-validation-decision.ts" in foundation_compile_validator
 assert "graphify-orchestration-decision.ts" in extension_unit_validator
 assert "graphify-orchestration-decision.test.ts" in extension_unit_validator
 assert "graphify-orchestration-decision.ts" in foundation_compile_validator
+assert "graphify-orchestrator.ts" in extension_unit_validator
+assert "graphify-orchestrator.test.ts" in extension_unit_validator
+assert "graphify-orchestrator.ts" in foundation_compile_validator
 for needle in [
     "decideGraphifyOrchestration",
     "GRAPHIFY_ORCHESTRATION_ACTIONS",
@@ -249,6 +253,27 @@ for needle in [
 ]:
     assert needle in graphify_orchestration_decision_extension
 assert "test:discovery-policy" in package_json.get("scripts", {})
+
+for needle in [
+    "run_graphify_orchestration",
+    "graphify_adapter",
+    "decideGraphifyOrchestration",
+    "adapterParamsForDecision",
+    "commandStatus",
+    "run_preflight",
+    "run_scan",
+    "check_freshness",
+    "query_graph",
+    "--watch",
+]:
+    assert needle in graphify_orchestrator_extension
+for needle in [
+    "run_graphify_orchestration",
+    ".pi/agent/extensions/graphify-orchestrator.ts",
+]:
+    assert needle in graphify_adapter_doc
+    assert needle in readme_doc
+
 architecture_boundary_needles = [
     "## Architecture Boundary Map",
     "Tactical Graphify adapter support is bounded discovery infrastructure, not global architecture authority.",
@@ -399,10 +424,13 @@ for needle in [
     "graphify-orchestration-decision.ts",
     "graphify-orchestration-decision.test.ts",
     "check_7_graphify_orchestration_decision_unit_tests",
+    "graphify-orchestrator.ts",
+    "graphify-orchestrator.test.ts",
+    "check_8_graphify_orchestrator_unit_tests",
 ]:
     assert needle in graphify_validator
 for needle in [
-    "check_8_graphify_validator_coverage_contract",
+    "check_9_graphify_validator_coverage_contract",
     "discovery selector Graphify recommendation",
     "Graphify adapter purpose requirement",
     "Graphify adapter preflight token requirement",

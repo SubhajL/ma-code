@@ -81,7 +81,7 @@ So Phase F should be read as:
 
 Related docs:
 - discovery policy: `.pi/agent/docs/discovery_policy.md`
-- Graphify adapter: `.pi/agent/docs/graphify_adapter.md`
+- Graphify adapter and runtime command: `.pi/agent/docs/graphify_adapter.md` (`.pi/agent/extensions/graphify-orchestrator.ts` / `run_graphify_orchestration` delegates to `graphify_adapter`)
 - validation architecture: `.pi/agent/docs/validation_architecture.md`
 - architecture/roadmap alignment boundary map: `.pi/agent/docs/architecture_roadmap_alignment.md`
 - bounded autonomy architecture: `.pi/agent/docs/bounded_autonomy_architecture.md`
