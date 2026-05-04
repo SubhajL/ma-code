@@ -226,6 +226,9 @@ for needle in [
 assert "discovery-policy.ts" in extension_unit_validator
 assert "discovery-policy.test.ts" in extension_unit_validator
 assert "discovery-policy.ts" in foundation_compile_validator
+assert "graphify-validation-decision.ts" in extension_unit_validator
+assert "graphify-validation-decision.test.ts" in extension_unit_validator
+assert "graphify-validation-decision.ts" in foundation_compile_validator
 assert "test:discovery-policy" in package_json.get("scripts", {})
 for needle in [
     "Graphify is an optional discovery fallback, not a required harness dependency.",
@@ -335,10 +338,13 @@ for needle in [
     "discovery-policy.ts",
     "discovery-policy.test.ts",
     "check_5_discovery_policy_selector_unit_tests",
+    "graphify-validation-decision.ts",
+    "graphify-validation-decision.test.ts",
+    "check_6_graphify_validation_decision_unit_tests",
 ]:
     assert needle in graphify_validator
 for needle in [
-    "check_6_graphify_validator_coverage_contract",
+    "check_7_graphify_validator_coverage_contract",
     "discovery selector Graphify recommendation",
     "Graphify adapter purpose requirement",
     "Graphify adapter preflight token requirement",
