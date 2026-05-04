@@ -315,8 +315,105 @@ check_5_discovery_policy_selector_unit_tests() {
   fi
 }
 
-check_6_graphify_smoke() {
-  local name="6. explicit installed-CLI smoke"
+check_6_graphify_validator_coverage_contract() {
+  local name="6. Graphify validator coverage contract"
+  local out="$TMP_ROOT/check_6_graphify_validator_coverage_contract.txt"
+  local cmd="cd $REPO_ROOT && $PYTHON_BIN - <<'PY' ... validate Graphify coverage contract"
+
+  if "$PYTHON_BIN" - <<'PY' "$REPO_ROOT" >"$out" 2>&1
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+validator = (root / "scripts/validate-graphify-discovery.sh").read_text(encoding="utf-8")
+adapter_unit = (root / "tests/extension-units/graphify-adapter.test.ts").read_text(encoding="utf-8")
+adapter_integration = (root / "tests/integration/graphify-adapter.test.ts").read_text(encoding="utf-8")
+discovery_policy_unit = (root / "tests/extension-units/discovery-policy.test.ts").read_text(encoding="utf-8")
+final_validation_sources = {
+    "validator_worker.md": (root / ".pi/agent/prompts/roles/validator_worker.md").read_text(encoding="utf-8"),
+    "reviewer_worker.md": (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_text(encoding="utf-8"),
+    "graphify_final_runbook.md": (root / ".pi/agent/docs/graphify_final_runbook.md").read_text(encoding="utf-8"),
+    "operator_workflow.md": (root / ".pi/agent/docs/operator_workflow.md").read_text(encoding="utf-8"),
+}
+
+checks = [
+    (
+        "discovery selector Graphify recommendation",
+        discovery_policy_unit,
+        [
+            "selects Graphify for broad structure when bounded and available",
+            'recommendedTool, "graphify_adapter"',
+            "freshness/confidence",
+        ],
+    ),
+    (
+        "Graphify adapter purpose requirement",
+        adapter_unit,
+        [
+            "blocks Graphify preflight and scan without a broad discovery purpose",
+            "blocked_missing_purpose",
+            "blocks narrow Graphify purpose values for preflight and scan",
+            "blocked_invalid_purpose",
+        ],
+    ),
+    (
+        "Graphify adapter preflight token requirement",
+        adapter_unit,
+        [
+            "blocks Graphify scan without a matching preflight token",
+            "preflightToken is required",
+            "preflightToken does not match",
+            "preflightTokenStatus, \"matched\"",
+        ],
+    ),
+    (
+        "freshness/cadence helper",
+        adapter_unit + adapter_integration,
+        [
+            "freshness helper recommends query and direct verification before final validation",
+            "before_final_validation",
+            "query_then_direct_verify",
+            "freshness/cadence guidance",
+        ],
+    ),
+    (
+        "final-validation prompt language",
+        "\n".join(final_validation_sources.values()),
+        [
+            "Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection.",
+            "latest relevant graph was queried or freshness/cadence was checked",
+            "important claims were verified with direct source inspection",
+        ],
+    ),
+]
+
+for label in [label for label, _, _ in checks]:
+    assert label in validator, f"validator report detail missing coverage label: {label}"
+
+for label, haystack, needles in checks:
+    for needle in needles:
+        assert needle in haystack or needle in validator, f"{label} missing coverage proof: {needle}"
+    if label == "final-validation prompt language":
+        for source_name, source_text in final_validation_sources.items():
+            for needle in needles:
+                assert needle in source_text, f"{source_name} missing final-validation prompt coverage proof: {needle}"
+    print(f"PASS: {label}")
+PY
+  then
+    local detail="Coverage contract passed for discovery selector Graphify recommendation, Graphify adapter purpose requirement, Graphify adapter preflight token requirement, freshness/cadence helper, and final-validation prompt language."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="Coverage contract failed for one or more required Graphify validator coverage areas."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
+check_7_graphify_smoke() {
+  local name="7. explicit installed-CLI smoke"
   if [[ $RUN_SMOKE -eq 0 ]]; then
     local detail="Installed-CLI smoke skipped by default; rerun with --smoke for one bounded real-CLI proof."
     record_result "$name" "SKIP" "$detail"
@@ -392,7 +489,8 @@ main() {
   check_3_graphify_integration_test
   check_4_graphify_prompt_contracts
   check_5_discovery_policy_selector_unit_tests
-  check_6_graphify_smoke
+  check_6_graphify_validator_coverage_contract
+  check_7_graphify_smoke
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF

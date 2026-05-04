@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_graphify-final-validation-rule.md`
+- `logs/coding/2026-05-04_graphify-validator-coverage.md`
 
 ## Current planning log
-- none for this implementation-only Graphify final-validation slice
+- none for this implementation-only Graphify validator coverage slice
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the Graphify final-validation rule slice.
+- These files capture the Graphify validator coverage slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.
