@@ -375,6 +375,21 @@ for needle in [
     "bash scripts/validate-graphify-discovery.sh",
 ]:
     assert needle in graphify_final_runbook_doc
+
+required_graphify_final_validation_rule = "Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection."
+required_graphify_final_validation_needles = [
+    required_graphify_final_validation_rule,
+    "latest relevant graph was queried or freshness/cadence was checked",
+    "important claims were verified with direct source inspection",
+]
+for doc_name, doc_text in [
+    ("validator_worker.md", validator_prompt),
+    ("reviewer_worker.md", reviewer_prompt),
+    ("graphify_final_runbook.md", graphify_final_runbook_doc),
+    ("operator_workflow.md", operator_workflow_doc),
+]:
+    for needle in required_graphify_final_validation_needles:
+        assert needle in doc_text, f"{doc_name} missing Graphify final-validation rule text: {needle}"
 for needle in [
     "Graphify final runbook",
     ".pi/agent/docs/graphify_final_runbook.md",

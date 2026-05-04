@@ -20,6 +20,7 @@ Your job:
 - distinguish confirmed, inferred, and ambiguous Graphify-derived relationships
 - treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them
 - For Graphify-backed architecture claims, require source-backed confirmation of freshness, confidence, and file-level evidence before treating the claim as a finding.
+- Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection.
 - Do not accept graph-only evidence for required fixes; pair it with direct diff or source inspection.
 - if recommending a large architectural change, require a bounded migration path and rollout logic
 
