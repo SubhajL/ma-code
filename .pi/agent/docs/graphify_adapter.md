@@ -14,6 +14,7 @@
   - `preflight`: dry-run scan validation for source/output/approval/forbidden-argument constraints and file count; returns a command preview and install detection without creating a source snapshot, metadata, graph artifacts, or a Graphify process.
   - `scan`: run one bounded one-shot scan into a managed artifact directory using the installed CLI shape `graphify update <managed-source-snapshot>`.
   - `query`: read an existing managed `graph.json`, `graphify-out/graph.json`, or real-CLI `source-snapshot/graphify-out/graph.json` and summarize confidence/freshness evidence. Query responses include `details.querySummary` with minimal structured fields for query, graph/output paths, edge count, node count, confidence counts, freshness status, and direct-verification reminder.
+- `preflight` and `scan` require a broad `purpose`: `architecture_review`, `dependency_exploration`, `drift_analysis`, `large_subsystem_mapping`, or `curated_research`. Use local `read` / `rg` / `find` instead for narrow exact verification.
 
 ## Safety controls
 - No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`; `preflight` records missing/install status but still does not install or run Graphify.
@@ -47,6 +48,7 @@
   - `sourcePath`
   - `outputPath`
   - file count and exclusions
+  - broad discovery purpose
   - edge-confidence policy
 - Cite graph findings as:
   - `confirmed` / `EXTRACTED`: useful evidence, still verify when acceptance or architecture depends on it.
@@ -72,7 +74,7 @@ What this proves:
 Manual follow-up if you run an ad hoc local fixture instead of the scripted smoke:
 ```bash
 git status --short
-# run one bounded adapter scan with taskId=manual-smoke and sourcePath=<tiny-fixture-path>
+# run one bounded adapter scan with taskId=manual-smoke, purpose=architecture_review, and sourcePath=<tiny-fixture-path>
 git status --short --ignored=matching
 ```
 
