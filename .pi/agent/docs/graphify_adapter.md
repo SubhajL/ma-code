@@ -8,8 +8,10 @@
 - Architecture boundary map: `.pi/agent/docs/architecture_roadmap_alignment.md` distinguishes tactical Graphify adapter support from runtime validation enforcement, optional policy-gated mandatory use, bounded foreground session operation, and future roadmap gaps.
 
 ## Runtime surface
-- Extension: `.pi/agent/extensions/graphify-adapter.ts`
-- Tool: `graphify_adapter`
+- Adapter extension: `.pi/agent/extensions/graphify-adapter.ts`
+- Adapter tool: `graphify_adapter`
+- Orchestration command extension: `.pi/agent/extensions/graphify-orchestrator.ts`
+- Orchestration command/tool: `run_graphify_orchestration`, which uses `decideGraphifyOrchestration` to choose one next action and delegates execution to the existing `graphify_adapter`.
 - Actions:
   - `status`: detect whether a `graphify` binary is available.
   - `preflight`: dry-run scan validation for source/output/approval/forbidden-argument constraints and file count; returns a command preview, install detection, and deterministic `preflightToken` without creating a source snapshot, metadata, graph artifacts, or a Graphify process.
@@ -20,6 +22,7 @@
 - `preflightToken` is stateless and deterministic from normalized source path, managed output path, task id, purpose, file count, max file threshold, approved-large-corpus flag, and safe extra args; changing any of those requires rerunning preflight before scan.
 - `freshnessStatus` values are `fresh`, `stale_head`, `dirty_worktree`, `missing_metadata`, and `missing_graph`.
 - `recommendedNextAction` values are `run_preflight_then_scan`, `query_then_direct_verify`, `do_not_rescan_for_small_loop`, and `use_local_verification`.
+- `run_graphify_orchestration` executes at most one adapter action per call: `preflight`, `scan`, `freshness`, or `query`; guidance-only decisions do not call the adapter.
 
 ## Safety controls
 - No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`; `preflight` records missing/install status but still does not install or run Graphify.
@@ -34,6 +37,7 @@
   - `secrets/`
   - `private-customer-data/`
 - Large corpus scans require explicit approval through `approvedLargeCorpus: true` after human approval or scope narrowing.
+- `run_graphify_orchestration` does not add watch, daemon, or background behavior; it relies on the existing adapter safety gate for forbidden args.
 - Background/side-effect modes and managed-output bypasses are blocked by default:
   - `--watch`
   - `--mcp`
@@ -97,6 +101,7 @@ Expected result:
 
 ## Validation
 - Unit: `tests/extension-units/graphify-adapter.test.ts`
+- Orchestration command unit: `tests/extension-units/graphify-orchestrator.test.ts`
 - Discovery selector: `tests/extension-units/discovery-policy.test.ts` is included in `scripts/validate-graphify-discovery.sh` so Graphify fallback-selection behavior is covered with the adapter validation path.
 - Integration: `tests/integration/graphify-adapter.test.ts`
 - Gates:
