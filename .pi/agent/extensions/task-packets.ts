@@ -51,6 +51,21 @@ export interface TaskPacketSource {
   generatedAt: string;
 }
 
+export interface GraphifyEvidence {
+  graphifyBackedClaim?: boolean;
+  claimScope?: "graphify_backed_claim" | "architecture_review" | "other";
+  policy?: "optional_default" | "required_for_graphify_backed_claims" | "required_for_architecture_review" | "disabled";
+  required?: boolean;
+  latestRelevantGraphQueried?: boolean;
+  freshnessOrCadenceChecked?: boolean;
+  importantClaimsSourceVerified?: boolean;
+  graphifyValidationState?: string;
+  graphifyOrchestrationAction?: string;
+  graphifyAdapterAction?: string;
+  graphifyArtifactPath?: string;
+  sourceVerificationNotes?: string[];
+}
+
 export interface PacketRoutingSummary {
   reason: RouteReason;
   budgetMode: BudgetMode;
@@ -82,6 +97,7 @@ export interface TaskPacket {
   evidenceExpectations: string[];
   validationExpectations: string[];
   expectedProof: string[];
+  graphifyEvidence?: GraphifyEvidence | null;
   wiringChecks: string[];
   migrationPathNote: string;
   escalationInstructions: string[];
@@ -112,6 +128,7 @@ export interface TaskPacketInput {
   evidenceExpectations?: string[];
   validationExpectations?: string[];
   expectedProof?: string[];
+  graphifyEvidence?: GraphifyEvidence | null;
   wiringChecks?: string[];
   migrationPathNote?: string;
   escalationInstructions?: string[];
@@ -130,6 +147,21 @@ export interface GeneratedTaskPacket {
 
 const PACKET_POLICY_PATH = ".pi/agent/packets/packet-policy.json";
 const PACKET_SCHEMA_PATH = ".pi/agent/state/schemas/task-packet.schema.json";
+
+const GraphifyEvidenceSchema = Type.Object({
+  graphifyBackedClaim: Type.Optional(Type.Boolean()),
+  claimScope: Type.Optional(StringEnum(["graphify_backed_claim", "architecture_review", "other"] as const)),
+  policy: Type.Optional(StringEnum(["optional_default", "required_for_graphify_backed_claims", "required_for_architecture_review", "disabled"] as const)),
+  required: Type.Optional(Type.Boolean()),
+  latestRelevantGraphQueried: Type.Optional(Type.Boolean()),
+  freshnessOrCadenceChecked: Type.Optional(Type.Boolean()),
+  importantClaimsSourceVerified: Type.Optional(Type.Boolean()),
+  graphifyValidationState: Type.Optional(Type.String()),
+  graphifyOrchestrationAction: Type.Optional(Type.String()),
+  graphifyAdapterAction: Type.Optional(Type.String()),
+  graphifyArtifactPath: Type.Optional(Type.String()),
+  sourceVerificationNotes: Type.Optional(Type.Array(Type.String())),
+});
 
 const GenerateTaskPacketSchema = Type.Object({
   sourceGoalId: Type.String({ minLength: 1 }),
@@ -153,6 +185,7 @@ const GenerateTaskPacketSchema = Type.Object({
   evidenceExpectations: Type.Optional(Type.Array(Type.String())),
   validationExpectations: Type.Optional(Type.Array(Type.String())),
   expectedProof: Type.Optional(Type.Array(Type.String())),
+  graphifyEvidence: Type.Optional(Type.Union([GraphifyEvidenceSchema, Type.Null()])),
   wiringChecks: Type.Optional(Type.Array(Type.String())),
   migrationPathNote: Type.Optional(Type.String()),
   escalationInstructions: Type.Optional(Type.Array(Type.String())),
@@ -173,6 +206,25 @@ function parseStringArray(raw: unknown): string[] {
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
+}
+
+function normalizeGraphifyEvidence(raw: GraphifyEvidence | null | undefined): GraphifyEvidence | null {
+  if (!raw || !isRecord(raw)) return null;
+  const evidence: GraphifyEvidence = {};
+  if (typeof raw.graphifyBackedClaim === "boolean") evidence.graphifyBackedClaim = raw.graphifyBackedClaim;
+  if (["graphify_backed_claim", "architecture_review", "other"].includes(String(raw.claimScope))) evidence.claimScope = raw.claimScope as GraphifyEvidence["claimScope"];
+  if (["optional_default", "required_for_graphify_backed_claims", "required_for_architecture_review", "disabled"].includes(String(raw.policy))) evidence.policy = raw.policy as GraphifyEvidence["policy"];
+  if (typeof raw.required === "boolean") evidence.required = raw.required;
+  if (typeof raw.latestRelevantGraphQueried === "boolean") evidence.latestRelevantGraphQueried = raw.latestRelevantGraphQueried;
+  if (typeof raw.freshnessOrCadenceChecked === "boolean") evidence.freshnessOrCadenceChecked = raw.freshnessOrCadenceChecked;
+  if (typeof raw.importantClaimsSourceVerified === "boolean") evidence.importantClaimsSourceVerified = raw.importantClaimsSourceVerified;
+  if (typeof raw.graphifyValidationState === "string" && raw.graphifyValidationState.trim()) evidence.graphifyValidationState = raw.graphifyValidationState.trim();
+  if (typeof raw.graphifyOrchestrationAction === "string" && raw.graphifyOrchestrationAction.trim()) evidence.graphifyOrchestrationAction = raw.graphifyOrchestrationAction.trim();
+  if (typeof raw.graphifyAdapterAction === "string" && raw.graphifyAdapterAction.trim()) evidence.graphifyAdapterAction = raw.graphifyAdapterAction.trim();
+  if (typeof raw.graphifyArtifactPath === "string" && raw.graphifyArtifactPath.trim()) evidence.graphifyArtifactPath = raw.graphifyArtifactPath.trim();
+  evidence.sourceVerificationNotes = uniqueStrings(parseStringArray(raw.sourceVerificationNotes));
+  if (evidence.sourceVerificationNotes.length === 0) delete evidence.sourceVerificationNotes;
+  return Object.keys(evidence).length > 0 ? evidence : null;
 }
 
 function parseString(raw: unknown, fieldName: string): string {
@@ -314,6 +366,24 @@ function renderList(lines: string[]): string {
   return lines.map((line) => `- ${line}`).join("\n");
 }
 
+export function renderGraphifyEvidence(evidence: GraphifyEvidence | null | undefined): string {
+  if (!evidence) return "- none";
+  const lines: string[] = [];
+  if (typeof evidence.graphifyBackedClaim === "boolean") lines.push(`graphify backed claim: ${evidence.graphifyBackedClaim}`);
+  if (evidence.claimScope) lines.push(`claim scope: ${evidence.claimScope}`);
+  if (evidence.policy) lines.push(`policy: ${evidence.policy}`);
+  if (typeof evidence.required === "boolean") lines.push(`required: ${evidence.required}`);
+  if (typeof evidence.latestRelevantGraphQueried === "boolean") lines.push(`latest relevant graph queried: ${evidence.latestRelevantGraphQueried}`);
+  if (typeof evidence.freshnessOrCadenceChecked === "boolean") lines.push(`freshness or cadence checked: ${evidence.freshnessOrCadenceChecked}`);
+  if (typeof evidence.importantClaimsSourceVerified === "boolean") lines.push(`important claims source verified: ${evidence.importantClaimsSourceVerified}`);
+  if (evidence.graphifyValidationState) lines.push(`graphify validation state: ${evidence.graphifyValidationState}`);
+  if (evidence.graphifyOrchestrationAction) lines.push(`graphify orchestration action: ${evidence.graphifyOrchestrationAction}`);
+  if (evidence.graphifyAdapterAction) lines.push(`graphify adapter action: ${evidence.graphifyAdapterAction}`);
+  if (evidence.graphifyArtifactPath) lines.push(`graphify artifact path: ${evidence.graphifyArtifactPath}`);
+  for (const note of evidence.sourceVerificationNotes ?? []) lines.push(`source verification note: ${note}`);
+  return renderList(lines);
+}
+
 export function renderTaskPacket(packet: TaskPacket): string {
   return [
     "## Packet ID",
@@ -378,6 +448,9 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "",
     "## Expected Proof",
     renderList(packet.expectedProof),
+    "",
+    "## Graphify Evidence",
+    renderGraphifyEvidence(packet.graphifyEvidence),
     "",
     "## Wiring Checks",
     renderList(packet.wiringChecks),
@@ -484,6 +557,7 @@ export function generateTaskPacket(
     evidenceExpectations,
     validationExpectations,
     expectedProof,
+    graphifyEvidence: normalizeGraphifyEvidence(input.graphifyEvidence),
     wiringChecks: uniqueStrings(input.wiringChecks ?? policy.team_wiring_checks[input.assignedTeam]),
     migrationPathNote: (input.migrationPathNote ?? policy.defaults.migration_path_note).trim(),
     escalationInstructions: uniqueStrings(input.escalationInstructions ?? policy.defaults.escalation_instructions),

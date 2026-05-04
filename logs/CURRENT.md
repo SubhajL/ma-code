@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_queue-session-research-graphify.md`
+- `logs/coding/2026-05-04_graphify-evidence-packets-handoffs.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_queue-session-research-graphify-plan.md`
+- `reports/planning/2026-05-04_graphify-evidence-packets-handoffs-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the queue-session research Graphify integration slice.
+- These files capture the task-packet/handoff Graphify evidence fields slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

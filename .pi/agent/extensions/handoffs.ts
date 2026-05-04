@@ -10,6 +10,8 @@ import {
 import {
   TaskPacket,
   validateTaskPacketShape,
+  renderGraphifyEvidence,
+  type GraphifyEvidence,
 } from "./task-packets.ts";
 
 export const HANDOFF_TYPES = [
@@ -79,6 +81,7 @@ export interface PreservedPacketSummary {
   evidenceExpectations: string[];
   validationExpectations: string[];
   expectedProof: string[];
+  graphifyEvidence?: GraphifyEvidence | null;
   wiringChecks: string[];
   migrationPathNote: string;
   escalationInstructions: string[];
@@ -101,6 +104,7 @@ export interface HandoffDetails {
   questionsForReviewer: string[];
   validationScope: string[];
   expectedProof: string[];
+  graphifyEvidence?: GraphifyEvidence | null;
   openQuestions: string[];
   validationQuestions: string[];
   failureType: string | null;
@@ -144,6 +148,7 @@ export interface GenerateHandoffInput {
   questionsForReviewer?: string[];
   validationScope?: string[];
   expectedProof?: string[];
+  graphifyEvidence?: GraphifyEvidence | null;
   openQuestions?: string[];
   validationQuestions?: string[];
   failureType?: string;
@@ -169,6 +174,21 @@ interface HandoffToolDetails {
 }
 
 const POLICY_PATH = ".pi/agent/handoffs/handoff-policy.json";
+const GraphifyEvidenceSchema = Type.Object({
+  graphifyBackedClaim: Type.Optional(Type.Boolean()),
+  claimScope: Type.Optional(StringEnum(["graphify_backed_claim", "architecture_review", "other"] as const)),
+  policy: Type.Optional(StringEnum(["optional_default", "required_for_graphify_backed_claims", "required_for_architecture_review", "disabled"] as const)),
+  required: Type.Optional(Type.Boolean()),
+  latestRelevantGraphQueried: Type.Optional(Type.Boolean()),
+  freshnessOrCadenceChecked: Type.Optional(Type.Boolean()),
+  importantClaimsSourceVerified: Type.Optional(Type.Boolean()),
+  graphifyValidationState: Type.Optional(Type.String()),
+  graphifyOrchestrationAction: Type.Optional(Type.String()),
+  graphifyAdapterAction: Type.Optional(Type.String()),
+  graphifyArtifactPath: Type.Optional(Type.String()),
+  sourceVerificationNotes: Type.Optional(Type.Array(Type.String())),
+});
+
 const HandoffInputSchema = Type.Object({
   handoffType: StringEnum(HANDOFF_TYPES),
   sourcePacket: Type.Any(),
@@ -189,6 +209,7 @@ const HandoffInputSchema = Type.Object({
   questionsForReviewer: Type.Optional(Type.Array(Type.String())),
   validationScope: Type.Optional(Type.Array(Type.String())),
   expectedProof: Type.Optional(Type.Array(Type.String())),
+  graphifyEvidence: Type.Optional(Type.Union([GraphifyEvidenceSchema, Type.Null()])),
   openQuestions: Type.Optional(Type.Array(Type.String())),
   validationQuestions: Type.Optional(Type.Array(Type.String())),
   failureType: Type.Optional(Type.String()),
@@ -209,6 +230,25 @@ function parseStringArray(raw: unknown): string[] {
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
+}
+
+function normalizeGraphifyEvidence(raw: GraphifyEvidence | null | undefined): GraphifyEvidence | null {
+  if (!raw || !isRecord(raw)) return null;
+  const evidence: GraphifyEvidence = {};
+  if (typeof raw.graphifyBackedClaim === "boolean") evidence.graphifyBackedClaim = raw.graphifyBackedClaim;
+  if (["graphify_backed_claim", "architecture_review", "other"].includes(String(raw.claimScope))) evidence.claimScope = raw.claimScope as GraphifyEvidence["claimScope"];
+  if (["optional_default", "required_for_graphify_backed_claims", "required_for_architecture_review", "disabled"].includes(String(raw.policy))) evidence.policy = raw.policy as GraphifyEvidence["policy"];
+  if (typeof raw.required === "boolean") evidence.required = raw.required;
+  if (typeof raw.latestRelevantGraphQueried === "boolean") evidence.latestRelevantGraphQueried = raw.latestRelevantGraphQueried;
+  if (typeof raw.freshnessOrCadenceChecked === "boolean") evidence.freshnessOrCadenceChecked = raw.freshnessOrCadenceChecked;
+  if (typeof raw.importantClaimsSourceVerified === "boolean") evidence.importantClaimsSourceVerified = raw.importantClaimsSourceVerified;
+  if (typeof raw.graphifyValidationState === "string" && raw.graphifyValidationState.trim()) evidence.graphifyValidationState = raw.graphifyValidationState.trim();
+  if (typeof raw.graphifyOrchestrationAction === "string" && raw.graphifyOrchestrationAction.trim()) evidence.graphifyOrchestrationAction = raw.graphifyOrchestrationAction.trim();
+  if (typeof raw.graphifyAdapterAction === "string" && raw.graphifyAdapterAction.trim()) evidence.graphifyAdapterAction = raw.graphifyAdapterAction.trim();
+  if (typeof raw.graphifyArtifactPath === "string" && raw.graphifyArtifactPath.trim()) evidence.graphifyArtifactPath = raw.graphifyArtifactPath.trim();
+  evidence.sourceVerificationNotes = uniqueStrings(parseStringArray(raw.sourceVerificationNotes));
+  if (evidence.sourceVerificationNotes.length === 0) delete evidence.sourceVerificationNotes;
+  return Object.keys(evidence).length > 0 ? evidence : null;
 }
 
 function parseString(raw: unknown, fieldName: string): string {
@@ -340,6 +380,7 @@ function preservePacket(packet: TaskPacket): PreservedPacketSummary {
     evidenceExpectations: packet.evidenceExpectations,
     validationExpectations: packet.validationExpectations,
     expectedProof: packet.expectedProof,
+    graphifyEvidence: normalizeGraphifyEvidence(packet.graphifyEvidence),
     wiringChecks: packet.wiringChecks,
     migrationPathNote: packet.migrationPathNote,
     escalationInstructions: packet.escalationInstructions,
@@ -365,6 +406,7 @@ function buildDetails(input: GenerateHandoffInput, packet: TaskPacket, noneToken
     questionsForReviewer: nonEmptyOrNone(uniqueStrings(input.questionsForReviewer ?? []), noneToken),
     validationScope: nonEmptyOrNone(uniqueStrings(input.validationScope ?? []), noneToken),
     expectedProof: nonEmptyOrNone(uniqueStrings(input.expectedProof ?? []), noneToken),
+    graphifyEvidence: normalizeGraphifyEvidence(input.graphifyEvidence),
     openQuestions: nonEmptyOrNone(uniqueStrings(input.openQuestions ?? validationQuestions), noneToken),
     validationQuestions: nonEmptyOrNone(validationQuestions, noneToken),
     failureType: input.failureType?.trim() || null,
@@ -553,6 +595,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "## Evidence Expectations",
         renderList([...packet.evidenceExpectations, ...packet.expectedProof.map((line) => `expected proof: ${line}`)]),
         "",
+        "## Graphify Evidence",
+        renderGraphifyEvidence(packet.graphifyEvidence),
+        "",
         "## Wiring Checks",
         renderList([...packet.wiringChecks, `migration path note: ${packet.migrationPathNote}`]),
         "",
@@ -584,6 +629,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Evidence Expectations",
         renderList([...packet.evidenceExpectations, ...packet.expectedProof.map((line) => `expected proof: ${line}`)]),
+        "",
+        "## Graphify Evidence",
+        renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
         "",
         "## Validation Commands",
         renderList(d.commandsRun),
@@ -623,6 +671,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Questions For Reviewer",
         renderList(d.questionsForReviewer),
+        "",
+        "## Graphify Evidence",
+        renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
       ].join("\n");
     case "quality_to_validator":
       return [
@@ -643,6 +694,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Validation Questions",
         renderList(d.validationQuestions),
+        "",
+        "## Graphify Evidence",
+        renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
         "",
         "## Wiring Checks",
         renderList([...packet.wiringChecks, `migration path note: ${packet.migrationPathNote}`]),
@@ -669,6 +723,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Stop Threshold",
         `- ${d.stopThreshold ?? noneToken}`,
+        "",
+        "## Graphify Evidence",
+        renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
       ].join("\n");
   }
 }
