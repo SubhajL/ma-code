@@ -1,0 +1,119 @@
+# Runtime Bookkeeping Local-Only / Safe Main Sync
+
+## Work Summary (2026-05-04 01:34 local)
+
+### Goal
+- Make live harness runtime bookkeeping local-only so regenerated task/queue/audit state does not dirty `main` or block autonomous fast-forward sync.
+- Add a bounded `harness-sync-main` helper that only fast-forwards local `main` to `origin/main` when tracked dirtiness is limited to allowed local bookkeeping.
+
+### Discovery Path
+- Read `AGENTS.md`, `README.md`, and `logs/CURRENT.md`.
+- Attempted Auggie discovery for runtime state/static/sync surfaces; Auggie timed out, so used local fallback with `rg`, `git ls-files`, and targeted reads.
+- Local discovery found tracked live files: `.pi/agent/state/runtime/tasks.json`, `.pi/agent/state/runtime/queue.json`, and `logs/harness-actions.jsonl`.
+- Relevant surfaces: `.gitignore`, `scripts/check-repo-static.sh`, `package.json`, `scripts/validate-core-workflows.sh`, `tests/integration/worktree-helper.test.ts`, `tests/integration/pr-gate.test.ts`, `scripts/harness-worktree.ts`, and operator/file-map docs.
+
+### TDD Plan
+- RED 1: add static guard in `scripts/check-repo-static.sh`, run it, and confirm it fails while live runtime files are still tracked.
+- GREEN 1: untrack live runtime files with `git rm --cached`, strengthen `.gitignore`, and rerun static checks.
+- RED 2: add focused integration tests for the new sync helper before adding the helper; confirm module-not-found or missing behavior failure.
+- GREEN 2: implement `scripts/harness-sync-main.ts`, wire package/core validator/docs/static checks, and rerun targeted tests 3x plus quality gates.
+
+### Current Risks / Notes
+- Runtime state files are protected for direct editing; the implementation should only remove them from Git index and ignore future generated copies.
+- The sync helper must remain conservative: fast-forward only, no force/reset/merge conflict resolution, and block non-bookkeeping tracked dirt.
+
+## Work Summary (2026-05-04 01:47 local)
+
+### Files Changed and Why
+- `.gitignore`: ignore live runtime JSON/lock files plus `logs/harness-actions.jsonl`.
+- `.pi/agent/state/runtime/queue.json`, `.pi/agent/state/runtime/tasks.json`, `logs/harness-actions.jsonl`: removed from the Git index with `git rm --cached`; local ignored copies remain present.
+- `scripts/check-repo-static.sh`: added a tracked-file guard that fails if live runtime bookkeeping is tracked again, plus wiring assertions for the sync helper and ignores.
+- `scripts/harness-sync-main.ts`: added fast-forward-only `main` sync helper with tracked-dirt checks and ignored-runtime bookkeeping preservation.
+- `tests/integration/sync-main.test.ts`: added temp-git integration coverage for successful fast-forward with ignored runtime files and blocking non-bookkeeping tracked dirt.
+- `scripts/validate-core-workflows.sh`, `package.json`, `README.md`, `.pi/agent/docs/file_map.md`, `.pi/agent/docs/operator_workflow.md`, `.pi/agent/docs/validation_architecture.md`: wired the helper into package scripts, core validation, and operator docs.
+- `logs/CURRENT.md`: moved current coding-log pointer to this slice.
+
+### RED Evidence
+- `bash scripts/check-repo-static.sh` failed after adding the static guard because `.pi/agent/state/runtime/queue.json`, `.pi/agent/state/runtime/tasks.json`, and `logs/harness-actions.jsonl` were still tracked.
+- `npx --yes tsx --test tests/integration/sync-main.test.ts` failed before implementation with `ERR_MODULE_NOT_FOUND` for `scripts/harness-sync-main.ts`.
+- A direct `node --import tsx` RED attempt failed earlier because root dependencies are not installed; reran with `npx --yes tsx` to prove the intended missing-helper failure.
+
+### GREEN Evidence
+- `npx --yes tsx --test tests/integration/sync-main.test.ts` passed.
+- Flake check: 3 consecutive `npx --yes tsx --test tests/integration/sync-main.test.ts` runs passed with 2 tests passing each run.
+- `bash scripts/check-repo-static.sh` passed with `repo-static-checks-ok`.
+- `bash scripts/check-foundation-extension-compile.sh` passed with `foundation-extension-compile-ok`.
+- `bash scripts/validate-core-workflows.sh --report /tmp/runtime-bookkeeping-core.md --summary-json /tmp/runtime-bookkeeping-core.json` passed with `core-workflows-validation: PASS`.
+- `git diff --check` passed with no output.
+- `npx --yes tsx scripts/harness-sync-main.ts --help` printed the expected usage.
+
+### Wiring Verification
+- `package.json` exposes `harness:sync-main`, `harness:sync-main:json`, and `test:sync-main`.
+- `scripts/validate-core-workflows.sh` copies, compiles, and runs sync-main integration coverage in its isolated runtime.
+- `scripts/check-repo-static.sh` requires `scripts/harness-sync-main.ts`, checks package/docs wiring, checks `.gitignore`, and rejects tracked runtime bookkeeping.
+- Docs now point operators to `npm run harness:sync-main` after PR merges.
+
+### Behavior Changes and Risk Notes
+- Live runtime state remains generated by existing runtime initialization and package templates, but root `main` no longer tracks the live JSON/audit files.
+- The sync helper intentionally does not resolve conflicts, reset, force, stash source changes, or switch branches; it fails closed on non-bookkeeping tracked dirt.
+- Known gap: users on an older checkout still need to receive this PR before the new helper can solve their sync path.
+
+## Review (2026-05-04 01:52 local) - staged runtime-bookkeeping local-only diff
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code`
+- Branch: `task/task-1777858309677-make-runtime-bookkeeping-local-only-and-add-safe`
+- Scope: staged working-tree diff
+- Commands Run: `git diff --cached --name-status`; `git diff --cached --stat`; targeted `git diff --cached -- scripts/harness-sync-main.ts tests/integration/sync-main.test.ts scripts/check-repo-static.sh scripts/validate-core-workflows.sh .gitignore`; `bash scripts/check-repo-static.sh`; `bash scripts/check-foundation-extension-compile.sh`; `bash scripts/validate-core-workflows.sh --report /tmp/runtime-bookkeeping-core.md --summary-json /tmp/runtime-bookkeeping-core.json`; `git diff --cached --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: removing tracked live runtime JSON/audit history from the repo is intended, while preserving schema files and package runtime templates as the reusable state source.
+- Assumption: the sync helper should require being on `main` instead of silently moving `main` from another checked-out branch.
+
+### Recommended Tests / Validation
+- Already run: static guard, foundation compile, sync-main integration test with 3 consecutive passes, core workflows validator, and diff whitespace check.
+- Before merge: use `scripts/harness-pr-gate.ts` or GitHub checks to confirm CI static/core validators pass with the untracked-runtime deletion.
+
+### Rollout Notes
+- After merge, existing local runtime files may be removed by Git on first pull/merge if they were tracked in that checkout; runtime/package initialization will recreate missing files, and current local copies are preserved in this working tree because `git rm --cached` was used.
+- Operators should use `npm run harness:sync-main` after this lands; it fast-forwards only and fails closed on non-bookkeeping tracked dirt.
+
+Review Verdict: no_required_fixes
+
+## Work Summary (2026-05-04 01:59 local) - CI routing-validator fix
+
+### Goal
+- Fix PR #69 Routing Validators failure after live runtime queue JSON became untracked.
+
+### Files Changed and Why
+- `scripts/validate-queue-semantics.sh`: changed queue empty-state proof from the live generated `.pi/agent/state/runtime/queue.json` to the tracked bootstrap template `.pi/agent/package/templates/runtime/queue.json`.
+
+### RED Evidence
+- PR #69 gate helper reported Routing Validators failure.
+- GitHub job log showed `./scripts/validate-queue-semantics.sh` failed in CI after checkout because live runtime queue JSON is intentionally no longer tracked.
+
+### GREEN Evidence
+- `bash scripts/validate-queue-semantics.sh --report /tmp/queue-semantics-fixed.md --summary-json /tmp/queue-semantics-fixed.json` -> PASS.
+- `bash scripts/check-repo-static.sh` -> `repo-static-checks-ok`.
+- `bash scripts/check-foundation-extension-compile.sh` -> `foundation-extension-compile-ok`.
+- `bash scripts/validate-core-workflows.sh --report /tmp/runtime-bookkeeping-core-2.md --summary-json /tmp/runtime-bookkeeping-core-2.json` -> PASS.
+- `git diff --check` -> no output.
+
+### Wiring Verification
+- CI Routing Validators invokes `scripts/validate-queue-semantics.sh`; the validator now uses the tracked runtime template source that remains available in fresh checkouts.
+
+### Risk Notes
+- This preserves the queue contract proof while avoiding dependence on generated local runtime files.

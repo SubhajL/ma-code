@@ -217,7 +217,7 @@ PY
 }
 
 check_2_runtime_placeholder_alignment() {
-  local name="2. queue runtime placeholder matches finalized empty-state shape"
+  local name="2. queue runtime template matches finalized empty-state shape"
   local out="$TMP_ROOT/check_2_runtime_placeholder_alignment.txt"
   local cmd="$PYTHON_BIN $TMP_ROOT/check_2_runtime_placeholder_alignment.py"
 
@@ -225,24 +225,24 @@ check_2_runtime_placeholder_alignment() {
 import json, sys
 from pathlib import Path
 root = Path(sys.argv[1])
-queue = json.loads((root / '.pi/agent/state/runtime/queue.json').read_text(encoding='utf-8'))
-assert isinstance(queue, dict), f"expected runtime queue object, found {type(queue).__name__}"
+queue = json.loads((root / '.pi/agent/package/templates/runtime/queue.json').read_text(encoding='utf-8'))
+assert isinstance(queue, dict), f"expected runtime queue template object, found {type(queue).__name__}"
 assert queue == {
     'version': 1,
     'paused': False,
     'activeJobId': None,
     'jobs': [],
-}, f"unexpected empty runtime queue state: {queue!r}"
-print('queue-runtime-ok')
+}, f"unexpected empty runtime queue template state: {queue!r}"
+print('queue-runtime-template-ok')
 PY
 
   if "$PYTHON_BIN" "$TMP_ROOT/check_2_runtime_placeholder_alignment.py" "$REPO_ROOT" >"$out" 2>&1; then
-    local detail="Queue runtime placeholder matches the finalized empty-state object."
+    local detail="Queue runtime template matches the finalized empty-state object."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- runtime output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- runtime template output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
-    local detail="Queue runtime placeholder does not yet match the finalized empty-state object."
+    local detail="Queue runtime template does not yet match the finalized empty-state object."
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
     append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"

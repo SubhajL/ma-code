@@ -26,6 +26,7 @@ npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
 npm run harness:schedules
 npm run harness:schedules:json
 npm run harness:pr-gate -- --pr <number> --max-attempts 20
+npm run harness:sync-main
 ```
 
 Related operator docs:
@@ -98,6 +99,15 @@ npm run harness:pr-gate:json -- --pr <number> --once
 - it reports CI/security checks plus review/comment triage and classifies Dependency Review success bot comments as benign
 - if the helper reports `fix_required`, inspect the failed check or non-benign comment, make one bounded fix, then rerun the helper
 
+For local main sync after a PR merge, use the fast-forward-only helper:
+```bash
+npm run harness:sync-main
+npm run harness:sync-main:json
+```
+- it fetches `origin/main` and only runs `git merge --ff-only origin/main`
+- it preserves ignored runtime bookkeeping under `.pi/agent/state/runtime/` and `logs/harness-actions.jsonl`
+- it blocks when non-bookkeeping tracked dirt exists instead of hiding source changes
+
 ### 3. Make or review one bounded change set
 Examples:
 - config wiring
@@ -129,7 +139,7 @@ Record evidence in:
 - coding log: `logs/coding/...`
 - planning log: `reports/planning/...`
 - validation reports: `reports/validation/...`
-- runtime audit log when relevant: `logs/harness-actions.jsonl`
+- runtime audit log when relevant: `logs/harness-actions.jsonl` (local-only runtime bookkeeping)
 
 ## Cross-phase working patterns
 These patterns should now guide planning, implementation, and review even before later phases are fully implemented.

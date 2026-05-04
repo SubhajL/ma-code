@@ -33,6 +33,7 @@ required_files=(
   "scripts/validate-core-workflows.sh"
   "scripts/validate-graphify-discovery.sh"
   "scripts/harness-pr-gate.ts"
+  "scripts/harness-sync-main.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -68,8 +69,25 @@ done
 bash -n "$REPO_ROOT"/scripts/*.sh
 
 "${PYTHON_BIN:-python3}" - <<'PY' "$REPO_ROOT"
-import json, pathlib, sys
+import json, pathlib, subprocess, sys
 root = pathlib.Path(sys.argv[1])
+tracked_runtime = subprocess.check_output(
+    [
+        "git",
+        "-C",
+        str(root),
+        "ls-files",
+        "--",
+        ".pi/agent/state/runtime/*.json",
+        "logs/harness-actions.jsonl",
+    ],
+    text=True,
+).splitlines()
+if tracked_runtime:
+    raise AssertionError(
+        "Live runtime bookkeeping files must stay local-only and untracked: "
+        + ", ".join(tracked_runtime)
+    )
 for rel in [
     ".pi/agent/models.json",
     ".pi/agent/teams/activation-policy.json",
@@ -258,9 +276,18 @@ for needle in [
 ]:
     assert needle in graphify_adapter_doc
 assert ".pi/agent/artifacts/" in gitignore_doc
+for needle in [
+    ".pi/agent/state/runtime/*.json",
+    ".pi/agent/state/runtime/*.lock",
+    "logs/harness-actions.jsonl",
+]:
+    assert needle in gitignore_doc
 assert ".pi/agent/artifacts" in package_manifest.get("excludedPaths", [])
+assert ".pi/agent/state/runtime" in package_manifest.get("excludedPaths", [])
 assert "harness:pr-gate" in package_json.get("scripts", {})
 assert "test:pr-gate" in package_json.get("scripts", {})
+assert "harness:sync-main" in package_json.get("scripts", {})
+assert "test:sync-main" in package_json.get("scripts", {})
 for needle in [
     "gh pr checks",
     "--watch",
@@ -268,6 +295,15 @@ for needle in [
     "recommendedNextAction",
 ]:
     assert needle in pr_gate_helper
+sync_main_helper = (root / "scripts/harness-sync-main.ts").read_text(encoding="utf-8")
+for needle in [
+    "syncLocalMain",
+    "merge",
+    "--ff-only",
+    "non-bookkeeping tracked dirt",
+    "preservedLocalBookkeeping",
+]:
+    assert needle in sync_main_helper
 for needle in [
     "harness:pr-gate",
     "180 seconds",
@@ -275,7 +311,15 @@ for needle in [
     assert needle in readme_doc
     assert needle in operator_workflow_doc
 for needle in [
+    "harness:sync-main",
+    "fast-forward",
+    "runtime bookkeeping",
+]:
+    assert needle in readme_doc
+    assert needle in operator_workflow_doc
+for needle in [
     "scripts/harness-pr-gate.ts",
+    "scripts/harness-sync-main.ts",
 ]:
     assert needle in file_map_doc
     assert needle in validation_doc

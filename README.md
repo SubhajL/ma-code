@@ -18,7 +18,7 @@ This includes:
 - models/settings
 - team definitions
 - state schemas
-- runtime state placeholders
+- runtime state templates/placeholders (live runtime state is local-only and ignored)
 - extension specs
 - skills
 - harness docs
@@ -34,7 +34,7 @@ Implemented here:
 - normalized routing config with verified runnable IDs
 - team files
 - task and queue schemas
-- live runtime state files
+- generated local-only runtime state files
 - live runtime extensions:
   - `.pi/agent/extensions/safe-bash.ts`
   - `.pi/agent/extensions/till-done.ts`
@@ -65,6 +65,7 @@ That means the repo currently has:
 - repo-local harness structure
 - role/prompt foundation
 - task and queue schemas as state artifacts
+- local-only generated runtime bookkeeping under `.pi/agent/state/runtime/` and `logs/harness-actions.jsonl`
 - first live runtime controls
 - bounded validation workflow
 
@@ -123,6 +124,7 @@ npm run harness:schedules
 npm run harness:package
 npm run harness:worktree -- status
 npm run harness:pr-gate -- --pr 63 --max-attempts 20
+npm run harness:sync-main
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
@@ -130,6 +132,7 @@ npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
 npm run test:pr-gate
+npm run test:sync-main
 npm run test:harness-package
 npm run validate:core-workflows
 npm run validate:graphify-discovery
@@ -159,6 +162,15 @@ npm run harness:schedules:json
 node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run
 node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow repo-audit-run --apply
 ```
+
+Safe local main sync examples:
+```bash
+npm run harness:sync-main
+npm run harness:sync-main:json
+node --import tsx scripts/harness-sync-main.ts --json
+```
+
+The sync helper performs only a fast-forward update of local `main` from `origin/main`, preserves ignored runtime bookkeeping, and blocks when non-bookkeeping tracked dirt is present.
 
 Harness package/bootstrap examples:
 ```bash
