@@ -1,13 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { execFile as execFileWithCallback } from "node:child_process";
+import { promisify } from "node:util";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import queueRunner from "../../.pi/agent/extensions/queue-runner.ts";
 import tillDone from "../../.pi/agent/extensions/till-done.ts";
 import { materializeScheduledWorkflows } from "../../scripts/harness-scheduled-workflows.ts";
-import { buildHarnessQueueSession, renderHarnessQueueSession } from "../../scripts/harness-queue-session.ts";
+import {
+  assertHarnessQueueSessionCliScope,
+  buildHarnessQueueSession,
+  parseHarnessQueueSessionArgs,
+  renderHarnessQueueSession,
+} from "../../scripts/harness-queue-session.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo } from "../extension-units/test-utils.ts";
+
+const execFile = promisify(execFileWithCallback);
 
 async function setupQueueSessionRepo(prefix: string) {
   const cwd = await makeTempRepo(prefix);
@@ -541,4 +550,154 @@ test("queue session triage recommends blocked-job review when the session ends o
   assert.deepEqual(view.result.triage.blockedJobIds, ["job-blocked-session"]);
   assert.match(rendered, /recommended next action: review_blocked_jobs/);
   assert.match(rendered, /blocked\/touched jobs: job-blocked-session/);
+});
+
+test("queue session CLI requires an explicit task id or operator scope", () => {
+  const parsed = parseHarnessQueueSessionArgs(["--max-steps", "2", "--max-runtime-seconds", "30"]);
+
+  assert.throws(
+    () => assertHarnessQueueSessionCliScope(parsed),
+    /requires --task-id or --scope so operator sessions stay explicitly scoped/,
+  );
+
+  assert.doesNotThrow(() => assertHarnessQueueSessionCliScope(parseHarnessQueueSessionArgs(["--scope", "Phase 4 bounded operator session"])));
+  assert.doesNotThrow(() => assertHarnessQueueSessionCliScope(parseHarnessQueueSessionArgs(["--task-id", "task-123"])));
+});
+
+test("queue session renders explicit operator task and scope without backgrounding", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-visible-scope-");
+
+  const view = await buildHarnessQueueSession({
+    cwd,
+    taskId: "task-visible-scope",
+    scope: "Phase 4 bounded operator session",
+    maxSteps: 1,
+    maxRuntimeSeconds: 60,
+    recentLimit: 5,
+  });
+  const rendered = renderHarnessQueueSession(view);
+
+  assert.equal(view.operator.taskId, "task-visible-scope");
+  assert.equal(view.operator.scope, "Phase 4 bounded operator session");
+  assert.equal(view.operator.backgrounding, false);
+  assert.match(rendered, /operator task id: task-visible-scope/);
+  assert.match(rendered, /operator scope: Phase 4 bounded operator session/);
+  assert.match(rendered, /backgrounding: disabled/);
+  assert.match(rendered, /visible logs: stdout summary and logs\/harness-actions\.jsonl audit trail/);
+});
+
+test("queue session stops before work on dirty tracked files", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-dirty-boundary-");
+  await execFile("git", ["-C", cwd, "init", "-b", "feat/test"]);
+  await execFile("git", ["-C", cwd, "config", "user.email", "test@example.com"]);
+  await execFile("git", ["-C", cwd, "config", "user.name", "Queue Session Test"]);
+  await writeFile(join(cwd, "tracked.txt"), "clean\n");
+  await execFile("git", ["-C", cwd, "add", "tracked.txt"]);
+  await execFile("git", ["-C", cwd, "commit", "-m", "initial"]);
+  await writeFile(join(cwd, "tracked.txt"), "dirty\n");
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-dirty-boundary",
+        goal: "Should not start when tracked files are dirty",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Dirty preflight should stop before queue advancement"],
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () => buildHarnessQueueSession({ cwd, scope: "dirty boundary proof", maxSteps: 1, maxRuntimeSeconds: 60 }),
+    /Operator queue session stopped before work because tracked files are dirty: tracked\.txt/,
+  );
+
+  const queueState = await readQueue(cwd);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "queued");
+});
+
+
+test("queue session stops before work on protected dirty paths", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-protected-boundary-");
+  const protectedFile = "." + "env.example";
+  await execFile("git", ["-C", cwd, "init", "-b", "feat/test"]);
+  await execFile("git", ["-C", cwd, "config", "user.email", "test@example.com"]);
+  await execFile("git", ["-C", cwd, "config", "user.name", "Queue Session Test"]);
+  await writeFile(join(cwd, protectedFile), "SAFE=1\n");
+  await execFile("git", ["-C", cwd, "add", protectedFile]);
+  await execFile("git", ["-C", cwd, "commit", "-m", "initial"]);
+  await writeFile(join(cwd, protectedFile), "SAFE=2\n");
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-protected-boundary",
+        goal: "Should not start when protected files are dirty",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Protected path preflight should stop before queue advancement"],
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () => buildHarnessQueueSession({ cwd, scope: "protected boundary proof", maxSteps: 1, maxRuntimeSeconds: 60 }),
+    /Operator queue session stopped before work because protected paths are dirty:/,
+  );
+
+  const queueState = await readQueue(cwd);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "queued");
+});
+
+test("queue session stops before work on approval-required queued jobs", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-approval-boundary-");
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-approval-boundary",
+        goal: "Should not start without approval",
+        priority: "high",
+        status: "queued",
+        approvalRequired: true,
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Approval boundary should stop before queue advancement"],
+      },
+    ],
+  });
+
+  await assert.rejects(
+    () => buildHarnessQueueSession({ cwd, scope: "approval boundary proof", maxSteps: 1, maxRuntimeSeconds: 60 }),
+    /Operator queue session stopped before work because approval boundary is present: job-approval-boundary/,
+  );
+
+  const queueState = await readQueue(cwd);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "queued");
 });

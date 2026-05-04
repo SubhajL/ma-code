@@ -46,8 +46,8 @@ This status surface summarizes:
 
 Run a bounded queue session when one-step queue advancement is too manual:
 ```bash
-npm run harness:queue-session -- --max-steps 3
-npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
+npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
+npm run harness:queue-session:json -- --scope "bounded queue operation" --max-steps 3 --max-runtime-seconds 30
 ```
 
 This session helper:

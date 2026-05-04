@@ -119,7 +119,7 @@ Direct repo-root operator/package ergonomics:
 ```bash
 npm install --no-package-lock
 npm run harness:status
-npm run harness:queue-session -- --max-steps 3
+npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:schedules
 npm run harness:package
 npm run harness:worktree -- status
@@ -144,9 +144,9 @@ npm run validate:harness-package
 
 Bounded queue-session examples:
 ```bash
-npm run harness:queue-session -- --max-steps 3
-npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
-node --import tsx scripts/harness-queue-session.ts --max-steps 2 --recent 3
+npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
+npm run harness:queue-session:json -- --scope "bounded queue operation" --max-steps 3 --max-runtime-seconds 30
+node --import tsx scripts/harness-queue-session.ts --scope "bounded queue operation" --max-steps 2 --recent 3
 ```
 
 That session summary now includes:
