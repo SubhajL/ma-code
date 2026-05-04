@@ -115,6 +115,60 @@
       "expect": "fail",
       "expectedErrors": ["infra_worker.narration_only_validation"],
       "content": "## Task\n- update a validator script\n\n## Changes Made\n- described the script work in prose only\n\n## Files Changed\n- scripts/validate-prompt-semantics.sh\n\n## Validation\n- narration only: claimed the script was done without command output or RED/GREEN validation evidence\n\n## Risks or Follow-ups\n- none\nStatus: done"
+    },
+    {
+      "id": "reviewer_worker_golden_test_quality_checklist",
+      "role": "reviewer_worker",
+      "expect": "pass",
+      "requiredSubstrings": [
+        "public interface",
+        "private helper",
+        "owned collaborator",
+        "boundary mock",
+        "green"
+      ],
+      "content": "## Summary\n- bounded review found one required test-quality fix\n\n## Findings by Severity\n- HIGH: the test exercises a private helper instead of the public interface and hides an owned collaborator behind an unnamed boundary mock\n\n## Required Fixes\n- severity: HIGH | summary: move the assertion to the public interface, justify any private helper coverage, justify the owned collaborator mock, name the boundary mock explicitly, and keep the tests GREEN through the refactor | file_ref: tests/example.test.ts | fix_direction: replace the helper-only assertion with a public-interface behavior test and document the boundary mock reason | validation_needed: bash scripts/validate-prompt-semantics.sh\n\n## Optional Improvements\n- none\n\n## Risk Notes\n- test-quality review checklist applied to public interface, private helper, owned collaborator, boundary mock, and GREEN refactor risk\nReview Verdict: changes_required\nSeverity Buckets: CRITICAL | HIGH | MEDIUM | LOW\nSeverity Summary: CRITICAL=0 HIGH=1 MEDIUM=0 LOW=0\nRequired Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed\nOptional Improvement Item Fields: summary | file_ref | benefit | follow_up"
+    },
+    {
+      "id": "reviewer_worker_failing_missing_test_quality_dimension",
+      "role": "reviewer_worker",
+      "expect": "fail",
+      "expectedErrors": ["fixture.missing_required_substrings"],
+      "requiredSubstrings": [
+        "public interface",
+        "private helper",
+        "owned collaborator",
+        "boundary mock",
+        "green"
+      ],
+      "content": "## Summary\n- bounded review found one required test-quality fix\n\n## Findings by Severity\n- HIGH: the test exercises a private helper instead of the public interface and hides an owned collaborator behind an unnamed mock\n\n## Required Fixes\n- severity: HIGH | summary: move the assertion to the public interface, justify any private helper coverage, justify the owned collaborator mock, and keep the tests GREEN through the refactor | file_ref: tests/example.test.ts | fix_direction: replace the helper-only assertion with a public-interface behavior test | validation_needed: bash scripts/validate-prompt-semantics.sh\n\n## Optional Improvements\n- none\n\n## Risk Notes\n- test-quality review checklist applied to public interface, private helper, owned collaborator, and GREEN refactor risk\nReview Verdict: changes_required\nSeverity Buckets: CRITICAL | HIGH | MEDIUM | LOW\nSeverity Summary: CRITICAL=0 HIGH=1 MEDIUM=0 LOW=0\nRequired Fix Item Fields: severity | summary | file_ref | fix_direction | validation_needed\nOptional Improvement Item Fields: summary | file_ref | benefit | follow_up"
+    },
+    {
+      "id": "validator_worker_golden_test_quality_gap",
+      "role": "validator_worker",
+      "expect": "pass",
+      "requiredSubstrings": [
+        "public interface",
+        "private helper",
+        "owned collaborator",
+        "boundary mock",
+        "green"
+      ],
+      "content": "## Discovery Path\n- local semantic validator with targeted test-quality fixtures\n\n## Acceptance Criteria Check\n- lightweight test-quality checklist is enforced in semantic review logic\n\n## Evidence Review\n- reviewer evidence names the public interface, justifies the private helper and owned collaborator mock, names the boundary mock, and shows GREEN refactor proof\n\n## Validation Result\n- proof is partial because one review example still omits a named boundary mock\nProof Status: partial\n\n## Missing Proof\n- category: validation_missing | gap: reviewer evidence does not fully name the boundary mock or show the public interface / private helper / owned collaborator checklist coverage and GREEN refactor proof | evidence_needed: semantic validation should require public interface, private helper, owned collaborator, boundary mock, and GREEN checklist phrases | blocking_effect: cannot claim executable test-quality review logic yet\n\n## Final Decision\n- fail until the missing checklist proof is enforced\nFinal Decision: fail\nMissing Proof Category: validation_missing\nMissing Proof Item Fields: category | gap | evidence_needed | blocking_effect\nDecision Basis: proof_gap"
+    },
+    {
+      "id": "validator_worker_failing_missing_test_quality_dimension",
+      "role": "validator_worker",
+      "expect": "fail",
+      "expectedErrors": ["fixture.missing_required_substrings"],
+      "requiredSubstrings": [
+        "public interface",
+        "private helper",
+        "owned collaborator",
+        "boundary mock",
+        "green"
+      ],
+      "content": "## Discovery Path\n- local semantic validator with targeted test-quality fixtures\n\n## Acceptance Criteria Check\n- lightweight test-quality checklist is enforced in semantic review logic\n\n## Evidence Review\n- reviewer evidence names the public interface, justifies the private helper and owned collaborator mock, and shows GREEN refactor proof\n\n## Validation Result\n- proof is partial because one review example still omits a key checklist dimension\nProof Status: partial\n\n## Missing Proof\n- category: validation_missing | gap: reviewer evidence does not fully show public interface, private helper, owned collaborator, and GREEN refactor proof | evidence_needed: semantic validation should require all checklist phrases | blocking_effect: cannot claim executable test-quality review logic yet\n\n## Final Decision\n- fail until the missing checklist proof is enforced\nFinal Decision: fail\nMissing Proof Category: validation_missing\nMissing Proof Item Fields: category | gap | evidence_needed | blocking_effect\nDecision Basis: proof_gap"
     }
   ]
 }
