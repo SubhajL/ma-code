@@ -1,4 +1,7 @@
+import { execFile as execFileWithCallback } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import {
@@ -13,19 +16,108 @@ export interface HarnessQueueSessionOptions {
   maxSteps?: number;
   maxRuntimeSeconds?: number;
   recentLimit?: number;
+  taskId?: string;
+  scope?: string;
+}
+
+export interface HarnessQueueSessionOperatorContext {
+  taskId: string | null;
+  scope: string | null;
+  backgrounding: false;
+  visibleLogs: string;
 }
 
 export interface HarnessQueueSessionView {
   cwd: string;
+  operator: HarnessQueueSessionOperatorContext;
   result: BoundedQueueSessionResult;
 }
+
+const execFile = promisify(execFileWithCallback);
+const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
+const PROTECTED_PATH_PATTERNS = [
+  /(^|\/)\.env($|\.)/,
+  /(^|\/)\.git(\/|$)/,
+  /(^|\/)node_modules(\/|$)/,
+  /^\.pi\/agent\/state\/runtime\//,
+];
 
 function formatIdList(ids: string[], emptyLabel: string): string {
   return ids.length > 0 ? ids.join(", ") : emptyLabel;
 }
 
+function normalizeGitStatusPath(line: string): string | null {
+  const raw = line.slice(3).trim();
+  if (!raw) return null;
+  const renamedTarget = raw.includes(" -> ") ? raw.split(" -> ").at(-1) : raw;
+  return (renamedTarget ?? raw).replace(/^\"|\"$/g, "");
+}
+
+function protectedPathReason(path: string): string | null {
+  return PROTECTED_PATH_PATTERNS.some((pattern) => pattern.test(path)) ? path : null;
+}
+
+async function listDirtyTrackedFiles(cwd: string): Promise<string[]> {
+  try {
+    const { stdout } = await execFile("git", ["-C", cwd, "status", "--porcelain", "--untracked-files=no"]);
+    return stdout
+      .split("\n")
+      .map((line) => line.trimEnd())
+      .filter(Boolean)
+      .map(normalizeGitStatusPath)
+      .filter((value): value is string => Boolean(value));
+  } catch {
+    return [];
+  }
+}
+
+async function listApprovalBoundaryJobIds(cwd: string): Promise<string[]> {
+  try {
+    const raw = await readFile(resolve(cwd, QUEUE_FILE), "utf8");
+    const queue = JSON.parse(raw) as { jobs?: Array<{ id?: string; status?: string; approvalRequired?: boolean }> };
+    return (queue.jobs ?? [])
+      .filter((job) => job.approvalRequired && (job.status === "queued" || job.status === "running"))
+      .map((job) => job.id ?? "unknown")
+      .filter((id) => id.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+async function assertOperatorPreflight(cwd: string): Promise<void> {
+  const dirtyTrackedFiles = await listDirtyTrackedFiles(cwd);
+  const dirtyProtectedFiles = dirtyTrackedFiles.filter((path) => protectedPathReason(path));
+  if (dirtyProtectedFiles.length > 0) {
+    throw new Error(`Operator queue session stopped before work because protected paths are dirty: ${dirtyProtectedFiles.join(", ")}.`);
+  }
+  if (dirtyTrackedFiles.length > 0) {
+    throw new Error(`Operator queue session stopped before work because tracked files are dirty: ${dirtyTrackedFiles.join(", ")}.`);
+  }
+
+  const approvalBoundaryJobIds = await listApprovalBoundaryJobIds(cwd);
+  if (approvalBoundaryJobIds.length > 0) {
+    throw new Error(`Operator queue session stopped before work because approval boundary is present: ${approvalBoundaryJobIds.join(", ")}.`);
+  }
+}
+
+function buildOperatorContext(options: HarnessQueueSessionOptions): HarnessQueueSessionOperatorContext {
+  return {
+    taskId: options.taskId?.trim() || null,
+    scope: options.scope?.trim() || null,
+    backgrounding: false,
+    visibleLogs: "stdout summary and logs/harness-actions.jsonl audit trail",
+  };
+}
+
+export function assertHarnessQueueSessionCliScope(options: HarnessQueueSessionOptions): void {
+  if (!options.taskId?.trim() && !options.scope?.trim()) {
+    throw new Error("harness-queue-session requires --task-id or --scope so operator sessions stay explicitly scoped.");
+  }
+}
+
 export async function buildHarnessQueueSession(options: HarnessQueueSessionOptions = {}): Promise<HarnessQueueSessionView> {
   const cwd = resolve(options.cwd ?? process.cwd());
+  await assertOperatorPreflight(cwd);
   const result = await runBoundedQueueSession(cwd, {
     owner: options.owner,
     allowInitialHandoff: options.allowInitialHandoff,
@@ -33,7 +125,7 @@ export async function buildHarnessQueueSession(options: HarnessQueueSessionOptio
     maxRuntimeSeconds: options.maxRuntimeSeconds,
     recentLimit: options.recentLimit,
   });
-  return { cwd, result };
+  return { cwd, operator: buildOperatorContext(options), result };
 }
 
 function formatActionCounts(counts: Record<string, number>): string {
@@ -43,12 +135,16 @@ function formatActionCounts(counts: Record<string, number>): string {
 }
 
 export function renderHarnessQueueSession(view: HarnessQueueSessionView): string {
-  const { cwd, result } = view;
+  const { cwd, operator, result } = view;
   const { finalInspection, triage } = result;
   const { summary } = finalInspection;
   const lines = [
     "Harness Queue Session",
     `cwd: ${cwd}`,
+    `operator task id: ${operator.taskId ?? "none"}`,
+    `operator scope: ${operator.scope ?? "none"}`,
+    `backgrounding: ${operator.backgrounding ? "enabled" : "disabled"}`,
+    `visible logs: ${operator.visibleLogs}`,
     `stop reason: ${result.stopReason}`,
     `reason: ${result.reason}`,
     `duration seconds: ${triage.durationSeconds}`,
@@ -91,11 +187,11 @@ export function renderHarnessQueueSession(view: HarnessQueueSessionView): string
 
 function printUsage(): void {
   process.stdout.write(
-    `Usage: node --import tsx scripts/harness-queue-session.ts [options]\n\nOptions:\n  --cwd <path>                 Run against a specific repo/runtime root (default: current working directory)\n  --owner <name>               Owner used for queue-step task claims (default: assistant)\n  --max-steps <n>              Maximum queue steps to run in one bounded session (default: 5, max: 50)\n  --max-runtime-seconds <n>    Maximum wall-clock runtime for one bounded session (default: 60, max: 600)\n  --recent <n>                 Final inspection recent list length (default: 5, max: 20)\n  --no-initial-handoff         Do not generate the initial handoff when a job starts\n  --json                       Emit machine-readable JSON instead of text\n  -h, --help                   Show this help text\n`,
+    `Usage: node --import tsx scripts/harness-queue-session.ts [options]\n\nOptions:\n  --cwd <path>                 Run against a specific repo/runtime root (default: current working directory)\n  --owner <name>               Owner used for queue-step task claims (default: assistant)\n  --task-id <id>               Explicit operator task id/scope anchor for this foreground session\n  --scope <text>               Explicit operator scope for this foreground session\n  --max-steps <n>              Maximum queue steps to run in one bounded session (default: 5, max: 50)\n  --max-runtime-seconds <n>    Maximum wall-clock runtime for one bounded session (default: 60, max: 600)\n  --recent <n>                 Final inspection recent list length (default: 5, max: 20)\n  --no-initial-handoff         Do not generate the initial handoff when a job starts\n  --json                       Emit machine-readable JSON instead of text\n  -h, --help                   Show this help text\n`,
   );
 }
 
-function parseArgs(argv: string[]): HarnessQueueSessionOptions & { json: boolean; help: boolean } {
+export function parseHarnessQueueSessionArgs(argv: string[]): HarnessQueueSessionOptions & { json: boolean; help: boolean } {
   const result: HarnessQueueSessionOptions & { json: boolean; help: boolean } = {
     json: false,
     help: false,
@@ -115,11 +211,13 @@ function parseArgs(argv: string[]): HarnessQueueSessionOptions & { json: boolean
       result.allowInitialHandoff = false;
       continue;
     }
-    if (arg === "--cwd" || arg === "--owner" || arg === "--max-steps" || arg === "--max-runtime-seconds" || arg === "--recent") {
+    if (arg === "--cwd" || arg === "--owner" || arg === "--task-id" || arg === "--scope" || arg === "--max-steps" || arg === "--max-runtime-seconds" || arg === "--recent") {
       const next = argv[index + 1];
       if (!next) throw new Error(`${arg} requires a value.`);
       if (arg === "--cwd") result.cwd = next;
       if (arg === "--owner") result.owner = next;
+      if (arg === "--task-id") result.taskId = next;
+      if (arg === "--scope") result.scope = next;
       if (arg === "--max-steps") result.maxSteps = Number.parseInt(next, 10);
       if (arg === "--max-runtime-seconds") result.maxRuntimeSeconds = Number.parseInt(next, 10);
       if (arg === "--recent") result.recentLimit = Number.parseInt(next, 10);
@@ -133,12 +231,13 @@ function parseArgs(argv: string[]): HarnessQueueSessionOptions & { json: boolean
 }
 
 async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseHarnessQueueSessionArgs(process.argv.slice(2));
   if (args.help) {
     printUsage();
     return;
   }
 
+  assertHarnessQueueSessionCliScope(args);
   const view = await buildHarnessQueueSession(args);
   if (args.json) {
     process.stdout.write(`${JSON.stringify(view, null, 2)}\n`);

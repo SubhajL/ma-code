@@ -21,8 +21,8 @@ For fast operator snapshots or bounded queue advancement outside a live agent se
 ```bash
 npm run harness:status
 npm run harness:status:json
-npm run harness:queue-session -- --max-steps 3
-npm run harness:queue-session:json -- --max-steps 3 --max-runtime-seconds 30
+npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
+npm run harness:queue-session:json -- --scope "bounded queue operation" --max-steps 3 --max-runtime-seconds 30
 npm run harness:schedules
 npm run harness:schedules:json
 npm run harness:pr-gate -- --pr <number> --max-attempts 20
@@ -312,7 +312,7 @@ Run the validator script when:
 
 Choose the validator that matches the change:
 - use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance queue work
-- use `npm run harness:queue-session -- --max-steps <n>` when you want bounded multi-step queue advancement without a hidden daemon; it stops at the next waiting point, blocked state, pause, idle state, or configured limit and returns a richer triage summary with action counts, touched job IDs, and a recommended next action
+- use `npm run harness:queue-session -- --scope "<bounded scope>" --max-steps <n>` when you want bounded multi-step queue advancement without a hidden daemon; it stops at the next waiting point, blocked state, pause, idle state, or configured limit and returns a richer triage summary with action counts, touched job IDs, and a recommended next action
 - use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation
 - use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
 - use `./scripts/validate-extension-unit-tests.sh` plus `./scripts/check-foundation-extension-compile.sh` for discovery-policy helper changes
