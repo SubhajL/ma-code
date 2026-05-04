@@ -141,6 +141,10 @@ Validation role of this layer:
 - gives priority to validator/reviewer output over worker self-report
 - blocks completion when evidence is missing, contradictory, or too weak
 
+## Graphify evidence lifecycle drift guard
+Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
+
 ## Validator scripts and supporting assets
 
 ### Primary automated validator

@@ -7,6 +7,10 @@
 - Final operator runbook: `.pi/agent/docs/graphify_final_runbook.md`.
 - Architecture boundary map: `.pi/agent/docs/architecture_roadmap_alignment.md` distinguishes tactical Graphify adapter support from runtime validation enforcement, optional policy-gated mandatory use, bounded foreground session operation, and future roadmap gaps.
 
+## Graphify evidence lifecycle drift guard
+Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
+
 ## Runtime surface
 - Adapter extension: `.pi/agent/extensions/graphify-adapter.ts`
 - Adapter tool: `graphify_adapter`

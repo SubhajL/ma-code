@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_validator-graphify-orchestration-evidence.md`
+- `logs/coding/2026-05-04_graphify-docs-static-drift.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_validator-graphify-orchestration-evidence-plan.md`
+- `reports/planning/2026-05-04_graphify-docs-static-drift-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the validator Graphify orchestration evidence slice.
+- These files capture the Graphify docs/static drift-check slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

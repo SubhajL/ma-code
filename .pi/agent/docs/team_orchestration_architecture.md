@@ -278,6 +278,10 @@ It should decide first whether to:
 - stop
 - escalate
 
+## Graphify evidence lifecycle drift guard
+Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
+
 ## Task packet architecture
 A task packet is the bounded assignment unit passed between orchestration layers.
 It should let a worker act without guesswork.

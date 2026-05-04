@@ -357,6 +357,28 @@ for needle in [
     assert needle in readme_doc
 assert "structured `graphifyEvidence` orchestration evidence as latest relevant graph query or freshness/cadence proof" in validation_doc
 
+graphify_lifecycle_title = "Graphify evidence lifecycle drift guard"
+graphify_lifecycle_contract = "explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption"
+graphify_lifecycle_safety_needles = [
+    "metadata is optional",
+    "no global mandatory Graphify",
+    "no Graphify CLI --watch, daemon, or background behavior",
+    "source verification remains required",
+]
+for doc_name, doc_text in [
+    ("README.md", readme_doc),
+    ("operator_workflow.md", operator_workflow_doc),
+    ("queue_semantics.md", queue_semantics_doc),
+    ("team_orchestration_architecture.md", team_orchestration_doc),
+    ("validation_architecture.md", validation_doc),
+    ("graphify_adapter.md", graphify_adapter_doc),
+    ("graphify_final_runbook.md", graphify_final_runbook_doc),
+]:
+    assert graphify_lifecycle_title in doc_text, f"{doc_name} missing Graphify lifecycle drift guard title"
+    assert graphify_lifecycle_contract in doc_text, f"{doc_name} missing Graphify lifecycle contract"
+    for needle in graphify_lifecycle_safety_needles:
+        assert needle in doc_text, f"{doc_name} missing Graphify lifecycle safety language: {needle}"
+
 architecture_boundary_needles = [
     "## Architecture Boundary Map",
     "Tactical Graphify adapter support is bounded discovery infrastructure, not global architecture authority.",

@@ -256,6 +256,8 @@ Important executable fields:
   - if omitted, the queue runner uses the selected team's lead role
 
 ### Explicit research Graphify orchestration
+- Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
+- This lifecycle is bounded: metadata is optional, there is no global mandatory Graphify, no Graphify CLI --watch, daemon, or background behavior, and source verification remains required.
 - `graphifyOrchestration` is an optional queue-job object for bounded queue-session use only.
 - It is ignored unless `graphifyOrchestration.enabled: true` and the queued job is research-scoped (`taskClass: research`, `workType: research_only`, `assignedRole: research_worker`, or `domains` includes `research`).
 - When eligible, `run_bounded_queue_session` invokes `run_graphify_orchestration` at most once per bounded session before starting the queued research job.
