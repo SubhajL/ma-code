@@ -45,6 +45,7 @@ Implemented here:
 - executable task-packet generator, packet policy, and packet schema
 - executable handoff generator, handoff policy, and handoff schema
 - optional `graphifyEvidence` metadata on generated task packets and handoffs for Graphify-backed or architecture-review proof context
+- validator checks in `task_update` can consume structured `graphifyEvidence` orchestration evidence as graph query/freshness and source-verification proof
 - executable recovery policy and runtime decision surfaces for bounded retry/rollback/stop recommendations before queue automation
 - bounded queue execution via `run_next_queue_job` plus explicit multi-step sessions via `run_bounded_queue_session` in `.pi/agent/extensions/queue-runner.ts` (`run_queue_once` remains as a compatibility alias)
 - file-backed scheduled workflow definitions plus explicit due-work inspection/materialization via `scripts/harness-scheduled-workflows.ts`

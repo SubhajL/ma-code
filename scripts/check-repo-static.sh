@@ -142,6 +142,7 @@ discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts")
 graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-validation-decision.ts").read_text(encoding="utf-8")
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
+till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
 queue_runner = (root / ".pi/agent/extensions/queue-runner.ts").read_text(encoding="utf-8")
@@ -340,7 +341,21 @@ for needle in [
     "source-verification proof",
 ]:
     assert needle in team_orchestration_doc
-assert "optional `graphifyEvidence` metadata" in readme_doc
+for needle in [
+    "GraphifyEvidenceInput",
+    "graphifyValidationFromEvidence",
+    "graphifyOrchestrationAction",
+    "graphifyAdapterAction",
+    "latestRelevantGraphQueried",
+    "importantClaimsSourceVerified",
+]:
+    assert needle in till_done_extension
+for needle in [
+    "validator checks in `task_update` can consume structured `graphifyEvidence` orchestration evidence",
+    "graph query/freshness and source-verification proof",
+]:
+    assert needle in readme_doc
+assert "structured `graphifyEvidence` orchestration evidence as latest relevant graph query or freshness/cadence proof" in validation_doc
 
 architecture_boundary_needles = [
     "## Architecture Boundary Map",
