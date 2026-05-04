@@ -31,10 +31,14 @@ Preferred tool:
 
 Rules:
 - keep the attempt bounded to about 2 seconds
+- prefer local `read` / `rg` / `find` for exact verification when likely target files are already known, even during planning
 - Graphify is an optional discovery fallback, not a required harness dependency.
 - Graphify is not a live web-search replacement for Exa.
 - Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
-- when broad repo/corpus discovery would materially improve the plan and Graphify output already exists or is explicitly available, consume it as discovery evidence and verify important claims with direct inspection
+- when broad repo/corpus discovery would materially improve the plan and a fresh Graphify artifact already exists or is explicitly available, consume it as discovery evidence before considering a new scan
+- when broad Graphify output may exist but freshness is uncertain, check freshness/cadence before relying on it
+- if no fresh graph is available and broad discovery is still justified, run Graphify `preflight` before any bounded scan
+- treat Graphify findings as discovery evidence rather than final proof, and verify important claims with direct inspection before finalizing the plan
 - if Auggie is unavailable, errors, or recommends fallback, immediately continue with:
   - Graphify report inspection when it is installed, scoped, safe, and appropriate
   - `read`
