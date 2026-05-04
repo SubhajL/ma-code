@@ -190,6 +190,7 @@ setup_temp_runtime() {
 JSON
 
   cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner,graphify-adapter}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -222,7 +223,7 @@ check_1_compile_core_workflow_extensions() {
   local name="1. core workflow extensions compile together"
   local out="$TMP_ROOT/check_1_compile_core_workflow_extensions.txt"
   local runtime_dir="$TMP_ROOT/core-workflows-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts .pi/agent/extensions/graphify-adapter.ts scripts/harness-operator-status.ts scripts/harness-queue-session.ts scripts/harness-scheduled-workflows.ts scripts/harness-worktree.ts scripts/harness-pr-gate.ts scripts/harness-sync-main.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/safe-bash.ts .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/graphify-validation-decision.ts scripts/harness-operator-status.ts scripts/harness-queue-session.ts scripts/harness-scheduled-workflows.ts scripts/harness-worktree.ts scripts/harness-pr-gate.ts scripts/harness-sync-main.ts"
 
   if (
     cd "$runtime_dir" &&
@@ -237,6 +238,7 @@ check_1_compile_core_workflow_extensions() {
       .pi/agent/extensions/recovery-runtime.ts \
       .pi/agent/extensions/queue-runner.ts \
       .pi/agent/extensions/graphify-adapter.ts \
+      .pi/agent/extensions/graphify-validation-decision.ts \
       scripts/harness-operator-status.ts \
       scripts/harness-queue-session.ts \
       scripts/harness-scheduled-workflows.ts \

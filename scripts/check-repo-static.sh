@@ -262,6 +262,7 @@ for needle in [
     "## How to Read This Report",
     "## Final Decision",
     "Operator Next Step",
+    "graphify-validation-decision.ts",
 ]:
     assert needle in core_workflows_validator
 for needle in [
