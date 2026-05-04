@@ -338,6 +338,15 @@ for needle in [
 ]:
     assert needle in graphify_validator
 for needle in [
+    "check_6_graphify_validator_coverage_contract",
+    "discovery selector Graphify recommendation",
+    "Graphify adapter purpose requirement",
+    "Graphify adapter preflight token requirement",
+    "freshness/cadence helper",
+    "final-validation prompt language",
+]:
+    assert needle in graphify_validator
+for needle in [
     "discovery-policy selector tests for Graphify fallback choices",
     "discovery-policy Graphify fallback selection",
 ]:
