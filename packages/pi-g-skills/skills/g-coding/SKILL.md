@@ -37,7 +37,11 @@ If no RED run is practical, say why explicitly.
 Before editing:
 - read relevant repo instructions (`AGENTS.md`, `README.md`, repo docs)
 - use `auggie_discover` first when available and bounded
-- if it is unavailable or recommends fallback, immediately continue with direct file inspection and exact-string searches
+- default to direct file inspection and exact-string searches for implementation work
+- do not run broad Graphify discovery or `preflight` as part of routine implementation unless the task is explicitly redirected back into research/planning scope
+- if scoped Graphify findings are handed off from research/planning, use them only as orientation and verify every implementation-relevant claim in current source files and tests
+- if broad subsystem discovery becomes necessary mid-implementation, escalate or hand back to planning/research rather than improvising a new Graphify pass
+- if it is unavailable or recommends fallback, immediately continue with the local direct-inspection path above
 - record the discovery path in the coding log
 
 ## TDD workflow (required)
