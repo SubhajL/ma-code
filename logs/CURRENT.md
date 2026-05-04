@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_graphify-runtime-command.md`
+- `logs/coding/2026-05-04_queue-session-research-graphify.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_graphify-runtime-command-plan.md`
+- `reports/planning/2026-05-04_queue-session-research-graphify-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the Graphify runtime command slice.
+- These files capture the queue-session research Graphify integration slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

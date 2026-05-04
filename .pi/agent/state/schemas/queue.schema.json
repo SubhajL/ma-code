@@ -272,6 +272,119 @@
           },
           "updatedAt": {
             "type": "string"
+          },
+          "graphifyOrchestration": {
+            "description": "Explicit bounded Graphify orchestration request for research queue jobs during run_bounded_queue_session. Ignored unless enabled=true and the job is research-scoped.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "enabled",
+              "need"
+            ],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "need": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "exact_verification",
+                  "broad_structure",
+                  "architecture_review"
+                ]
+              },
+              "graphifyAvailable": {
+                "type": "boolean"
+              },
+              "localFallbackAllowed": {
+                "type": "boolean"
+              },
+              "graphPresent": {
+                "type": "boolean"
+              },
+              "freshnessStatus": {
+                "type": "string",
+                "enum": [
+                  "fresh",
+                  "stale_head",
+                  "dirty_worktree",
+                  "missing_metadata",
+                  "missing_graph"
+                ]
+              },
+              "purpose": {
+                "type": "string",
+                "enum": [
+                  "architecture_review",
+                  "dependency_exploration",
+                  "drift_analysis",
+                  "large_subsystem_mapping",
+                  "curated_research"
+                ]
+              },
+              "sourcePath": {
+                "type": "string"
+              },
+              "taskId": {
+                "type": "string"
+              },
+              "outputPath": {
+                "type": "string"
+              },
+              "query": {
+                "type": "string"
+              },
+              "preflightToken": {
+                "type": "string"
+              },
+              "preflightTokenPresent": {
+                "type": "boolean"
+              },
+              "cadencePhase": {
+                "type": "string",
+                "enum": [
+                  "before_broad_planning",
+                  "implementation_loop",
+                  "after_structural_change",
+                  "before_final_validation"
+                ]
+              },
+              "largeCorpus": {
+                "type": "boolean"
+              },
+              "approvedLargeCorpus": {
+                "type": "boolean"
+              },
+              "maxFilesWithoutApproval": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "latestRelevantGraphQueried": {
+                "type": "boolean"
+              },
+              "importantClaimsSourceVerified": {
+                "type": "boolean"
+              },
+              "explicitBlocker": {
+                "type": "boolean"
+              },
+              "extraArgs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "timeoutMs": {
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 300000
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

@@ -201,6 +201,9 @@ JSON
 
   cp "$REPO_ROOT/.pi/agent/extensions/"{till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner}.ts "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-adapter.ts" "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestration-decision.ts" "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestrator.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -231,13 +234,16 @@ check_1_compile_queue_runner() {
   local name="1. queue-runner extension compiles with its shared helpers"
   local out="$TMP_ROOT/check_1_compile_queue_runner.txt"
   local runtime_dir="$TMP_ROOT/queue-runner-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/till-done.ts .pi/agent/extensions/graphify-validation-decision.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/till-done.ts .pi/agent/extensions/graphify-validation-decision.ts .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/graphify-orchestration-decision.ts .pi/agent/extensions/graphify-orchestrator.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts"
 
   if (
     cd "$runtime_dir" &&
     npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
       .pi/agent/extensions/till-done.ts \
       .pi/agent/extensions/graphify-validation-decision.ts \
+      .pi/agent/extensions/graphify-adapter.ts \
+      .pi/agent/extensions/graphify-orchestration-decision.ts \
+      .pi/agent/extensions/graphify-orchestrator.ts \
       .pi/agent/extensions/harness-routing.ts \
       .pi/agent/extensions/team-activation.ts \
       .pi/agent/extensions/task-packets.ts \
@@ -246,7 +252,7 @@ check_1_compile_queue_runner() {
       .pi/agent/extensions/recovery-runtime.ts \
       .pi/agent/extensions/queue-runner.ts >"$out" 2>&1
   ); then
-    local detail="queue-runner and its till-done/Graphify-validation/routing/team/packet/handoff/recovery dependencies compile together."
+    local detail="queue-runner and its till-done/Graphify validation/orchestration/adapter/routing/team/packet/handoff/recovery dependencies compile together."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -265,7 +271,7 @@ check_2_queue_runner_unit_tests() {
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/queue-runner.test.ts"
 
   if run_test_file "$runtime_dir" "tests/extension-units/queue-runner.test.ts" "$out"; then
-    local detail="queue-runner unit tests passed for empty/paused no-ops, deterministic one-job start/finalize, stop-condition enforcement for retries/runtime/failed validations/approval boundaries, unsupported-control blocking, compensation safety, and recovery reuse."
+    local detail="queue-runner unit tests passed for empty/paused no-ops, deterministic one-job start/finalize, research Graphify orchestration, stop-condition enforcement for retries/runtime/failed validations/approval boundaries, unsupported-control blocking, compensation safety, and recovery reuse."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"

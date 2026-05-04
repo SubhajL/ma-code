@@ -155,6 +155,7 @@ These patterns should now guide planning, implementation, and review even before
 - Graphify is not a live web-search replacement for Exa.
 - Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
 - use Graphify only when it is installed, scoped, safe, and useful for broad codebase or curated local research-corpus discovery
+- bounded queue-session can invoke `run_graphify_orchestration` for explicitly opted-in research queue jobs only when the queued job sets `graphifyOrchestration.enabled: true`; it runs at most once per bounded session, records visible session/job evidence, and does not make Graphify automatic for all research jobs
 - use Exa for current external web information rather than local repo facts
 - if Auggie is unavailable, errors, or cannot be bounded safely, fall back immediately to appropriate local tools or scoped Graphify report inspection
 - local fallback means targeted `read`, `grep`/`rg`, `find`, and direct file inspection

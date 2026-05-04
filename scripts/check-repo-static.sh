@@ -109,6 +109,8 @@ workflow_doc = (root / ".pi/agent/docs/architecture_review_workflow.md").read_te
 validation_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 file_map_doc = (root / ".pi/agent/docs/file_map.md").read_text(encoding="utf-8")
 readme_doc = (root / "README.md").read_text(encoding="utf-8")
+queue_schema_doc = (root / ".pi/agent/state/schemas/queue.schema.json").read_text(encoding="utf-8")
+queue_semantics_doc = (root / ".pi/agent/docs/queue_semantics.md").read_text(encoding="utf-8")
 validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architecture.md").read_text(encoding="utf-8")
 prompt_semantics_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 operator_workflow_doc = (root / ".pi/agent/docs/operator_workflow.md").read_text(encoding="utf-8")
@@ -137,6 +139,8 @@ discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts")
 graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-validation-decision.ts").read_text(encoding="utf-8")
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
+queue_runner = (root / ".pi/agent/extensions/queue-runner.ts").read_text(encoding="utf-8")
+queue_runner_validator = (root / "scripts/validate-queue-runner.sh").read_text(encoding="utf-8")
 extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
 foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
@@ -273,6 +277,35 @@ for needle in [
 ]:
     assert needle in graphify_adapter_doc
     assert needle in readme_doc
+
+
+for needle in [
+    "graphifyOrchestration",
+    "maybeRunResearchGraphifyForNextQueuedJob",
+    "isResearchQueueJob",
+    "run_graphify_orchestration",
+    "Research Graphify orchestration blocked queued job",
+]:
+    assert needle in queue_runner
+for needle in [
+    "graphifyOrchestration",
+    "curated_research",
+    "before_final_validation",
+]:
+    assert needle in queue_schema_doc
+for needle in [
+    "Explicit research Graphify orchestration",
+    "graphifyOrchestration.enabled: true",
+    "run_graphify_orchestration",
+    "at most once per bounded session",
+]:
+    assert needle in queue_semantics_doc
+    assert needle in operator_workflow_doc or needle == "Explicit research Graphify orchestration"
+assert "graphifyOrchestration.enabled: true" in readme_doc
+assert "graphify-orchestrator.ts" in queue_runner_validator
+assert "graphify-orchestration-decision.ts" in queue_runner_validator
+assert "research Graphify orchestration" in queue_runner_validator
+assert "graphify-orchestrator.ts" in core_workflows_validator
 
 architecture_boundary_needles = [
     "## Architecture Boundary Map",

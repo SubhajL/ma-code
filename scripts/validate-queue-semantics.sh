@@ -200,11 +200,16 @@ assert quality_input is not None, 'qualityInput schema entry is required for str
 assert quality_input['type'] == ['object', 'null'], 'qualityInput must allow object or null'
 assert set(quality_input['required']) == {'sourcePacketId', 'sourceHandoff'}, 'qualityInput required fields mismatch'
 assert quality_input['properties']['sourceHandoff']['$ref'] == './handoff.schema.json', 'qualityInput.sourceHandoff must reference the structured handoff schema'
+graphify_input = items['properties'].get('graphifyOrchestration')
+assert graphify_input is not None, 'graphifyOrchestration schema entry is required for explicit research Graphify queue-session input'
+assert graphify_input['type'] == ['object', 'null'], 'graphifyOrchestration must allow object or null'
+assert set(graphify_input['required']) == {'enabled', 'need'}, 'graphifyOrchestration required fields mismatch'
+assert 'curated_research' in graphify_input['properties']['purpose']['enum'], 'graphifyOrchestration purpose must support curated_research'
 print('queue-schema-ok')
 PY
 
   if "$PYTHON_BIN" "$TMP_ROOT/check_1_queue_schema_contract.py" "$REPO_ROOT" >"$out" 2>&1; then
-    local detail="Queue schema uses the expected versioned top-level object with bounded job fields."
+    local detail="Queue schema uses the expected versioned top-level object with bounded job fields, structured quality input, and explicit research Graphify orchestration input."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- schema output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"

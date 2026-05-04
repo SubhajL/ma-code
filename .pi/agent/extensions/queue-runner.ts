@@ -3,6 +3,7 @@ import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import graphifyOrchestrator from "./graphify-orchestrator.ts";
 import { dirname, resolve } from "node:path";
 import {
   BUDGET_MODES,
@@ -65,6 +66,39 @@ export interface QualityQueueInput {
   sourceHandoff: StructuredHandoff;
 }
 
+export interface QueueGraphifyOrchestrationInput {
+  enabled?: boolean;
+  need: "none" | "exact_verification" | "broad_structure" | "architecture_review";
+  graphifyAvailable?: boolean;
+  localFallbackAllowed?: boolean;
+  graphPresent?: boolean;
+  freshnessStatus?: "fresh" | "stale_head" | "dirty_worktree" | "missing_metadata" | "missing_graph";
+  purpose?: "architecture_review" | "dependency_exploration" | "drift_analysis" | "large_subsystem_mapping" | "curated_research";
+  sourcePath?: string;
+  taskId?: string;
+  outputPath?: string;
+  query?: string;
+  preflightToken?: string;
+  preflightTokenPresent?: boolean;
+  cadencePhase?: "before_broad_planning" | "implementation_loop" | "after_structural_change" | "before_final_validation";
+  largeCorpus?: boolean;
+  approvedLargeCorpus?: boolean;
+  maxFilesWithoutApproval?: number;
+  latestRelevantGraphQueried?: boolean;
+  importantClaimsSourceVerified?: boolean;
+  explicitBlocker?: boolean;
+  extraArgs?: string[];
+  timeoutMs?: number;
+}
+
+export interface QueueGraphifyOrchestrationStepSummary {
+  jobId: string;
+  status: "completed" | "blocked";
+  action: string | null;
+  adapterAction: string | null;
+  reason: string;
+}
+
 export interface QueueJob {
   id: string;
   goal: string;
@@ -93,6 +127,7 @@ export interface QueueJob {
   budgetMode?: BudgetMode;
   modelOverride?: string;
   qualityInput?: QualityQueueInput | null;
+  graphifyOrchestration?: QueueGraphifyOrchestrationInput | null;
   scheduledWorkflowId?: string | null;
   scheduledRunKey?: string | null;
   linkedTaskId?: string | null;
@@ -182,6 +217,7 @@ export interface BoundedQueueSessionStep {
   blockedJobIds: string[];
   linkedTaskId: string | null;
   recoveryAction: RuntimeRecoveryDecision["recommendedAction"] | null;
+  graphifyOrchestration: QueueGraphifyOrchestrationStepSummary | null;
 }
 
 export interface BoundedQueueSessionTriageSummary {
@@ -637,6 +673,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
     notes: [...(job.notes ?? [])],
     qualityInput: job.qualityInput ?? null,
+    graphifyOrchestration: job.graphifyOrchestration ?? null,
     linkedTaskId: job.linkedTaskId ?? null,
     packetId: job.packetId ?? null,
     selectedModelId: job.selectedModelId ?? null,
@@ -1994,7 +2031,7 @@ export async function runNextQueueJob(cwd: string, input: { owner?: string; allo
 
 export const runQueueOnce = runNextQueueJob;
 
-function buildBoundedQueueSessionStep(step: number, result: QueueRunnerResult): BoundedQueueSessionStep {
+function buildBoundedQueueSessionStep(step: number, result: QueueRunnerResult, graphifyOrchestration: QueueGraphifyOrchestrationStepSummary | null = null): BoundedQueueSessionStep {
   return {
     step,
     ok: result.ok,
@@ -2007,11 +2044,127 @@ function buildBoundedQueueSessionStep(step: number, result: QueueRunnerResult): 
     blockedJobIds: [...result.blockedJobIds],
     linkedTaskId: result.linkedTask?.id ?? null,
     recoveryAction: result.recoveryDecision?.recommendedAction ?? null,
+    graphifyOrchestration,
   };
 }
 
 function countRunnableQueuedJobs(summary: QueueInspectionSummary): number {
   return Math.max(0, summary.jobCounts.queued ?? 0);
+}
+
+type CapturedGraphifyOrchestratorTool = {
+  name: string;
+  execute: (...args: any[]) => Promise<any> | any;
+};
+
+function captureGraphifyOrchestratorTool(): CapturedGraphifyOrchestratorTool {
+  let captured: CapturedGraphifyOrchestratorTool | null = null;
+  const collector = {
+    registerTool(tool: CapturedGraphifyOrchestratorTool) {
+      if (tool.name === "run_graphify_orchestration") captured = tool;
+    },
+  } as ExtensionAPI;
+
+  graphifyOrchestrator(collector);
+
+  if (!captured) throw new Error("run_graphify_orchestration registration was not captured.");
+  return captured;
+}
+
+function isResearchQueueJob(job: QueueJob): boolean {
+  return job.taskClass === "research" || job.workType === "research_only" || job.assignedRole === "research_worker" || (job.domains ?? []).includes("research");
+}
+
+function explicitGraphifyOrchestrationEnabled(job: QueueJob): boolean {
+  return job.graphifyOrchestration?.enabled === true;
+}
+
+function graphifyQueueJobIsSafeToEvaluate(job: QueueJob, queueState: QueueState, taskState: TaskState): boolean {
+  if ((job.acceptanceCriteria ?? []).length === 0 || job.approvalRequired || unsupportedControlBlockNote(job)) return false;
+  const unresolvedBlockerBudget = jobExceededUnresolvedBlockerBudget(job, summarizeVisibleUnresolvedBlockers(queueState, taskState));
+  if (unresolvedBlockerBudget) return false;
+  if (!job.linkedTaskId) return true;
+  const linkedTask = getTask(taskState, job.linkedTaskId);
+  if (!linkedTask) return true;
+  return !jobExceededRetryBudget(job, linkedTask) && !jobExceededFailedValidationBudget(job, linkedTask);
+}
+
+function buildGraphifyQueueParams(job: QueueJob): Record<string, unknown> {
+  const input = job.graphifyOrchestration;
+  if (!input) throw new Error(`Queue job ${job.id} is missing graphifyOrchestration input.`);
+  return {
+    ...input,
+    taskId: input.taskId ?? job.id,
+  };
+}
+
+function summarizeGraphifyQueueResult(jobId: string, result: any): QueueGraphifyOrchestrationStepSummary {
+  const decision = result?.details?.decision;
+  return {
+    jobId,
+    status: result?.details?.status === "blocked" ? "blocked" : "completed",
+    action: typeof decision?.action === "string" ? decision.action : null,
+    adapterAction: typeof result?.details?.adapterAction === "string" ? result.details.adapterAction : null,
+    reason: typeof decision?.reason === "string" ? decision.reason : "Graphify orchestration completed through run_graphify_orchestration.",
+  };
+}
+
+async function recordGraphifyQueueResult(cwd: string, summary: QueueGraphifyOrchestrationStepSummary): Promise<void> {
+  await mutateQueueState(cwd, (queueState) => {
+    const job = getJob(queueState, summary.jobId);
+    if (!job) return;
+    if (summary.status === "blocked") {
+      blockJobInState(
+        queueState,
+        summary.jobId,
+        `Graphify orchestration blocked before queue-session start: action=${summary.action ?? "unknown"}; adapterAction=${summary.adapterAction ?? "none"}; ${summary.reason}`,
+      );
+      return;
+    }
+
+    job.notes = job.notes ?? [];
+    job.notes.push(`Graphify orchestration ${summary.action ?? "unknown"} completed before queue-session start; adapterAction=${summary.adapterAction ?? "none"}.`);
+    job.updatedAt = nowIso();
+  });
+}
+
+async function maybeRunResearchGraphifyForNextQueuedJob(
+  cwd: string,
+  invokedGraphifyInSession: { value: boolean },
+): Promise<QueueGraphifyOrchestrationStepSummary | null> {
+  if (invokedGraphifyInSession.value) return null;
+
+  const [queueState, taskState] = await Promise.all([readQueueState(cwd), readTaskState(cwd)]);
+  if (queueState.paused || queueState.activeJobId) return null;
+
+  const nextJob = selectEligibleQueuedJob(queueState);
+  if (!nextJob) return null;
+
+  const job = normalizeQueueJob(nextJob);
+  if (!explicitGraphifyOrchestrationEnabled(job)) return null;
+  if (!isResearchQueueJob(job)) return null;
+  if (!graphifyQueueJobIsSafeToEvaluate(job, queueState, taskState)) return null;
+
+  invokedGraphifyInSession.value = true;
+  const tool = captureGraphifyOrchestratorTool();
+  const result = await tool.execute(
+    "queue-session-graphify-orchestration",
+    buildGraphifyQueueParams(job),
+    undefined,
+    undefined,
+    { cwd, hasUI: false, model: { id: "queue-session/research-graphify" }, ui: {} },
+  );
+  const summary = summarizeGraphifyQueueResult(job.id, result);
+  await recordGraphifyQueueResult(cwd, summary);
+  await appendAudit(cwd, {
+    ts: nowIso(),
+    extension: "queue-runner",
+    action: "queue_session_research_graphify_orchestration",
+    cwd,
+    jobId: job.id,
+    result: summary,
+  });
+  return summary;
 }
 
 function buildBoundedQueueSessionTriage(
@@ -2097,6 +2250,7 @@ export async function runBoundedQueueSession(
   const startedAt = nowIso();
   const startedTime = Date.now();
   const steps: BoundedQueueSessionStep[] = [];
+  const invokedGraphifyInSession = { value: false };
 
   const finalizeResult = async (
     stopReason: BoundedQueueSessionResult["stopReason"],
@@ -2136,8 +2290,29 @@ export async function runBoundedQueueSession(
       );
     }
 
+    const graphifyOrchestration = await maybeRunResearchGraphifyForNextQueuedJob(cwd, invokedGraphifyInSession);
+    if (graphifyOrchestration?.status === "blocked") {
+      const result: QueueRunnerResult = {
+        version: 1,
+        ok: true,
+        action: "blocked",
+        reason: `Research Graphify orchestration blocked queued job ${graphifyOrchestration.jobId}: ${graphifyOrchestration.reason}`,
+        queuePaused: false,
+        activeJobId: null,
+        startedJob: null,
+        finalizedJob: null,
+        blockedJobIds: [graphifyOrchestration.jobId],
+        linkedTask: null,
+        packet: null,
+        initialHandoff: null,
+        recoveryDecision: null,
+      };
+      steps.push(buildBoundedQueueSessionStep(step, result, graphifyOrchestration));
+      return finalizeResult("blocked", result.reason ?? `Research Graphify orchestration blocked queued job ${graphifyOrchestration.jobId}.`);
+    }
+
     const result = await runNextQueueJob(cwd, { owner, allowInitialHandoff });
-    steps.push(buildBoundedQueueSessionStep(step, result));
+    steps.push(buildBoundedQueueSessionStep(step, result, graphifyOrchestration));
 
     const inspection = await inspectQueueState(cwd, { recentLimit });
     if (inspection.summary.queuePaused) {

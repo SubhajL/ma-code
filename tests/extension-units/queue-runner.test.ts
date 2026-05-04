@@ -1692,3 +1692,163 @@ test("queue runner finalizes failed jobs with a bounded recovery recommendation"
   assert.equal(details.recoveryDecision.recommendedAction, "retry_same_lane");
   assert.equal(details.recoveryDecision.haltAutonomy, false);
 });
+
+test("bounded queue session explicitly invokes Graphify orchestration for opted-in research jobs", async () => {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+  await writeFile(join(cwd, "README.md"), "# graphify research fixture\n");
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-research-graphify",
+        goal: "Research broad repo structure with Graphify",
+        priority: "high",
+        status: "queued",
+        team: "planning",
+        assignedRole: "research_worker",
+        taskClass: "research",
+        workType: "research_only",
+        domains: ["research"],
+        acceptanceCriteria: ["Explicit research Graphify orchestration runs before the job starts"],
+        graphifyOrchestration: {
+          enabled: true,
+          need: "broad_structure",
+          graphPresent: false,
+          purpose: "curated_research",
+          sourcePath: ".",
+          taskId: "job-research-graphify",
+          maxFilesWithoutApproval: 20,
+        },
+      },
+    ],
+  });
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 });
+
+  assert.equal(result.details.stopReason, "waiting_on_active_task");
+  assert.equal(result.details.steps[0].graphifyOrchestration.jobId, "job-research-graphify");
+  assert.equal(result.details.steps[0].graphifyOrchestration.status, "completed");
+  assert.equal(result.details.steps[0].graphifyOrchestration.action, "run_preflight");
+  assert.equal(result.details.steps[0].graphifyOrchestration.adapterAction, "preflight");
+
+  const queueState = await readQueueState(cwd);
+  const startedJob = queueState.jobs.find((job) => job.id === "job-research-graphify");
+  assert.equal(startedJob?.status, "running");
+  assert.match((startedJob?.notes ?? []).join("\n"), /Graphify orchestration run_preflight completed/);
+});
+
+test("bounded queue session does not invoke Graphify when research job lacks explicit opt in", async () => {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-research-no-graphify",
+        goal: "Research without Graphify",
+        priority: "high",
+        status: "queued",
+        team: "planning",
+        assignedRole: "research_worker",
+        taskClass: "research",
+        workType: "research_only",
+        domains: ["research"],
+        acceptanceCriteria: ["Research job starts without implicit Graphify"],
+      },
+    ],
+  });
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 });
+
+  assert.equal(result.details.stopReason, "waiting_on_active_task");
+  assert.equal(result.details.steps[0].graphifyOrchestration, null);
+});
+
+test("bounded queue session ignores Graphify opt in on non-research jobs", async () => {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-build-graphify-ignored",
+        goal: "Implementation job should not invoke Graphify",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        taskClass: "implementation",
+        workType: "implementation",
+        domains: ["backend"],
+        acceptanceCriteria: ["Non-research job starts without Graphify even if field is present"],
+        graphifyOrchestration: {
+          enabled: true,
+          need: "broad_structure",
+          graphPresent: false,
+          purpose: "architecture_review",
+          taskId: "job-build-graphify-ignored",
+        },
+      },
+    ],
+  });
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 });
+
+  assert.equal(result.details.stopReason, "waiting_on_active_task");
+  assert.equal(result.details.steps[0].graphifyOrchestration, null);
+});
+
+test("bounded queue session blocks research job when explicit Graphify orchestration blocks", async () => {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-research-graphify-blocked",
+        goal: "Research Graphify blocked path",
+        priority: "high",
+        status: "queued",
+        team: "planning",
+        assignedRole: "research_worker",
+        taskClass: "research",
+        workType: "research_only",
+        domains: ["research"],
+        acceptanceCriteria: ["Blocked Graphify orchestration blocks the research job visibly"],
+        graphifyOrchestration: {
+          enabled: true,
+          need: "broad_structure",
+          graphPresent: false,
+          purpose: "curated_research",
+          sourcePath: ".",
+          taskId: "job-research-graphify-blocked",
+          preflightTokenPresent: true,
+          preflightToken: "intentionally-wrong",
+          extraArgs: ["--watch"],
+        },
+      },
+    ],
+  });
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 });
+
+  assert.equal(result.details.stopReason, "blocked");
+  assert.equal(result.details.steps[0].action, "blocked");
+  assert.equal(result.details.steps[0].graphifyOrchestration.jobId, "job-research-graphify-blocked");
+  assert.equal(result.details.steps[0].graphifyOrchestration.status, "blocked");
+  assert.equal(result.details.steps[0].graphifyOrchestration.adapterAction, "scan");
+
+  const queueState = await readQueueState(cwd);
+  const blockedJob = queueState.jobs.find((job) => job.id === "job-research-graphify-blocked");
+  assert.equal(blockedJob?.status, "blocked");
+  assert.match((blockedJob?.notes ?? []).join("\n"), /Graphify orchestration blocked before queue-session start/);
+});
