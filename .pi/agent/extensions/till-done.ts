@@ -6,7 +6,11 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { decideGraphifyValidation, type GraphifyValidationDecisionInput } from "./graphify-validation-decision.ts";
+import {
+  decideGraphifyValidation,
+  GRAPHIFY_VALIDATION_POLICIES,
+  type GraphifyValidationDecisionInput,
+} from "./graphify-validation-decision.ts";
 
 export type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
 export type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
@@ -111,8 +115,12 @@ const ValidationChecklistSchema = Type.Object({
   evidence: StringEnum(CHECKLIST_STATUSES),
 });
 
+const GRAPHIFY_CLAIM_SCOPES = ["graphify_backed_claim", "architecture_review", "other"] as const;
+
 const GraphifyValidationInputSchema = Type.Object({
   graphifyBackedClaim: Type.Boolean(),
+  claimScope: Type.Optional(StringEnum(GRAPHIFY_CLAIM_SCOPES)),
+  policy: Type.Optional(StringEnum(GRAPHIFY_VALIDATION_POLICIES)),
   required: Type.Optional(Type.Boolean()),
   freshnessOrCadenceChecked: Type.Optional(Type.Boolean()),
   latestRelevantGraphQueried: Type.Optional(Type.Boolean()),
@@ -679,7 +687,7 @@ export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams
       ? decideGraphifyValidation({
           ...graphifyInput,
           graphifyBackedClaim: graphifyInput.graphifyBackedClaim || graphifyRequiredByAcceptance,
-          required: graphifyInput.required === true || graphifyRequiredByAcceptance,
+          required: graphifyInput.required === true || (graphifyRequiredByAcceptance && graphifyInput.policy !== "disabled"),
         })
       : null;
 

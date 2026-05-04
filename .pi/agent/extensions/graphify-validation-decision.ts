@@ -16,8 +16,20 @@ export type GraphifyMissingProof =
   | "latest_relevant_graph_queried_or_freshness_cadence_checked"
   | "important_claims_verified_with_direct_source_inspection";
 
+export const GRAPHIFY_VALIDATION_POLICIES = [
+  "optional_default",
+  "required_for_graphify_backed_claims",
+  "required_for_architecture_review",
+  "disabled",
+] as const;
+
+export type GraphifyValidationPolicy = (typeof GRAPHIFY_VALIDATION_POLICIES)[number];
+export type GraphifyClaimScope = "graphify_backed_claim" | "architecture_review" | "other";
+
 export interface GraphifyValidationDecisionInput {
   graphifyBackedClaim: boolean;
+  claimScope?: GraphifyClaimScope;
+  policy?: GraphifyValidationPolicy;
   required?: boolean;
   freshnessOrCadenceChecked?: boolean;
   latestRelevantGraphQueried?: boolean;
@@ -31,23 +43,37 @@ export interface GraphifyValidationDecision {
   blocking: boolean;
   missingProof: GraphifyMissingProof[];
   reason: string;
+  policy: GraphifyValidationPolicy;
+  claimScope: GraphifyClaimScope;
 }
 
 const GRAPH_OR_FRESHNESS_PROOF: GraphifyMissingProof = "latest_relevant_graph_queried_or_freshness_cadence_checked";
 const SOURCE_VERIFICATION_PROOF: GraphifyMissingProof = "important_claims_verified_with_direct_source_inspection";
 
+function policyRequiresGraphify(policy: GraphifyValidationPolicy, claimScope: GraphifyClaimScope): boolean {
+  if (policy === "required_for_graphify_backed_claims") return claimScope === "graphify_backed_claim" || claimScope === "architecture_review";
+  if (policy === "required_for_architecture_review") return claimScope === "architecture_review";
+  return false;
+}
+
 export function decideGraphifyValidation(input: GraphifyValidationDecisionInput): GraphifyValidationDecision {
-  const required = input.required === true;
+  const policy = input.policy ?? "optional_default";
+  const claimScope = input.claimScope ?? (input.graphifyBackedClaim ? "graphify_backed_claim" : "other");
+  const required = policy !== "disabled" && (input.required === true || policyRequiresGraphify(policy, claimScope));
   const graphOrFreshnessProved = input.latestRelevantGraphQueried === true || input.freshnessOrCadenceChecked === true;
   const sourceVerified = input.importantClaimsSourceVerified === true;
 
-  if (!input.graphifyBackedClaim) {
+  if (!input.graphifyBackedClaim || policy === "disabled") {
     return {
-      state: "not_applicable",
+      state: input.graphifyBackedClaim && policy === "disabled" ? "optional_skipped" : "not_applicable",
       pass: true,
       blocking: false,
       missingProof: [],
-      reason: "No Graphify-backed claim was presented, so Graphify validation is not applicable.",
+      reason: policy === "disabled"
+        ? "Graphify validation is disabled by policy."
+        : "No Graphify-backed claim was presented, so Graphify validation is not applicable.",
+      policy,
+      claimScope,
     };
   }
 
@@ -60,6 +86,8 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
       reason: required
         ? "Required Graphify-backed validation reported an explicit failure and blocks acceptance."
         : "Optional Graphify-backed validation reported an explicit failure.",
+      policy,
+      claimScope,
     };
   }
 
@@ -74,6 +102,8 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
       blocking: false,
       missingProof,
       reason: "Graphify-backed acceptance has graph query or freshness/cadence proof plus direct source verification for important claims.",
+      policy,
+      claimScope,
     };
   }
 
@@ -84,6 +114,8 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
       blocking: true,
       missingProof,
       reason: "Required Graphify-backed acceptance cannot pass until latest relevant graph query or freshness/cadence proof and direct source inspection are present.",
+      policy,
+      claimScope,
     };
   }
 
@@ -94,6 +126,8 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
       blocking: false,
       missingProof,
       reason: "Important claims were source-verified, but Graphify query or freshness/cadence proof is still missing.",
+      policy,
+      claimScope,
     };
   }
 
@@ -104,6 +138,8 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
       blocking: false,
       missingProof,
       reason: "Latest relevant graph was queried, but important claims still need direct source verification.",
+      policy,
+      claimScope,
     };
   }
 
@@ -114,6 +150,8 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
       blocking: false,
       missingProof,
       reason: "Graph freshness/cadence was checked, but important claims still need direct source verification.",
+      policy,
+      claimScope,
     };
   }
 
@@ -123,5 +161,7 @@ export function decideGraphifyValidation(input: GraphifyValidationDecisionInput)
     blocking: false,
     missingProof,
     reason: "Graphify-backed claim was optional and no Graphify validation proof was supplied.",
+    policy,
+    claimScope,
   };
 }

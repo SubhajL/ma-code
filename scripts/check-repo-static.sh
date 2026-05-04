@@ -133,6 +133,7 @@ validator_prompt = (root / ".pi/agent/prompts/roles/validator_worker.md").read_t
 review_template = (root / ".pi/agent/prompts/templates/review-diff.md").read_text(encoding="utf-8")
 validate_template = (root / ".pi/agent/prompts/templates/validate-task.md").read_text(encoding="utf-8")
 discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts").read_text(encoding="utf-8")
+graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-validation-decision.ts").read_text(encoding="utf-8")
 extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
 foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
@@ -230,6 +231,15 @@ assert "graphify-validation-decision.ts" in extension_unit_validator
 assert "graphify-validation-decision.test.ts" in extension_unit_validator
 assert "graphify-validation-decision.ts" in foundation_compile_validator
 assert "test:discovery-policy" in package_json.get("scripts", {})
+for needle in [
+    "optional_default",
+    "required_for_graphify_backed_claims",
+    "required_for_architecture_review",
+    "disabled",
+    "GraphifyValidationPolicy",
+    "GraphifyClaimScope",
+]:
+    assert needle in graphify_validation_decision_extension
 for needle in [
     "Graphify is an optional discovery fallback, not a required harness dependency.",
     "Graphify is not a live web-search replacement for Exa.",
