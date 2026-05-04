@@ -237,7 +237,7 @@ const tddSlice = {
   testSurface: ["tests/extension-units/orchestration-helpers.test.ts", "scripts/validate-task-packets.sh"],
   boundaryDependencies: [".pi/agent/extensions/task-packets.ts", ".pi/agent/state/schemas/task-packet.schema.json"],
   mockPlan: "Reuse real routing/team fixtures only; no extra mocks.",
-  outOfScopeBehaviors: ["Do not make tddSlice required yet."],
+  outOfScopeBehaviors: ["Do not require TDD metadata outside implementation packets."],
 };
 
 const generated = generateTaskPacket(policy, teams, routingConfig, {
@@ -297,6 +297,27 @@ const planning = generateTaskPacket(policy, teams, routingConfig, {
 validateTaskPacketShape(planning.packet);
 if (planning.packet.modelOverride !== null) throw new Error("expected planning packet to keep default route and null override");
 if (!planning.packet.migrationPathNote.includes("Not applicable")) throw new Error("expected explicit migration path note");
+if ((planning.packet as any).tddSlice != null) throw new Error("expected non-implementation packet to omit tddSlice by default");
+
+let missingImplementationTddSliceError = "";
+try {
+  generateTaskPacket(policy, teams, routingConfig, {
+    sourceGoalId: "harness-021",
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    title: "Missing TDD slice",
+    scope: "Should fail.",
+    workType: "implementation",
+    domains: ["backend"],
+    allowedPaths: [".pi/agent/extensions/task-packets.ts"],
+    acceptanceCriteria: ["should not generate"],
+  });
+} catch (error) {
+  missingImplementationTddSliceError = String(error);
+}
+if (!missingImplementationTddSliceError.includes("Implementation packets require tddSlice")) {
+  throw new Error(`expected implementation tddSlice error, got: ${missingImplementationTddSliceError}`);
+}
 
 let mismatchError = "";
 try {
@@ -354,6 +375,7 @@ console.log(JSON.stringify({
   buildModelOverride: generated.packet.modelOverride,
   planningPacketId: planning.packet.packetId,
   renderedHeading: generated.renderedPacket.split("\n")[0],
+  missingImplementationTddSliceError,
   mismatchError,
   pathError,
   completenessError,
@@ -364,7 +386,7 @@ EOF
     local detail="Deterministic helper-level task packet generation checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for build packet generation, planning packet generation, explicit goal/non-goals/file-plan/expected-proof fields, optional TDD slice preservation/rendering, protected defaults, rendered packet format, role/team mismatch rejection, missing boundary rejection, and completeness-shape rejection\n- sample output:\n\n\`\`\`json\n$(sed -n '1,200p' "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for build packet generation, implementation-only TDD-slice requiredness, non-implementation omission, explicit goal/non-goals/file-plan/expected-proof fields, protected defaults, rendered packet format, role/team mismatch rejection, missing boundary rejection, and completeness-shape rejection\n- sample output:\n\n\`\`\`json\n$(sed -n '1,200p' "$out")\n\`\`\`"
   else
     local detail="Helper-level task packet generation checks failed."
     record_result "$name" "FAIL" "$detail"
@@ -398,6 +420,14 @@ if not tdd_slice:
 for key in ['firstTracerBehavior','publicInterface','testSurface','boundaryDependencies','mockPlan','outOfScopeBehaviors']:
     if key not in tdd_slice['properties']:
         raise SystemExit(f'task packet schema tddSlice missing property: {key}')
+conditional_rules = schema.get('allOf', [])
+implementation_requires_tdd = any(
+    rule.get('if', {}).get('properties', {}).get('workType', {}).get('const') == 'implementation'
+    and 'tddSlice' in rule.get('then', {}).get('required', [])
+    for rule in conditional_rules
+)
+if not implementation_requires_tdd:
+    raise SystemExit('task packet schema must require tddSlice when workType is implementation')
 if '.env*' not in policy['defaults']['disallowed_paths']:
     raise SystemExit('packet policy must protect .env* by default')
 if not policy['defaults']['non_goals']:
@@ -418,7 +448,7 @@ PY"
     local detail="Schema and packet policy sanity checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-044 planning-completeness packet contract plus optional structured tddSlice metadata\n- packet policy protects default disallowed paths, explicit non-goals/file-plan/proof defaults, and all teams\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-044 planning-completeness packet contract plus implementation-only required structured tddSlice metadata\n- packet policy protects default disallowed paths, explicit non-goals/file-plan/proof defaults, and all teams\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
     local detail="Schema and packet policy sanity checks failed."
     record_result "$name" "FAIL" "$detail"

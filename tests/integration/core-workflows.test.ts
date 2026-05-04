@@ -60,8 +60,47 @@ async function setupCoreWorkflowRepo() {
   return { cwd, taskUpdate, runNextQueueJob, resolveRecoveryRuntimeDecision, runToolCallGuard };
 }
 
+function defaultImplementationTddSlice(label: string, boundaryDependencies: string[] = [".pi/agent/extensions/queue-runner.ts"]): {
+  firstTracerBehavior: string;
+  publicInterface: string;
+  testSurface: string[];
+  boundaryDependencies: string[];
+  mockPlan: string;
+  outOfScopeBehaviors: string[];
+} {
+  return {
+    firstTracerBehavior: `${label} starts with one observable implementation behavior before broader workflow changes.`,
+    publicInterface: "run_next_queue_job plus the linked implementation task/packet workflow",
+    testSurface: ["tests/integration/core-workflows.test.ts"],
+    boundaryDependencies,
+    mockPlan: "Reuse real queue/task/handoff workflow fixtures; mock only the Pi runtime boundary.",
+    outOfScopeBehaviors: ["Do not widen beyond this bounded implementation workflow slice.", "Do not require TDD metadata outside implementation packets."],
+  };
+}
+
+function withImplementationQueueTddSlices(queue: unknown): unknown {
+  if (!queue || typeof queue !== "object" || !Array.isArray((queue as { jobs?: unknown[] }).jobs)) {
+    return queue;
+  }
+
+  return {
+    ...(queue as Record<string, unknown>),
+    jobs: ((queue as { jobs: Array<Record<string, unknown>> }).jobs).map((job) => {
+      if (job.workType !== "implementation" || job.tddSlice) return job;
+      const label = typeof job.goal === "string" && job.goal.trim().length > 0 ? job.goal : String(job.id ?? "queued implementation work");
+      const boundaryDependencies = Array.isArray(job.allowedPaths) && job.allowedPaths.length > 0
+        ? (job.allowedPaths.filter((value): value is string => typeof value === "string" && value.trim().length > 0))
+        : [".pi/agent/extensions/queue-runner.ts"];
+      return {
+        ...job,
+        tddSlice: defaultImplementationTddSlice(label, boundaryDependencies),
+      };
+    }),
+  };
+}
+
 async function writeQueue(cwd: string, queue: unknown) {
-  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(queue, null, 2)}\n`);
+  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(withImplementationQueueTddSlices(queue), null, 2)}\n`);
 }
 
 async function readTaskState(cwd: string) {
@@ -105,6 +144,7 @@ async function createWorkerToQualityHandoff(cwd: string) {
     acceptanceCriteria: ["Structured queue-to-quality input stays bounded and reviewable."],
     expectedProof: ["A queued quality job can start from structured worker_to_quality input."],
     migrationPathNote: "Not applicable; keep the change in the existing queue-runner quality transition.",
+    tddSlice: defaultImplementationTddSlice("Provide structured build output for a bounded quality transition.", [".pi/agent/extensions/queue-runner.ts", "tests/integration/core-workflows.test.ts"]),
   }).packet;
 
   return generateHandoff(handoffPolicy, {

@@ -365,5 +365,21 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "workType": {
+            "const": "implementation"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "tddSlice"
+        ]
+      }
+    }
+  ]
 }
