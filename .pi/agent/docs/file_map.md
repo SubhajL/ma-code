@@ -38,7 +38,8 @@
 
 ## Update task/queue structure
 - `.pi/agent/state/schemas/*.json`
-- `.pi/agent/state/runtime/*.json`
+- `.pi/agent/package/templates/runtime/*.json` — tracked bootstrap templates for generated runtime state.
+- `.pi/agent/state/runtime/*.json` — live local-only runtime bookkeeping; generated/ignored and must not be tracked.
 - `.pi/agent/schedules/*.json`
 - `.pi/agent/validation/*.json`
 - `.pi/agent/docs/task_schema_semantics.md`
@@ -86,6 +87,7 @@
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 - `scripts/harness-pr-gate.ts`
+- `scripts/harness-sync-main.ts` — Fast-forward-only local `main` sync helper that preserves ignored runtime bookkeeping and blocks non-bookkeeping tracked dirt.
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-extension-unit-tests.sh`
 - `scripts/validate-skill-routing.sh`
