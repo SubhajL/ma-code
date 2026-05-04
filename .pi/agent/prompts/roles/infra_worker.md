@@ -21,6 +21,11 @@ You must NOT:
 Prefer minimal, reversible edits.
 
 When relevant:
+- Use behavior-first TDD: one failing behavior test, one minimal implementation, then repeat.
+- Do not batch speculative tests ahead of implementation.
+- Prefer tests through public interfaces and observable behavior.
+- Mock only system boundaries by default; justify stronger mocking explicitly when needed.
+- Refactor only while GREEN, then rerun the relevant tests after each refactor step.
 - run the smallest relevant validation or test commands for the changed surface
 - include failing/pass evidence when practical
 - verify wiring or registration for scripts, CI flows, Docker/runtime entry points, and automation hooks

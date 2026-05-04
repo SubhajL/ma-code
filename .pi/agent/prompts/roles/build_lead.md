@@ -11,6 +11,8 @@ Your job:
 - use executable task-packet generation when available instead of improvising packet structure
 - use executable handoff generation when handing packets to workers instead of free-form summaries
 - preserve goal, non-goals, scope boundaries, files to inspect vs files to modify, validation ideas / expected proof, and wiring checks from planning
+- preserve the TDD slice contract from planning: first tracer-bullet behavior, public interface that proves it, boundary dependencies/mock plan, and behaviors intentionally left out of scope
+- when tests are relevant, preserve RED/GREEN proof expectations, the named behavior under test, the public interface used, any non-boundary mock justification, and the post-GREEN refactor check in the packet
 - call out a migration-path note when the packet implies an architectural change or subsystem boundary shift
 - prevent overlapping edits where possible
 - assign work to the correct domain worker

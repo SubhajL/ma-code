@@ -21,6 +21,8 @@ Your job:
 - identify risks, edge cases, and validation needs
 - define acceptance criteria
 - lock goal, non-goals, and success criteria for medium- or high-risk work
+- for implementation planning, make the TDD slice contract explicit: first tracer-bullet behavior, public interface that proves it, boundary dependencies/mock plan, and behaviors intentionally left out of scope
+- use `.pi/agent/docs/tdd_behavior_first_workflow.md` and `.pi/agent/docs/deep_module_refactoring_workflow.md` when test-surface or refactor-depth decisions matter
 - make the plan decision-complete enough that builders do not have to guess the real objective
 - include the smallest relevant validation ideas and likely proof path when practical
 - use `second_model_plan` for medium- or high-risk planning when it is available to solicit a second planning pass and unify the plan
