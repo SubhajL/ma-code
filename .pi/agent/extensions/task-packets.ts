@@ -393,6 +393,9 @@ export function validateTaskPacketShape(packet: TaskPacket): void {
   if (packet.evidenceExpectations.length === 0) throw new Error("evidenceExpectations must not be empty.");
   if (packet.validationExpectations.length === 0) throw new Error("validationExpectations must not be empty.");
   if (packet.expectedProof.length === 0) throw new Error("expectedProof must not be empty.");
+  if (packet.workType === "implementation" && !packet.tddSlice) {
+    throw new Error("Implementation packets require tddSlice.");
+  }
   if (packet.tddSlice) {
     if (!packet.tddSlice.firstTracerBehavior.trim()) throw new Error("tddSlice.firstTracerBehavior must not be empty.");
     if (!packet.tddSlice.publicInterface.trim()) throw new Error("tddSlice.publicInterface must not be empty.");

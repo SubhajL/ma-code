@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_test-quality-followups.md`
+- `logs/coding/2026-05-04_require-implementation-tdd-slice.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_test-quality-followups-plan.md`
+- `reports/planning/2026-05-04_require-implementation-tdd-slice-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the lightweight test-quality follow-up slice.
+- These files capture the implementation-only `tddSlice` requirement slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

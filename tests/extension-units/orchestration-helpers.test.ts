@@ -12,6 +12,24 @@ async function readFixture(relativePath: string): Promise<string> {
   return readFile(url, "utf8");
 }
 
+function implementationTddSlice(label: string, boundaryDependencies: string[] = [".pi/agent/extensions/task-packets.ts"]): {
+  firstTracerBehavior: string;
+  publicInterface: string;
+  testSurface: string[];
+  boundaryDependencies: string[];
+  mockPlan: string;
+  outOfScopeBehaviors: string[];
+} {
+  return {
+    firstTracerBehavior: `${label} starts with one observable implementation behavior before broader changes.`,
+    publicInterface: "generate_task_packet plus the rendered packet/handoff output",
+    testSurface: ["tests/extension-units/orchestration-helpers.test.ts", "scripts/validate-task-packets.sh"],
+    boundaryDependencies,
+    mockPlan: "Reuse real routing/team/policy fixtures only; no extra mocks.",
+    outOfScopeBehaviors: ["Do not widen beyond this bounded implementation slice.", "Do not require TDD metadata outside implementation packets."],
+  };
+}
+
 test("harness-routing resolves backend budget pressure to mini model with calibrated minimal thinking", async () => {
   const config = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const result = resolveHarnessRoute(config, {
@@ -117,6 +135,7 @@ test("task-packets generates a valid packet from real policies", async () => {
     acceptanceCriteria: ["Unit tests exist and pass"],
     expectedProof: ["Targeted extension unit test output shows PASS."],
     migrationPathNote: "Not applicable; tighten the existing task-packet contract in place.",
+    tddSlice: implementationTddSlice("Add extension unit tests", [".pi/agent/extensions/task-packets.ts", "tests/extension-units/orchestration-helpers.test.ts"]),
     dependencies: [],
     routeReason: "budget_pressure",
     budgetMode: "conserve",
@@ -151,6 +170,7 @@ test("task-packets default planning-completeness fields remain explicit for boun
     domains: ["backend"],
     allowedPaths: [".pi/agent/extensions/task-packets.ts", ".pi/agent/packets/packet-policy.json"],
     acceptanceCriteria: ["packet defaults remain explicit and bounded"],
+    tddSlice: implementationTddSlice("Tighten task packet defaults", [".pi/agent/extensions/task-packets.ts", ".pi/agent/packets/packet-policy.json"]),
   });
 
   validateTaskPacketShape(generated.packet);
@@ -197,6 +217,7 @@ test("task packets and handoffs preserve optional Graphify evidence", async () =
     domains: ["backend"],
     allowedPaths: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
     acceptanceCriteria: ["Graphify evidence is preserved in packet and handoff output"],
+    tddSlice: implementationTddSlice("Carry Graphify proof through packets", [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"]),
     graphifyEvidence: packetGraphifyEvidence,
   } as any);
 
@@ -250,7 +271,7 @@ test("task packets and handoffs preserve optional TDD slice", async () => {
     testSurface: ["tests/extension-units/orchestration-helpers.test.ts", "scripts/validate-task-packets.sh"],
     boundaryDependencies: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
     mockPlan: "No extra mocks; reuse real routing/team/policy fixtures only.",
-    outOfScopeBehaviors: ["Do not make tddSlice required yet.", "Do not add queue/runtime gating in this slice."],
+    outOfScopeBehaviors: ["Do not add queue/runtime gating in this slice.", "Do not require TDD metadata outside implementation packets."],
   };
 
   const generated = generateTaskPacket(packetPolicy, teams, routingConfig, {
@@ -290,6 +311,60 @@ test("task packets and handoffs preserve optional TDD slice", async () => {
   assert.match(handoff.renderedHandoff, /mock plan: No extra mocks; reuse real routing\/team\/policy fixtures only\./);
 });
 
+test("implementation task packets require a TDD slice", async () => {
+  const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
+  const teams = {
+    planning: parseTeamDefinition(await readFixture(".pi/agent/teams/planning.yaml"), "planning"),
+    build: parseTeamDefinition(await readFixture(".pi/agent/teams/build.yaml"), "build"),
+    quality: parseTeamDefinition(await readFixture(".pi/agent/teams/quality.yaml"), "quality"),
+    recovery: parseTeamDefinition(await readFixture(".pi/agent/teams/recovery.yaml"), "recovery"),
+  };
+
+  assert.throws(
+    () => generateTaskPacket(packetPolicy, teams, routingConfig, {
+      sourceGoalId: "harness-tdd-required",
+      assignedTeam: "build",
+      assignedRole: "backend_worker",
+      title: "Reject missing implementation TDD slice",
+      scope: "Only prove implementation packets require explicit TDD metadata.",
+      workType: "implementation",
+      domains: ["backend"],
+      allowedPaths: [".pi/agent/extensions/task-packets.ts"],
+      acceptanceCriteria: ["implementation packets without tddSlice are rejected"],
+    }),
+    /implementation packets require tddSlice/i,
+  );
+});
+
+test("non-implementation task packets remain valid without a TDD slice", async () => {
+  const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
+  const teams = {
+    planning: parseTeamDefinition(await readFixture(".pi/agent/teams/planning.yaml"), "planning"),
+    build: parseTeamDefinition(await readFixture(".pi/agent/teams/build.yaml"), "build"),
+    quality: parseTeamDefinition(await readFixture(".pi/agent/teams/quality.yaml"), "quality"),
+    recovery: parseTeamDefinition(await readFixture(".pi/agent/teams/recovery.yaml"), "recovery"),
+  };
+
+  const generated = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "harness-tdd-optional-non-implementation",
+    assignedTeam: "planning",
+    assignedRole: "planning_lead",
+    title: "Allow missing TDD slice for planning work",
+    scope: "Only prove non-implementation packets still allow omitted TDD metadata.",
+    workType: "mixed",
+    domains: ["research"],
+    allowedPaths: ["README.md"],
+    acceptanceCriteria: ["non-implementation packets still validate without tddSlice"],
+  });
+
+  validateTaskPacketShape(generated.packet);
+  assert.equal((generated.packet as any).tddSlice ?? null, null);
+  assert.match(generated.renderedPacket, /## TDD Slice/);
+  assert.match(generated.renderedPacket, /- none/);
+});
+
 test("handoffs preserve stronger planning context for worker-to-quality flow", async () => {
   const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
@@ -319,6 +394,7 @@ test("handoffs preserve stronger planning context for worker-to-quality flow", a
     acceptanceCriteria: ["Unit tests exist and pass"],
     expectedProof: ["Generated handoff output includes quality-facing scope and proof context."],
     migrationPathNote: "Not applicable; improve the current handoff contract in place.",
+    tddSlice: implementationTddSlice("Preserve stronger packet context through quality handoffs", [".pi/agent/extensions/handoffs.ts", "tests/extension-units/orchestration-helpers.test.ts"]),
     dependencies: [],
   });
 
@@ -364,6 +440,7 @@ test("quality-to-validator and recovery handoffs require stronger validation and
     domains: ["backend"],
     allowedPaths: [".pi/agent/extensions/handoffs.ts", ".pi/agent/handoffs/handoff-policy.json"],
     acceptanceCriteria: ["handoff structure is stronger and still readable"],
+    tddSlice: implementationTddSlice("Tighten handoff completeness", [".pi/agent/extensions/handoffs.ts", ".pi/agent/handoffs/handoff-policy.json"]),
   });
 
   const validatorHandoff = generateHandoff(handoffPolicy, {

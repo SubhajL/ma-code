@@ -58,8 +58,47 @@ async function setupQueueSessionRepo(prefix: string) {
   return { cwd, runNextQueueJob, taskUpdate };
 }
 
+function defaultImplementationTddSlice(label: string, boundaryDependencies: string[] = [".pi/agent/extensions/queue-runner.ts"]): {
+  firstTracerBehavior: string;
+  publicInterface: string;
+  testSurface: string[];
+  boundaryDependencies: string[];
+  mockPlan: string;
+  outOfScopeBehaviors: string[];
+} {
+  return {
+    firstTracerBehavior: `${label} starts with one observable implementation behavior before broader session work.`,
+    publicInterface: "run_next_queue_job / run_bounded_queue_session generated implementation packet flow",
+    testSurface: ["tests/integration/queue-session.test.ts"],
+    boundaryDependencies,
+    mockPlan: "Reuse real queue-session fixtures; mock only the Pi runtime boundary.",
+    outOfScopeBehaviors: ["Do not widen beyond this bounded queue-session slice.", "Do not require TDD metadata outside implementation packets."],
+  };
+}
+
+function withImplementationQueueTddSlices(queue: unknown): unknown {
+  if (!queue || typeof queue !== "object" || !Array.isArray((queue as { jobs?: unknown[] }).jobs)) {
+    return queue;
+  }
+
+  return {
+    ...(queue as Record<string, unknown>),
+    jobs: ((queue as { jobs: Array<Record<string, unknown>> }).jobs).map((job) => {
+      if (job.workType !== "implementation" || job.tddSlice) return job;
+      const label = typeof job.goal === "string" && job.goal.trim().length > 0 ? job.goal : String(job.id ?? "queued implementation work");
+      const boundaryDependencies = Array.isArray(job.allowedPaths) && job.allowedPaths.length > 0
+        ? (job.allowedPaths.filter((value): value is string => typeof value === "string" && value.trim().length > 0))
+        : [".pi/agent/extensions/queue-runner.ts"];
+      return {
+        ...job,
+        tddSlice: defaultImplementationTddSlice(label, boundaryDependencies),
+      };
+    }),
+  };
+}
+
 async function writeQueue(cwd: string, queue: unknown) {
-  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(queue, null, 2)}\n`);
+  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(withImplementationQueueTddSlices(queue), null, 2)}\n`);
 }
 
 async function readQueue(cwd: string) {

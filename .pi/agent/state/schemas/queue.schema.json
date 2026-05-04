@@ -199,6 +199,57 @@
           "modelOverride": {
             "type": "string"
           },
+          "tddSlice": {
+            "description": "Optional explicit TDD slice metadata for queued implementation work. Queue-runner preserves this into generated implementation packets when provided.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "firstTracerBehavior",
+              "publicInterface",
+              "testSurface",
+              "boundaryDependencies",
+              "mockPlan",
+              "outOfScopeBehaviors"
+            ],
+            "properties": {
+              "firstTracerBehavior": {
+                "type": "string",
+                "minLength": 1
+              },
+              "publicInterface": {
+                "type": "string",
+                "minLength": 1
+              },
+              "testSurface": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "boundaryDependencies": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "mockPlan": {
+                "type": "string",
+                "minLength": 1
+              },
+              "outOfScopeBehaviors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            },
+            "additionalProperties": false
+          },
           "qualityInput": {
             "description": "Structured runtime input for supported bounded quality-lane pickups. Current supported paths are queued quality_lead jobs via worker_to_quality and queued validator_worker jobs via quality_to_validator.",
             "type": [

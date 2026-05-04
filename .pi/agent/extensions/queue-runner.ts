@@ -126,6 +126,7 @@ export interface QueueJob {
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
+  tddSlice?: TaskPacketInput["tddSlice"];
   qualityInput?: QualityQueueInput | null;
   graphifyOrchestration?: QueueGraphifyOrchestrationInput | null;
   scheduledWorkflowId?: string | null;
@@ -303,6 +304,18 @@ function nowIso(): string {
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
+}
+
+function cloneQueueJobTddSlice(tddSlice: TaskPacketInput["tddSlice"]): TaskPacketInput["tddSlice"] {
+  if (!tddSlice) return null;
+  return {
+    firstTracerBehavior: tddSlice.firstTracerBehavior,
+    publicInterface: tddSlice.publicInterface,
+    testSurface: [...tddSlice.testSurface],
+    boundaryDependencies: [...tddSlice.boundaryDependencies],
+    mockPlan: tddSlice.mockPlan,
+    outOfScopeBehaviors: [...tddSlice.outOfScopeBehaviors],
+  };
 }
 
 function modelIdFromContext(ctx: { model?: { id?: string } | null }): string | null {
@@ -672,6 +685,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     ),
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
     notes: [...(job.notes ?? [])],
+    tddSlice: cloneQueueJobTddSlice(job.tddSlice),
     qualityInput: job.qualityInput ?? null,
     graphifyOrchestration: job.graphifyOrchestration ?? null,
     linkedTaskId: job.linkedTaskId ?? null,
@@ -932,6 +946,7 @@ function buildQualityLeadPacketInput(job: QueueJob, qualityInput: QualityQueueIn
     ]),
     validationExpectations: handoff.preservedPacket.validationExpectations,
     expectedProof: uniqueStrings([...handoff.preservedPacket.expectedProof, ...handoff.details.expectedProof]),
+    tddSlice: cloneQueueJobTddSlice(handoff.preservedPacket.tddSlice ?? job.tddSlice ?? null),
     wiringChecks: uniqueStrings([...handoff.preservedPacket.wiringChecks, ...handoff.details.wiringVerification]),
     migrationPathNote: handoff.preservedPacket.migrationPathNote,
     escalationInstructions: handoff.preservedPacket.escalationInstructions,
@@ -991,6 +1006,7 @@ function buildValidatorPacketInput(job: QueueJob, qualityInput: QualityQueueInpu
         .map((line) => `known gap: ${line}`),
     ]),
     expectedProof: uniqueStrings([...handoff.preservedPacket.expectedProof, ...handoff.details.expectedProof]),
+    tddSlice: cloneQueueJobTddSlice(handoff.preservedPacket.tddSlice ?? job.tddSlice ?? null),
     wiringChecks: handoff.preservedPacket.wiringChecks,
     migrationPathNote: handoff.preservedPacket.migrationPathNote,
     escalationInstructions: handoff.preservedPacket.escalationInstructions,
@@ -1022,6 +1038,7 @@ function buildPacketInputForJob(job: QueueJob, teamId: TeamId, assignedRole: Har
     domains: job.domains,
     allowedPaths: job.allowedPaths,
     acceptanceCriteria: job.acceptanceCriteria ?? [],
+    tddSlice: cloneQueueJobTddSlice(job.tddSlice),
     dependencies: job.dependencies,
     routeReason: job.routeReason,
     budgetMode: job.budgetMode,

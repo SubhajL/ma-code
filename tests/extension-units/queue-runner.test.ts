@@ -98,8 +98,51 @@ async function setupQueueRunnerRepo() {
   };
 }
 
-async function writeQueue(cwd: string, queue: unknown) {
+function defaultImplementationTddSlice(label: string, boundaryDependencies: string[] = [".pi/agent/extensions/queue-runner.ts"]): {
+  firstTracerBehavior: string;
+  publicInterface: string;
+  testSurface: string[];
+  boundaryDependencies: string[];
+  mockPlan: string;
+  outOfScopeBehaviors: string[];
+} {
+  return {
+    firstTracerBehavior: `${label} starts with one observable queued implementation behavior before broader changes.`,
+    publicInterface: "run_next_queue_job and the generated task packet for queued implementation work",
+    testSurface: ["tests/extension-units/queue-runner.test.ts"],
+    boundaryDependencies,
+    mockPlan: "Reuse real queue/task/handoff fixtures; mock only the Pi runtime boundary.",
+    outOfScopeBehaviors: ["Do not widen beyond this queued implementation slice.", "Do not require TDD metadata outside implementation packets."],
+  };
+}
+
+function withImplementationQueueTddSlices(queue: unknown): unknown {
+  if (!queue || typeof queue !== "object" || !Array.isArray((queue as { jobs?: unknown[] }).jobs)) {
+    return queue;
+  }
+
+  return {
+    ...(queue as Record<string, unknown>),
+    jobs: ((queue as { jobs: Array<Record<string, unknown>> }).jobs).map((job) => {
+      if (job.workType !== "implementation" || job.tddSlice) return job;
+      const label = typeof job.goal === "string" && job.goal.trim().length > 0 ? job.goal : String(job.id ?? "queued implementation work");
+      const boundaryDependencies = Array.isArray(job.allowedPaths) && job.allowedPaths.length > 0
+        ? (job.allowedPaths.filter((value): value is string => typeof value === "string" && value.trim().length > 0))
+        : [".pi/agent/extensions/queue-runner.ts"];
+      return {
+        ...job,
+        tddSlice: defaultImplementationTddSlice(label, boundaryDependencies),
+      };
+    }),
+  };
+}
+
+async function writeRawQueue(cwd: string, queue: unknown) {
   await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(queue, null, 2)}\n`);
+}
+
+async function writeQueue(cwd: string, queue: unknown) {
+  await writeRawQueue(cwd, withImplementationQueueTddSlices(queue));
 }
 
 async function readTaskState(cwd: string) {
@@ -145,6 +188,7 @@ async function createWorkerToQualityHandoff(cwd: string) {
     acceptanceCriteria: ["Structured worker_to_quality input is available for the quality queue job."],
     expectedProof: ["Queue runner derives the quality packet from structured handoff data."],
     migrationPathNote: "Not applicable; keep the runtime change bounded to the existing queue-runner path.",
+    tddSlice: defaultImplementationTddSlice("Provide structured queue-to-quality runtime input.", [".pi/agent/extensions/queue-runner.ts", "tests/extension-units/queue-runner.test.ts"]),
   }).packet;
 
   return generateHandoff(handoffPolicy, {
@@ -506,6 +550,7 @@ test("queue runner starts one eligible queued build job with linked task, packet
         domains: ["backend"],
         allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
         acceptanceCriteria: ["Queue runner starts exactly one queued job"],
+        tddSlice: defaultImplementationTddSlice("Implement queue runner step"),
       },
     ],
   });
@@ -518,7 +563,9 @@ test("queue runner starts one eligible queued build job with linked task, packet
   assert.equal(details.startedJob.status, "running");
   assert.equal(details.activeJobId, "job-start");
   assert.equal(details.packet.assignedRole, "backend_worker");
+  assert.equal(details.packet.tddSlice.firstTracerBehavior, "Implement queue runner step starts with one observable queued implementation behavior before broader changes.");
   assert.equal(details.initialHandoff.handoffType, "build_to_worker");
+  assert.equal(details.initialHandoff.preservedPacket.tddSlice.firstTracerBehavior, details.packet.tddSlice.firstTracerBehavior);
 
   const taskState = await readTaskState(cwd);
   assert.equal(taskState.activeTaskId, details.startedJob.linkedTaskId);
@@ -527,6 +574,38 @@ test("queue runner starts one eligible queued build job with linked task, packet
   const queueState = await readQueueState(cwd);
   assert.equal(queueState.activeJobId, "job-start");
   assert.equal(queueState.jobs[0]?.packetId, details.packet.packetId);
+});
+
+test("queue runner blocks queued implementation jobs that omit explicit tddSlice input", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeRawQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-missing-tdd-slice",
+        goal: "Try to start implementation work without explicit TDD metadata",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Queue runner should block missing implementation tddSlice input"],
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const queueState = await readQueueState(cwd);
+
+  assert.equal(result.details.action, "blocked");
+  assert.match(String(result.details.reason), /Implementation packets require tddSlice/i);
+  assert.equal(queueState.jobs[0]?.status, "blocked");
+  assert.match((queueState.jobs[0]?.notes ?? []).join("\n"), /Implementation packets require tddSlice/i);
 });
 
 test("queue runner can start a quality job from structured worker_to_quality input", async () => {
@@ -571,6 +650,7 @@ test("queue runner can start a quality job from structured worker_to_quality inp
     ".pi/agent/extensions/queue-runner.ts",
     "tests/extension-units/queue-runner.test.ts",
   ]);
+  assert.deepEqual(details.packet.tddSlice, handoff.preservedPacket.tddSlice);
   assert.equal(details.initialHandoff, null);
   assert.equal(queueState.jobs[0]?.packetId, details.packet.packetId);
 });
