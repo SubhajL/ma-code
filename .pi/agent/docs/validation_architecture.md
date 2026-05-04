@@ -59,8 +59,9 @@ Primary assets:
 - `.pi/agent/extensions/safe-bash.ts`
 - `.pi/agent/extensions/till-done.ts`
 - `.pi/agent/state/schemas/*.json`
-- `.pi/agent/state/runtime/tasks.json`
-- `logs/harness-actions.jsonl`
+- `.pi/agent/package/templates/runtime/*.json`
+- `.pi/agent/state/runtime/*.json` (generated local-only runtime bookkeeping)
+- `logs/harness-actions.jsonl` (generated local-only audit log)
 
 Current responsibilities include:
 - blocking protected writes such as `.env*`
@@ -70,6 +71,7 @@ Current responsibilities include:
 - requiring task owner and acceptance criteria before task start
 - preventing task completion without evidence
 - preserving compact audit entries for task and mutation events
+- keeping live runtime bookkeeping ignored/local-only so regenerated state does not dirty `main`
 
 Validation role of this layer:
 - converts policy into enforceable runtime behavior
@@ -96,6 +98,7 @@ Current structure:
 - the bounded queue-session CLI provides explicit multi-step queue advancement proof plus richer end-of-session triage summaries without implying a hidden daemon
 - the scheduled workflow helper CLI provides repeatable due-work inspection and explicit queue materialization without implying a daemon
 - the bounded worktree helper CLI provides repeatable branch/worktree creation, status inspection, review-prep, and cleanup commands so humans and agents do not improvise git worktree mechanics
+- the `harness:sync-main` CLI provides fast-forward-only local `main` sync from `origin/main`, preserves ignored runtime bookkeeping, and blocks when non-bookkeeping tracked dirt exists
 
 Validation role of this layer:
 - verifies that policy and runtime controls are wired correctly
@@ -332,6 +335,17 @@ This script is responsible for the operator PR gate path for:
 - treating successful Dependency Review bot comments as benign while surfacing non-bot comments and requested changes as fix-required signals
 
 Its focused proof currently runs through `scripts/validate-core-workflows.sh` via PR-gate integration coverage with fake `gh` command runners.
+
+### Local main sync helper proof
+Current bounded local main sync helper script:
+- `scripts/harness-sync-main.ts`
+
+This script is responsible for the post-merge operator sync path for:
+- fast-forward-only local `main` updates from `origin/main`
+- preserving ignored runtime bookkeeping in `.pi/agent/state/runtime/` and `logs/harness-actions.jsonl`
+- blocking when non-bookkeeping tracked dirt exists rather than masking source changes
+
+Its focused proof currently runs through `scripts/validate-core-workflows.sh` via sync-main integration coverage in temp git repos.
 
 ### Dedicated team-activation validator
 Current dedicated team-activation script:
