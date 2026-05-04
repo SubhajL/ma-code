@@ -194,10 +194,12 @@ JSON
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-adapter.ts" "$workdir/.pi/agent/extensions/graphify-adapter.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/discovery-policy.ts" "$workdir/.pi/agent/extensions/discovery-policy.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/graphify-validation-decision.ts"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestration-decision.ts" "$workdir/.pi/agent/extensions/graphify-orchestration-decision.ts"
   cp "$REPO_ROOT/tests/extension-units/test-utils.ts" "$workdir/tests/extension-units/test-utils.ts"
   cp "$REPO_ROOT/tests/extension-units/graphify-adapter.test.ts" "$workdir/tests/extension-units/graphify-adapter.test.ts"
   cp "$REPO_ROOT/tests/extension-units/discovery-policy.test.ts" "$workdir/tests/extension-units/discovery-policy.test.ts"
   cp "$REPO_ROOT/tests/extension-units/graphify-validation-decision.test.ts" "$workdir/tests/extension-units/graphify-validation-decision.test.ts"
+  cp "$REPO_ROOT/tests/extension-units/graphify-orchestration-decision.test.ts" "$workdir/tests/extension-units/graphify-orchestration-decision.test.ts"
   cp "$REPO_ROOT/tests/integration/graphify-adapter.test.ts" "$workdir/tests/integration/graphify-adapter.test.ts"
 
   (
@@ -220,14 +222,14 @@ check_1_compile_graphify_adapter() {
   local name="1. Graphify adapter and discovery selector compile"
   local out="$TMP_ROOT/check_1_compile_graphify_adapter.txt"
   local runtime_dir="$TMP_ROOT/graphify-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/discovery-policy.ts .pi/agent/extensions/graphify-validation-decision.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/discovery-policy.ts .pi/agent/extensions/graphify-validation-decision.ts .pi/agent/extensions/graphify-orchestration-decision.ts"
 
   if (
     cd "$runtime_dir" &&
     npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
-      .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/discovery-policy.ts .pi/agent/extensions/graphify-validation-decision.ts >"$out" 2>&1
+      .pi/agent/extensions/graphify-adapter.ts .pi/agent/extensions/discovery-policy.ts .pi/agent/extensions/graphify-validation-decision.ts .pi/agent/extensions/graphify-orchestration-decision.ts >"$out" 2>&1
   ); then
-    local detail="graphify-adapter.ts, discovery-policy.ts, and graphify-validation-decision.ts compile in an isolated runtime package."
+    local detail="graphify-adapter.ts, discovery-policy.ts, graphify-validation-decision.ts, and graphify-orchestration-decision.ts compile in an isolated runtime package."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -336,9 +338,28 @@ check_6_graphify_validation_decision_unit_tests() {
   fi
 }
 
-check_7_graphify_validator_coverage_contract() {
-  local name="7. Graphify validator coverage contract"
-  local out="$TMP_ROOT/check_7_graphify_validator_coverage_contract.txt"
+check_7_graphify_orchestration_decision_unit_tests() {
+  local name="7. Graphify orchestration decision unit tests"
+  local out="$TMP_ROOT/check_7_graphify_orchestration_decision_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/graphify-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-orchestration-decision.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/extension-units/graphify-orchestration-decision.test.ts" "$out"; then
+    local detail="Graphify orchestration decision unit tests passed for explicit next actions, local fallback, unavailable Graphify, preflight/approval/scan, freshness, query/source proof, and ready behavior."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="Graphify orchestration decision unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
+check_8_graphify_validator_coverage_contract() {
+  local name="8. Graphify validator coverage contract"
+  local out="$TMP_ROOT/check_8_graphify_validator_coverage_contract.txt"
   local cmd="cd $REPO_ROOT && $PYTHON_BIN - <<'PY' ... validate Graphify coverage contract"
 
   if "$PYTHON_BIN" - <<'PY' "$REPO_ROOT" >"$out" 2>&1
@@ -433,8 +454,8 @@ PY
   fi
 }
 
-check_8_graphify_smoke() {
-  local name="8. explicit installed-CLI smoke"
+check_9_graphify_smoke() {
+  local name="9. explicit installed-CLI smoke"
   if [[ $RUN_SMOKE -eq 0 ]]; then
     local detail="Installed-CLI smoke skipped by default; rerun with --smoke for one bounded real-CLI proof."
     record_result "$name" "SKIP" "$detail"
@@ -511,8 +532,9 @@ main() {
   check_4_graphify_prompt_contracts
   check_5_discovery_policy_selector_unit_tests
   check_6_graphify_validation_decision_unit_tests
-  check_7_graphify_validator_coverage_contract
-  check_8_graphify_smoke
+  check_7_graphify_orchestration_decision_unit_tests
+  check_8_graphify_validator_coverage_contract
+  check_9_graphify_smoke
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
   cat >> "$REPORT_PATH" <<EOF
