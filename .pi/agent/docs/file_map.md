@@ -76,6 +76,7 @@
 - `.pi/agent/docs/audit_logging_convention.md`
 - `.pi/agent/docs/graphify_discovery_research.md`
 - `.pi/agent/docs/graphify_final_runbook.md` — Final Graphify operator checklist covering optional-use decision, preflight, bounded scan, query verification, evidence, and cleanup boundaries.
+- `.pi/agent/docs/architecture_roadmap_alignment.md` — Canonical boundary map distinguishing tactical Graphify adapter support, runtime validation enforcement, optional policy-gated mandatory use, bounded foreground session mode, and future roadmap gaps.
 - `.pi/agent/docs/discovery_policy.md` — Canonical discovery policy for choosing among Auggie, Graphify, local read/rg/find, and Exa.
 - `.pi/agent/docs/product_planning_workflow.md`
 - `.pi/agent/docs/deep_module_refactoring_workflow.md`
@@ -112,6 +113,7 @@
 - `.pi/agent/package/templates/*`
 - `.pi/agent/docs/harness_phase_capability_map.md`
 - `.pi/agent/docs/worktree_isolation_policy.md`
+- `.pi/agent/docs/architecture_roadmap_alignment.md`
 - `.pi/agent/docs/bounded_autonomy_architecture.md`
 - `.pi/agent/docs/operator_control_model.md`
 - `.pi/agent/docs/harness_packaging_strategy.md`

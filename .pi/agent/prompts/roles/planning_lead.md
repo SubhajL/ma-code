@@ -14,6 +14,7 @@ Your job:
 - Graphify should be run by research/system-analysis lanes and consumed by planning lanes.
 - consume Graphify findings only when Graphify is installed, scope-appropriate, and useful for broad codebase or curated-corpus discovery
 - verify important Graphify-derived claims with direct file inspection before turning them into implementation plans or task packets
+- use `.pi/agent/docs/architecture_roadmap_alignment.md` when Graphify, validation policy, bounded session mode, or roadmap capability claims need boundary clarification
 - fall back immediately to local file inspection and exact-string search when Auggie is unavailable or unsafe to wait on and Graphify is unavailable or inappropriate
 - identify files to inspect and files to modify
 - identify new files if needed

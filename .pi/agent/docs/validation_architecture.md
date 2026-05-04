@@ -25,6 +25,8 @@ This document covers the currently implemented Phase A/B slice:
 It does not claim that future phases are already implemented.
 Instead, it defines how future validation work should attach to the current structure.
 
+For Graphify and bounded-session roadmap boundaries, use `.pi/agent/docs/architecture_roadmap_alignment.md` as the canonical map. It distinguishes tactical Graphify adapter support, runtime validation enforcement, optional policy-gated mandatory use, bounded foreground session mode, and future roadmap gaps.
+
 ## Validation layers
 
 ### Layer 1 — Policy and operating rules

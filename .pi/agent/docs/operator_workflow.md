@@ -17,6 +17,8 @@ It does not assume:
 - rich UI widgets or a dashboard daemon
 - full team orchestration runtime
 
+Architecture boundary note: `.pi/agent/docs/architecture_roadmap_alignment.md` is the canonical operator reference for distinguishing tactical Graphify adapter support, runtime validation enforcement, optional policy-gated mandatory Graphify use, bounded foreground session mode, and future roadmap gaps.
+
 For fast operator snapshots or bounded queue advancement outside a live agent session, use:
 ```bash
 npm run harness:status
