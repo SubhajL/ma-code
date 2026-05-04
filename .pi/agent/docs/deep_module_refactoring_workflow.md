@@ -47,6 +47,10 @@ A bounded deepening proposal should include:
 - migration path if callers must change
 - rollback or stop point
 
+## Global `g-refactor` skill
+This workflow is now also available through the global `g-refactor` skill in `packages/pi-g-skills/skills/`.
+Use it when the user wants bounded refactor planning with explicit seam/interface/deletion-test reasoning.
+
 ## Phase boundary
-Phase 1 adds shared vocabulary and workflow guidance.
-Future phases may add a dedicated `g-refactor` skill and runtime validation for refactor-plan templates.
+This slice adds shared vocabulary, workflow guidance, and the global skill port only.
+It does not add runtime refactor-plan execution or automatic template publishing.

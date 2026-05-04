@@ -1,6 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-export type SkillName = "g-planning" | "g-coding" | "g-check" | "g-review" | "g-create" | "g-submit";
+export type SkillName = "g-planning" | "g-coding" | "g-check" | "g-review" | "g-create" | "g-submit" | "g-grill" | "g-prd" | "g-issues" | "g-refactor";
 
 export interface SkillRoute {
   skill: SkillName;
@@ -11,7 +11,7 @@ export interface SkillRoute {
 
 const pendingRoutes: Array<SkillRoute | null> = [];
 
-const EXPLICIT_SKILL_COMMAND = /^\/skill:(g-planning|g-coding|g-check|g-review|g-create|g-submit)\b/i;
+const EXPLICIT_SKILL_COMMAND = /^\/skill:(g-planning|g-coding|g-check|g-review|g-create|g-submit|g-grill|g-prd|g-issues|g-refactor)\b/i;
 
 export const SKILL_PATTERNS: Array<{ skill: SkillName; reason: string; patterns: RegExp[] }> = [
   {

@@ -192,13 +192,17 @@ probe_unavailable() {
 }
 
 build_skill_args() {
-  printf -- '--no-skills --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q' \
+  printf -- '--no-skills --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q --skill %q' \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-planning" \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-coding" \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-check" \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-review" \
     "$REPO_ROOT/packages/pi-g-skills/skills/g-create" \
-    "$REPO_ROOT/packages/pi-g-skills/skills/g-submit"
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-submit" \
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-grill" \
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-prd" \
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-issues" \
+    "$REPO_ROOT/packages/pi-g-skills/skills/g-refactor"
 }
 
 setup_temp_runtime() {
@@ -240,6 +244,10 @@ const cases = [
   { input: "/skill:g-coding implement a docs-only clarification task", expectedSkill: "g-coding", expectedTransformed: false },
   { input: "/skill:g-submit create a PR for this branch", expectedSkill: "g-submit", expectedTransformed: false },
   { input: "/skill:g-create prepare the commit for these ready changes", expectedSkill: "g-create", expectedTransformed: false },
+  { input: "/skill:g-grill help me clarify a fuzzy product idea", expectedSkill: "g-grill", expectedTransformed: false },
+  { input: "/skill:g-prd write a PRD from the agreed goal", expectedSkill: "g-prd", expectedTransformed: false },
+  { input: "/skill:g-issues split this PRD into vertical slices", expectedSkill: "g-issues", expectedTransformed: false },
+  { input: "/skill:g-refactor plan a deep module refactor", expectedSkill: "g-refactor", expectedTransformed: false },
   { input: "review", expectedSkill: null, expectedTransformed: null }
 ];
 
@@ -273,10 +281,10 @@ console.log(JSON.stringify(results, null, 2));
 EOF
 
   if (cd "$runtime_dir" && npx tsx "$TMP_ROOT/check_1_helper_routes.mts" > "$out" 2>&1); then
-    local detail="All required route cases matched expected skill selection, including explicit /skill preservation and bare-review non-match guard."
+    local detail="All required route cases matched expected skill selection, including explicit /skill preservation for core and new global skills plus the bare-review non-match guard."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper results written to: $out\n- route cases covered:\n  - planning intent\n  - coding intent\n  - bounded review intent\n  - architecture review intent\n  - PR submission intent\n  - branch/commit creation intent\n  - explicit /skill:g-coding preservation\n  - explicit /skill:g-submit preservation\n  - explicit /skill:g-create preservation\n  - bare review non-match guard"
+    append_check_section "$name" "PASS" "$cmd" "- helper results written to: $out\n- route cases covered:\n  - planning intent\n  - coding intent\n  - bounded review intent\n  - architecture review intent\n  - PR submission intent\n  - branch/commit creation intent\n  - explicit /skill:g-coding preservation\n  - explicit /skill:g-submit preservation\n  - explicit /skill:g-create preservation\n  - explicit /skill:g-grill preservation\n  - explicit /skill:g-prd preservation\n  - explicit /skill:g-issues preservation\n  - explicit /skill:g-refactor preservation\n  - bare review non-match guard"
   else
     local detail="Helper-level route classification failed."
     record_result "$name" "FAIL" "$detail"

@@ -16,6 +16,16 @@
 - Severity-ordered findings
 - Architecture drift analysis for system reviews
 
+## Pi-native global additions
+- `g-grill`
+  - bounded mutual-understanding and grill-style clarification
+- `g-prd`
+  - PRD synthesis from clarified goals and repo context
+- `g-issues`
+  - vertical-slice backlog/issue planning with HITL vs AFK classification
+- `g-refactor`
+  - deep-module refactor planning using seam/interface/deletion-test vocabulary
+
 ## Adapted
 - Codex `.codex/coding-log.current` -> Pi-style `logs/CURRENT.md`
 - Codex coding logs -> Pi-style paired logs:
@@ -24,6 +34,7 @@
 - Graphite-centric create/submit assumptions -> bounded Pi-native Git/GitHub workflow with Graphite-first guidance only when `gt` is actually available and relevant
 - Second-model routing -> Pi extension tool `second_model_plan`
 - Auggie integration -> Pi extension tool `auggie_discover`
+- Product-planning and deep-refactor ideas -> bounded Pi-native skills (`g-grill`, `g-prd`, `g-issues`, `g-refactor`) instead of copying external skill text wholesale
 
 ## Intentionally dropped
 - Hard Graphite-only dependency

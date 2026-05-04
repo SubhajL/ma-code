@@ -45,6 +45,12 @@ required_files=(
   ".pi/agent/docs/product_planning_workflow.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
+  "packages/pi-g-skills/README.md"
+  "packages/pi-g-skills/docs/porting-matrix.md"
+  "packages/pi-g-skills/skills/g-grill/SKILL.md"
+  "packages/pi-g-skills/skills/g-prd/SKILL.md"
+  "packages/pi-g-skills/skills/g-issues/SKILL.md"
+  "packages/pi-g-skills/skills/g-refactor/SKILL.md"
   ".pi/agent/docs/graphify_adapter.md"
   ".pi/agent/docs/graphify_final_runbook.md"
   ".pi/agent/prompts/templates/request-architecture-review.md"
@@ -128,6 +134,12 @@ deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
 g_coding_skill = (root / "packages/pi-g-skills/skills/g-coding/SKILL.md").read_text(encoding="utf-8")
 g_planning_skill = (root / "packages/pi-g-skills/skills/g-planning/SKILL.md").read_text(encoding="utf-8")
+g_skills_readme = (root / "packages/pi-g-skills/README.md").read_text(encoding="utf-8")
+g_skills_porting_matrix = (root / "packages/pi-g-skills/docs/porting-matrix.md").read_text(encoding="utf-8")
+g_grill_skill = (root / "packages/pi-g-skills/skills/g-grill/SKILL.md").read_text(encoding="utf-8")
+g_prd_skill = (root / "packages/pi-g-skills/skills/g-prd/SKILL.md").read_text(encoding="utf-8")
+g_issues_skill = (root / "packages/pi-g-skills/skills/g-issues/SKILL.md").read_text(encoding="utf-8")
+g_refactor_skill = (root / "packages/pi-g-skills/skills/g-refactor/SKILL.md").read_text(encoding="utf-8")
 team_orchestration_doc = (root / ".pi/agent/docs/team_orchestration_architecture.md").read_text(encoding="utf-8")
 planning_lead_prompt = (root / ".pi/agent/prompts/roles/planning_lead.md").read_text(encoding="utf-8")
 build_lead_prompt = (root / ".pi/agent/prompts/roles/build_lead.md").read_text(encoding="utf-8")
@@ -434,8 +446,13 @@ for needle in [
 for needle in [
     "Product planning flows from grill-style clarification to PRD to vertical-slice backlog.",
     "Vertical slices must be independently demonstrable or verifiable.",
+    "global skill ports `g-grill`, `g-prd`, and `g-issues`",
 ]:
     assert needle in product_planning_doc
+for needle in [
+    "Product planning flows from grill-style clarification to PRD to vertical-slice backlog.",
+    "Vertical slices must be independently demonstrable or verifiable.",
+]:
     assert needle in operator_workflow_doc
 for needle in [
     "Use behavior-first TDD: one failing behavior test, one minimal implementation, then repeat.",
@@ -447,8 +464,48 @@ for needle in [
 for needle in [
     "The interface is the test surface.",
     "Use the deletion test to distinguish shallow modules from deep modules.",
+    "global `g-refactor` skill",
 ]:
     assert needle in deep_module_doc
+for needle in [
+    "g-grill",
+    "g-prd",
+    "g-issues",
+    "g-refactor",
+]:
+    assert needle in g_skills_readme
+    assert needle in g_skills_porting_matrix
+for skill_text in [g_grill_skill, g_prd_skill, g_issues_skill, g_refactor_skill]:
+    for needle in [
+        "## Pi",
+        "## Output contract",
+    ]:
+        assert needle in skill_text
+for needle in [
+    "## Workflow",
+    "one focused question at a time",
+]:
+    assert needle in g_grill_skill
+for needle in [
+    "problem statement",
+    "user stories",
+    "implementation decisions",
+    "testing decisions",
+]:
+    assert needle in g_prd_skill
+for needle in [
+    "vertical slices",
+    "HITL",
+    "AFK",
+    "dependencies",
+]:
+    assert needle in g_issues_skill
+for needle in [
+    "deletion test",
+    "dependency categories",
+    "interface is the test surface",
+]:
+    assert needle.lower() in g_refactor_skill.lower()
 for needle in [
     "For non-trivial implementation work, make the TDD slice contract explicit:",
     "first tracer-bullet behavior",

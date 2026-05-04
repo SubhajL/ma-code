@@ -9,6 +9,10 @@ Included:
 - `g-review`
 - `g-create`
 - `g-submit`
+- `g-grill`
+- `g-prd`
+- `g-issues`
+- `g-refactor`
 - `auggie_discover` extension
 - `second_model_plan` extension restricted to Claude Opus 4.6 with explicit fallback to the main model
 
@@ -37,6 +41,10 @@ skills/
   g-review/
   g-create/
   g-submit/
+  g-grill/
+  g-prd/
+  g-issues/
+  g-refactor/
 extensions/
   auggie-discovery.ts
   second-model-opus.ts
@@ -74,6 +82,7 @@ Practical options:
 - temporarily test this package with explicit `--skill` paths
 
 ## Notes
-- The skills are process-heavy by design and preserve the original `g-*` workflow shape.
+- The skills are process-heavy by design and preserve the original `g-*` workflow shape where a Codex analogue exists.
+- `g-grill`, `g-prd`, `g-issues`, and `g-refactor` are Pi-native global skill additions inspired by grill/PRD/issues/refactor workflows, but adapted to Pi logging, bounded safety, and action-oriented output contracts.
 - `g-create` and `g-submit` keep the recognizable create/submit workflow names, but adapt them to bounded Pi-native Git/GitHub usage with Graphite-first guidance when `gt` is available rather than a hard Graphite-only dependency.
 - The extensions are intentionally small and only implement the runtime behaviors that a skill alone cannot enforce reliably.

@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_require-implementation-tdd-slice.md`
+- `logs/coding/2026-05-04_global-skills-planning-ports.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_require-implementation-tdd-slice-plan.md`
+- `reports/planning/2026-05-04_global-skills-planning-ports-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the implementation-only `tddSlice` requirement slice.
+- These files capture the bounded global-skills planning/refactor ports slice.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.
