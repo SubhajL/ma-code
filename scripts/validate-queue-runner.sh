@@ -200,6 +200,7 @@ setup_temp_runtime() {
 JSON
 
   cp "$REPO_ROOT/.pi/agent/extensions/"{till-done,harness-routing,team-activation,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -230,12 +231,13 @@ check_1_compile_queue_runner() {
   local name="1. queue-runner extension compiles with its shared helpers"
   local out="$TMP_ROOT/check_1_compile_queue_runner.txt"
   local runtime_dir="$TMP_ROOT/queue-runner-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/till-done.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node .pi/agent/extensions/till-done.ts .pi/agent/extensions/graphify-validation-decision.ts .pi/agent/extensions/harness-routing.ts .pi/agent/extensions/team-activation.ts .pi/agent/extensions/task-packets.ts .pi/agent/extensions/handoffs.ts .pi/agent/extensions/recovery-policy.ts .pi/agent/extensions/recovery-runtime.ts .pi/agent/extensions/queue-runner.ts"
 
   if (
     cd "$runtime_dir" &&
     npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
       .pi/agent/extensions/till-done.ts \
+      .pi/agent/extensions/graphify-validation-decision.ts \
       .pi/agent/extensions/harness-routing.ts \
       .pi/agent/extensions/team-activation.ts \
       .pi/agent/extensions/task-packets.ts \
@@ -244,7 +246,7 @@ check_1_compile_queue_runner() {
       .pi/agent/extensions/recovery-runtime.ts \
       .pi/agent/extensions/queue-runner.ts >"$out" 2>&1
   ); then
-    local detail="queue-runner and its till-done/routing/team/packet/handoff/recovery dependencies compile together."
+    local detail="queue-runner and its till-done/Graphify-validation/routing/team/packet/handoff/recovery dependencies compile together."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -318,7 +320,7 @@ check_4_live_queue_runner_probe() {
   local name="4. live run_next_queue_job tool probe"
   local out="$TMP_ROOT/check_4_live_queue_runner_probe.txt"
   local runtime_dir="$TMP_ROOT/queue-runner-runtime"
-  local cmd="cd $runtime_dir && $PI_BIN --no-session --no-extensions -e $runtime_dir/.pi/agent/extensions/till-done.ts -e $runtime_dir/.pi/agent/extensions/harness-routing.ts -e $runtime_dir/.pi/agent/extensions/team-activation.ts -e $runtime_dir/.pi/agent/extensions/task-packets.ts -e $runtime_dir/.pi/agent/extensions/handoffs.ts -e $runtime_dir/.pi/agent/extensions/recovery-policy.ts -e $runtime_dir/.pi/agent/extensions/recovery-runtime.ts -e $runtime_dir/.pi/agent/extensions/queue-runner.ts --mode json \"Use run_next_queue_job and report the returned action in one sentence.\""
+  local cmd="cd $runtime_dir && $PI_BIN --no-session --no-extensions -e $runtime_dir/.pi/agent/extensions/till-done.ts -e $runtime_dir/.pi/agent/extensions/graphify-validation-decision.ts -e $runtime_dir/.pi/agent/extensions/harness-routing.ts -e $runtime_dir/.pi/agent/extensions/team-activation.ts -e $runtime_dir/.pi/agent/extensions/task-packets.ts -e $runtime_dir/.pi/agent/extensions/handoffs.ts -e $runtime_dir/.pi/agent/extensions/recovery-policy.ts -e $runtime_dir/.pi/agent/extensions/recovery-runtime.ts -e $runtime_dir/.pi/agent/extensions/queue-runner.ts --mode json \"Use run_next_queue_job and report the returned action in one sentence.\""
 
   if [[ $INCLUDE_LIVE -eq 0 ]]; then
     local detail="Live probe skipped because --skip-live was requested explicitly."
@@ -340,6 +342,7 @@ check_4_live_queue_runner_probe() {
     cd "$runtime_dir" &&
     "$PI_BIN" --no-session --no-extensions \
       -e "$runtime_dir/.pi/agent/extensions/till-done.ts" \
+      -e "$runtime_dir/.pi/agent/extensions/graphify-validation-decision.ts" \
       -e "$runtime_dir/.pi/agent/extensions/harness-routing.ts" \
       -e "$runtime_dir/.pi/agent/extensions/team-activation.ts" \
       -e "$runtime_dir/.pi/agent/extensions/task-packets.ts" \
