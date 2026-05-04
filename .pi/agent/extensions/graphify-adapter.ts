@@ -19,6 +19,14 @@ const SENSITIVE_EXCLUDES = [
   "private-customer-data/",
 ];
 
+const BROAD_GRAPHIFY_PURPOSES = [
+  "architecture_review",
+  "dependency_exploration",
+  "drift_analysis",
+  "large_subsystem_mapping",
+  "curated_research",
+] as const;
+
 const FORBIDDEN_ARGS = new Set([
   "--watch",
   "watch",
@@ -59,6 +67,7 @@ const GraphifyAdapterSchema = Type.Object({
   taskId: Type.Optional(Type.String({ description: "Task identifier used to derive the managed artifact directory." })),
   outputPath: Type.Optional(Type.String({ description: "Optional output path. Must be under .pi/agent/artifacts/graphify/." })),
   query: Type.Optional(Type.String({ description: "Query or topic to summarize from an existing graph.json artifact." })),
+  purpose: Type.Optional(Type.String({ description: "Required for preflight/scan. Must be a broad Graphify discovery purpose: architecture_review, dependency_exploration, drift_analysis, large_subsystem_mapping, or curated_research." })),
   approvedLargeCorpus: Type.Optional(Type.Boolean({ description: "Set true only after explicit human approval for a large corpus scan." })),
   maxFilesWithoutApproval: Type.Optional(Type.Integer({ minimum: 1, maximum: 100000 })),
   extraArgs: Type.Optional(Type.Array(Type.String(), { description: "Additional safe one-shot Graphify CLI args. Watch/MCP/hooks/Neo4j push, output overrides, and semantic/multimodal/deep/url extraction are blocked." })),
@@ -73,6 +82,7 @@ type GraphifyParams = {
   taskId?: string;
   outputPath?: string;
   query?: string;
+  purpose?: string;
   approvedLargeCorpus?: boolean;
   maxFilesWithoutApproval?: number;
   extraArgs?: string[];
@@ -352,6 +362,41 @@ function graphifyArgs(snapshotPath: string, extraArgs: string[] | undefined) {
   return args;
 }
 
+function validateBroadPurpose(params: GraphifyParams) {
+  const purpose = params.purpose?.trim();
+  if (!purpose) {
+    return {
+      ok: false as const,
+      result: {
+        content: [
+          {
+            type: "text" as const,
+            text: `A broad Graphify purpose is required before ${params.action}. Use one of: ${BROAD_GRAPHIFY_PURPOSES.join(", ")}. Use local read/rg/find for narrow exact verification instead.`,
+          },
+        ],
+        details: { status: "blocked_missing_purpose", allowedPurposes: BROAD_GRAPHIFY_PURPOSES },
+      },
+    };
+  }
+
+  if (!(BROAD_GRAPHIFY_PURPOSES as readonly string[]).includes(purpose)) {
+    return {
+      ok: false as const,
+      result: {
+        content: [
+          {
+            type: "text" as const,
+            text: `Purpose ${purpose} is not a broad Graphify discovery purpose. Use one of: ${BROAD_GRAPHIFY_PURPOSES.join(", ")}. Use local read/rg/find for narrow exact verification instead.`,
+          },
+        ],
+        details: { status: "blocked_invalid_purpose", purpose, allowedPurposes: BROAD_GRAPHIFY_PURPOSES },
+      },
+    };
+  }
+
+  return { ok: true as const, purpose };
+}
+
 function findForbiddenArgs(extraArgs: string[] | undefined): string[] {
   return (extraArgs ?? []).filter((arg) => {
     const normalized = arg.toLowerCase().split("=", 1)[0];
@@ -428,6 +473,9 @@ async function queryResult(params: GraphifyParams, cwd: string) {
 }
 
 async function validateScanRequest(params: GraphifyParams, cwd: string) {
+  const purpose = validateBroadPurpose(params);
+  if (!purpose.ok) return { ok: false as const, result: purpose.result };
+
   const source = normalizeSourcePath(cwd, params.sourcePath);
   if (!source.ok) {
     return { ok: false as const, result: { content: [{ type: "text" as const, text: source.reason }], details: { status: "blocked_source_path", sourcePath: source.source } } };
@@ -484,7 +532,7 @@ async function validateScanRequest(params: GraphifyParams, cwd: string) {
     };
   }
 
-  return { ok: true as const, source: source.source, output: output.output, managedRoot: output.root, fileCount, maxFiles };
+  return { ok: true as const, source: source.source, output: output.output, managedRoot: output.root, fileCount, maxFiles, purpose: purpose.purpose };
 }
 
 async function preflightResult(params: GraphifyParams, cwd: string) {
@@ -515,6 +563,7 @@ async function preflightResult(params: GraphifyParams, cwd: string) {
       fileCount: validation.fileCount,
       maxFilesWithoutApproval: validation.maxFiles,
       approvedLargeCorpus: params.approvedLargeCorpus === true,
+      purpose: validation.purpose,
       installed: detection.installed,
       binaryPath: detection.binaryPath,
       reason: detection.reason,
@@ -557,6 +606,7 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
     graphifyCommand: "update",
     graphifyWorkingDirectory: validation.output,
     fileCount: validation.fileCount,
+    purpose: validation.purpose,
     excludes: SENSITIVE_EXCLUDES,
     edgeConfidencePolicy: citationPolicy(),
     freshnessEvidence: `Graphify report generated from HEAD ${headCommit} at ${generatedAt}`,

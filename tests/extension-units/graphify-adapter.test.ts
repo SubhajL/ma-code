@@ -152,6 +152,52 @@ test("queries a real-CLI nested managed graphify-out graph.json", async () => {
   assert.equal(result.details.graphFreshness.headCommit, "nested123");
 });
 
+test("blocks Graphify preflight and scan without a broad discovery purpose", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-purpose-missing-");
+  await writeFile(join(cwd, "index.ts"), "export const value = 1;\n");
+
+  const preflight = await tool.execute(
+    "tool-call-id",
+    { action: "preflight", taskId: "task-purpose-missing", sourcePath: "." },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.match(textContent(preflight), /broad Graphify purpose is required/i);
+  assert.equal(preflight.details.status, "blocked_missing_purpose");
+
+  const scan = await tool.execute(
+    "tool-call-id",
+    { action: "scan", taskId: "task-purpose-missing", sourcePath: ".", approvedLargeCorpus: true },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.match(textContent(scan), /broad Graphify purpose is required/i);
+  assert.equal(scan.details.status, "blocked_missing_purpose");
+});
+
+test("blocks narrow Graphify purpose values for preflight and scan", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-purpose-narrow-");
+  await writeFile(join(cwd, "index.ts"), "export const value = 1;\n");
+
+  for (const action of ["preflight", "scan"] as const) {
+    const result = await tool.execute(
+      "tool-call-id",
+      { action, taskId: "task-purpose-narrow", sourcePath: ".", purpose: "exact_verification", approvedLargeCorpus: true },
+      undefined,
+      undefined,
+      makeCtx(cwd),
+    );
+
+    assert.match(textContent(result), /not a broad Graphify discovery purpose/i);
+    assert.equal(result.details.status, "blocked_invalid_purpose");
+    assert.equal(result.details.purpose, "exact_verification");
+  }
+});
+
 test("preflights a Graphify scan without creating artifacts or invoking Graphify", async () => {
   const tool = registerGraphifyTool();
   const cwd = await makeTempRepo("graphify-preflight-");
@@ -162,7 +208,7 @@ test("preflights a Graphify scan without creating artifacts or invoking Graphify
   await withEnv({ GRAPHIFY_BIN: undefined, PATH: "" }, async () => {
     const result = await tool.execute(
       "tool-call-id",
-      { action: "preflight", taskId: "task-preflight", sourcePath: "src", maxFilesWithoutApproval: 5 },
+      { action: "preflight", taskId: "task-preflight", sourcePath: "src", purpose: "architecture_review", maxFilesWithoutApproval: 5 },
       undefined,
       undefined,
       makeCtx(cwd),
@@ -173,6 +219,7 @@ test("preflights a Graphify scan without creating artifacts or invoking Graphify
     assert.equal(result.details.wouldRun, false);
     assert.equal(result.details.wouldCreateArtifacts, false);
     assert.equal(result.details.fileCount, 2);
+    assert.equal(result.details.purpose, "architecture_review");
     assert.equal(result.details.installed, false);
     assert.deepEqual(result.details.commandPreview, ["graphify", "update", "<managed-source-snapshot>"]);
     assert.match(result.details.outputPath, /\.pi\/agent\/artifacts\/graphify\/task-preflight$/);
@@ -191,7 +238,7 @@ test("requires explicit approval before scanning a large corpus", async () => {
 
   const result = await tool.execute(
     "tool-call-id",
-    { action: "scan", taskId: "task-large", sourcePath: "src", maxFilesWithoutApproval: 1 },
+    { action: "scan", taskId: "task-large", sourcePath: "src", purpose: "large_subsystem_mapping", maxFilesWithoutApproval: 1 },
     undefined,
     undefined,
     makeCtx(cwd),
@@ -209,7 +256,7 @@ test("blocks Graphify background or side-effect modes by default", async () => {
 
   const result = await tool.execute(
     "tool-call-id",
-    { action: "scan", taskId: "task-forbidden", sourcePath: ".", approvedLargeCorpus: true, extraArgs: ["--watch"] },
+    { action: "scan", taskId: "task-forbidden", sourcePath: ".", purpose: "drift_analysis", approvedLargeCorpus: true, extraArgs: ["--watch"] },
     undefined,
     undefined,
     makeCtx(cwd),
@@ -228,7 +275,7 @@ test("blocks output override and semantic/deep extraction extra args by default"
   for (const extraArgs of [["--output=/tmp/graphify-out"], ["--deep"], ["--semantic"], ["--multimodal"], ["--url", "https://example.test"]]) {
     const result = await tool.execute(
       "tool-call-id",
-      { action: "scan", taskId: "task-forbidden-extra", sourcePath: ".", approvedLargeCorpus: true, extraArgs },
+      { action: "scan", taskId: "task-forbidden-extra", sourcePath: ".", purpose: "dependency_exploration", approvedLargeCorpus: true, extraArgs },
       undefined,
       undefined,
       makeCtx(cwd),
@@ -246,7 +293,7 @@ test("keeps scan output inside the managed Graphify artifact directory", async (
 
   const rejected = await tool.execute(
     "tool-call-id",
-    { action: "scan", taskId: "task-managed", sourcePath: ".", outputPath: "graphify-out", approvedLargeCorpus: true },
+    { action: "scan", taskId: "task-managed", sourcePath: ".", outputPath: "graphify-out", purpose: "curated_research", approvedLargeCorpus: true },
     undefined,
     undefined,
     makeCtx(cwd),
@@ -261,7 +308,7 @@ test("keeps scan output inside the managed Graphify artifact directory", async (
   await withEnv({ GRAPHIFY_BIN: binaryPath }, async () => {
     const accepted = await tool.execute(
       "tool-call-id",
-      { action: "scan", taskId: "task-managed", sourcePath: ".", approvedLargeCorpus: true },
+      { action: "scan", taskId: "task-managed", sourcePath: ".", purpose: "curated_research", approvedLargeCorpus: true },
       undefined,
       undefined,
       makeCtx(cwd),
@@ -275,6 +322,7 @@ test("keeps scan output inside the managed Graphify artifact directory", async (
     assert.equal(metadata.outputPath, accepted.details.outputPath);
     assert.equal(metadata.graphifyCommand, "update");
     assert.equal(metadata.graphifyWorkingDirectory, accepted.details.outputPath);
+    assert.equal(metadata.purpose, "curated_research");
     assert.equal(metadata.edgeConfidencePolicy.inferred, "lead_only_verify_before_planning_or_acceptance");
   });
 });

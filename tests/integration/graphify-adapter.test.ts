@@ -48,7 +48,7 @@ test("Graphify adapter invokes fake binary with real CLI update shape in managed
   await withEnv({ GRAPHIFY_BIN: fakeBinary }, async () => {
     const result = await tool.execute(
       "tool-call-id",
-      { action: "scan", taskId: "task-integration", sourcePath: ".", approvedLargeCorpus: true },
+      { action: "scan", taskId: "task-integration", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true },
       undefined,
       undefined,
       makeCtx(cwd),
@@ -70,6 +70,7 @@ test("Graphify adapter invokes fake binary with real CLI update shape in managed
     assert.equal(metadata.graphifyCommand, "update");
     assert.equal(metadata.graphifyWorkingDirectory, result.details.outputPath);
     assert.equal(metadata.sanitizedSourcePath, join(result.details.outputPath, "source-snapshot"));
+    assert.equal(metadata.purpose, "architecture_review");
     assert.equal(metadata.edgeConfidencePolicy.ambiguous, "requires_direct_file_inspection_before_use");
   });
 });
