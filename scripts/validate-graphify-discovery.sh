@@ -356,7 +356,10 @@ if (process.env.GRAPHIFY_BIN) {
 const pi = new FakePi('feat/graphify-smoke');
 graphifyAdapter(pi as any);
 const tool = pi.getTool('graphify_adapter');
-const result = await tool.execute('tool-call-id', { action: 'scan', taskId: 'smoke', sourcePath: '.', approvedLargeCorpus: true }, undefined, undefined, makeCtx(repo));
+const preflight = await tool.execute('tool-call-id', { action: 'preflight', taskId: 'smoke', sourcePath: '.', purpose: 'architecture_review', approvedLargeCorpus: true }, undefined, undefined, makeCtx(repo));
+assert.equal(preflight.details.status, 'preflight_ok');
+assert.equal(typeof preflight.details.preflightToken, 'string');
+const result = await tool.execute('tool-call-id', { action: 'scan', taskId: 'smoke', sourcePath: '.', purpose: 'architecture_review', approvedLargeCorpus: true, preflightToken: preflight.details.preflightToken }, undefined, undefined, makeCtx(repo));
 assert.equal(result.details.status, 'completed');
 assert.match(result.details.outputPath, /\.pi\/agent\/artifacts\/graphify\/smoke$/);
 assert.match(result.details.graphPath, /source-snapshot\/graphify-out\/graph\.json$/);

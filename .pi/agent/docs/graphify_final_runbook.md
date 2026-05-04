@@ -27,13 +27,15 @@
   - file count is within the configured approval threshold or approval is explicit
   - forbidden background/side-effect flags are absent
   - `wouldRun: false` and `wouldCreateArtifacts: false`
+  - a deterministic `preflightToken` is returned for the exact safe request attributes
 - If preflight blocks, narrow scope or record the blocker; do not force a scan around the guard.
 
 ### 3. Run a bounded scan only after approval gates pass
-- Run a scan only when preflight is acceptable and Graphify is installed.
+- Run a scan only when preflight is acceptable, Graphify is installed, and the scan includes the matching `preflightToken` returned by preflight.
 - Keep scans one-shot and bounded; do not enable watch, hook, MCP, Neo4j push, output override, semantic/deep/multimodal, URL, PDF, image, or video modes by default.
 - For large corpus scans, require explicit human approval before setting `approvedLargeCorpus: true`.
 - Generated output must remain under `.pi/agent/artifacts/graphify/<task-id>/`.
+- If source path, output path, task id, purpose, file count, approval, threshold, or safe extra args change, rerun preflight and use the new token.
 
 ### 4. Query and verify before planning or acceptance
 - Query only managed Graphify artifacts created or intentionally provided for the task.

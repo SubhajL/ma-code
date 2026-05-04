@@ -286,6 +286,79 @@ test("blocks output override and semantic/deep extraction extra args by default"
   }
 });
 
+test("blocks Graphify scan without a matching preflight token", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-preflight-token-block-");
+  await writeFile(join(cwd, "index.ts"), "export const value = 1;\n");
+
+  const missing = await tool.execute(
+    "tool-call-id",
+    { action: "scan", taskId: "task-token-block", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.match(textContent(missing), /preflightToken is required/i);
+  assert.equal(missing.details.status, "blocked_missing_preflight_token");
+
+  const wrong = await tool.execute(
+    "tool-call-id",
+    { action: "scan", taskId: "task-token-block", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true, preflightToken: "wrong-token" },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.match(textContent(wrong), /preflightToken does not match/i);
+  assert.equal(wrong.details.status, "blocked_invalid_preflight_token");
+});
+
+test("uses a matching preflight token for a managed Graphify scan", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-preflight-token-success-");
+  await writeFile(join(cwd, "index.ts"), "export const value = 1;\n");
+
+  const preflight = await tool.execute(
+    "tool-call-id",
+    { action: "preflight", taskId: "task-token-success", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true, extraArgs: ["--quiet"] },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(preflight.details.status, "preflight_ok");
+  assert.equal(typeof preflight.details.preflightToken, "string");
+  assert.ok(preflight.details.preflightToken.length > 20);
+  await assert.rejects(stat(preflight.details.outputPath));
+
+  const repeat = await tool.execute(
+    "tool-call-id",
+    { action: "preflight", taskId: "task-token-success", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true, extraArgs: ["--quiet"] },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(repeat.details.preflightToken, preflight.details.preflightToken);
+
+  const { binaryPath } = await makeFakeGraphifyBinary(
+    "const fs = require('node:fs'); const path = require('node:path'); const args = process.argv.slice(2); if (args[0] !== 'update') process.exit(7); const out = path.join(args[1], 'graphify-out'); fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, 'graph.json'), JSON.stringify({ edges: [] })); console.log(JSON.stringify({ ok: true }));\n",
+  );
+
+  await withEnv({ GRAPHIFY_BIN: binaryPath }, async () => {
+    const accepted = await tool.execute(
+      "tool-call-id",
+      { action: "scan", taskId: "task-token-success", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true, extraArgs: ["--quiet"], preflightToken: preflight.details.preflightToken },
+      undefined,
+      undefined,
+      makeCtx(cwd),
+    );
+
+    assert.equal(accepted.details.status, "completed");
+    assert.equal(accepted.details.preflightTokenStatus, "matched");
+    const metadataRaw = await readFile(join(accepted.details.outputPath, "metadata.json"), "utf8");
+    const metadata = JSON.parse(metadataRaw);
+    assert.equal(metadata.preflightToken, preflight.details.preflightToken);
+  });
+});
+
 test("keeps scan output inside the managed Graphify artifact directory", async () => {
   const tool = registerGraphifyTool();
   const cwd = await makeTempRepo("graphify-managed-output-");
@@ -305,10 +378,19 @@ test("keeps scan output inside the managed Graphify artifact directory", async (
     "const fs = require('node:fs'); const path = require('node:path'); const args = process.argv.slice(2); if (args[0] !== 'update') process.exit(7); const out = path.join(args[1], 'graphify-out'); fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, 'graph.json'), JSON.stringify({ edges: [] })); console.log(JSON.stringify({ ok: true }));\n",
   );
 
+  const preflight = await tool.execute(
+    "tool-call-id",
+    { action: "preflight", taskId: "task-managed", sourcePath: ".", purpose: "curated_research", approvedLargeCorpus: true },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(preflight.details.status, "preflight_ok");
+
   await withEnv({ GRAPHIFY_BIN: binaryPath }, async () => {
     const accepted = await tool.execute(
       "tool-call-id",
-      { action: "scan", taskId: "task-managed", sourcePath: ".", purpose: "curated_research", approvedLargeCorpus: true },
+      { action: "scan", taskId: "task-managed", sourcePath: ".", purpose: "curated_research", approvedLargeCorpus: true, preflightToken: preflight.details.preflightToken },
       undefined,
       undefined,
       makeCtx(cwd),
