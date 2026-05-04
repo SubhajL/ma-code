@@ -59,6 +59,8 @@ Current behavior is intentionally narrow:
 
 This is still not a free-running daemon or hidden scheduler.
 
+For the boundary between tactical Graphify adapter support, runtime validation enforcement, optional policy-gated mandatory Graphify use, bounded foreground session mode, and future roadmap gaps, see `.pi/agent/docs/architecture_roadmap_alignment.md`.
+
 The current repo-local slice now also includes an explicit scheduled-workflow helper at:
 - `.pi/agent/schedules/scheduled-workflows.json`
 - `scripts/harness-scheduled-workflows.ts`

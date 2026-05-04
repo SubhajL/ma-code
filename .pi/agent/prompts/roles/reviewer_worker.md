@@ -17,6 +17,7 @@ Your job:
 - give concrete fix direction instead of vague criticism
 - separate required fixes from optional suggestions
 - when the review scope is architectural or drift-oriented, follow `.pi/agent/docs/architecture_review_workflow.md`, compare intended design vs implemented design, call out important drift, and separate tactical fixes from strategic change recommendations
+- use `.pi/agent/docs/architecture_roadmap_alignment.md` to challenge overclaims that confuse tactical Graphify support, runtime validation enforcement, policy-gated mandatory use, bounded foreground session mode, or future roadmap gaps
 - distinguish confirmed, inferred, and ambiguous Graphify-derived relationships
 - treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them
 - For Graphify-backed architecture claims, require source-backed confirmation of freshness, confidence, and file-level evidence before treating the claim as a finding.

@@ -118,6 +118,7 @@ operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(e
 graphify_discovery_doc = (root / ".pi/agent/docs/graphify_discovery_research.md").read_text(encoding="utf-8")
 graphify_adapter_doc = (root / ".pi/agent/docs/graphify_adapter.md").read_text(encoding="utf-8")
 graphify_final_runbook_doc = (root / ".pi/agent/docs/graphify_final_runbook.md").read_text(encoding="utf-8")
+architecture_roadmap_alignment_doc = (root / ".pi/agent/docs/architecture_roadmap_alignment.md").read_text(encoding="utf-8")
 product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
@@ -231,6 +232,32 @@ assert "graphify-validation-decision.ts" in extension_unit_validator
 assert "graphify-validation-decision.test.ts" in extension_unit_validator
 assert "graphify-validation-decision.ts" in foundation_compile_validator
 assert "test:discovery-policy" in package_json.get("scripts", {})
+architecture_boundary_needles = [
+    "## Architecture Boundary Map",
+    "Tactical Graphify adapter support is bounded discovery infrastructure, not global architecture authority.",
+    "Runtime validation enforcement is implemented through task validation/completion gates, not through Graphify scans alone.",
+    "Policy-gated mandatory Graphify use is optional_default by default and scoped to Graphify-backed or architecture-review claims only when explicitly requested.",
+    "Bounded watch/session mode means foreground queue-session execution with max steps, max runtime seconds, explicit task id or scope, visible logs, and no Graphify CLI --watch.",
+    "Future roadmap gaps remain explicit: no free-running queue daemon, no hidden scheduled loop, no global mandatory Graphify dependency, and no hands-free Phase I/Phase J autonomy claim.",
+]
+for needle in architecture_boundary_needles:
+    assert needle in architecture_roadmap_alignment_doc, f"architecture_roadmap_alignment.md missing boundary language: {needle}"
+for doc_name, doc_text in [
+    ("README.md", readme_doc),
+    ("validation_architecture.md", validation_doc),
+    ("operator_workflow.md", operator_workflow_doc),
+    ("bounded_autonomy_architecture.md", (root / ".pi/agent/docs/bounded_autonomy_architecture.md").read_text(encoding="utf-8")),
+    ("graphify_adapter.md", graphify_adapter_doc),
+]:
+    assert ".pi/agent/docs/architecture_roadmap_alignment.md" in doc_text, f"{doc_name} missing architecture roadmap alignment doc reference"
+for prompt_name, prompt_text in [
+    ("orchestrator.md", orchestrator_prompt),
+    ("planning_lead.md", planning_lead_prompt),
+    ("reviewer_worker.md", reviewer_prompt),
+    ("validator_worker.md", validator_prompt),
+]:
+    assert ".pi/agent/docs/architecture_roadmap_alignment.md" in prompt_text, f"{prompt_name} missing architecture roadmap alignment doc reference"
+assert ".pi/agent/docs/architecture_roadmap_alignment.md" in file_map_doc
 for needle in [
     "optional_default",
     "required_for_graphify_backed_claims",

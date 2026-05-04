@@ -5,6 +5,7 @@
 - Best owned by `research_worker` for first-pass system analysis; planning/review/validation roles consume findings only after direct source verification for important claims.
 - Graphify is not a live web-search replacement; keep Exa or dedicated search tools first for current external information.
 - Final operator runbook: `.pi/agent/docs/graphify_final_runbook.md`.
+- Architecture boundary map: `.pi/agent/docs/architecture_roadmap_alignment.md` distinguishes tactical Graphify adapter support from runtime validation enforcement, optional policy-gated mandatory use, bounded foreground session operation, and future roadmap gaps.
 
 ## Runtime surface
 - Extension: `.pi/agent/extensions/graphify-adapter.ts`

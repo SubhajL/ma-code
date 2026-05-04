@@ -83,6 +83,7 @@ Related docs:
 - discovery policy: `.pi/agent/docs/discovery_policy.md`
 - Graphify adapter: `.pi/agent/docs/graphify_adapter.md`
 - validation architecture: `.pi/agent/docs/validation_architecture.md`
+- architecture/roadmap alignment boundary map: `.pi/agent/docs/architecture_roadmap_alignment.md`
 - bounded autonomy architecture: `.pi/agent/docs/bounded_autonomy_architecture.md`
 - phase capability map: `.pi/agent/docs/harness_phase_capability_map.md`
 - architecture review workflow: `.pi/agent/docs/architecture_review_workflow.md`
