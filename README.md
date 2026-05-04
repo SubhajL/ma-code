@@ -151,6 +151,7 @@ node --import tsx scripts/harness-queue-session.ts --scope "bounded queue operat
 ```
 
 That session summary now includes:
+- explicit research-job Graphify orchestration evidence when a queued research job sets `graphifyOrchestration.enabled: true`
 - duration and action counts
 - started/finalized/blocked job IDs touched during the session
 - remaining queued work count
