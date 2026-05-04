@@ -156,6 +156,7 @@ These patterns should now guide planning, implementation, and review even before
 - use Exa for current external web information rather than local repo facts
 - if Auggie is unavailable, errors, or cannot be bounded safely, fall back immediately to appropriate local tools or scoped Graphify report inspection
 - local fallback means targeted `read`, `grep`/`rg`, `find`, and direct file inspection
+- Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection.
 - record which discovery path was used when it matters to planning or validation evidence
 
 ### Product planning discipline

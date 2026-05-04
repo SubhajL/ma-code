@@ -50,6 +50,7 @@
   - `INFERRED`: lead only; verify by direct source inspection
   - `AMBIGUOUS`: requires direct source inspection before use
 - Do not accept graph-only proof for code correctness, architecture decisions, or final validation.
+- Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection.
 - Record which direct files were inspected to verify any important Graphify-derived claim.
 
 ### 6. Record evidence and cleanup boundaries
