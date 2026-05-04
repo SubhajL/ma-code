@@ -73,6 +73,10 @@ Preserve:
 - Backlog quality is validated by independently demonstrable vertical slices.
 - Implementation readiness is validated by task packets with acceptance criteria and proof expectations.
 
+## Global skill ports
+This workflow is now also available through global skill ports `g-grill`, `g-prd`, and `g-issues` in `packages/pi-g-skills/skills/`.
+Use them when you want bounded clarification, PRD synthesis, or vertical-slice backlog planning without jumping straight into implementation.
+
 ## Phase boundary
-Phase 1 documents the workflow only.
-Future phases may add dedicated `g-grill`, `g-prd`, and `g-issues` skill ports or issue-tracker publishing integrations.
+Issue-tracker publishing integrations remain future work.
+The current slice adds global skills and workflow guidance only; it does not add issue-tracker APIs or runtime queue automation here.
