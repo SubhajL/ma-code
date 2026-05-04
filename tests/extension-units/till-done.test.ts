@@ -121,6 +121,65 @@ test("Graphify-backed acceptance validates pass with freshness or query proof an
   assert.ok((validateResult as any).details.task.evidence.some((item: string) => item.includes("Graphify validation decision: pass")));
 });
 
+test("Graphify required_for_architecture_review policy blocks only architecture review scope", async () => {
+  const { execute } = await setupTillDone();
+
+  const createResult = await execute({
+    action: "create",
+    title: "architecture validation task",
+    acceptance: ["Validate architecture claims"],
+  });
+  const taskId = (createResult as any).details.task.id as string;
+
+  await execute({ action: "claim", id: taskId, owner: "assistant" });
+  await execute({ action: "start", id: taskId });
+  await execute({ action: "evidence", id: taskId, evidence: ["Changed files: architecture.md"] });
+  await execute({ action: "review", id: taskId });
+
+  const blocked = await execute({
+    action: "validate",
+    id: taskId,
+    validationSource: "validator",
+    validationDecision: "pass",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "met",
+      diff_review: "met",
+      evidence: "met",
+    },
+    graphifyValidation: {
+      graphifyBackedClaim: true,
+      claimScope: "architecture_review",
+      policy: "required_for_architecture_review",
+    },
+  });
+
+  assert.match(textContent(blocked), /Graphify-backed acceptance cannot pass/i);
+  assert.equal((blocked as any).details.graphifyValidation.policy, "required_for_architecture_review");
+  assert.equal((blocked as any).details.graphifyValidation.state, "blocked");
+
+  const nonScoped = await execute({
+    action: "validate",
+    id: taskId,
+    validationSource: "validator",
+    validationDecision: "pass",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "met",
+      diff_review: "met",
+      evidence: "met",
+    },
+    graphifyValidation: {
+      graphifyBackedClaim: true,
+      claimScope: "graphify_backed_claim",
+      policy: "required_for_architecture_review",
+    },
+  });
+
+  assert.equal(textContent(nonScoped), `Validation passed for ${taskId}`);
+  assert.equal((nonScoped as any).details.graphifyValidation.state, "optional_skipped");
+});
+
 test("docs tasks can use lighter review-backed validation and complete", async () => {
   const { execute } = await setupTillDone();
 
