@@ -256,6 +256,56 @@
         }
       }
     },
+    "tddSlice": {
+      "description": "Optional structured TDD slice metadata that carries the first tracer behavior, public interface, test surface, boundary dependencies, mock plan, and intentionally excluded behaviors.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "firstTracerBehavior",
+        "publicInterface",
+        "testSurface",
+        "boundaryDependencies",
+        "mockPlan",
+        "outOfScopeBehaviors"
+      ],
+      "properties": {
+        "firstTracerBehavior": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publicInterface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "testSurface": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "boundaryDependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "mockPlan": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outOfScopeBehaviors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
     "graphifyEvidence": {
       "description": "Optional structured Graphify evidence expectations or proof for Graphify-backed or architecture-review claims. This is evidence metadata only and does not make Graphify mandatory.",
       "type": [

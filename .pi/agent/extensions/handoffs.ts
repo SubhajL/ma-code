@@ -11,7 +11,9 @@ import {
   TaskPacket,
   validateTaskPacketShape,
   renderGraphifyEvidence,
+  renderTddSlice,
   type GraphifyEvidence,
+  type TddSlice,
 } from "./task-packets.ts";
 
 export const HANDOFF_TYPES = [
@@ -81,6 +83,7 @@ export interface PreservedPacketSummary {
   evidenceExpectations: string[];
   validationExpectations: string[];
   expectedProof: string[];
+  tddSlice?: TddSlice | null;
   graphifyEvidence?: GraphifyEvidence | null;
   wiringChecks: string[];
   migrationPathNote: string;
@@ -251,6 +254,18 @@ function normalizeGraphifyEvidence(raw: GraphifyEvidence | null | undefined): Gr
   return Object.keys(evidence).length > 0 ? evidence : null;
 }
 
+function cloneTddSlice(tddSlice: TddSlice | null | undefined): TddSlice | null {
+  if (!tddSlice) return null;
+  return {
+    firstTracerBehavior: tddSlice.firstTracerBehavior,
+    publicInterface: tddSlice.publicInterface,
+    testSurface: [...tddSlice.testSurface],
+    boundaryDependencies: [...tddSlice.boundaryDependencies],
+    mockPlan: tddSlice.mockPlan,
+    outOfScopeBehaviors: [...tddSlice.outOfScopeBehaviors],
+  };
+}
+
 function parseString(raw: unknown, fieldName: string): string {
   if (typeof raw !== "string" || raw.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string.`);
@@ -380,6 +395,7 @@ function preservePacket(packet: TaskPacket): PreservedPacketSummary {
     evidenceExpectations: packet.evidenceExpectations,
     validationExpectations: packet.validationExpectations,
     expectedProof: packet.expectedProof,
+    tddSlice: cloneTddSlice(packet.tddSlice),
     graphifyEvidence: normalizeGraphifyEvidence(packet.graphifyEvidence),
     wiringChecks: packet.wiringChecks,
     migrationPathNote: packet.migrationPathNote,
@@ -598,6 +614,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "## Graphify Evidence",
         renderGraphifyEvidence(packet.graphifyEvidence),
         "",
+        "## TDD Slice",
+        renderTddSlice(packet.tddSlice),
+        "",
         "## Wiring Checks",
         renderList([...packet.wiringChecks, `migration path note: ${packet.migrationPathNote}`]),
         "",
@@ -632,6 +651,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Graphify Evidence",
         renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
+        "",
+        "## TDD Slice",
+        renderTddSlice(packet.tddSlice),
         "",
         "## Validation Commands",
         renderList(d.commandsRun),
@@ -674,6 +696,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Graphify Evidence",
         renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
+        "",
+        "## TDD Slice",
+        renderTddSlice(packet.tddSlice),
       ].join("\n");
     case "quality_to_validator":
       return [
@@ -697,6 +722,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Graphify Evidence",
         renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
+        "",
+        "## TDD Slice",
+        renderTddSlice(packet.tddSlice),
         "",
         "## Wiring Checks",
         renderList([...packet.wiringChecks, `migration path note: ${packet.migrationPathNote}`]),
@@ -726,6 +754,9 @@ function renderHandoff(handoff: StructuredHandoff, noneToken: string): string {
         "",
         "## Graphify Evidence",
         renderGraphifyEvidence(d.graphifyEvidence ?? packet.graphifyEvidence),
+        "",
+        "## TDD Slice",
+        renderTddSlice(packet.tddSlice),
       ].join("\n");
   }
 }

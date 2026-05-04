@@ -236,6 +236,15 @@ const teams = {
   recovery: parseTeamDefinition(readFileSync("./teams/recovery.yaml", "utf8"), "recovery"),
 };
 
+const tddSlice = {
+  firstTracerBehavior: "Preserve a named tracer behavior from packet generation into handoffs.",
+  publicInterface: "generate_handoff and rendered handoff markdown",
+  testSurface: ["tests/extension-units/orchestration-helpers.test.ts", "scripts/validate-handoffs.sh"],
+  boundaryDependencies: [".pi/agent/extensions/handoffs.ts", ".pi/agent/state/schemas/handoff.schema.json"],
+  mockPlan: "No extra mocks; reuse existing local packet fixtures.",
+  outOfScopeBehaviors: ["Do not add runtime TDD gating in this slice."],
+};
+
 const packet = generateTaskPacket(packetPolicy, teams, routingConfig, {
   sourceGoalId: "harness-022",
   parentTaskId: "task-022-build",
@@ -247,6 +256,7 @@ const packet = generateTaskPacket(packetPolicy, teams, routingConfig, {
   domains: ["backend"],
   allowedPaths: [".pi/agent/extensions/handoffs.ts"],
   acceptanceCriteria: ["handoffs are generated", "handoff sections stay structured"],
+  tddSlice,
 }).packet;
 
 const buildToWorker = generateHandoff(handoffPolicy, {
@@ -256,8 +266,10 @@ const buildToWorker = generateHandoff(handoffPolicy, {
   toRole: "backend_worker",
 });
 validateStructuredHandoff(buildToWorker.handoff);
+if (!(buildToWorker.handoff.preservedPacket as any).tddSlice) throw new Error("expected preserved packet tddSlice");
 if (!buildToWorker.renderedHandoff.includes("## Worker Assignment")) throw new Error("expected build_to_worker headers");
 if (!buildToWorker.renderedHandoff.includes("## Discovery Summary")) throw new Error("expected build_to_worker discovery summary");
+if (!buildToWorker.renderedHandoff.includes("## TDD Slice")) throw new Error("expected build_to_worker TDD Slice section");
 
 const workerToQuality = generateHandoff(handoffPolicy, {
   handoffType: "worker_to_quality",
@@ -275,6 +287,7 @@ validateStructuredHandoff(workerToQuality.handoff);
 if (!workerToQuality.renderedHandoff.includes("## Work Summary")) throw new Error("expected worker_to_quality headers");
 if (!workerToQuality.renderedHandoff.includes("## Scope Boundaries")) throw new Error("expected worker_to_quality scope boundaries");
 if (!workerToQuality.renderedHandoff.includes("## Evidence Expectations")) throw new Error("expected worker_to_quality evidence expectations");
+if (!workerToQuality.renderedHandoff.includes("## TDD Slice")) throw new Error("expected worker_to_quality TDD Slice section");
 
 const qualityToReviewer = generateHandoff(handoffPolicy, {
   handoffType: "quality_to_reviewer",
@@ -383,7 +396,7 @@ EOF
     local detail="Deterministic helper-level handoff generation checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for all required HARNESS-022 handoff types plus invalid role-pair rejection\n- sample output:\n\n\`\`\`json\n$(sed -n '1,160p' "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for all required HARNESS-022 handoff types plus optional packet TDD slice preservation/rendering and invalid role-pair rejection\n- sample output:\n\n\`\`\`json\n$(sed -n '1,160p' "$out")\n\`\`\`"
   else
     local detail="Helper-level handoff generation checks failed."
     record_result "$name" "FAIL" "$detail"
@@ -406,6 +419,13 @@ expected = {'version','handoffId','handoffType','sourcePacketId','sourceGoalId',
 missing = sorted(expected - required)
 if missing:
     raise SystemExit(f'missing handoff schema required keys: {missing}')
+preserved = schema['properties']['preservedPacket']['properties']
+tdd_slice = preserved.get('tddSlice')
+if not tdd_slice:
+    raise SystemExit('handoff schema preservedPacket must expose optional tddSlice')
+for key in ['firstTracerBehavior','publicInterface','testSurface','boundaryDependencies','mockPlan','outOfScopeBehaviors']:
+    if key not in tdd_slice['properties']:
+        raise SystemExit(f'handoff schema preservedPacket.tddSlice missing property: {key}')
 rules = set(policy['handoff_rules'].keys())
 expected_rules = {'build_to_worker','worker_to_quality','quality_to_reviewer','quality_to_validator','recovery_to_orchestrator_or_lead'}
 if rules != expected_rules:
@@ -425,7 +445,7 @@ PY"
     local detail="Handoff schema and policy sanity checks passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-045 handoff-completeness contract\n- handoff policy covers all required role transitions plus stronger packet/detail completeness rules\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- schema required fields include the bounded HARNESS-045 handoff-completeness contract plus optional preserved packet tddSlice metadata\n- handoff policy covers all required role transitions plus stronger packet/detail completeness rules\n- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
   else
     local detail="Handoff schema and policy sanity checks failed."
     record_result "$name" "FAIL" "$detail"

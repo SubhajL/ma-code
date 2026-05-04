@@ -233,6 +233,63 @@ test("task packets and handoffs preserve optional Graphify evidence", async () =
   assert.match(handoff.renderedHandoff, /Quality handoff preserved source verification proof/);
 });
 
+test("task packets and handoffs preserve optional TDD slice", async () => {
+  const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
+  const handoffPolicy = parseHandoffPolicy(JSON.parse(await readFixture(".pi/agent/handoffs/handoff-policy.json")));
+  const teams = {
+    planning: parseTeamDefinition(await readFixture(".pi/agent/teams/planning.yaml"), "planning"),
+    build: parseTeamDefinition(await readFixture(".pi/agent/teams/build.yaml"), "build"),
+    quality: parseTeamDefinition(await readFixture(".pi/agent/teams/quality.yaml"), "quality"),
+    recovery: parseTeamDefinition(await readFixture(".pi/agent/teams/recovery.yaml"), "recovery"),
+  };
+
+  const tddSlice = {
+    firstTracerBehavior: "Generating a build packet preserves the first observable behavior to implement.",
+    publicInterface: "generate_task_packet and the rendered packet markdown",
+    testSurface: ["tests/extension-units/orchestration-helpers.test.ts", "scripts/validate-task-packets.sh"],
+    boundaryDependencies: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
+    mockPlan: "No extra mocks; reuse real routing/team/policy fixtures only.",
+    outOfScopeBehaviors: ["Do not make tddSlice required yet.", "Do not add queue/runtime gating in this slice."],
+  };
+
+  const generated = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "harness-tdd-slice",
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    title: "Carry TDD slice through packets",
+    scope: "Only packet and handoff TDD slice fields.",
+    workType: "implementation",
+    domains: ["backend"],
+    allowedPaths: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
+    acceptanceCriteria: ["TDD slice is preserved in packet and handoff output"],
+    tddSlice,
+  } as any);
+
+  validateTaskPacketShape(generated.packet);
+  assert.deepEqual((generated.packet as any).tddSlice, tddSlice);
+  assert.match(generated.renderedPacket, /## TDD Slice/);
+  assert.match(generated.renderedPacket, /first tracer behavior: Generating a build packet preserves the first observable behavior to implement\./);
+  assert.match(generated.renderedPacket, /public interface: generate_task_packet and the rendered packet markdown/);
+
+  const handoff = generateHandoff(handoffPolicy, {
+    handoffType: "worker_to_quality",
+    sourcePacket: generated.packet,
+    fromRole: "backend_worker",
+    toRole: "quality_lead",
+    changedFiles: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
+    acceptanceCoverage: ["TDD slice fields are preserved through worker handoff."],
+    evidence: ["targeted orchestration helper test output PASS"],
+    commandsRun: ["npx --yes tsx --test tests/extension-units/orchestration-helpers.test.ts"],
+    wiringVerification: ["generate_handoff preserves packet TDD slice evidence."],
+  } as any);
+
+  validateStructuredHandoff(handoff.handoff);
+  assert.deepEqual((handoff.handoff.preservedPacket as any).tddSlice, tddSlice);
+  assert.match(handoff.renderedHandoff, /## TDD Slice/);
+  assert.match(handoff.renderedHandoff, /mock plan: No extra mocks; reuse real routing\/team\/policy fixtures only\./);
+});
+
 test("handoffs preserve stronger planning context for worker-to-quality flow", async () => {
   const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));

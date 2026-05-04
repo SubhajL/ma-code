@@ -66,6 +66,15 @@ export interface GraphifyEvidence {
   sourceVerificationNotes?: string[];
 }
 
+export interface TddSlice {
+  firstTracerBehavior: string;
+  publicInterface: string;
+  testSurface: string[];
+  boundaryDependencies: string[];
+  mockPlan: string;
+  outOfScopeBehaviors: string[];
+}
+
 export interface PacketRoutingSummary {
   reason: RouteReason;
   budgetMode: BudgetMode;
@@ -97,6 +106,7 @@ export interface TaskPacket {
   evidenceExpectations: string[];
   validationExpectations: string[];
   expectedProof: string[];
+  tddSlice?: TddSlice | null;
   graphifyEvidence?: GraphifyEvidence | null;
   wiringChecks: string[];
   migrationPathNote: string;
@@ -128,6 +138,7 @@ export interface TaskPacketInput {
   evidenceExpectations?: string[];
   validationExpectations?: string[];
   expectedProof?: string[];
+  tddSlice?: TddSlice | null;
   graphifyEvidence?: GraphifyEvidence | null;
   wiringChecks?: string[];
   migrationPathNote?: string;
@@ -163,6 +174,15 @@ const GraphifyEvidenceSchema = Type.Object({
   sourceVerificationNotes: Type.Optional(Type.Array(Type.String())),
 });
 
+const TddSliceSchema = Type.Object({
+  firstTracerBehavior: Type.String({ minLength: 1 }),
+  publicInterface: Type.String({ minLength: 1 }),
+  testSurface: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
+  boundaryDependencies: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
+  mockPlan: Type.String({ minLength: 1 }),
+  outOfScopeBehaviors: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
+});
+
 const GenerateTaskPacketSchema = Type.Object({
   sourceGoalId: Type.String({ minLength: 1 }),
   parentTaskId: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
@@ -185,6 +205,7 @@ const GenerateTaskPacketSchema = Type.Object({
   evidenceExpectations: Type.Optional(Type.Array(Type.String())),
   validationExpectations: Type.Optional(Type.Array(Type.String())),
   expectedProof: Type.Optional(Type.Array(Type.String())),
+  tddSlice: Type.Optional(Type.Union([TddSliceSchema, Type.Null()])),
   graphifyEvidence: Type.Optional(Type.Union([GraphifyEvidenceSchema, Type.Null()])),
   wiringChecks: Type.Optional(Type.Array(Type.String())),
   migrationPathNote: Type.Optional(Type.String()),
@@ -227,11 +248,31 @@ function normalizeGraphifyEvidence(raw: GraphifyEvidence | null | undefined): Gr
   return Object.keys(evidence).length > 0 ? evidence : null;
 }
 
+function normalizeTddSlice(raw: TddSlice | null | undefined): TddSlice | null {
+  if (!raw || !isRecord(raw)) return null;
+  return {
+    firstTracerBehavior: parseString(raw.firstTracerBehavior, "tddSlice.firstTracerBehavior"),
+    publicInterface: parseString(raw.publicInterface, "tddSlice.publicInterface"),
+    testSurface: parseRequiredStringArray(raw.testSurface, "tddSlice.testSurface"),
+    boundaryDependencies: parseRequiredStringArray(raw.boundaryDependencies, "tddSlice.boundaryDependencies"),
+    mockPlan: parseString(raw.mockPlan, "tddSlice.mockPlan"),
+    outOfScopeBehaviors: parseRequiredStringArray(raw.outOfScopeBehaviors, "tddSlice.outOfScopeBehaviors"),
+  };
+}
+
 function parseString(raw: unknown, fieldName: string): string {
   if (typeof raw !== "string" || raw.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string.`);
   }
   return raw.trim();
+}
+
+function parseRequiredStringArray(raw: unknown, fieldName: string): string[] {
+  const values = uniqueStrings(parseStringArray(raw));
+  if (values.length === 0) {
+    throw new Error(`${fieldName} must be a non-empty string array.`);
+  }
+  return values;
 }
 
 function parseEnumString<T extends string>(raw: unknown, allowed: readonly T[], fieldName: string): T {
@@ -352,6 +393,14 @@ export function validateTaskPacketShape(packet: TaskPacket): void {
   if (packet.evidenceExpectations.length === 0) throw new Error("evidenceExpectations must not be empty.");
   if (packet.validationExpectations.length === 0) throw new Error("validationExpectations must not be empty.");
   if (packet.expectedProof.length === 0) throw new Error("expectedProof must not be empty.");
+  if (packet.tddSlice) {
+    if (!packet.tddSlice.firstTracerBehavior.trim()) throw new Error("tddSlice.firstTracerBehavior must not be empty.");
+    if (!packet.tddSlice.publicInterface.trim()) throw new Error("tddSlice.publicInterface must not be empty.");
+    if (packet.tddSlice.testSurface.length === 0) throw new Error("tddSlice.testSurface must not be empty.");
+    if (packet.tddSlice.boundaryDependencies.length === 0) throw new Error("tddSlice.boundaryDependencies must not be empty.");
+    if (!packet.tddSlice.mockPlan.trim()) throw new Error("tddSlice.mockPlan must not be empty.");
+    if (packet.tddSlice.outOfScopeBehaviors.length === 0) throw new Error("tddSlice.outOfScopeBehaviors must not be empty.");
+  }
   if (packet.escalationInstructions.length === 0) throw new Error("escalationInstructions must not be empty.");
   if (packet.disallowedPaths.length === 0) throw new Error("disallowedPaths must not be empty.");
   if (!packet.migrationPathNote.trim()) throw new Error("migrationPathNote is required.");
@@ -381,6 +430,19 @@ export function renderGraphifyEvidence(evidence: GraphifyEvidence | null | undef
   if (evidence.graphifyAdapterAction) lines.push(`graphify adapter action: ${evidence.graphifyAdapterAction}`);
   if (evidence.graphifyArtifactPath) lines.push(`graphify artifact path: ${evidence.graphifyArtifactPath}`);
   for (const note of evidence.sourceVerificationNotes ?? []) lines.push(`source verification note: ${note}`);
+  return renderList(lines);
+}
+
+export function renderTddSlice(tddSlice: TddSlice | null | undefined): string {
+  if (!tddSlice) return "- none";
+  const lines: string[] = [
+    `first tracer behavior: ${tddSlice.firstTracerBehavior}`,
+    `public interface: ${tddSlice.publicInterface}`,
+    `mock plan: ${tddSlice.mockPlan}`,
+  ];
+  for (const surface of tddSlice.testSurface) lines.push(`test surface: ${surface}`);
+  for (const dependency of tddSlice.boundaryDependencies) lines.push(`boundary dependency: ${dependency}`);
+  for (const behavior of tddSlice.outOfScopeBehaviors) lines.push(`out-of-scope behavior: ${behavior}`);
   return renderList(lines);
 }
 
@@ -448,6 +510,9 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "",
     "## Expected Proof",
     renderList(packet.expectedProof),
+    "",
+    "## TDD Slice",
+    renderTddSlice(packet.tddSlice),
     "",
     "## Graphify Evidence",
     renderGraphifyEvidence(packet.graphifyEvidence),
@@ -557,6 +622,7 @@ export function generateTaskPacket(
     evidenceExpectations,
     validationExpectations,
     expectedProof,
+    tddSlice: normalizeTddSlice(input.tddSlice),
     graphifyEvidence: normalizeGraphifyEvidence(input.graphifyEvidence),
     wiringChecks: uniqueStrings(input.wiringChecks ?? policy.team_wiring_checks[input.assignedTeam]),
     migrationPathNote: (input.migrationPathNote ?? policy.defaults.migration_path_note).trim(),
