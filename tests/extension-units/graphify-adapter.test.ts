@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
@@ -41,6 +42,15 @@ function registerGraphifyTool() {
   const pi = new FakePi("feat/graphify-adapter");
   graphifyAdapter(pi as any);
   return pi.getTool("graphify_adapter");
+}
+
+function initCleanGitRepo(cwd: string): string {
+  execFileSync("git", ["init"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["config", "user.email", "graphify-test@example.test"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["config", "user.name", "Graphify Test"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["add", ".gitignore"], { cwd, stdio: "ignore" });
+  execFileSync("git", ["commit", "-m", "initial"], { cwd, stdio: "ignore" });
+  return execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim();
 }
 
 test("reports installed Graphify when a fake binary is available", async () => {
@@ -129,6 +139,124 @@ test("queries an existing managed graph.json with freshness and edge-confidence 
     verificationRequired: true,
     verificationReminder: "Verify important Graphify-derived claims with direct file inspection before implementation, acceptance, or architecture decisions.",
   });
+});
+
+test("freshness helper recommends preflight and scan when managed graph is missing", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-freshness-missing-graph-");
+
+  const result = await tool.execute(
+    "tool-call-id",
+    { action: "freshness", taskId: "task-missing-graph", cadencePhase: "before_broad_planning" },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+
+  assert.match(textContent(result), /missing managed Graphify graph/i);
+  assert.equal(result.details.status, "completed");
+  assert.equal(result.details.graphPresent, false);
+  assert.equal(result.details.metadataPresent, false);
+  assert.equal(result.details.freshnessStatus, "missing_graph");
+  assert.equal(result.details.recommendedNextAction, "run_preflight_then_scan");
+});
+
+test("freshness helper warns dirty worktree graph may be stale", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-freshness-dirty-");
+  await writeFile(join(cwd, ".gitignore"), ".pi/agent/artifacts/\n");
+  const headCommit = initCleanGitRepo(cwd);
+  const outputDir = join(cwd, ".pi", "agent", "artifacts", "graphify", "task-dirty");
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(join(outputDir, "metadata.json"), JSON.stringify({ headCommit, sourcePath: cwd, outputPath: outputDir }, null, 2));
+  await writeFile(join(outputDir, "graph.json"), JSON.stringify({ edges: [] }, null, 2));
+  await writeFile(join(cwd, "local-change.ts"), "export const dirty = true;\n");
+
+  const result = await tool.execute(
+    "tool-call-id",
+    { action: "freshness", taskId: "task-dirty", cadencePhase: "implementation_loop" },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+
+  assert.match(textContent(result), /Dirty worktree detected/i);
+  assert.equal(result.details.graphPresent, true);
+  assert.equal(result.details.metadataPresent, true);
+  assert.equal(result.details.metadataHeadCommit, headCommit);
+  assert.equal(result.details.currentHead, headCommit);
+  assert.equal(result.details.dirtyWorktree, true);
+  assert.equal(result.details.freshnessStatus, "dirty_worktree");
+  assert.equal(result.details.recommendedNextAction, "do_not_rescan_for_small_loop");
+});
+
+test("freshness helper distinguishes missing metadata and stale head states", async () => {
+  const tool = registerGraphifyTool();
+  const missingMetadataCwd = await makeTempRepo("graphify-freshness-missing-metadata-");
+  const missingMetadataOutput = join(missingMetadataCwd, ".pi", "agent", "artifacts", "graphify", "task-missing-metadata");
+  await mkdir(missingMetadataOutput, { recursive: true });
+  await writeFile(join(missingMetadataOutput, "graph.json"), JSON.stringify({ edges: [] }, null, 2));
+
+  const missingMetadata = await tool.execute(
+    "tool-call-id",
+    { action: "freshness", taskId: "task-missing-metadata" },
+    undefined,
+    undefined,
+    makeCtx(missingMetadataCwd),
+  );
+  assert.equal(missingMetadata.details.graphPresent, true);
+  assert.equal(missingMetadata.details.metadataPresent, false);
+  assert.equal(missingMetadata.details.freshnessStatus, "missing_metadata");
+  assert.equal(missingMetadata.details.recommendedNextAction, "run_preflight_then_scan");
+
+  const staleCwd = await makeTempRepo("graphify-freshness-stale-head-");
+  await writeFile(join(staleCwd, ".gitignore"), ".pi/agent/artifacts/\n");
+  const currentHead = initCleanGitRepo(staleCwd);
+  const staleOutput = join(staleCwd, ".pi", "agent", "artifacts", "graphify", "task-stale");
+  await mkdir(staleOutput, { recursive: true });
+  await writeFile(join(staleOutput, "metadata.json"), JSON.stringify({ headCommit: "old-head", sourcePath: staleCwd, outputPath: staleOutput }, null, 2));
+  await writeFile(join(staleOutput, "graph.json"), JSON.stringify({ edges: [] }, null, 2));
+
+  const stale = await tool.execute(
+    "tool-call-id",
+    { action: "freshness", taskId: "task-stale", cadencePhase: "after_structural_change" },
+    undefined,
+    undefined,
+    makeCtx(staleCwd),
+  );
+  assert.equal(stale.details.metadataHeadCommit, "old-head");
+  assert.equal(stale.details.currentHead, currentHead);
+  assert.equal(stale.details.dirtyWorktree, false);
+  assert.equal(stale.details.freshnessStatus, "stale_head");
+  assert.equal(stale.details.recommendedNextAction, "run_preflight_then_scan");
+});
+
+test("freshness helper recommends query and direct verification before final validation", async () => {
+  const tool = registerGraphifyTool();
+  const cwd = await makeTempRepo("graphify-freshness-final-validation-");
+  await writeFile(join(cwd, ".gitignore"), ".pi/agent/artifacts/\n");
+  const headCommit = initCleanGitRepo(cwd);
+  const outputDir = join(cwd, ".pi", "agent", "artifacts", "graphify", "task-final");
+  await mkdir(outputDir, { recursive: true });
+  await writeFile(join(outputDir, "metadata.json"), JSON.stringify({ headCommit, sourcePath: cwd, outputPath: outputDir }, null, 2));
+  await writeFile(join(outputDir, "graph.json"), JSON.stringify({ edges: [{ from: "src/a.ts", to: "src/b.ts", confidence: "EXTRACTED" }] }, null, 2));
+
+  const result = await tool.execute(
+    "tool-call-id",
+    { action: "freshness", taskId: "task-final", cadencePhase: "before_final_validation" },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+
+  assert.match(textContent(result), /Recommended next action: query_then_direct_verify/);
+  assert.equal(result.details.graphPresent, true);
+  assert.equal(result.details.metadataPresent, true);
+  assert.equal(result.details.metadataHeadCommit, headCommit);
+  assert.equal(result.details.currentHead, headCommit);
+  assert.equal(result.details.dirtyWorktree, false);
+  assert.equal(result.details.freshnessStatus, "fresh");
+  assert.equal(result.details.recommendedNextAction, "query_then_direct_verify");
 });
 
 test("queries a real-CLI nested managed graphify-out graph.json", async () => {

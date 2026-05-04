@@ -37,7 +37,13 @@
 - Generated output must remain under `.pi/agent/artifacts/graphify/<task-id>/`.
 - If source path, output path, task id, purpose, file count, approval, threshold, or safe extra args change, rerun preflight and use the new token.
 
-### 4. Query and verify before planning or acceptance
+### 4. Check freshness/cadence before reuse
+- Before broad planning, after structural changes, or before final validation, call `graphify_adapter` with `action: "freshness"`, the relevant `taskId`, and the closest `cadencePhase`.
+- If freshness reports `missing_graph` or `missing_metadata`, run preflight then scan only when broad Graphify discovery is still warranted.
+- If freshness reports `dirty_worktree`, treat the graph as potentially stale for uncommitted changes; use local verification and avoid rescanning for small implementation-loop edits.
+- If freshness is `fresh` before final validation, query the graph for leads and directly verify important claims before acceptance.
+
+### 5. Query and verify before planning or acceptance
 - Query only managed Graphify artifacts created or intentionally provided for the task.
 - Treat confidence levels conservatively:
   - `EXTRACTED` / confirmed: useful evidence, still verify when architecture or acceptance depends on it
@@ -46,7 +52,7 @@
 - Do not accept graph-only proof for code correctness, architecture decisions, or final validation.
 - Record which direct files were inspected to verify any important Graphify-derived claim.
 
-### 5. Record evidence and cleanup boundaries
+### 6. Record evidence and cleanup boundaries
 - Record the discovery path in the planning/coding log:
   - Auggie attempt result
   - Graphify preflight/scan/query result when used

@@ -63,20 +63,30 @@ const FORBIDDEN_ARGS = new Set([
 ]);
 
 const GraphifyAdapterSchema = Type.Object({
-  action: Type.Union([Type.Literal("status"), Type.Literal("scan"), Type.Literal("query"), Type.Literal("preflight")]),
+  action: Type.Union([Type.Literal("status"), Type.Literal("scan"), Type.Literal("query"), Type.Literal("preflight"), Type.Literal("freshness")]),
   sourcePath: Type.Optional(Type.String({ description: "Repo-local source path to scan. Defaults to the repo root." })),
   taskId: Type.Optional(Type.String({ description: "Task identifier used to derive the managed artifact directory." })),
   outputPath: Type.Optional(Type.String({ description: "Optional output path. Must be under .pi/agent/artifacts/graphify/." })),
   query: Type.Optional(Type.String({ description: "Query or topic to summarize from an existing graph.json artifact." })),
   purpose: Type.Optional(Type.String({ description: "Required for preflight/scan. Must be a broad Graphify discovery purpose: architecture_review, dependency_exploration, drift_analysis, large_subsystem_mapping, or curated_research." })),
   preflightToken: Type.Optional(Type.String({ description: "Required for scan. Copy the deterministic token returned by a matching preflight call." })),
+  cadencePhase: Type.Optional(Type.Union([
+    Type.Literal("before_broad_planning"),
+    Type.Literal("implementation_loop"),
+    Type.Literal("after_structural_change"),
+    Type.Literal("before_final_validation"),
+  ], { description: "Optional cadence phase for freshness guidance." })),
   approvedLargeCorpus: Type.Optional(Type.Boolean({ description: "Set true only after explicit human approval for a large corpus scan." })),
   maxFilesWithoutApproval: Type.Optional(Type.Integer({ minimum: 1, maximum: 100000 })),
   extraArgs: Type.Optional(Type.Array(Type.String(), { description: "Additional safe one-shot Graphify CLI args. Watch/MCP/hooks/Neo4j push, output overrides, and semantic/multimodal/deep/url extraction are blocked." })),
   timeoutMs: Type.Optional(Type.Integer({ minimum: 1000, maximum: 300000 })),
 });
 
-type GraphifyAction = "status" | "scan" | "query" | "preflight";
+type GraphifyAction = "status" | "scan" | "query" | "preflight" | "freshness";
+
+type CadencePhase = "before_broad_planning" | "implementation_loop" | "after_structural_change" | "before_final_validation";
+type FreshnessStatus = "fresh" | "stale_head" | "dirty_worktree" | "missing_metadata" | "missing_graph";
+type RecommendedNextAction = "run_preflight_then_scan" | "query_then_direct_verify" | "do_not_rescan_for_small_loop" | "use_local_verification";
 
 type GraphifyParams = {
   action: GraphifyAction;
@@ -86,6 +96,7 @@ type GraphifyParams = {
   query?: string;
   purpose?: string;
   preflightToken?: string;
+  cadencePhase?: CadencePhase;
   approvedLargeCorpus?: boolean;
   maxFilesWithoutApproval?: number;
   extraArgs?: string[];
@@ -281,6 +292,15 @@ async function currentHeadCommit(cwd: string): Promise<string> {
     // ignore unavailable git in temp test repos
   }
   return "unknown";
+}
+
+async function isWorktreeDirty(cwd: string): Promise<boolean> {
+  try {
+    const result = await runCommand("git", ["status", "--porcelain"], cwd, 2000, undefined);
+    return result.code === 0 && result.stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function citationPolicy() {
@@ -486,6 +506,80 @@ async function queryResult(params: GraphifyParams, cwd: string) {
       citationPolicy: citationPolicy(),
       graphFreshness: metadata ?? { freshness: "unknown", note: "metadata missing" },
       querySummary: querySummary(params, graph, graphPath, output.output, counts, metadata),
+    },
+  };
+}
+
+function recommendNextAction(freshnessStatus: FreshnessStatus, cadencePhase: CadencePhase | undefined): RecommendedNextAction {
+  if (freshnessStatus === "missing_graph" || freshnessStatus === "missing_metadata") return "run_preflight_then_scan";
+  if (freshnessStatus === "dirty_worktree") return cadencePhase === "implementation_loop" ? "do_not_rescan_for_small_loop" : "use_local_verification";
+  if (freshnessStatus === "stale_head") return cadencePhase === "implementation_loop" ? "do_not_rescan_for_small_loop" : "run_preflight_then_scan";
+  if (cadencePhase === "implementation_loop") return "do_not_rescan_for_small_loop";
+  return "query_then_direct_verify";
+}
+
+async function freshnessResult(params: GraphifyParams, cwd: string) {
+  const output = resolveManagedOutputPath(cwd, params.taskId, params.outputPath);
+  if (!output.ok) {
+    return {
+      content: [{ type: "text" as const, text: output.reason }],
+      details: { status: "blocked_unmanaged_output_path", outputPath: output.output, managedRoot: output.root },
+    };
+  }
+
+  const graphPath = findManagedGraphPath(output.output);
+  const metadata = await loadMetadata(output.output);
+  const currentHead = await currentHeadCommit(cwd);
+  const dirtyWorktree = await isWorktreeDirty(cwd);
+  const metadataHeadCommit = metadata && typeof metadata === "object" && typeof (metadata as { headCommit?: unknown }).headCommit === "string" ? (metadata as { headCommit: string }).headCommit : null;
+  const metadataPresent = metadata !== null;
+  const graphPresent = graphPath !== null;
+
+  let freshnessStatus: FreshnessStatus;
+  if (!graphPresent) freshnessStatus = "missing_graph";
+  else if (!metadataPresent || !metadataHeadCommit) freshnessStatus = "missing_metadata";
+  else if (dirtyWorktree) freshnessStatus = "dirty_worktree";
+  else if (currentHead !== "unknown" && metadataHeadCommit !== currentHead) freshnessStatus = "stale_head";
+  else freshnessStatus = "fresh";
+
+  const recommendedNextAction = recommendNextAction(freshnessStatus, params.cadencePhase);
+  const warnings = [];
+  if (dirtyWorktree) warnings.push("Dirty worktree detected; existing Graphify graph may be stale relative to uncommitted local changes.");
+  if (freshnessStatus === "missing_graph") warnings.push("Missing managed Graphify graph; run preflight then scan only if broad discovery is still needed.");
+  if (freshnessStatus === "missing_metadata") warnings.push("Graph metadata is missing or incomplete; treat freshness as unknown.");
+  if (freshnessStatus === "stale_head") warnings.push("Graph metadata HEAD differs from current HEAD; rescan before broad planning or final validation if Graphify evidence is needed.");
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: [
+          `Graphify freshness status: ${freshnessStatus}`,
+          `Cadence phase: ${params.cadencePhase ?? "unspecified"}`,
+          `Recommended next action: ${recommendedNextAction}`,
+          graphPresent ? `Graph: ${graphPath}` : `Missing managed Graphify graph under ${output.output}`,
+          `Metadata: ${metadataPresent ? "present" : "missing"}`,
+          `Metadata headCommit: ${metadataHeadCommit ?? "unknown"}`,
+          `Current HEAD: ${currentHead}`,
+          `Dirty worktree: ${dirtyWorktree ? "yes" : "no"}`,
+          ...warnings,
+        ].join("\n"),
+      },
+    ],
+    details: {
+      status: "completed",
+      outputPath: output.output,
+      graphPath,
+      metadataPath: join(output.output, "metadata.json"),
+      graphPresent,
+      metadataPresent,
+      metadataHeadCommit,
+      currentHead,
+      dirtyWorktree,
+      freshnessStatus,
+      cadencePhase: params.cadencePhase ?? null,
+      recommendedNextAction,
+      warnings,
     },
   };
 }
@@ -711,6 +805,7 @@ export default function (pi: ExtensionAPI) {
       if (params.action === "status") return statusResult();
       if (params.action === "query") return queryResult(params, ctx.cwd);
       if (params.action === "preflight") return preflightResult(params, ctx.cwd);
+      if (params.action === "freshness") return freshnessResult(params, ctx.cwd);
       return scanResult(params, ctx.cwd, signal);
     },
   });
