@@ -497,6 +497,37 @@ for needle in [
 ]:
     assert needle in validation_checklist_skill
 for needle in [
+    "## Lightweight test-quality review checklist",
+    "Behavior is visible through a public interface.",
+    "Private-helper-only tests are justified explicitly when unavoidable.",
+    "Owned-collaborator mocks are justified explicitly when unavoidable.",
+    "Boundary mocks are named explicitly.",
+    "Refactor steps keep tests GREEN.",
+]:
+    assert needle in tdd_behavior_doc
+for needle in [
+    "Confirm the tested behavior is visible through a public interface, not only a private helper.",
+    "Require private-helper-only tests to carry an explicit justification when they are truly necessary.",
+    "Require owned-collaborator mocks to carry an explicit justification when they are truly necessary.",
+    "Require boundary mocks to be named explicitly in the evidence or review notes.",
+    "When refactor work is claimed, confirm the relevant tests stayed GREEN through the refactor step.",
+]:
+    assert needle in validation_checklist_skill
+for needle in [
+    "Use the lightweight test-quality review checklist from `.pi/agent/docs/tdd_behavior_first_workflow.md`.",
+    "Require behavior to stay visible through a public interface, not only a private helper.",
+    "Require boundary mocks to be named explicitly, and require owned-collaborator or private-helper-only tests to be justified.",
+    "When refactor work is claimed, require evidence that the relevant tests stayed GREEN through the refactor step.",
+]:
+    assert needle in reviewer_prompt
+for needle in [
+    "Use the lightweight test-quality review checklist from `.pi/agent/docs/tdd_behavior_first_workflow.md`.",
+    "Require behavior to stay visible through a public interface, not only a private helper.",
+    "Require boundary mocks to be named explicitly, and require owned-collaborator or private-helper-only tests to be justified.",
+    "When refactor work is claimed, require evidence that the relevant tests stayed GREEN through the refactor step.",
+]:
+    assert needle in validator_prompt
+for needle in [
     "Record RED and GREEN commands when tests are relevant, or state explicitly why RED was not practical.",
     "Name the single behavior under test and the public interface proving it.",
     "Justify any non-boundary mock and note the post-GREEN refactor check.",

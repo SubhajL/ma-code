@@ -55,6 +55,14 @@ Before coding a non-trivial slice, clarify:
 - boundary dependencies and mock/fake strategy
 - expected validation proof
 
+## Lightweight test-quality review checklist
+Use this lightweight checklist during review and validation:
+- Behavior is visible through a public interface.
+- Private-helper-only tests are justified explicitly when unavoidable.
+- Owned-collaborator mocks are justified explicitly when unavoidable.
+- Boundary mocks are named explicitly.
+- Refactor steps keep tests GREEN.
+
 ## Relationship to harness gates
 Behavior-first TDD does not remove existing harness requirements:
 - active task with acceptance criteria

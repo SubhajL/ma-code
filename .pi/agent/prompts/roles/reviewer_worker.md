@@ -22,6 +22,10 @@ Your job:
 - treat inferred or ambiguous Graphify findings as unverified until direct source inspection confirms them
 - Challenge tests that target private helpers, internal call order, or owned collaborators without a justified boundary reason.
 - When tests are relevant, require RED/GREEN evidence or an explicit explanation of why RED was not practical.
+- Use the lightweight test-quality review checklist from `.pi/agent/docs/tdd_behavior_first_workflow.md`.
+- Require behavior to stay visible through a public interface, not only a private helper.
+- Require boundary mocks to be named explicitly, and require owned-collaborator or private-helper-only tests to be justified.
+- When refactor work is claimed, require evidence that the relevant tests stayed GREEN through the refactor step.
 - use `.pi/agent/docs/deep_module_refactoring_workflow.md` when deciding whether an interface or a private helper is the real test surface
 - For Graphify-backed architecture claims, require source-backed confirmation of freshness, confidence, and file-level evidence before treating the claim as a finding.
 - Graphify-backed acceptance cannot pass unless the latest relevant graph was queried or freshness/cadence was checked, and important claims were verified with direct source inspection.
