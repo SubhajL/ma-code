@@ -6,6 +6,8 @@ import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { decideGraphifyValidation, type GraphifyValidationDecisionInput } from "./graphify-validation-decision.ts";
+
 export type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
 export type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
 export type ValidationTier = "lightweight" | "standard" | "strict";
@@ -85,6 +87,7 @@ export interface TaskUpdateParams {
   validationSource?: ValidationSource;
   validationDecision?: "pass" | "fail" | "blocked";
   validationChecklist?: ValidationChecklist;
+  graphifyValidation?: GraphifyValidationDecisionInput;
   approvalRef?: string;
 }
 
@@ -106,6 +109,15 @@ const ValidationChecklistSchema = Type.Object({
   tests: StringEnum(CHECKLIST_STATUSES),
   diff_review: StringEnum(CHECKLIST_STATUSES),
   evidence: StringEnum(CHECKLIST_STATUSES),
+});
+
+const GraphifyValidationInputSchema = Type.Object({
+  graphifyBackedClaim: Type.Boolean(),
+  required: Type.Optional(Type.Boolean()),
+  freshnessOrCadenceChecked: Type.Optional(Type.Boolean()),
+  latestRelevantGraphQueried: Type.Optional(Type.Boolean()),
+  importantClaimsSourceVerified: Type.Optional(Type.Boolean()),
+  explicitFailure: Type.Optional(Type.Boolean()),
 });
 
 const TaskUpdateSchema = Type.Object({
@@ -135,6 +147,7 @@ const TaskUpdateSchema = Type.Object({
   validationSource: Type.Optional(StringEnum(VALIDATION_SOURCES)),
   validationDecision: Type.Optional(StringEnum(VALIDATION_DECISIONS)),
   validationChecklist: Type.Optional(ValidationChecklistSchema),
+  graphifyValidation: Type.Optional(GraphifyValidationInputSchema),
   approvalRef: Type.Optional(Type.String()),
 });
 
@@ -254,6 +267,14 @@ function transitionToTerminalReviewOutcome(task: TaskRecord, decision: "fail" | 
   task.status = decision === "fail" ? "failed" : "blocked";
   task.notes.push(note);
   task.timestamps.updatedAt = nowIso();
+}
+
+function hasGraphifyBackedAcceptance(task: TaskRecord): boolean {
+  return task.acceptance.some((item) => /graphify-backed|graphify backed/i.test(item));
+}
+
+function graphifyDecisionEvidence(state: string, reason: string): string {
+  return `Graphify validation decision: ${state}; ${reason}`;
 }
 
 function isMutatingBash(command: string): boolean {
@@ -652,6 +673,23 @@ export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams
       };
     }
 
+    const graphifyRequiredByAcceptance = hasGraphifyBackedAcceptance(task);
+    const graphifyInput = params.graphifyValidation ?? (graphifyRequiredByAcceptance ? { graphifyBackedClaim: true, required: true } : undefined);
+    const graphifyDecision = graphifyInput
+      ? decideGraphifyValidation({
+          ...graphifyInput,
+          graphifyBackedClaim: graphifyInput.graphifyBackedClaim || graphifyRequiredByAcceptance,
+          required: graphifyInput.required === true || graphifyRequiredByAcceptance,
+        })
+      : null;
+
+    if (params.validationDecision === "pass" && graphifyDecision?.blocking) {
+      return {
+        content: [{ type: "text" as const, text: graphifyDecision.reason }],
+        details: { ok: false, graphifyValidation: graphifyDecision },
+      };
+    }
+
     task.validation = {
       tier: completionGatePolicy.task_classes[task.taskClass].tier,
       decision: params.validationDecision,
@@ -663,12 +701,15 @@ export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams
     if (params.evidence && params.evidence.length > 0) {
       task.evidence.push(...params.evidence);
     }
+    if (graphifyDecision) {
+      task.evidence.push(graphifyDecisionEvidence(graphifyDecision.state, graphifyDecision.reason));
+    }
     task.timestamps.updatedAt = nowIso();
 
     if (params.validationDecision === "pass") {
       return {
         content: [{ type: "text" as const, text: `Validation passed for ${task.id}` }],
-        details: { ok: true, task, validationDecision: task.validation.decision },
+        details: { ok: true, task, validationDecision: task.validation.decision, graphifyValidation: graphifyDecision },
       };
     }
 
@@ -685,7 +726,7 @@ export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams
               : `Validation blocked ${task.id}`,
         },
       ],
-      details: { ok: true, task, validationDecision: task.validation.decision, activeTaskId: state.activeTaskId },
+      details: { ok: true, task, validationDecision: task.validation.decision, activeTaskId: state.activeTaskId, graphifyValidation: graphifyDecision },
     };
   }
 

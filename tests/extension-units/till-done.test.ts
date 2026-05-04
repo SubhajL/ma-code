@@ -46,6 +46,81 @@ test("implementation tasks cannot complete without validation", async () => {
   );
 });
 
+test("Graphify-backed acceptance cannot validate pass without graph freshness/query and source verification proof", async () => {
+  const { execute } = await setupTillDone();
+
+  const createResult = await execute({
+    action: "create",
+    title: "graphify validation task",
+    acceptance: ["Graphify-backed acceptance must verify architecture claims"],
+  });
+  const taskId = (createResult as any).details.task.id as string;
+
+  await execute({ action: "claim", id: taskId, owner: "assistant" });
+  await execute({ action: "start", id: taskId });
+  await execute({ action: "evidence", id: taskId, evidence: ["Changed files: docs.md"] });
+  await execute({ action: "review", id: taskId });
+
+  const validateResult = await execute({
+    action: "validate",
+    id: taskId,
+    validationSource: "validator",
+    validationDecision: "pass",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "met",
+      diff_review: "met",
+      evidence: "met",
+    },
+  });
+
+  assert.match(textContent(validateResult), /Graphify-backed acceptance cannot pass/i);
+  assert.equal((validateResult as any).details.graphifyValidation.state, "blocked");
+  assert.deepEqual((validateResult as any).details.graphifyValidation.missingProof, [
+    "latest_relevant_graph_queried_or_freshness_cadence_checked",
+    "important_claims_verified_with_direct_source_inspection",
+  ]);
+});
+
+test("Graphify-backed acceptance validates pass with freshness or query proof and source verification", async () => {
+  const { execute } = await setupTillDone();
+
+  const createResult = await execute({
+    action: "create",
+    title: "graphify validation task",
+    acceptance: ["Graphify-backed acceptance must verify architecture claims"],
+  });
+  const taskId = (createResult as any).details.task.id as string;
+
+  await execute({ action: "claim", id: taskId, owner: "assistant" });
+  await execute({ action: "start", id: taskId });
+  await execute({ action: "evidence", id: taskId, evidence: ["Changed files: docs.md"] });
+  await execute({ action: "review", id: taskId });
+
+  const validateResult = await execute({
+    action: "validate",
+    id: taskId,
+    validationSource: "validator",
+    validationDecision: "pass",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "met",
+      diff_review: "met",
+      evidence: "met",
+    },
+    graphifyValidation: {
+      graphifyBackedClaim: true,
+      required: true,
+      freshnessOrCadenceChecked: true,
+      importantClaimsSourceVerified: true,
+    },
+  });
+
+  assert.equal(textContent(validateResult), `Validation passed for ${taskId}`);
+  assert.equal((validateResult as any).details.graphifyValidation.state, "pass");
+  assert.ok((validateResult as any).details.task.evidence.some((item: string) => item.includes("Graphify validation decision: pass")));
+});
+
 test("docs tasks can use lighter review-backed validation and complete", async () => {
   const { execute } = await setupTillDone();
 
