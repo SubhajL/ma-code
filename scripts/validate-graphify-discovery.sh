@@ -244,7 +244,7 @@ check_2_graphify_unit_tests() {
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-adapter.test.ts"
 
   if run_test_file "$runtime_dir" "tests/extension-units/graphify-adapter.test.ts" "$out"; then
-    local detail="Graphify adapter unit tests passed for install detection, no-auto-install behavior, managed query, approval gate, forbidden flags, and managed output constraints."
+    local detail="Graphify adapter unit tests passed for install detection, no-auto-install behavior, managed query, freshness/cadence guidance, approval gate, forbidden flags, preflight-token enforcement, and managed output constraints."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -263,7 +263,7 @@ check_3_graphify_integration_test() {
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/integration/graphify-adapter.test.ts"
 
   if run_test_file "$runtime_dir" "tests/integration/graphify-adapter.test.ts" "$out"; then
-    local detail="Graphify adapter integration test passed for fake-binary execution, managed artifact output, sanitized source snapshot, and metadata proof."
+    local detail="Graphify adapter integration test passed for fake-binary execution, managed artifact output, sanitized source snapshot, metadata proof, and final-validation freshness guidance."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"

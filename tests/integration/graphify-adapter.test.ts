@@ -82,5 +82,18 @@ test("Graphify adapter invokes fake binary with real CLI update shape in managed
     assert.equal(metadata.sanitizedSourcePath, join(result.details.outputPath, "source-snapshot"));
     assert.equal(metadata.purpose, "architecture_review");
     assert.equal(metadata.edgeConfidencePolicy.ambiguous, "requires_direct_file_inspection_before_use");
+
+    const freshness = await tool.execute(
+      "tool-call-id",
+      { action: "freshness", taskId: "task-integration", cadencePhase: "before_final_validation" },
+      undefined,
+      undefined,
+      makeCtx(cwd),
+    );
+    assert.equal(freshness.details.status, "completed");
+    assert.equal(freshness.details.graphPresent, true);
+    assert.equal(freshness.details.metadataPresent, true);
+    assert.equal(freshness.details.freshnessStatus, "fresh");
+    assert.equal(freshness.details.recommendedNextAction, "query_then_direct_verify");
   });
 });

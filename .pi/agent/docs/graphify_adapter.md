@@ -13,9 +13,12 @@
   - `status`: detect whether a `graphify` binary is available.
   - `preflight`: dry-run scan validation for source/output/approval/forbidden-argument constraints and file count; returns a command preview, install detection, and deterministic `preflightToken` without creating a source snapshot, metadata, graph artifacts, or a Graphify process.
   - `scan`: run one bounded one-shot scan into a managed artifact directory using the installed CLI shape `graphify update <managed-source-snapshot>`; requires the matching `preflightToken` from a preflight call with the same safe request attributes.
+  - `freshness`: inspect an existing managed Graphify artifact without scanning or querying graph content. It reports graph/metadata presence, metadata `headCommit`, current HEAD, dirty worktree state, `freshnessStatus`, and `recommendedNextAction` for an optional `cadencePhase` (`before_broad_planning`, `implementation_loop`, `after_structural_change`, or `before_final_validation`).
   - `query`: read an existing managed `graph.json`, `graphify-out/graph.json`, or real-CLI `source-snapshot/graphify-out/graph.json` and summarize confidence/freshness evidence. Query responses include `details.querySummary` with minimal structured fields for query, graph/output paths, edge count, node count, confidence counts, freshness status, and direct-verification reminder.
 - `preflight` and `scan` require a broad `purpose`: `architecture_review`, `dependency_exploration`, `drift_analysis`, `large_subsystem_mapping`, or `curated_research`. Use local `read` / `rg` / `find` instead for narrow exact verification.
 - `preflightToken` is stateless and deterministic from normalized source path, managed output path, task id, purpose, file count, max file threshold, approved-large-corpus flag, and safe extra args; changing any of those requires rerunning preflight before scan.
+- `freshnessStatus` values are `fresh`, `stale_head`, `dirty_worktree`, `missing_metadata`, and `missing_graph`.
+- `recommendedNextAction` values are `run_preflight_then_scan`, `query_then_direct_verify`, `do_not_rescan_for_small_loop`, and `use_local_verification`.
 
 ## Safety controls
 - No auto-install: if missing, the adapter reports `Graphify not installed` and manual guidance `pip install graphifyy`; `preflight` records missing/install status but still does not install or run Graphify.
@@ -37,6 +40,12 @@
   - `hook` / `install`
   - `--output` / `--out` / `-o` in `extraArgs`
 - Semantic/deep/multimodal/URL-style extraction flags are blocked by default; add a new explicit approval field before enabling any such mode.
+
+## Freshness/cadence rules
+- Use `action: "freshness"` before broad planning, after structural changes, or before final validation when an existing Graphify artifact may already be available.
+- Missing graph or missing metadata means the operator should run preflight then scan only if broad Graphify discovery is still warranted.
+- Dirty worktrees are intentionally conservative: the graph may be stale relative to uncommitted changes. In implementation loops, prefer local verification and avoid rescanning for small local edits.
+- Before final validation with a fresh graph, query the graph for leads and directly verify important claims in source files before acceptance.
 
 ## Evidence rules
 - Every scan writes `metadata.json` with:
