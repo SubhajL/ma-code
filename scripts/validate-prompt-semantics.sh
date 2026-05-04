@@ -328,6 +328,7 @@ else:
         expect = fixture.get("expect")
         text = fixture.get("content", "")
         expected_errors = fixture.get("expectedErrors", [])
+        required_substrings = fixture.get("requiredSubstrings", [])
         if role not in VALIDATORS:
             failures.append(f"{fixture_id} :: unsupported role {role}")
             continue
@@ -335,6 +336,10 @@ else:
             failures.append(f"{fixture_id} :: expect must be pass or fail")
             continue
         errors = sorted(set(VALIDATORS[role](text)))
+        missing_substrings = [needle for needle in required_substrings if needle.lower() not in text.lower()]
+        if missing_substrings:
+            errors.append("fixture.missing_required_substrings")
+        errors = sorted(set(errors))
         if expect == "pass":
             if errors:
                 failures.append(f"{fixture_id} :: expected pass but got errors {errors}")
