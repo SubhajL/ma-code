@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { constants, existsSync } from "node:fs";
 import { access, cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
@@ -68,6 +69,7 @@ const GraphifyAdapterSchema = Type.Object({
   outputPath: Type.Optional(Type.String({ description: "Optional output path. Must be under .pi/agent/artifacts/graphify/." })),
   query: Type.Optional(Type.String({ description: "Query or topic to summarize from an existing graph.json artifact." })),
   purpose: Type.Optional(Type.String({ description: "Required for preflight/scan. Must be a broad Graphify discovery purpose: architecture_review, dependency_exploration, drift_analysis, large_subsystem_mapping, or curated_research." })),
+  preflightToken: Type.Optional(Type.String({ description: "Required for scan. Copy the deterministic token returned by a matching preflight call." })),
   approvedLargeCorpus: Type.Optional(Type.Boolean({ description: "Set true only after explicit human approval for a large corpus scan." })),
   maxFilesWithoutApproval: Type.Optional(Type.Integer({ minimum: 1, maximum: 100000 })),
   extraArgs: Type.Optional(Type.Array(Type.String(), { description: "Additional safe one-shot Graphify CLI args. Watch/MCP/hooks/Neo4j push, output overrides, and semantic/multimodal/deep/url extraction are blocked." })),
@@ -83,6 +85,7 @@ type GraphifyParams = {
   outputPath?: string;
   query?: string;
   purpose?: string;
+  preflightToken?: string;
   approvedLargeCorpus?: boolean;
   maxFilesWithoutApproval?: number;
   extraArgs?: string[];
@@ -397,6 +400,21 @@ function validateBroadPurpose(params: GraphifyParams) {
   return { ok: true as const, purpose };
 }
 
+function makePreflightToken(params: GraphifyParams, validation: { source: string; output: string; fileCount: number; maxFiles: number; purpose: string }): string {
+  const basis = {
+    version: 1,
+    sourcePath: validation.source,
+    outputPath: validation.output,
+    taskId: sanitizeTaskId(params.taskId),
+    purpose: validation.purpose,
+    fileCount: validation.fileCount,
+    maxFilesWithoutApproval: validation.maxFiles,
+    approvedLargeCorpus: params.approvedLargeCorpus === true,
+    extraArgs: params.extraArgs ?? [],
+  };
+  return createHash("sha256").update(JSON.stringify(basis)).digest("hex");
+}
+
 function findForbiddenArgs(extraArgs: string[] | undefined): string[] {
   return (extraArgs ?? []).filter((arg) => {
     const normalized = arg.toLowerCase().split("=", 1)[0];
@@ -564,6 +582,7 @@ async function preflightResult(params: GraphifyParams, cwd: string) {
       maxFilesWithoutApproval: validation.maxFiles,
       approvedLargeCorpus: params.approvedLargeCorpus === true,
       purpose: validation.purpose,
+      preflightToken: makePreflightToken(params, validation),
       installed: detection.installed,
       binaryPath: detection.binaryPath,
       reason: detection.reason,
@@ -578,6 +597,20 @@ async function preflightResult(params: GraphifyParams, cwd: string) {
 async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSignal | undefined) {
   const validation = await validateScanRequest(params, cwd);
   if (!validation.ok) return validation.result;
+
+  const expectedPreflightToken = makePreflightToken(params, validation);
+  if (!params.preflightToken) {
+    return {
+      content: [{ type: "text" as const, text: "Graphify scan blocked: preflightToken is required. Run graphify_adapter action=preflight with the same safe request attributes, then pass the returned token to scan." }],
+      details: { status: "blocked_missing_preflight_token", expectedRequest: "matching_preflight_required" },
+    };
+  }
+  if (params.preflightToken !== expectedPreflightToken) {
+    return {
+      content: [{ type: "text" as const, text: "Graphify scan blocked: preflightToken does not match the current scan request. Rerun preflight after changing source, output, taskId, purpose, file count, approval, threshold, or extra args." }],
+      details: { status: "blocked_invalid_preflight_token", preflightTokenStatus: "mismatch" },
+    };
+  }
 
   const detection = await findGraphifyBinary();
   if (!detection.installed || !detection.binaryPath) {
@@ -607,6 +640,7 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
     graphifyWorkingDirectory: validation.output,
     fileCount: validation.fileCount,
     purpose: validation.purpose,
+    preflightToken: expectedPreflightToken,
     excludes: SENSITIVE_EXCLUDES,
     edgeConfidencePolicy: citationPolicy(),
     freshnessEvidence: `Graphify report generated from HEAD ${headCommit} at ${generatedAt}`,
@@ -653,6 +687,7 @@ async function scanResult(params: GraphifyParams, cwd: string, signal: AbortSign
       graphFreshness: { generatedAt, headCommit, sourcePath: validation.source },
       citationPolicy: citationPolicy(),
       fileCount: validation.fileCount,
+      preflightTokenStatus: "matched",
       stdout: truncate(result.stdout, 2000),
       stderr: truncate(result.stderr, 2000),
     },

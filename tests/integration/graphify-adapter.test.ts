@@ -45,10 +45,20 @@ test("Graphify adapter invokes fake binary with real CLI update shape in managed
   graphifyAdapter(pi as any);
   const tool = pi.getTool("graphify_adapter");
 
+  const preflight = await tool.execute(
+    "tool-call-id",
+    { action: "preflight", taskId: "task-integration", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(preflight.details.status, "preflight_ok");
+  assert.equal(typeof preflight.details.preflightToken, "string");
+
   await withEnv({ GRAPHIFY_BIN: fakeBinary }, async () => {
     const result = await tool.execute(
       "tool-call-id",
-      { action: "scan", taskId: "task-integration", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true },
+      { action: "scan", taskId: "task-integration", sourcePath: ".", purpose: "architecture_review", approvedLargeCorpus: true, preflightToken: preflight.details.preflightToken },
       undefined,
       undefined,
       makeCtx(cwd),
