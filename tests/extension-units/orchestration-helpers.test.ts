@@ -162,6 +162,77 @@ test("task-packets default planning-completeness fields remain explicit for boun
   assert.match(generated.packet.migrationPathNote, /Not applicable/);
 });
 
+test("task packets and handoffs preserve optional Graphify evidence", async () => {
+  const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
+  const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));
+  const handoffPolicy = parseHandoffPolicy(JSON.parse(await readFixture(".pi/agent/handoffs/handoff-policy.json")));
+  const teams = {
+    planning: parseTeamDefinition(await readFixture(".pi/agent/teams/planning.yaml"), "planning"),
+    build: parseTeamDefinition(await readFixture(".pi/agent/teams/build.yaml"), "build"),
+    quality: parseTeamDefinition(await readFixture(".pi/agent/teams/quality.yaml"), "quality"),
+    recovery: parseTeamDefinition(await readFixture(".pi/agent/teams/recovery.yaml"), "recovery"),
+  };
+
+  const packetGraphifyEvidence = {
+    graphifyBackedClaim: true,
+    claimScope: "graphify_backed_claim",
+    policy: "required_for_graphify_backed_claims",
+    required: true,
+    latestRelevantGraphQueried: true,
+    importantClaimsSourceVerified: true,
+    graphifyValidationState: "pass",
+    graphifyOrchestrationAction: "query_graph",
+    graphifyAdapterAction: "query",
+    graphifyArtifactPath: ".pi/agent/artifacts/graphify/task-graphify-evidence/graph.json",
+    sourceVerificationNotes: ["Verified architecture claim against .pi/agent/extensions/task-packets.ts"],
+  };
+
+  const generated = generateTaskPacket(packetPolicy, teams, routingConfig, {
+    sourceGoalId: "harness-graphify-evidence",
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    title: "Carry Graphify proof through packets",
+    scope: "Only packet and handoff Graphify evidence fields.",
+    workType: "implementation",
+    domains: ["backend"],
+    allowedPaths: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
+    acceptanceCriteria: ["Graphify evidence is preserved in packet and handoff output"],
+    graphifyEvidence: packetGraphifyEvidence,
+  } as any);
+
+  validateTaskPacketShape(generated.packet);
+  assert.deepEqual((generated.packet as any).graphifyEvidence, packetGraphifyEvidence);
+  assert.match(generated.renderedPacket, /## Graphify Evidence/);
+  assert.match(generated.renderedPacket, /graphify validation state: pass/);
+  assert.match(generated.renderedPacket, /graphify adapter action: query/);
+
+  const handoffGraphifyEvidence = {
+    graphifyValidationState: "pass",
+    latestRelevantGraphQueried: true,
+    importantClaimsSourceVerified: true,
+    sourceVerificationNotes: ["Quality handoff preserved source verification proof."],
+  };
+
+  const handoff = generateHandoff(handoffPolicy, {
+    handoffType: "worker_to_quality",
+    sourcePacket: generated.packet,
+    fromRole: "backend_worker",
+    toRole: "quality_lead",
+    changedFiles: [".pi/agent/extensions/task-packets.ts", ".pi/agent/extensions/handoffs.ts"],
+    acceptanceCoverage: ["Graphify evidence fields are preserved through worker handoff."],
+    evidence: ["targeted orchestration helper test output PASS"],
+    commandsRun: ["npx --yes tsx --test tests/extension-units/orchestration-helpers.test.ts"],
+    wiringVerification: ["generate_handoff preserves packet Graphify evidence and detail Graphify evidence."],
+    graphifyEvidence: handoffGraphifyEvidence,
+  } as any);
+
+  validateStructuredHandoff(handoff.handoff);
+  assert.deepEqual((handoff.handoff.preservedPacket as any).graphifyEvidence, packetGraphifyEvidence);
+  assert.deepEqual((handoff.handoff.details as any).graphifyEvidence, handoffGraphifyEvidence);
+  assert.match(handoff.renderedHandoff, /## Graphify Evidence/);
+  assert.match(handoff.renderedHandoff, /Quality handoff preserved source verification proof/);
+});
+
 test("handoffs preserve stronger planning context for worker-to-quality flow", async () => {
   const routingConfig = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const packetPolicy = parsePacketPolicy(JSON.parse(await readFixture(".pi/agent/packets/packet-policy.json")));

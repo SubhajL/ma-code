@@ -255,6 +255,65 @@
           "type": "string"
         }
       }
+    },
+    "graphifyEvidence": {
+      "description": "Optional structured Graphify evidence expectations or proof for Graphify-backed or architecture-review claims. This is evidence metadata only and does not make Graphify mandatory.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "graphifyBackedClaim": {
+          "type": "boolean"
+        },
+        "claimScope": {
+          "type": "string",
+          "enum": [
+            "graphify_backed_claim",
+            "architecture_review",
+            "other"
+          ]
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "optional_default",
+            "required_for_graphify_backed_claims",
+            "required_for_architecture_review",
+            "disabled"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "latestRelevantGraphQueried": {
+          "type": "boolean"
+        },
+        "freshnessOrCadenceChecked": {
+          "type": "boolean"
+        },
+        "importantClaimsSourceVerified": {
+          "type": "boolean"
+        },
+        "graphifyValidationState": {
+          "type": "string"
+        },
+        "graphifyOrchestrationAction": {
+          "type": "string"
+        },
+        "graphifyAdapterAction": {
+          "type": "string"
+        },
+        "graphifyArtifactPath": {
+          "type": "string"
+        },
+        "sourceVerificationNotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

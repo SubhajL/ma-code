@@ -301,6 +301,7 @@ Each packet should include:
 - evidence expectations
 - validation expectations
 - expected proof artifacts or command results
+- optional structured `graphifyEvidence` when Graphify-backed or architecture-review claims need graph query/freshness/source-verification proof
 - wiring or registration checks when new runtime components are involved
 - migration-path note when the packet touches an architectural boundary or explicitly says that no migration is needed
 - escalation instructions
@@ -326,6 +327,7 @@ The generator validates:
 - required migration-path note
 - build-packet modify lists for packets expected to make changes
 - optional model override attachment through executable routing policy when needed
+- optional `graphifyEvidence` preservation as metadata only; it does not make Graphify globally mandatory or run Graphify from packet generation
 
 ### Recommended packet template
 ```md
@@ -392,6 +394,9 @@ The generator validates:
 - focused validator or unit-test output proves illegal done-without-evidence is blocked
 - changed files and known gaps are recorded before handoff
 
+## Graphify Evidence
+- none unless Graphify-backed or architecture-review claims require graph query/freshness/source-verification proof
+
 ## Wiring Checks
 - verify the transition logic is actually reached from the task update path
 
@@ -432,6 +437,7 @@ Must include:
 - packet-derived scope boundaries
 - evidence produced
 - packet-derived evidence expectations and expected proof
+- optional Graphify evidence when graph query/freshness/source-verification proof was required or produced
 - validation commands run when relevant
 - packet-derived wiring checks plus wiring verification summary when relevant
 - known gaps
@@ -452,6 +458,7 @@ Must include:
 - packet-derived scope boundaries
 - acceptance criteria to check
 - expected proof artifacts
+- optional Graphify evidence needed to decide Graphify-backed or architecture-review claims
 - exact validation questions
 - wiring checks that may explain pass/fail behavior
 
@@ -473,7 +480,7 @@ The current repo-local executable handoff contract is enforced by:
 
 The generator validates:
 - role-pair correctness for each supported handoff type
-- preservation of packet scope, discovery summary, evidence expectations, expected proof, wiring checks, and escalation instructions
+- preservation of packet scope, discovery summary, evidence expectations, expected proof, optional `graphifyEvidence`, wiring checks, and escalation instructions
 - policy-declared required packet/detail structure for each handoff type
 - role-specific required sections before a handoff is emitted
 
@@ -507,6 +514,9 @@ The generator validates:
 - expected proof: ...
 - missing proof if any: ...
 
+## Graphify Evidence
+- graphify validation state, graph query/freshness proof, source-verification notes, or none
+
 ## Wiring Checks
 - packet-derived wiring checks
 
@@ -534,6 +544,9 @@ The generator validates:
 ## Validation Questions
 - does wiring stay reachable?
 - do preserved scope boundaries still match the implementation?
+
+## Graphify Evidence
+- graphify validation state, graph query/freshness proof, source-verification notes, or none
 
 ## Wiring Checks
 - runtime registration is still present

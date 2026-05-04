@@ -109,6 +109,8 @@ workflow_doc = (root / ".pi/agent/docs/architecture_review_workflow.md").read_te
 validation_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 file_map_doc = (root / ".pi/agent/docs/file_map.md").read_text(encoding="utf-8")
 readme_doc = (root / "README.md").read_text(encoding="utf-8")
+task_packet_schema_doc = (root / ".pi/agent/state/schemas/task-packet.schema.json").read_text(encoding="utf-8")
+handoff_schema_doc = (root / ".pi/agent/state/schemas/handoff.schema.json").read_text(encoding="utf-8")
 queue_schema_doc = (root / ".pi/agent/state/schemas/queue.schema.json").read_text(encoding="utf-8")
 queue_semantics_doc = (root / ".pi/agent/docs/queue_semantics.md").read_text(encoding="utf-8")
 validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architecture.md").read_text(encoding="utf-8")
@@ -125,6 +127,7 @@ product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").re
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
 g_coding_skill = (root / "packages/pi-g-skills/skills/g-coding/SKILL.md").read_text(encoding="utf-8")
+team_orchestration_doc = (root / ".pi/agent/docs/team_orchestration_architecture.md").read_text(encoding="utf-8")
 planning_lead_prompt = (root / ".pi/agent/prompts/roles/planning_lead.md").read_text(encoding="utf-8")
 research_worker_prompt = (root / ".pi/agent/prompts/roles/research_worker.md").read_text(encoding="utf-8")
 gitignore_doc = (root / ".gitignore").read_text(encoding="utf-8")
@@ -139,6 +142,8 @@ discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts")
 graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-validation-decision.ts").read_text(encoding="utf-8")
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
+task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
+handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
 queue_runner = (root / ".pi/agent/extensions/queue-runner.ts").read_text(encoding="utf-8")
 queue_runner_validator = (root / "scripts/validate-queue-runner.sh").read_text(encoding="utf-8")
 extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
@@ -306,6 +311,36 @@ assert "graphify-orchestrator.ts" in queue_runner_validator
 assert "graphify-orchestration-decision.ts" in queue_runner_validator
 assert "research Graphify orchestration" in queue_runner_validator
 assert "graphify-orchestrator.ts" in core_workflows_validator
+
+for needle in [
+    "GraphifyEvidence",
+    "graphifyEvidence",
+    "renderGraphifyEvidence",
+    "graphify validation state",
+]:
+    assert needle in task_packets_extension
+for needle in [
+    "graphifyEvidence",
+    "renderGraphifyEvidence",
+    "preservedPacket",
+    "details",
+]:
+    assert needle in handoffs_extension
+for needle in [
+    "graphifyEvidence",
+    "latestRelevantGraphQueried",
+    "importantClaimsSourceVerified",
+    "Graphify-backed or architecture-review claims",
+]:
+    assert needle in task_packet_schema_doc
+    assert needle in handoff_schema_doc
+for needle in [
+    "optional `graphifyEvidence`",
+    "Graphify Evidence",
+    "source-verification proof",
+]:
+    assert needle in team_orchestration_doc
+assert "optional `graphifyEvidence` metadata" in readme_doc
 
 architecture_boundary_needles = [
     "## Architecture Boundary Map",
