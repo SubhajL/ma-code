@@ -241,6 +241,14 @@ const cases = [
   { input: "review architecture", expectedSkill: "g-review", expectedTransformed: true },
   { input: "create a PR for this branch", expectedSkill: "g-submit", expectedTransformed: true },
   { input: "prepare the commit for these ready changes", expectedSkill: "g-create", expectedTransformed: true },
+  { input: "brainstorm some product options before we commit", expectedSkill: "g-grill", expectedTransformed: true },
+  { input: "research the option space before planning", expectedSkill: "g-grill", expectedTransformed: true },
+  { input: "create a PRD for this feature", expectedSkill: "g-prd", expectedTransformed: true },
+  { input: "write a product spec for this feature", expectedSkill: "g-prd", expectedTransformed: true },
+  { input: "break this PRD into backlog tasks", expectedSkill: "g-issues", expectedTransformed: true },
+  { input: "split this plan into vertical slices", expectedSkill: "g-issues", expectedTransformed: true },
+  { input: "refactor this subsystem", expectedSkill: "g-refactor", expectedTransformed: true },
+  { input: "improve codebase architecture with a deep module refactor", expectedSkill: "g-refactor", expectedTransformed: true },
   { input: "/skill:g-coding implement a docs-only clarification task", expectedSkill: "g-coding", expectedTransformed: false },
   { input: "/skill:g-submit create a PR for this branch", expectedSkill: "g-submit", expectedTransformed: false },
   { input: "/skill:g-create prepare the commit for these ready changes", expectedSkill: "g-create", expectedTransformed: false },
@@ -284,7 +292,7 @@ EOF
     local detail="All required route cases matched expected skill selection, including explicit /skill preservation for core and new global skills plus the bare-review non-match guard."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper results written to: $out\n- route cases covered:\n  - planning intent\n  - coding intent\n  - bounded review intent\n  - architecture review intent\n  - PR submission intent\n  - branch/commit creation intent\n  - explicit /skill:g-coding preservation\n  - explicit /skill:g-submit preservation\n  - explicit /skill:g-create preservation\n  - explicit /skill:g-grill preservation\n  - explicit /skill:g-prd preservation\n  - explicit /skill:g-issues preservation\n  - explicit /skill:g-refactor preservation\n  - bare review non-match guard"
+    append_check_section "$name" "PASS" "$cmd" "- helper results written to: $out\n- route cases covered:\n  - planning intent\n  - coding intent\n  - bounded review intent\n  - architecture review intent\n  - PR submission intent\n  - branch/commit creation intent\n  - brainstorm/research -> g-grill\n  - PRD/spec -> g-prd\n  - backlog/tasks/vertical slices -> g-issues\n  - refactor/deep module -> g-refactor\n  - explicit /skill:g-coding preservation\n  - explicit /skill:g-submit preservation\n  - explicit /skill:g-create preservation\n  - explicit /skill:g-grill preservation\n  - explicit /skill:g-prd preservation\n  - explicit /skill:g-issues preservation\n  - explicit /skill:g-refactor preservation\n  - bare review non-match guard"
   else
     local detail="Helper-level route classification failed."
     record_result "$name" "FAIL" "$detail"
