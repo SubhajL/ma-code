@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-05_full-chain-harness-phase-0-slice-1.md`
+- `logs/coding/2026-05-06_full-chain-harness-phase-0-slice-2.md`
 
 ## Current planning log
-- `reports/planning/2026-05-05_full-chain-harness-phase-0-slice-1-plan.md`
+- `reports/planning/2026-05-06_full-chain-harness-phase-0-slice-2-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded full-chain-harness Phase 0 Slice 1 work.
+- These files capture the bounded full-chain-harness Phase 0 Slice 2 planning and implementation work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

@@ -451,9 +451,11 @@ Current dedicated harness-package script:
 This script is responsible for the bounded regression path for:
 - `.pi/agent/package/harness-package.json`
 - `scripts/harness-package.ts`
+- `scripts/harness-init-feature.ts`
 - bootstrap/install templates under `.pi/agent/package/templates/`
 - temp-target adoption without copying runtime history, logs, or reports
 - conservative `package.json` merge behavior plus explicit installed-version recording
+- explicit initiative-folder bootstrap and next-step guidance wiring in bootstrapped repos
 
 It should be used when changes affect reusable-vs-repo-local package boundaries, bootstrap/install behavior, or packaging templates.
 

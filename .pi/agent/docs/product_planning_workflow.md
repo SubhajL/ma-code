@@ -10,11 +10,14 @@ It adapts useful grill/PRD/issues patterns into the existing Pi harness without 
 - Use current harness task packets and queue jobs as the execution surface; do not introduce a separate issue tracker dependency in Phase 1.
 - Intake trigger details live in `.pi/agent/docs/intake_policy.md` and the machine-readable trigger matrix `.pi/agent/intake/intake-trigger-policy.json`.
 - Every major feature should keep durable planning artifacts under `docs/initiatives/<feature-slug>/`.
+- Use `npm run harness:init-feature -- --slug <feature-slug>` to scaffold that initiative folder before filling in the PRD/backlog/decisions docs.
 
 ## Workflow stages
 ### 1. Grill-style clarification
 Use this when requirements are fuzzy or the user is starting from a product idea.
 Ask one focused question at a time, and prefer answering from codebase/docs discovery when the answer is already knowable.
+
+After `harness:init-feature` creates the initiative folder, the helper's success output can suggest the bounded next skills `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues` as informational next steps only.
 
 Clarify:
 - target users and actors

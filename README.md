@@ -189,7 +189,10 @@ Harness package/bootstrap examples:
 npm run harness:package
 npm run harness:package:json
 node --import tsx scripts/harness-package.ts bootstrap --dest /path/to/target-repo
+npm run harness:init-feature -- --slug example-major-feature
 ```
+
+The bounded `harness:init-feature` helper scaffolds `docs/initiatives/<feature-slug>/` from the repo-local initiative templates and prints optional next-step suggestions for `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues`.
 
 See also:
 - `.pi/agent/docs/harness_packaging_strategy.md`

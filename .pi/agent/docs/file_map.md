@@ -85,6 +85,7 @@
 - `scripts/harness-operator-status.ts`
 - `scripts/harness-queue-session.ts`
 - `scripts/harness-package.ts`
+- `scripts/harness-init-feature.ts` — Bounded helper that scaffolds `docs/initiatives/<feature-slug>/` from repo-local templates and suggests next planning skills without auto-running them.
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 - `scripts/harness-pr-gate.ts`
