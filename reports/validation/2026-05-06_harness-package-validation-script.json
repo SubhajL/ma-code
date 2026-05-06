@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. harness package helper compiles",
+      "status": "PASS",
+      "detail": "harness-package helper and bootstrap integration test compile in an isolated runtime package."
+    },
+    {
+      "name": "2. harness package bootstrap integration",
+      "status": "PASS",
+      "detail": "bootstrap integration tests passed for reusable asset copy, fresh runtime placeholder generation, package.json merge behavior, and preservation of existing repo-local files."
+    },
+    {
+      "name": "3. package manifest/install/operator doc wiring",
+      "status": "PASS",
+      "detail": "package manifest, install docs, package-script wiring, and operator-doc entrypoints are present for repeatable harness bootstrap and onboarding."
+    }
+  ]
+}

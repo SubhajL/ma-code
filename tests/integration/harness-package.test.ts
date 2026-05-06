@@ -51,6 +51,11 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.ok(result.generatedFiles.includes(".pi/agent/state/runtime/tasks.json"));
   assert.ok(result.generatedFiles.includes(".pi/agent/state/runtime/queue.json"));
   assert.ok(result.generatedFiles.includes(".pi/agent/state/runtime/scheduled-workflows.json"));
+  assert.ok(result.generatedFiles.includes("docs/product/intake-policy.md"));
+  assert.ok(result.generatedFiles.includes("docs/initiatives/README.md"));
+  assert.ok(result.generatedFiles.includes("docs/initiatives/TEMPLATE/prd.md"));
+  assert.ok(result.generatedFiles.includes("docs/initiatives/TEMPLATE/backlog.md"));
+  assert.ok(result.generatedFiles.includes("docs/initiatives/TEMPLATE/decisions.md"));
   assert.match(result.versionRecordPath, /installed-package\.json$/);
 
   const installedRecord = JSON.parse(
@@ -80,6 +85,23 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   ) as { version: number; paused: boolean; activeJobId: string | null; jobs: unknown[] };
   assert.deepEqual(queueState, { version: 1, paused: false, activeJobId: null, jobs: [] });
 
+  const intakePolicy = await readFile(join(destinationRoot, "docs", "product", "intake-policy.md"), "utf8");
+  assert.match(intakePolicy, /Tier 1/i);
+  assert.match(intakePolicy, /Tier 2/i);
+  assert.match(intakePolicy, /Tier 3/i);
+
+  const initiativesReadme = await readFile(join(destinationRoot, "docs", "initiatives", "README.md"), "utf8");
+  assert.match(initiativesReadme, /major feature/i);
+
+  const prdTemplate = await readFile(join(destinationRoot, "docs", "initiatives", "TEMPLATE", "prd.md"), "utf8");
+  const backlogTemplate = await readFile(join(destinationRoot, "docs", "initiatives", "TEMPLATE", "backlog.md"), "utf8");
+  const decisionsTemplate = await readFile(join(destinationRoot, "docs", "initiatives", "TEMPLATE", "decisions.md"), "utf8");
+  assert.match(prdTemplate, /PRD/i);
+  assert.match(backlogTemplate, /backlog/i);
+  assert.match(decisionsTemplate, /decisions/i);
+
+  assert.equal(await exists(join(destinationRoot, "docs", "frontend")), false);
+  assert.equal(await exists(join(destinationRoot, "docs", "backend")), false);
   assert.equal(await exists(join(destinationRoot, "logs", "harness-actions.jsonl")), false);
   assert.equal(await exists(join(destinationRoot, "reports", "validation")), false);
 });

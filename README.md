@@ -3,9 +3,10 @@
 This pack is reorganized so that the Pi-specific harness assets live **inside each repo that uses them**.
 
 ## Root-level files
-Keep these at repo root so Pi can discover them as project instructions:
+Keep these at repo root so Pi can discover them as project instructions and durable governance artifacts:
 - `AGENTS.md`
 - `SYSTEM.md`
+- `docs/`
 
 ## Repo-local Pi harness files
 Everything else lives under:
@@ -22,6 +23,7 @@ This includes:
 - extension specs
 - skills
 - harness docs
+- intake trigger policy metadata
 
 ## Current status
 This is a **repo-local harness foundation with first live runtime controls**, not a finished full harness.
@@ -179,6 +181,8 @@ node --import tsx scripts/harness-sync-main.ts --json
 ```
 
 The sync helper performs only a fast-forward update of local `main` from `origin/main`, preserves ignored runtime bookkeeping, and blocks when non-bookkeeping tracked dirt is present.
+
+Phase 0 durable bootstrap now also expects target repos to carry durable docs under `docs/`, including `docs/product/intake-policy.md` plus initiative templates under `docs/initiatives/TEMPLATE/` for major feature planning.
 
 Harness package/bootstrap examples:
 ```bash
