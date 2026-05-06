@@ -57,6 +57,7 @@ A successful bootstrap should leave the target repo with:
 - no copied `logs/` or `reports/`
 - no copied runtime task/queue history
 - `.pi/agent/package/installed-package.json` recording the installed harness version
+- a bounded `harness:init-feature` helper for scaffolding `docs/initiatives/<feature-slug>/`
 
 ## What not to assume after install
 Install/bootstrap does **not** mean:
@@ -64,6 +65,17 @@ Install/bootstrap does **not** mean:
 - routing defaults are correct for the new repo
 - repo-specific rules in `AGENTS.md` and `SYSTEM.md` are finalized
 - the harness is ready for unattended operation
+
+## Major-feature bootstrap after install
+When a new major feature starts, scaffold its durable initiative folder with:
+```bash
+npm run harness:init-feature -- --slug example-major-feature
+```
+
+Successful helper output is informational only and points operators toward:
+- `/skill:g-grill`
+- `/skill:g-prd`
+- `/skill:g-issues`
 
 ## Next docs
 After install, continue with:

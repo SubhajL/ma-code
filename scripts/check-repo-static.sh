@@ -34,6 +34,8 @@ required_files=(
   "scripts/validate-graphify-discovery.sh"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
+  "scripts/harness-init-feature.ts"
+  "tests/integration/harness-init-feature.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -129,6 +131,8 @@ graphify_discovery_doc = (root / ".pi/agent/docs/graphify_discovery_research.md"
 graphify_adapter_doc = (root / ".pi/agent/docs/graphify_adapter.md").read_text(encoding="utf-8")
 graphify_final_runbook_doc = (root / ".pi/agent/docs/graphify_final_runbook.md").read_text(encoding="utf-8")
 architecture_roadmap_alignment_doc = (root / ".pi/agent/docs/architecture_roadmap_alignment.md").read_text(encoding="utf-8")
+harness_package_install_doc = (root / ".pi/agent/docs/harness_package_install.md").read_text(encoding="utf-8")
+operator_install_guide_doc = (root / ".pi/agent/docs/operator_install_guide.md").read_text(encoding="utf-8")
 product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
@@ -151,6 +155,7 @@ validation_checklist_skill = (root / ".pi/agent/skills/validation-checklist/SKIL
 packet_policy_doc = (root / ".pi/agent/packets/packet-policy.json").read_text(encoding="utf-8")
 gitignore_doc = (root / ".gitignore").read_text(encoding="utf-8")
 package_manifest = json.loads((root / ".pi/agent/package/harness-package.json").read_text(encoding="utf-8"))
+package_template_json = json.loads((root / ".pi/agent/package/templates/package.template.json").read_text(encoding="utf-8"))
 core_workflows_validator = (root / "scripts/validate-core-workflows.sh").read_text(encoding="utf-8")
 graphify_validator = (root / "scripts/validate-graphify-discovery.sh").read_text(encoding="utf-8")
 reviewer_prompt = (root / ".pi/agent/prompts/roles/reviewer_worker.md").read_text(encoding="utf-8")
@@ -447,6 +452,10 @@ for needle in [
     "Product planning flows from grill-style clarification to PRD to vertical-slice backlog.",
     "Vertical slices must be independently demonstrable or verifiable.",
     "global skill ports `g-grill`, `g-prd`, and `g-issues`",
+    "harness:init-feature",
+    "/skill:g-grill",
+    "/skill:g-prd",
+    "/skill:g-issues",
 ]:
     assert needle in product_planning_doc
 for needle in [
@@ -627,6 +636,8 @@ assert "harness:pr-gate" in package_json.get("scripts", {})
 assert "test:pr-gate" in package_json.get("scripts", {})
 assert "harness:sync-main" in package_json.get("scripts", {})
 assert "test:sync-main" in package_json.get("scripts", {})
+assert "harness:init-feature" in package_json.get("scripts", {})
+assert "harness:init-feature" in package_template_json.get("scripts", {})
 for needle in [
     "gh pr checks",
     "--watch",
@@ -657,8 +668,19 @@ for needle in [
     assert needle in readme_doc
     assert needle in operator_workflow_doc
 for needle in [
+    "harness:init-feature",
+    "docs/initiatives/<feature-slug>/",
+    "/skill:g-grill",
+    "/skill:g-prd",
+    "/skill:g-issues",
+]:
+    assert needle in readme_doc
+    assert needle in harness_package_install_doc
+    assert needle in operator_install_guide_doc
+for needle in [
     "scripts/harness-pr-gate.ts",
     "scripts/harness-sync-main.ts",
+    "scripts/harness-init-feature.ts",
 ]:
     assert needle in file_map_doc
     assert needle in validation_doc

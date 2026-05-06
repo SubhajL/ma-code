@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
+import { execFile as execFileCallback } from "node:child_process";
 import test from "node:test";
+import { createRequire } from "node:module";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 
 import { bootstrapHarnessPackage, loadHarnessPackageManifest } from "../../scripts/harness-package.ts";
+
+const execFile = promisify(execFileCallback);
+const tsxImportPath = process.env.TSX_IMPORT_PATH ?? createRequire(import.meta.url).resolve("tsx");
 
 function requireSourceRoot(): string {
   const sourceRoot = process.env.HARNESS_SOURCE_ROOT;
@@ -44,6 +50,7 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(result.mergedPackageJson, true);
   assert.ok(result.copiedAssets.includes(".pi/agent/extensions/safe-bash.ts"));
   assert.ok(result.copiedAssets.includes("scripts/harness-operator-status.ts"));
+  assert.ok(result.copiedAssets.includes("scripts/harness-init-feature.ts"));
   assert.ok(result.copiedAssets.includes("tests/integration/core-workflows.test.ts"));
   assert.ok(result.generatedFiles.includes("AGENTS.md"));
   assert.ok(result.generatedFiles.includes("SYSTEM.md"));
@@ -73,7 +80,32 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(packageJson.name, "target-repo");
   assert.equal(packageJson.scripts.test, "echo existing-test-script");
   assert.equal(packageJson.scripts["harness:package"], "node --import tsx scripts/harness-package.ts manifest");
+  assert.equal(packageJson.scripts["harness:init-feature"], "node --import tsx scripts/harness-init-feature.ts");
   assert.equal(packageJson.devDependencies.tsx, "^4.20.5");
+
+  const initFeatureResult = await execFile(
+    process.execPath,
+    [
+      "--import",
+      tsxImportPath,
+      join(destinationRoot, "scripts", "harness-init-feature.ts"),
+      "--slug",
+      "payments-redesign",
+      "--json",
+    ],
+    {
+      cwd: destinationRoot,
+      encoding: "utf8",
+    },
+  );
+  const initFeatureJson = JSON.parse(initFeatureResult.stdout) as {
+    slug: string;
+    createdFiles: string[];
+    recommendedSkills: string[];
+  };
+  assert.equal(initFeatureJson.slug, "payments-redesign");
+  assert.deepEqual(initFeatureJson.recommendedSkills, ["g-grill", "g-prd", "g-issues"]);
+  assert.ok(initFeatureJson.createdFiles.includes("docs/initiatives/payments-redesign/prd.md"));
 
   const taskState = JSON.parse(
     await readFile(join(destinationRoot, ".pi", "agent", "state", "runtime", "tasks.json"), "utf8"),
