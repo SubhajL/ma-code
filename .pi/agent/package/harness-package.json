@@ -81,6 +81,15 @@
       ]
     },
     {
+      "target": ".pi/agent/state/runtime/leases.json",
+      "template": ".pi/agent/package/templates/runtime/leases.json",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Fresh execution lease runtime state placeholder."
+      ]
+    },
+    {
       "target": "docs/product/intake-policy.md",
       "template": ".pi/agent/package/templates/docs/product/intake-policy.template.md",
       "mode": "create_if_missing",
