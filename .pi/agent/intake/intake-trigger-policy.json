@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "tier1": {
+    "description": "Direct slice allowed for small, bounded, clearly local changes.",
+    "examples": [
+      "typo fix",
+      "narrow bugfix",
+      "local handler tweak with existing acceptance"
+    ],
+    "recommendedNextSkills": [
+      "g-planning",
+      "g-coding"
+    ]
+  },
+  "tier2": {
+    "description": "Planning required for high-risk but still bounded changes.",
+    "examples": [
+      "auth rule tweak in one endpoint",
+      "schema change with local migration implications",
+      "infra config adjustment with bounded blast radius"
+    ],
+    "recommendedNextSkills": [
+      "g-planning"
+    ],
+    "requires": [
+      "stronger_review_notes",
+      "stronger_validation_notes"
+    ]
+  },
+  "tier3": {
+    "description": "Full intake required for ambiguous or cross-cutting work.",
+    "examples": [
+      "new product behavior",
+      "new major feature",
+      "cross-domain auth/schema/infra change"
+    ],
+    "recommendedNextSkills": [
+      "g-grill",
+      "g-prd",
+      "g-issues"
+    ]
+  },
+  "domainBootstrapDefaults": {
+    "frontend": "conditional",
+    "backend": "conditional"
+  }
+}

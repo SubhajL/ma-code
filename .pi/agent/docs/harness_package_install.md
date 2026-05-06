@@ -28,6 +28,10 @@ Examples:
 - `SYSTEM.md`
 - `.pi/agent/models.json`
 - fresh runtime placeholders under `.pi/agent/state/runtime/*.json`
+- durable docs scaffold such as:
+  - `docs/product/intake-policy.md`
+  - `docs/initiatives/README.md`
+  - `docs/initiatives/TEMPLATE/{prd,backlog,decisions}.md`
 
 These generated files are starting points.
 They should be reviewed for the target repo before normal use.
@@ -70,6 +74,8 @@ Review these files before normal use:
 - `SYSTEM.md`
 - `.pi/agent/models.json`
 - `package.json`
+- `docs/product/intake-policy.md`
+- `docs/initiatives/README.md`
 
 Then start the operator docs set at:
 - `.pi/agent/docs/operator_manual.md`
@@ -93,6 +99,7 @@ npm run validate:core-workflows
 A successful bootstrap should leave the target repo with:
 - reusable harness assets copied into place
 - empty runtime placeholders instead of copied task/queue history
+- durable intake and initiative docs scaffold under `docs/`
 - visible package version metadata in `.pi/agent/package/installed-package.json`
 - a package.json that contains the harness scripts/devDependencies without overwriting unrelated existing settings blindly
 

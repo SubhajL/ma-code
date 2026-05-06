@@ -8,6 +8,8 @@ It adapts useful grill/PRD/issues patterns into the existing Pi harness without 
 - Vertical slices must be independently demonstrable or verifiable.
 - Do not create implementation tasks until the goal, non-goals, success criteria, and open decisions are clear enough for a worker packet.
 - Use current harness task packets and queue jobs as the execution surface; do not introduce a separate issue tracker dependency in Phase 1.
+- Intake trigger details live in `.pi/agent/docs/intake_policy.md` and the machine-readable trigger matrix `.pi/agent/intake/intake-trigger-policy.json`.
+- Every major feature should keep durable planning artifacts under `docs/initiatives/<feature-slug>/`.
 
 ## Workflow stages
 ### 1. Grill-style clarification

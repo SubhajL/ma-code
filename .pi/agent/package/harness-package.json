@@ -79,6 +79,51 @@
       "notes": [
         "Fresh scheduled workflow runtime state placeholder."
       ]
+    },
+    {
+      "target": "docs/product/intake-policy.md",
+      "template": ".pi/agent/package/templates/docs/product/intake-policy.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": true,
+      "notes": [
+        "Review and tailor the intake policy for the target repo's product and governance expectations."
+      ]
+    },
+    {
+      "target": "docs/initiatives/README.md",
+      "template": ".pi/agent/package/templates/docs/initiatives/README.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Explains how major features should use initiative folders."
+      ]
+    },
+    {
+      "target": "docs/initiatives/TEMPLATE/prd.md",
+      "template": ".pi/agent/package/templates/docs/initiatives/TEMPLATE/prd.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "PRD template for major feature initiative folders."
+      ]
+    },
+    {
+      "target": "docs/initiatives/TEMPLATE/backlog.md",
+      "template": ".pi/agent/package/templates/docs/initiatives/TEMPLATE/backlog.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Backlog template for major feature initiative folders."
+      ]
+    },
+    {
+      "target": "docs/initiatives/TEMPLATE/decisions.md",
+      "template": ".pi/agent/package/templates/docs/initiatives/TEMPLATE/decisions.template.md",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Decision log template for major feature initiative folders."
+      ]
     }
   ],
   "packageJsonTemplate": ".pi/agent/package/templates/package.template.json",

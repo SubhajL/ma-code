@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-04_skill-route-keywords.md`
+- `logs/coding/2026-05-05_full-chain-harness-phase-0-slice-1.md`
 
 ## Current planning log
-- `reports/planning/2026-05-04_skill-route-keywords-plan.md`
+- `reports/planning/2026-05-05_full-chain-harness-phase-0-slice-1-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded skill-route-keywords slice.
+- These files capture the bounded full-chain-harness Phase 0 Slice 1 work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.
