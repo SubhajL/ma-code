@@ -19,6 +19,10 @@ required_files=(
   ".pi/agent/state/schemas/queue.schema.json"
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
+  ".pi/agent/state/schemas/leases.schema.json"
+  ".pi/agent/package/templates/runtime/leases.json"
+  ".pi/agent/extensions/execution-leases.ts"
+  "tests/extension-units/execution-leases.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -108,6 +112,8 @@ for rel in [
     ".pi/agent/state/schemas/queue.schema.json",
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
+    ".pi/agent/state/schemas/leases.schema.json",
+    ".pi/agent/package/templates/runtime/leases.json",
     "package.json",
     "packages/pi-g-skills/package.json",
 ]:
@@ -166,6 +172,7 @@ discovery_policy_extension = (root / ".pi/agent/extensions/discovery-policy.ts")
 graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-validation-decision.ts").read_text(encoding="utf-8")
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
+execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -273,6 +280,9 @@ assert "graphify-orchestration-decision.ts" in foundation_compile_validator
 assert "graphify-orchestrator.ts" in extension_unit_validator
 assert "graphify-orchestrator.test.ts" in extension_unit_validator
 assert "graphify-orchestrator.ts" in foundation_compile_validator
+assert "execution-leases.ts" in extension_unit_validator
+assert "execution-leases.test.ts" in extension_unit_validator
+assert "execution-leases.ts" in foundation_compile_validator
 for needle in [
     "decideGraphifyOrchestration",
     "GRAPHIFY_ORCHESTRATION_ACTIONS",
@@ -301,6 +311,17 @@ for needle in [
     "--watch",
 ]:
     assert needle in graphify_orchestrator_extension
+for needle in [
+    "LEASES_FILE",
+    "defaultExecutionLeaseState",
+    "normalizeExecutionLeaseState",
+    "pruneExpiredExecutionLeases",
+    "acquireExecutionLease",
+    "releaseExecutionLease",
+    "summarizeExecutionLeases",
+    "heartbeatAt",
+]:
+    assert needle in execution_leases_extension
 for needle in [
     "run_graphify_orchestration",
     ".pi/agent/extensions/graphify-orchestrator.ts",
@@ -632,6 +653,7 @@ for needle in [
     assert needle in gitignore_doc
 assert ".pi/agent/artifacts" in package_manifest.get("excludedPaths", [])
 assert ".pi/agent/state/runtime" in package_manifest.get("excludedPaths", [])
+assert any(entry.get("target") == ".pi/agent/state/runtime/leases.json" and entry.get("template") == ".pi/agent/package/templates/runtime/leases.json" for entry in package_manifest.get("generatedFiles", []))
 assert "harness:pr-gate" in package_json.get("scripts", {})
 assert "test:pr-gate" in package_json.get("scripts", {})
 assert "harness:sync-main" in package_json.get("scripts", {})

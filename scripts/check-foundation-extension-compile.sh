@@ -23,6 +23,7 @@ cp "$REPO_ROOT/.pi/agent/extensions/discovery-policy.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestration-decision.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestrator.ts" "$WORKDIR/src/"
+cp "$REPO_ROOT/.pi/agent/extensions/execution-leases.ts" "$WORKDIR/src/"
 
 cat > "$WORKDIR/package.json" <<'JSON'
 {
@@ -42,7 +43,7 @@ JSON
 (
   cd "$WORKDIR"
   npm install --silent >/dev/null 2>&1
-  npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/safe-bash.ts src/till-done.ts src/harness-routing.ts src/team-activation.ts src/task-packets.ts src/handoffs.ts src/recovery-policy.ts src/recovery-runtime.ts src/queue-runner.ts src/graphify-adapter.ts src/discovery-policy.ts src/graphify-validation-decision.ts src/graphify-orchestration-decision.ts src/graphify-orchestrator.ts
+  npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/safe-bash.ts src/till-done.ts src/harness-routing.ts src/team-activation.ts src/task-packets.ts src/handoffs.ts src/recovery-policy.ts src/recovery-runtime.ts src/queue-runner.ts src/graphify-adapter.ts src/discovery-policy.ts src/graphify-validation-decision.ts src/graphify-orchestration-decision.ts src/graphify-orchestrator.ts src/execution-leases.ts
 )
 
 echo "foundation-extension-compile-ok"
