@@ -92,6 +92,21 @@ test("mixed frontend/backend domains with explicit escalation pass", async () =>
   assert.ok(result.warnings.some((warning) => /mixed-domain/i.test(warning)));
 });
 
+
+test("shared docs and research intake domains do not require mixed-domain escalation", async () => {
+  const policy = await readPolicy();
+  const result = assessDomainGovernance(policy, {
+    domains: ["docs", "research"],
+    assignedRole: "planning_lead",
+    workType: "mixed",
+    allowedPaths: ["docs/initiatives"],
+    filesToModify: ["docs/initiatives/example/prd.md"],
+  });
+
+  assert.equal(result.pass, true);
+  assert.deepEqual(result.blockReasons, []);
+});
+
 test("implementation slices without concrete path boundaries warn while policy is advisory-first", async () => {
   const policy = await readPolicy();
   const result = assessDomainGovernance(policy, {

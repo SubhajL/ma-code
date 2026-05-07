@@ -141,3 +141,23 @@ Review Verdict: no_required_fixes
 - `gh pr view --json number,url,state,mergeStateStatus,headRefName,baseRefName` => no existing PR
 - `git push -u origin split/task-phase7-domain-governance`
 - `gh pr create --base main --head split/task-phase7-domain-governance --title "feat(governance): add domain ownership policy" --body-file /tmp/phase7-domain-governance-pr.md`
+
+## CI Fix (2026-05-07) - foundation compile and task-packet validator wiring
+
+### Finding
+- PR #96 CI failed because isolated foundation compile and task-packet validator runtimes copied `task-packets.ts` without its new `domain-governance.ts` dependency.
+- Task-packet validation also exposed that shared docs/research intake packets should not require mixed-domain escalation; mixed-domain enforcement should focus on governed execution domains (`frontend`, `backend`, `infra`).
+
+### Fix
+- Updated `scripts/check-foundation-extension-compile.sh` to copy and compile `domain-governance.ts` with `task-packets.ts`.
+- Updated `scripts/validate-task-packets.sh` to copy `domain-governance.ts` into the isolated packet runtime.
+- Tightened `assessDomainGovernance` so mixed-domain explicitness applies to multiple governed execution domains, not shared docs/research intake combinations.
+- Added unit regression for docs+research shared intake domains.
+
+### Validation
+- `node --import tsx --test tests/extension-units/domain-governance.test.ts` => PASS, 8/8.
+- `node --import tsx --test tests/extension-units/orchestration-helpers.test.ts` => PASS, 13/13.
+- `./scripts/validate-domain-governance.sh` => PASS.
+- `./scripts/validate-harness-package.sh` => PASS.
+- `./scripts/check-foundation-extension-compile.sh` => PASS.
+- `./scripts/validate-task-packets.sh` => PASS.
