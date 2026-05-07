@@ -130,3 +130,24 @@ LOW
 ### Rollout Notes
 - Additive rollout only: `harness:operator` is preferred wording and not a runtime redesign.
 - Legacy operator commands remain supported and unchanged in this phase.
+
+## Submission (g-submit) - 2026-05-07T06:21:22Z
+
+### PR
+- URL: https://github.com/SubhajL/ma-code/pull/94
+- Branch: `split/harness-065-operator-control-plane`
+- Base: `main`
+- State: opened via GitHub CLI after confirming no existing PR for the branch.
+
+### Commands Run
+- `git status -sb`
+- `git rev-list --left-right --count origin/main...HEAD`
+- `gh pr view --json number,url,state,mergeStateStatus,headRefName,baseRefName` (no existing PR)
+- `gh pr list --state all --head split/harness-065-operator-control-plane --json number,url,state,mergeStateStatus,headRefName,baseRefName,title,mergedAt` (no existing PR)
+- `git push -u origin split/harness-065-operator-control-plane`
+- `gh pr create --base main --head split/harness-065-operator-control-plane --title "feat(runtime): add unified operator wrapper" --body-file /tmp/phase5-unified-operator-wrapper-pr.md`
+
+### Outcome
+- Created PR #94 for the Phase 5 unified operator wrapper.
+- PR submission path used standard GitHub fallback; Graphite is available but this repo/worktree is not using an active Graphite stack for this branch.
+- No merge to `main` was performed by this submission step.
