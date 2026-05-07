@@ -6,13 +6,18 @@ import test from "node:test";
 import {
   LOCAL_MAIN_INTEGRATION_LEASE_SCOPE,
   QUEUE_SESSION_LEASE_SCOPE,
+  WORKER_LANE_LEASE_TYPE,
   acquireExecutionLease,
   acquireLocalMainIntegrationLease,
+  acquireWorkerLaneLease,
   clearStaleExecutionLeases,
+  findWorkerLaneLease,
   readExecutionLeaseState,
   releaseExecutionLease,
   releaseLocalMainIntegrationLease,
+  releaseWorkerLaneLease,
   summarizeExecutionLeases,
+  workerLaneLeaseScope,
 } from "../../.pi/agent/extensions/execution-leases.ts";
 import { makeTempRepo } from "./test-utils.ts";
 
@@ -95,6 +100,35 @@ test("local-main integration lease helpers acquire and release one scoped lease"
   const released = await releaseLocalMainIntegrationLease(cwd, "lease-integration-main");
   assert.equal(released.released, true);
   assert.deepEqual((await readExecutionLeaseState(cwd)).leases, []);
+});
+
+test("worker-lane lease helpers acquire, find, and release metadata-bearing leases", async () => {
+  const cwd = await makeTempRepo("execution-leases-worker-lane-");
+
+  const acquired = await acquireWorkerLaneLease(cwd, {
+    id: "worker-lease-1",
+    scopeKey: "harness-064",
+    owner: "assistant",
+    acquiredAt: "2026-05-07T00:00:00.000Z",
+    expiresAt: "2026-05-08T00:00:00.000Z",
+    jobId: "job-1",
+    taskId: "task-1",
+    worktreePath: "/tmp/worker-lane",
+    branchName: "worker/harness-064-worker-lane",
+  });
+
+  assert.equal(acquired.acquired, true);
+  assert.equal(workerLaneLeaseScope("harness-064"), "worker_lane:harness-064");
+  assert.equal(acquired.lease?.scope, "worker_lane:harness-064");
+  assert.equal(acquired.lease?.metadata?.leaseType, WORKER_LANE_LEASE_TYPE);
+  assert.equal(acquired.lease?.metadata?.worktreePath, "/tmp/worker-lane");
+
+  const found = await findWorkerLaneLease(cwd, { scopeKey: "harness-064", owner: "assistant" });
+  assert.equal(found?.id, "worker-lease-1");
+
+  const released = await releaseWorkerLaneLease(cwd, { scopeKey: "harness-064" });
+  assert.equal(released.released, true);
+  assert.equal((await findWorkerLaneLease(cwd, { scopeKey: "harness-064" })), null);
 });
 
 test("clearStaleExecutionLeases removes only expired leases", async () => {

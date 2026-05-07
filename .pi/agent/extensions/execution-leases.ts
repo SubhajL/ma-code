@@ -5,6 +5,9 @@ export const LEASES_FILE = ".pi/agent/state/runtime/leases.json";
 export const EXECUTION_LEASE_STATE_VERSION = 1 as const;
 export const QUEUE_SESSION_LEASE_SCOPE = "queue-session";
 export const LOCAL_MAIN_INTEGRATION_LEASE_SCOPE = "local-main-integration";
+export const WORKER_LANE_LEASE_TYPE = "worker_lane";
+
+export type ExecutionLeaseMetadata = Record<string, string | null>;
 
 export interface ExecutionLeaseRecord {
   id: string;
@@ -13,6 +16,7 @@ export interface ExecutionLeaseRecord {
   acquiredAt: string;
   expiresAt: string;
   heartbeatAt: string | null;
+  metadata?: ExecutionLeaseMetadata;
 }
 
 export interface ExecutionLeaseState {
@@ -27,6 +31,7 @@ export interface AcquireExecutionLeaseInput {
   acquiredAt?: string;
   expiresAt: string;
   heartbeatAt?: string | null;
+  metadata?: ExecutionLeaseMetadata;
   now?: string;
 }
 
@@ -55,6 +60,25 @@ export interface ClearStaleExecutionLeasesResult {
   state: ExecutionLeaseState;
 }
 
+export interface WorkerLaneLeaseInput {
+  id: string;
+  scopeKey: string;
+  owner: string;
+  expiresAt: string;
+  acquiredAt?: string;
+  now?: string;
+  jobId?: string | null;
+  taskId?: string | null;
+  worktreePath: string;
+  branchName: string;
+}
+
+export interface FindWorkerLaneLeaseInput {
+  leaseId?: string;
+  scopeKey?: string;
+  owner?: string;
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -68,6 +92,17 @@ export function defaultExecutionLeaseState(): ExecutionLeaseState {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function normalizeLeaseMetadata(raw: unknown): ExecutionLeaseMetadata | undefined {
+  if (!isRecord(raw)) return undefined;
+  const metadata: ExecutionLeaseMetadata = {};
+  for (const key of Object.keys(raw)) {
+    const value = raw[key];
+    if (typeof value === "string") metadata[key] = value;
+    if (value === null) metadata[key] = null;
+  }
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
 function normalizeLeaseRecord(raw: unknown): ExecutionLeaseRecord | null {
@@ -88,6 +123,7 @@ function normalizeLeaseRecord(raw: unknown): ExecutionLeaseRecord | null {
     acquiredAt: raw.acquiredAt,
     expiresAt: raw.expiresAt,
     heartbeatAt,
+    metadata: normalizeLeaseMetadata(raw.metadata),
   };
 }
 
@@ -176,6 +212,7 @@ export async function acquireExecutionLease(cwd: string, input: AcquireExecution
     acquiredAt: input.acquiredAt ?? now,
     expiresAt: input.expiresAt,
     heartbeatAt: input.heartbeatAt ?? null,
+    metadata: input.metadata,
   };
 
   const nextState: ExecutionLeaseState = {
@@ -235,6 +272,55 @@ export async function acquireLocalMainIntegrationLease(
 
 export async function releaseLocalMainIntegrationLease(cwd: string, leaseId: string): Promise<ReleaseExecutionLeaseResult> {
   return releaseExecutionLease(cwd, leaseId);
+}
+
+export function workerLaneLeaseScope(scopeKey: string): string {
+  return `${WORKER_LANE_LEASE_TYPE}:${scopeKey}`;
+}
+
+export function findWorkerLaneLeaseInState(state: ExecutionLeaseState, input: FindWorkerLaneLeaseInput): ExecutionLeaseRecord | null {
+  return state.leases.find((lease) => {
+    if (lease.metadata?.leaseType !== WORKER_LANE_LEASE_TYPE && !lease.scope.startsWith(`${WORKER_LANE_LEASE_TYPE}:`)) return false;
+    if (input.leaseId && lease.id !== input.leaseId) return false;
+    if (input.scopeKey && lease.scope !== workerLaneLeaseScope(input.scopeKey)) return false;
+    if (input.owner && lease.owner !== input.owner) return false;
+    return true;
+  }) ?? null;
+}
+
+export async function findWorkerLaneLease(cwd: string, input: FindWorkerLaneLeaseInput): Promise<ExecutionLeaseRecord | null> {
+  return findWorkerLaneLeaseInState(await readExecutionLeaseState(cwd), input);
+}
+
+export async function acquireWorkerLaneLease(cwd: string, input: WorkerLaneLeaseInput): Promise<AcquireExecutionLeaseResult> {
+  return acquireExecutionLease(cwd, {
+    id: input.id,
+    scope: workerLaneLeaseScope(input.scopeKey),
+    owner: input.owner,
+    acquiredAt: input.acquiredAt,
+    expiresAt: input.expiresAt,
+    now: input.now,
+    metadata: {
+      leaseType: WORKER_LANE_LEASE_TYPE,
+      scopeKey: input.scopeKey,
+      jobId: input.jobId ?? null,
+      taskId: input.taskId ?? null,
+      worktreePath: input.worktreePath,
+      branchName: input.branchName,
+    },
+  });
+}
+
+export async function releaseWorkerLaneLease(cwd: string, input: FindWorkerLaneLeaseInput): Promise<ReleaseExecutionLeaseResult> {
+  const lease = await findWorkerLaneLease(cwd, input);
+  if (!lease) {
+    return {
+      released: false,
+      releasedLease: null,
+      state: await readExecutionLeaseState(cwd),
+    };
+  }
+  return releaseExecutionLease(cwd, lease.id);
 }
 
 export function summarizeExecutionLeases(state: ExecutionLeaseState): ExecutionLeaseSummary {

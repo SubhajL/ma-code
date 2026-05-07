@@ -136,6 +136,9 @@ npm run harness:schedules
 npm run harness:package
 npm run harness:worktree -- status
 npm run harness:integrate -- --worktree ../ma-code-worktrees/example-branch
+npm run harness:worker-session -- start --id HARNESS-064 --slug "worker lane"
+npm run harness:worker-session -- status --scope harness-064
+npm run harness:worker-session -- release --scope harness-064
 npm run harness:pr-gate -- --pr 63 --max-attempts 20
 npm run harness:sync-main
 npm run test:queue-runner
@@ -146,6 +149,7 @@ npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
 npm run test:integrate-worktree
+npm run test:worker-session
 npm run test:pr-gate
 npm run test:sync-main
 npm run test:harness-package
@@ -228,6 +232,16 @@ npm run harness:worktree -- create --id HARNESS-024 --slug "worktree helpers"
 npm run harness:worktree -- review-prep --path ../ma-code-worktrees/harness-024-worktree-helpers
 npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
 ```
+
+Explicit worker-lane session examples:
+```bash
+npm run harness:worker-session -- start --id HARNESS-064 --slug "worker lane"
+npm run harness:worker-session:json -- status --scope harness-064
+npm run harness:worker-session -- release --scope harness-064
+npm run harness:worker-session -- release --scope harness-064 --cleanup
+```
+
+Worker sessions differ from queue sessions: a worker session owns a worker-lane lease plus a git worktree for isolated work; it does not auto-dispatch queue jobs or run a worker engine. Cleanup remains explicit and conservative, and dirty worktrees are not removed.
 
 PR CI/security gate helper examples:
 ```bash

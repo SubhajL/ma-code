@@ -26,6 +26,9 @@ npm run harness:status:json
 npm run harness:leases
 npm run harness:leases:json
 npm run harness:leases -- clear-stale
+npm run harness:worker-session -- start --id HARNESS-064 --slug "worker lane"
+npm run harness:worker-session -- status --scope harness-064
+npm run harness:worker-session -- release --scope harness-064
 npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:queue-session:json -- --scope "bounded queue operation" --max-steps 3 --max-runtime-seconds 30
 npm run harness:integrate -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers
@@ -109,6 +112,17 @@ npm run harness:integrate:json -- --worktree ../ma-code-worktrees/harness-024-wo
 - blocks on tracked dirt and unexpected untracked files in the root worktree
 - tolerates only narrow generated validation artifacts
 - writes post-merge validator report outputs to temp paths by default
+
+For an explicit worker lane, compose the worker-lane lease and worktree lifecycle through `harness:worker-session`:
+```bash
+npm run harness:worker-session -- start --id HARNESS-064 --slug "worker lane"
+npm run harness:worker-session -- status --scope harness-064
+npm run harness:worker-session -- release --scope harness-064
+npm run harness:worker-session -- release --scope harness-064 --cleanup
+```
+- worker sessions differ from queue sessions: they reserve a worker lane and worktree but do not dispatch or execute queued jobs
+- release preserves the worktree by default
+- cleanup is explicit and refuses dirty worktrees
 
 For PR CI/security gate checks, use the bounded helper instead of `gh pr checks --watch`:
 ```bash
@@ -342,6 +356,7 @@ Choose the validator that matches the change:
 - use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation
 - use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
 - use `npm run harness:integrate -- --worktree <worktree>` when the next safe action is a local fast-forward integration from a merge-ready linked worktree into root `main`
+- use `npm run harness:worker-session -- start/status/release` when the worktree should be owned by an explicit worker-lane lease; this remains an advanced lifecycle tool, not automatic multi-worker orchestration
 - use `./scripts/validate-extension-unit-tests.sh` plus `./scripts/check-foundation-extension-compile.sh` for discovery-policy helper changes
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes

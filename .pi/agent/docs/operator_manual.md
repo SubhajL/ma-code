@@ -25,6 +25,7 @@ Use it when you need the full operator documentation set instead of a chat-histo
 - understand what each role is for
 - inspect queue/task/scheduled state
 - inspect execution lease state and clear only stale leases
+- start/status/release explicit worker-lane sessions with lease-owned worktrees
 - pause, resume, or stop bounded execution safely
 - integrate a validated linked worktree branch into local main through a bounded helper
 - run validators and interpret the result surfaces
@@ -54,3 +55,10 @@ Use it when you need the full operator documentation set instead of a chat-histo
 - The helper blocks on tracked dirt and unexpected untracked files in the root worktree.
 - Narrow generated validation artifacts under `reports/validation/*-validation-script.(md|json)` are tolerated.
 - Post-merge validator reports are written to temp paths by default to avoid creating new repo-root artifacts.
+
+## Worker-lane session boundary
+- Use `npm run harness:worker-session -- start --id <id> --slug <slug>` when a bounded worker lane needs its own lease-owned worktree.
+- Use `npm run harness:worker-session -- status --scope <scope>` to inspect the authoritative worker-lane lease plus current worktree condition.
+- Use `npm run harness:worker-session -- release --scope <scope>` to release the lease while preserving the worktree.
+- Add `--cleanup` only when you explicitly want the clean linked worktree removed; dirty worktrees are refused and left intact.
+- Worker sessions are not automatic queue-to-worktree dispatch and do not run a generalized worker execution engine.

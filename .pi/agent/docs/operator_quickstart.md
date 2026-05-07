@@ -10,6 +10,7 @@ For the full operator documentation set, start at:
 Current operator surface is intentionally lightweight:
 - a read-only CLI status view
 - a narrow lease inspection/stale-cleanup CLI
+- an explicit worker-lane session CLI for lease-owned worktree lifecycle
 - an explicit bounded queue-session CLI for multi-step queue advancement without a hidden daemon
 - a file-backed scheduled workflow helper for explicit due-work inspection/materialization
 - package-script entrypoints for common validators
@@ -85,6 +86,16 @@ This integration helper:
 - tolerates only narrow generated validation artifacts in the root worktree
 - writes post-merge validator reports to temp paths rather than repo-local report files by default
 
+Use an explicit worker lane when a bounded build/review lane needs its own lease-owned worktree:
+```bash
+npm run harness:worker-session -- start --id HARNESS-064 --slug "worker lane"
+npm run harness:worker-session -- status --scope harness-064
+npm run harness:worker-session -- release --scope harness-064
+npm run harness:worker-session -- release --scope harness-064 --cleanup
+```
+
+Worker sessions are not queue sessions: they do not auto-dispatch queued work or run a worker engine. Default release preserves the worktree; cleanup is opt-in and refuses dirty worktrees.
+
 Check PR CI/security gates without `gh --watch`:
 ```bash
 npm run harness:pr-gate -- --pr <number> --max-attempts 20
@@ -116,6 +127,7 @@ npm run test:operator-leases
 npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:integrate-worktree
+npm run test:worker-session
 ```
 
 ## 5. Use live queue controls inside a harness session
