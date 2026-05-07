@@ -3,6 +3,7 @@ import test from "node:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { readExecutionLeaseState, QUEUE_SESSION_LEASE_SCOPE } from "../../.pi/agent/extensions/execution-leases.ts";
 import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/handoffs.ts";
 import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
@@ -145,6 +146,30 @@ async function writeQueue(cwd: string, queue: unknown) {
   await writeRawQueue(cwd, withImplementationQueueTddSlices(queue));
 }
 
+async function seedActiveQueueSessionLease(cwd: string, id = "lease-existing-queue-session") {
+  await writeFile(
+    join(cwd, ".pi", "agent", "state", "runtime", "leases.json"),
+    `${JSON.stringify(
+      {
+        version: 1,
+        leases: [
+          {
+            id,
+            scope: QUEUE_SESSION_LEASE_SCOPE,
+            owner: "other-runner",
+            acquiredAt: "2026-05-06T00:00:00.000Z",
+            expiresAt: "2999-01-01T00:00:00.000Z",
+            heartbeatAt: null,
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+}
+
 async function readTaskState(cwd: string) {
   const raw = await readFile(join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"), "utf8");
   return JSON.parse(raw) as {
@@ -271,6 +296,105 @@ test("queue runner no-ops when the queue is empty", async () => {
   assert.equal(details.activeJobId, null);
   assert.equal(details.startedJob, null);
   assert.deepEqual(details.blockedJobIds, []);
+});
+
+test("run_next_queue_job blocks without advancing when another queue-session lease is active", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-direct-lease-conflict",
+        goal: "Do not start while another queue execution has the lease",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Lease conflict blocks direct queue advancement"],
+      },
+    ],
+  });
+  await seedActiveQueueSessionLease(cwd);
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+  const leaseState = await readExecutionLeaseState(cwd);
+  const audit = await readAuditLog(cwd);
+
+  assert.equal(details.ok, true);
+  assert.equal(details.action, "blocked");
+  assert.equal(details.reason, "Queue advancement could not start because another queue execution already holds the queue-session lease.");
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "queued");
+  assert.deepEqual(leaseState.leases.map((lease) => lease.id), ["lease-existing-queue-session"]);
+  assert.match(audit, /queue_session_lease_conflict/);
+});
+
+test("run_next_queue_job acquires and releases a short queue-session lease", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const leaseState = await readExecutionLeaseState(cwd);
+  const audit = await readAuditLog(cwd);
+
+  assert.equal(details.ok, true);
+  assert.equal(details.action, "noop");
+  assert.deepEqual(leaseState.leases, []);
+  assert.match(audit, /queue_session_lease_acquired/);
+  assert.match(audit, /queue_session_lease_released/);
+});
+
+test("run_queue_once compatibility alias follows queue-session lease enforcement", async () => {
+  const { cwd, runQueueOnceCompat } = await setupQueueRunnerRepo();
+  await seedActiveQueueSessionLease(cwd);
+
+  const result = await runQueueOnceCompat({ owner: "assistant" });
+  const details = (result as any).details;
+  const leaseState = await readExecutionLeaseState(cwd);
+
+  assert.equal(details.ok, true);
+  assert.equal(details.action, "blocked");
+  assert.equal(details.reason, "Queue advancement could not start because another queue execution already holds the queue-session lease.");
+  assert.deepEqual(leaseState.leases.map((lease) => lease.id), ["lease-existing-queue-session"]);
+});
+
+test("bounded queue session releases its lease after an idle session", async () => {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+
+  const result = await runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 });
+  const details = (result as any).details;
+  const leaseState = await readExecutionLeaseState(cwd);
+  const audit = await readAuditLog(cwd);
+
+  assert.equal(details.ok, true);
+  assert.equal(details.stopReason, "idle");
+  assert.deepEqual(leaseState.leases, []);
+  assert.match(audit, /queue_session_lease_acquired/);
+  assert.match(audit, /queue_session_lease_released/);
+});
+
+test("bounded queue session releases its lease when the session body throws", async () => {
+  const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
+  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), "{not-json\n", "utf8");
+
+  await assert.rejects(
+    () => runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 }),
+    /JSON/,
+  );
+  const leaseState = await readExecutionLeaseState(cwd);
+  const audit = await readAuditLog(cwd);
+
+  assert.deepEqual(leaseState.leases, []);
+  assert.match(audit, /queue_session_lease_acquired/);
+  assert.match(audit, /queue_session_lease_released/);
 });
 
 test("queue runner no-ops when the queue is paused", async () => {

@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 
 export const LEASES_FILE = ".pi/agent/state/runtime/leases.json";
 export const EXECUTION_LEASE_STATE_VERSION = 1 as const;
+export const QUEUE_SESSION_LEASE_SCOPE = "queue-session";
 
 export interface ExecutionLeaseRecord {
   id: string;

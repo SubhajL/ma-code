@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  QUEUE_SESSION_LEASE_SCOPE,
   acquireExecutionLease,
   readExecutionLeaseState,
   releaseExecutionLease,
@@ -55,6 +56,22 @@ test("acquiring one lease succeeds, conflicting acquire is rejected, and release
 
   const state = await readExecutionLeaseState(cwd);
   assert.deepEqual(state, { version: 1, leases: [] });
+});
+
+test("queue-session lease scope remains a generic reusable lease scope", async () => {
+  const cwd = await makeTempRepo("execution-leases-queue-session-");
+
+  const acquired = await acquireExecutionLease(cwd, {
+    id: "lease-queue-session",
+    scope: QUEUE_SESSION_LEASE_SCOPE,
+    owner: "assistant",
+    acquiredAt: "2026-05-06T00:00:00.000Z",
+    expiresAt: "2026-05-06T00:05:00.000Z",
+  });
+
+  assert.equal(QUEUE_SESSION_LEASE_SCOPE, "queue-session");
+  assert.equal(acquired.acquired, true);
+  assert.equal(acquired.state.leases[0]?.scope, QUEUE_SESSION_LEASE_SCOPE);
 });
 
 test("expired lease is pruned before a new acquire and summary reflects active leases", async () => {

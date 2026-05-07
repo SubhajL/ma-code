@@ -429,6 +429,60 @@ test("queue session exposes recovery-action visibility after finalizing a failed
   assert.equal(queueState.jobs[0]?.lastRecoveryAction, "retry_same_lane");
 });
 
+test("bounded queue session stops immediately when a queue-session lease is already active", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-lease-conflict-");
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-lease-conflict",
+        goal: "Should not start while another queue session is active",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Lease conflict blocks bounded session before queue advancement"],
+      },
+    ],
+  });
+  await writeFile(
+    join(cwd, ".pi", "agent", "state", "runtime", "leases.json"),
+    `${JSON.stringify(
+      {
+        version: 1,
+        leases: [
+          {
+            id: "lease-existing-queue-session",
+            scope: "queue-session",
+            owner: "other-runner",
+            acquiredAt: "2026-05-06T00:00:00.000Z",
+            expiresAt: "2999-01-01T00:00:00.000Z",
+            heartbeatAt: null,
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+
+  const view = await buildHarnessQueueSession({ cwd, maxSteps: 5, maxRuntimeSeconds: 60, recentLimit: 5 });
+  const queueState = await readQueue(cwd);
+
+  assert.equal(view.result.stopReason, "blocked");
+  assert.equal(view.result.stepsRun, 0);
+  assert.equal(view.result.reason, "Queue session could not start because another bounded queue execution already holds the queue-session lease.");
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs[0]?.status, "queued");
+});
+
 test("scheduled-workflow-created jobs can move into bounded queue sessions with preserved provenance", async () => {
   const { cwd } = await setupQueueSessionRepo("queue-session-scheduled-");
   const now = new Date("2026-04-27T16:30:00.000Z");

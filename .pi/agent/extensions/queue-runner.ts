@@ -3,8 +3,15 @@ import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import graphifyOrchestrator from "./graphify-orchestrator.ts";
 import { dirname, resolve } from "node:path";
+import {
+  QUEUE_SESSION_LEASE_SCOPE,
+  acquireExecutionLease,
+  releaseExecutionLease,
+  type AcquireExecutionLeaseResult,
+} from "./execution-leases.ts";
 import {
   BUDGET_MODES,
   ROLE_IDS,
@@ -267,6 +274,10 @@ export interface BoundedQueueSessionResult {
 const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
 const QUEUE_TASK_COORDINATION_LOCK = ".pi/agent/state/runtime/queue-runner.coordination.lock";
 const AUDIT_LOG = "logs/harness-actions.jsonl";
+const QUEUE_SESSION_DIRECT_LEASE_SECONDS = 30;
+const QUEUE_SESSION_LEASE_GRACE_SECONDS = 10;
+const QUEUE_SESSION_DIRECT_CONFLICT_REASON = "Queue advancement could not start because another queue execution already holds the queue-session lease.";
+const QUEUE_SESSION_BOUNDED_CONFLICT_REASON = "Queue session could not start because another bounded queue execution already holds the queue-session lease.";
 const PUBLIC_QUEUE_RUNNER_TOOL_NAME = "run_next_queue_job";
 const QUEUE_RUNNER_COMPAT_TOOL_NAME = "run_queue_once";
 const INSPECT_QUEUE_STATE_TOOL_NAME = "inspect_queue_state";
@@ -342,6 +353,88 @@ async function appendAudit(cwd: string, entry: Record<string, unknown>): Promise
   await withFileMutationQueue(logFile, async () => {
     await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
   });
+}
+
+function addSecondsIso(timestamp: string, seconds: number): string {
+  const baseMs = Date.parse(timestamp);
+  const safeBaseMs = Number.isFinite(baseMs) ? baseMs : new Date().getTime();
+  return new Date(safeBaseMs + seconds * 1000).toISOString();
+}
+
+async function auditQueueSessionLease(cwd: string, action: string, details: Record<string, unknown>): Promise<void> {
+  try {
+    await appendAudit(cwd, {
+      ts: nowIso(),
+      extension: "queue-runner",
+      action,
+      leaseScope: QUEUE_SESSION_LEASE_SCOPE,
+      ...details,
+    });
+  } catch {
+    // Lease enforcement must not leak or skip runtime guardrails because audit logging is unavailable.
+  }
+}
+
+async function acquireQueueSessionLeaseForRunner(
+  cwd: string,
+  input: { owner: string; ttlSeconds: number; entrypoint: "runNextQueueJob" | "runBoundedQueueSession" },
+): Promise<AcquireExecutionLeaseResult> {
+  const acquiredAt = nowIso();
+  const leaseId = `${QUEUE_SESSION_LEASE_SCOPE}-${input.entrypoint}-${randomUUID()}`;
+  const result = await acquireExecutionLease(cwd, {
+    id: leaseId,
+    scope: QUEUE_SESSION_LEASE_SCOPE,
+    owner: input.owner,
+    acquiredAt,
+    expiresAt: addSecondsIso(acquiredAt, input.ttlSeconds),
+  });
+
+  await auditQueueSessionLease(cwd, result.acquired ? "queue_session_lease_acquired" : "queue_session_lease_conflict", {
+    entrypoint: input.entrypoint,
+    owner: input.owner,
+    acquired: result.acquired,
+    leaseId: result.lease?.id ?? null,
+    conflict: result.conflict
+      ? {
+          scope: result.conflict.scope,
+          owner: result.conflict.owner,
+          expiresAt: result.conflict.expiresAt,
+        }
+      : null,
+  });
+
+  return result;
+}
+
+async function releaseQueueSessionLeaseForRunner(
+  cwd: string,
+  input: { entrypoint: "runNextQueueJob" | "runBoundedQueueSession"; leaseId: string },
+): Promise<void> {
+  const result = await releaseExecutionLease(cwd, input.leaseId);
+  await auditQueueSessionLease(cwd, "queue_session_lease_released", {
+    entrypoint: input.entrypoint,
+    leaseId: input.leaseId,
+    released: result.released,
+  });
+}
+
+async function queueSessionLeaseConflictResult(cwd: string, reason: string): Promise<QueueRunnerResult> {
+  const queueState = await readQueueState(cwd);
+  return {
+    version: 1,
+    ok: true,
+    action: "blocked",
+    reason,
+    queuePaused: queueState.paused,
+    activeJobId: queueState.activeJobId,
+    startedJob: null,
+    finalizedJob: null,
+    blockedJobIds: [],
+    linkedTask: null,
+    packet: null,
+    initialHandoff: null,
+    recoveryDecision: null,
+  };
 }
 
 async function ensureQueueFile(cwd: string): Promise<void> {
@@ -1768,7 +1861,7 @@ async function startNextQueuedJob(cwd: string, owner: string, allowInitialHandof
   }
 }
 
-export async function runNextQueueJob(cwd: string, input: { owner?: string; allowInitialHandoff?: boolean } = {}): Promise<QueueRunnerResult> {
+async function runQueueStepCore(cwd: string, input: { owner?: string; allowInitialHandoff?: boolean } = {}): Promise<QueueRunnerResult> {
   const owner = input.owner?.trim() || "assistant";
   const allowInitialHandoff = input.allowInitialHandoff ?? true;
   const queueState = await readQueueState(cwd);
@@ -2046,6 +2139,25 @@ export async function runNextQueueJob(cwd: string, input: { owner?: string; allo
   return startNextQueuedJob(cwd, owner, allowInitialHandoff);
 }
 
+export async function runNextQueueJob(cwd: string, input: { owner?: string; allowInitialHandoff?: boolean } = {}): Promise<QueueRunnerResult> {
+  const owner = input.owner?.trim() || "assistant";
+  const lease = await acquireQueueSessionLeaseForRunner(cwd, {
+    owner,
+    ttlSeconds: QUEUE_SESSION_DIRECT_LEASE_SECONDS,
+    entrypoint: "runNextQueueJob",
+  });
+
+  if (!lease.acquired || !lease.lease) {
+    return queueSessionLeaseConflictResult(cwd, QUEUE_SESSION_DIRECT_CONFLICT_REASON);
+  }
+
+  try {
+    return await runQueueStepCore(cwd, { ...input, owner });
+  } finally {
+    await releaseQueueSessionLeaseForRunner(cwd, { entrypoint: "runNextQueueJob", leaseId: lease.lease.id });
+  }
+}
+
 export const runQueueOnce = runNextQueueJob;
 
 function buildBoundedQueueSessionStep(step: number, result: QueueRunnerResult, graphifyOrchestration: QueueGraphifyOrchestrationStepSummary | null = null): BoundedQueueSessionStep {
@@ -2293,12 +2405,23 @@ export async function runBoundedQueueSession(
     };
   };
 
-  const initialInspection = await inspectQueueState(cwd, { recentLimit });
-  if (initialInspection.summary.queuePaused) {
-    return finalizeResult("queue_paused", "Queue is paused; bounded session did not attempt queue advancement.");
+  const lease = await acquireQueueSessionLeaseForRunner(cwd, {
+    owner,
+    ttlSeconds: maxRuntimeSeconds + QUEUE_SESSION_LEASE_GRACE_SECONDS,
+    entrypoint: "runBoundedQueueSession",
+  });
+
+  if (!lease.acquired || !lease.lease) {
+    return finalizeResult("blocked", QUEUE_SESSION_BOUNDED_CONFLICT_REASON);
   }
 
-  for (let step = 1; step <= maxSteps; step += 1) {
+  try {
+    const initialInspection = await inspectQueueState(cwd, { recentLimit });
+    if (initialInspection.summary.queuePaused) {
+      return finalizeResult("queue_paused", "Queue is paused; bounded session did not attempt queue advancement.");
+    }
+
+    for (let step = 1; step <= maxSteps; step += 1) {
     const elapsedSeconds = (Date.now() - startedTime) / 1000;
     if (elapsedSeconds >= maxRuntimeSeconds) {
       return finalizeResult(
@@ -2328,7 +2451,7 @@ export async function runBoundedQueueSession(
       return finalizeResult("blocked", result.reason ?? `Research Graphify orchestration blocked queued job ${graphifyOrchestration.jobId}.`);
     }
 
-    const result = await runNextQueueJob(cwd, { owner, allowInitialHandoff });
+    const result = await runQueueStepCore(cwd, { owner, allowInitialHandoff });
     steps.push(buildBoundedQueueSessionStep(step, result, graphifyOrchestration));
 
     const inspection = await inspectQueueState(cwd, { recentLimit });
@@ -2371,10 +2494,13 @@ export async function runBoundedQueueSession(
     );
   }
 
-  return finalizeResult(
-    "max_steps_reached",
-    `Bounded queue session stopped after reaching maxSteps=${maxSteps}. Rerun explicitly to continue.`,
-  );
+    return finalizeResult(
+      "max_steps_reached",
+      `Bounded queue session stopped after reaching maxSteps=${maxSteps}. Rerun explicitly to continue.`,
+    );
+  } finally {
+    await releaseQueueSessionLeaseForRunner(cwd, { entrypoint: "runBoundedQueueSession", leaseId: lease.lease.id });
+  }
 }
 
 export default function queueRunner(pi: ExtensionAPI) {
