@@ -121,3 +121,23 @@ LOW
 - Stricter path ownership should wait until governance warnings prove low-noise.
 
 Review Verdict: no_required_fixes
+
+## Creation / Submission (g-create/g-submit) - 2026-05-07T08:03:34Z
+
+### Creation
+- Branch: `split/task-phase7-domain-governance`
+- Commit: `026e0f0 feat(governance): add domain ownership policy`
+- Hook evidence: staged pre-commit quality gates ran and passed; no staged-file-aware checks were configured for this change set.
+
+### Submission
+- PR: https://github.com/SubhajL/ma-code/pull/96
+- Base: `main`
+- Head: `split/task-phase7-domain-governance`
+- State: OPEN at creation.
+
+### Commands Run
+- `git status -sb`
+- `git rev-list --left-right --count origin/main...HEAD` => `0 1`
+- `gh pr view --json number,url,state,mergeStateStatus,headRefName,baseRefName` => no existing PR
+- `git push -u origin split/task-phase7-domain-governance`
+- `gh pr create --base main --head split/task-phase7-domain-governance --title "feat(governance): add domain ownership policy" --body-file /tmp/phase7-domain-governance-pr.md`
