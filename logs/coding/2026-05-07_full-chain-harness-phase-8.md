@@ -141,3 +141,18 @@ Review Verdict: no_required_fixes
 
 ### Lifecycle Note
 - `npm run harness:slice-lifecycle -- check --stage create_ready --json` was attempted before commit and reported blocked because the implementation worktree does not carry the live root `.pi/agent/state/runtime/tasks.json`; RED/GREEN/review evidence was present in the coding log, and task evidence is recorded through `task_update` in the root runtime.
+
+## PR Gate (g-submit) - 2026-05-07
+
+### PR
+- PR: https://github.com/SubhajL/ma-code/pull/97
+- Head: `split/task-1778143204032-phase-8-merge-helper`
+- Base: `main`
+
+### Gate Evidence
+- Manual bounded polling was used; no `gh pr checks --watch`.
+- Final poll showed `mergeStateStatus: CLEAN`.
+- Final compact checks were all passing: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, and Routing Validators.
+
+### Next Action
+- PR is merge-ready by GitHub gate evidence; merge and local root sync remain to be completed.
