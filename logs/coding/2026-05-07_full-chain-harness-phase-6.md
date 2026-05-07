@@ -179,3 +179,23 @@ LOW
 - Use the helper as a preflight before create/submit/merge-ready claims; do not convert tolerant parsing into hard merge enforcement until stricter evidence schemas exist.
 
 Review Verdict: no_required_fixes
+
+## Creation / Submission (g-create/g-submit) - 2026-05-07T07:40:26Z
+
+### Creation
+- Branch: `split/task-1778138959443-slice-lifecycle-phase6`
+- Commit: `4159e03 feat(lifecycle): add slice lifecycle assessment`
+- Hook evidence: staged pre-commit quality gates ran and passed; no staged-file-aware checks were configured for this change set.
+
+### Submission
+- PR: https://github.com/SubhajL/ma-code/pull/95
+- Base: `main`
+- Head: `split/task-1778138959443-slice-lifecycle-phase6`
+- State: OPEN at creation.
+
+### Commands Run
+- `git status -sb`
+- `git rev-list --left-right --count origin/main...HEAD` => `0 1`
+- `gh pr view --json number,url,state,mergeStateStatus,headRefName,baseRefName` => no existing PR
+- `git push -u origin split/task-1778138959443-slice-lifecycle-phase6`
+- `gh pr create --base main --head split/task-1778138959443-slice-lifecycle-phase6 --title "feat(lifecycle): add slice lifecycle assessment" --body-file /tmp/phase6-slice-lifecycle-pr.md`
