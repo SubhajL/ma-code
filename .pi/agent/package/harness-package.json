@@ -12,6 +12,7 @@
     ".pi/agent/docs",
     ".pi/agent/extensions",
     ".pi/agent/handoffs",
+    ".pi/agent/governance",
     ".pi/agent/package",
     ".pi/agent/packets",
     ".pi/agent/prompts",

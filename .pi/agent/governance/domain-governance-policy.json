@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "policyName": "domain-governance-phase-7",
+  "description": "Advisory-first domain ownership governance for task packets, team activation, and feature bootstrap docs. No mutable runtime state is introduced.",
+  "domainRoleDefaults": {
+    "frontend": "frontend_worker",
+    "backend": "backend_worker",
+    "infra": "infra_worker"
+  },
+  "mixedDomainRules": {
+    "allowedOnlyWhenExplicit": true,
+    "requiresEscalationOrMixedDomainNote": true,
+    "acceptedEvidencePhrases": [
+      "mixed-domain",
+      "multi-lane",
+      "escalation",
+      "frontend review",
+      "backend review"
+    ]
+  },
+  "pathOwnershipMode": "advisory_first",
+  "requiredPacketFields": [
+    "domains",
+    "assignedRole",
+    "allowedPaths",
+    "filesToModify"
+  ],
+  "domainDocBootstrap": {
+    "frontend": "conditional",
+    "backend": "conditional"
+  }
+}

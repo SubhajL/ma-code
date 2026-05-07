@@ -464,6 +464,9 @@ export function resolveTeamActivation(
 
   const sequence: TeamId[] = [];
   const policyNotes = [...policy.notes];
+  if (domainCount > 1) {
+    policyNotes.push("Mixed-domain work should stay in shared intake/planning until slice ownership, path scope, and escalation or multi-lane notes are explicit.");
+  }
 
   if (recoveryNeeded && policy.activation_defaults.recovery_stops_normal_flow) {
     sequence.push("recovery");

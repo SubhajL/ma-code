@@ -41,13 +41,17 @@ It also notes the main repo-local expectations shaped from the useful `g-*` skil
 
 ### frontend_worker
 - scoped frontend implementation lane
+- default owner for `frontend` domain packets under `.pi/agent/docs/domain_governance.md`
+- should use `frontend-safety` guidance for accessibility, route/UI wiring, state boundaries, and client-side side effects
 - should provide smallest relevant proof and skeptical self-review before handoff
 
 ### backend_worker
 - scoped backend implementation lane
+- default owner for `backend` domain packets under `.pi/agent/docs/domain_governance.md`
 - should provide smallest relevant proof and skeptical self-review before handoff
 
 ### infra_worker
+- default owner for `infra` domain packets under `.pi/agent/docs/domain_governance.md`
 - higher-risk lane for repo/runtime/config/infrastructure-sensitive work
 - treated as critical in routing
 - should provide smallest relevant proof and skeptical self-review before handoff

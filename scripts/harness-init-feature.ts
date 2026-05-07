@@ -4,12 +4,19 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REQUIRED_TEMPLATES = ["prd.md", "backlog.md", "decisions.md"] as const;
+const DOMAIN_DOC_TEMPLATES = {
+  frontend: ".pi/agent/package/templates/docs/frontend/README.template.md",
+  backend: ".pi/agent/package/templates/docs/backend/README.template.md",
+} as const;
+const ALLOWED_DOMAINS = ["frontend", "backend", "infra", "docs", "research"] as const;
+type FeatureDomain = (typeof ALLOWED_DOMAINS)[number];
 const RECOMMENDED_SKILLS = ["g-grill", "g-prd", "g-issues"] as const;
 
 export interface HarnessInitFeatureOptions {
   repoRoot?: string;
   slug: string;
   json?: boolean;
+  domains?: FeatureDomain[];
 }
 
 export interface HarnessInitFeatureResult {
@@ -19,6 +26,17 @@ export interface HarnessInitFeatureResult {
   targetDir: string;
   createdFiles: string[];
   recommendedSkills: string[];
+  domains: FeatureDomain[];
+}
+
+function normalizeDomains(input: string[] | undefined): FeatureDomain[] {
+  const rawValues = (input ?? []).flatMap((entry) => entry.split(",")).map((entry) => entry.trim()).filter(Boolean);
+  const domains = [...new Set(rawValues)].filter((value): value is FeatureDomain => (ALLOWED_DOMAINS as readonly string[]).includes(value));
+  const invalid = rawValues.filter((value) => !(ALLOWED_DOMAINS as readonly string[]).includes(value));
+  if (invalid.length > 0) {
+    throw new Error(`Invalid feature domain(s): ${invalid.join(", ")}. Use one of: ${ALLOWED_DOMAINS.join(", ")}.`);
+  }
+  return domains;
 }
 
 function normalizeSlug(input: string): string {
@@ -45,6 +63,7 @@ function renderResult(result: HarnessInitFeatureResult): string {
     `repo root: ${result.repoRoot}`,
     `slug: ${result.slug}`,
     `target: ${relative(result.repoRoot, result.targetDir)}`,
+    `domains: ${result.domains.length > 0 ? result.domains.join(", ") : "none"}`,
     "created files:",
     ...result.createdFiles.map((file) => `- ${file}`),
     "recommended next steps:",
@@ -60,6 +79,7 @@ export async function initHarnessFeature(options: HarnessInitFeatureOptions): Pr
   const slug = normalizeSlug(options.slug);
   const templateDir = join(repoRoot, "docs", "initiatives", "TEMPLATE");
   const targetDir = join(repoRoot, "docs", "initiatives", slug);
+  const domains = normalizeDomains(options.domains);
 
   const missingTemplates: string[] = [];
   for (const templateName of REQUIRED_TEMPLATES) {
@@ -85,6 +105,19 @@ export async function initHarnessFeature(options: HarnessInitFeatureOptions): Pr
     createdFiles.push(relative(repoRoot, destination));
   }
 
+  for (const domain of ["frontend", "backend"] as const) {
+    if (!domains.includes(domain)) continue;
+    const destination = join(repoRoot, "docs", domain, "README.md");
+    if (await pathExists(destination)) continue;
+    const repoTemplate = join(repoRoot, DOMAIN_DOC_TEMPLATES[domain]);
+    const sourceTemplate = (await pathExists(repoTemplate))
+      ? repoTemplate
+      : join(resolve(dirname(fileURLToPath(import.meta.url)), ".."), DOMAIN_DOC_TEMPLATES[domain]);
+    await mkdir(dirname(destination), { recursive: true });
+    await cp(sourceTemplate, destination, { recursive: false });
+    createdFiles.push(relative(repoRoot, destination));
+  }
+
   return {
     repoRoot,
     slug,
@@ -92,12 +125,13 @@ export async function initHarnessFeature(options: HarnessInitFeatureOptions): Pr
     targetDir,
     createdFiles,
     recommendedSkills: [...RECOMMENDED_SKILLS],
+    domains,
   };
 }
 
 function printUsage(): void {
   process.stdout.write(
-    "Usage: node --import tsx scripts/harness-init-feature.ts --slug <feature-slug> [--json]\n",
+    "Usage: node --import tsx scripts/harness-init-feature.ts --slug <feature-slug> [--domains <frontend,backend,infra,docs,research>] [--json]\n",
   );
 }
 
@@ -105,11 +139,21 @@ function parseArgs(argv: string[]): HarnessInitFeatureOptions & { help: boolean 
   let slug = "";
   let json = false;
   let help = false;
+  const domains: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--slug") {
       slug = argv[index + 1] ?? "";
+      index += 1;
+      continue;
+    }
+    if (arg === "--domains") {
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) {
+        throw new Error("--domains requires a value.");
+      }
+      domains.push(value);
       index += 1;
       continue;
     }
@@ -128,7 +172,7 @@ function parseArgs(argv: string[]): HarnessInitFeatureOptions & { help: boolean 
     throw new Error("--slug is required.");
   }
 
-  return { slug, json, help };
+  return { slug, json, help, domains: normalizeDomains(domains) };
 }
 
 async function main(): Promise<void> {

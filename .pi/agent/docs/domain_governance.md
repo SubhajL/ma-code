@@ -1,0 +1,49 @@
+# Domain Governance
+
+Phase 7 adds advisory-first domain governance for bounded slices. It formalizes how frontend, backend, and infra ownership should be expressed in task packets without splitting shared product intake too early.
+
+## Operating model
+
+### Shared intake
+- `g-grill`, `g-prd`, and `g-issues` remain shared intake/planning surfaces.
+- Frontend/backend ownership is not required during early clarification.
+- Domain split starts at slice decomposition and task-packet handoff.
+
+### Slice decomposition
+Each bounded implementation slice should state:
+- `domains`
+- `assignedRole`
+- `allowedPaths`
+- `filesToModify`
+- escalation or multi-lane notes when more than one domain is involved
+
+### Worker execution
+- Single-domain frontend work should use `frontend_worker`.
+- Single-domain backend work should use `backend_worker`.
+- Single-domain infra work should use `infra_worker`.
+- Mixed-domain work is allowed only when explicit: include escalation, mixed-domain justification, or a multi-lane/review note.
+
+## Machine-readable policy
+
+- Policy: `.pi/agent/governance/domain-governance-policy.json`
+- Helper: `.pi/agent/extensions/domain-governance.ts`
+- Validator: `scripts/validate-domain-governance.sh`
+
+The policy is advisory-first for path ownership. Obvious role/domain mismatches block task-packet generation, while missing concrete paths warn until the governance surface proves low-noise.
+
+## Conditional docs bootstrap
+
+Domain docs are generated only when requested by feature domains:
+
+```bash
+npm run harness:init-feature -- --slug checkout-ui --domains frontend
+npm run harness:init-feature -- --slug billing-api --domains backend
+```
+
+- `docs/frontend/README.md` is generated only for frontend features.
+- `docs/backend/README.md` is generated only for backend features.
+- Shared intake and docs/research features do not create frontend/backend folders by default.
+
+## Backout path
+
+Remove the policy, helper, validator, frontend-safety skill, conditional templates, and task-packet/team-activation tightening. Existing roles and packet generation continue without formal domain governance.

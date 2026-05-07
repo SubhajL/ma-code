@@ -10,7 +10,7 @@ It adapts useful grill/PRD/issues patterns into the existing Pi harness without 
 - Use current harness task packets and queue jobs as the execution surface; do not introduce a separate issue tracker dependency in Phase 1.
 - Intake trigger details live in `.pi/agent/docs/intake_policy.md` and the machine-readable trigger matrix `.pi/agent/intake/intake-trigger-policy.json`.
 - Every major feature should keep durable planning artifacts under `docs/initiatives/<feature-slug>/`.
-- Use `npm run harness:init-feature -- --slug <feature-slug>` to scaffold that initiative folder before filling in the PRD/backlog/decisions docs.
+- Use `npm run harness:init-feature -- --slug <feature-slug>` to scaffold that initiative folder before filling in the PRD/backlog/decisions docs. Add `--domains frontend` or `--domains backend` only when the feature actually needs domain docs.
 
 ## Workflow stages
 ### 1. Grill-style clarification
@@ -57,6 +57,8 @@ Each slice should state:
 - acceptance criteria
 - validation proof
 - files or domains likely affected
+- assigned domain owner when the slice is ready for task-packet handoff
+- explicit escalation or multi-lane note for mixed frontend/backend slices
 
 Prefer many thin slices over a few thick slices.
 Mark HITL when a slice needs human judgment, architecture approval, design approval, auth/secrets/deploy decisions, or ambiguous product behavior.

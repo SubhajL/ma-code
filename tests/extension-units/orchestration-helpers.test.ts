@@ -105,6 +105,7 @@ test("team-activation resolves a planning-first path for ambiguous mixed work", 
   assert.equal(result.initialTeam, "planning");
   assert.deepEqual(result.sequence, ["planning"]);
   assert.match(result.policyNotes.join("\n"), /planning/i);
+  assert.match(result.policyNotes.join("\n"), /Mixed-domain work/i);
 });
 
 test("task-packets generates a valid packet from real policies", async () => {
