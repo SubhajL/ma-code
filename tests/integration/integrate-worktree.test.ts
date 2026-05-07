@@ -63,6 +63,25 @@ test("integration helper fast-forwards main from a clean linked worktree and tol
   assert.equal((await readExecutionLeaseState(repoRoot)).leases.length, 0);
 });
 
+test("integration helper succeeds as already_current when source worktree is clean and already merged", async () => {
+  const repoRoot = await initGitRepo("integrate-worktree-current-");
+  const created = await createHarnessWorktree({
+    repoRoot,
+    id: "HARNESS-074",
+    slug: "already current",
+    baseRef: "main",
+  });
+
+  const result = await integrateHarnessWorktree({
+    repoRoot,
+    sourceWorktreePath: created.worktreePath,
+    runPostMergeValidation: false,
+  });
+
+  assert.equal(result.status, "already_current");
+  assert.equal(result.beforeHead, result.afterHead);
+});
+
 test("integration helper blocks when root main has dirty tracked files", async () => {
   const repoRoot = await initGitRepo("integrate-worktree-dirty-");
   const created = await createHarnessWorktree({

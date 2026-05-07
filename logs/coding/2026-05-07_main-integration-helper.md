@@ -124,3 +124,27 @@ LOW
 
 #### Rollout Notes
 - Additive rollout only; this is a bounded local-main integration tool, not a general deploy/release pipeline.
+
+## Follow-up Update (2026-05-07) - already_current support
+
+### Goal
+- Allow the integration helper to succeed when the source worktree is already merged into local `main`.
+
+### Files Changed and Why
+- `scripts/harness-integrate.ts`: filtered review-prep warnings so `no commits ahead` / `no changed files` do not block the explicit `already_current` case.
+- `tests/integration/integrate-worktree.test.ts`: added `already_current` behavior coverage.
+
+### RED Evidence
+- Manual smoke on root main:
+  - `npm run --silent harness:integrate:json -- --worktree ... --skip-validation`
+  - Failed because review-prep treated an already-merged source worktree as not merge-ready.
+
+### GREEN Evidence
+- `tests/integration/integrate-worktree.test.ts`: 5 pass / 0 fail after adding the `already_current` case.
+- Re-ran targeted gates plus validator; all passed.
+
+### Wiring Verification Evidence
+- `harness:integrate:json` now returns `status: "already_current"` for a clean source worktree already merged into local `main`.
+
+### Risks / Follow-ups
+- none

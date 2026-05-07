@@ -144,12 +144,20 @@ export async function integrateHarnessWorktree(options: IntegrateWorktreeOptions
 
   const toleratedUntrackedArtifacts = await readToleratedUntrackedArtifacts(repoRoot);
   const reviewPrep = await buildHarnessWorktreeReviewPrep({ repoRoot, worktreePath: sourceWorktreePath, baseRef: branch });
-  if (!reviewPrep.mergeReady || !reviewPrep.branch) {
+  if (!reviewPrep.branch) {
     throw new Error(`Source worktree is not merge-ready: ${reviewPrep.warnings.join(" | ") || "unknown reason"}`);
   }
 
   const beforeHead = await runGit(repoRoot, ["rev-parse", "HEAD"]);
   const sourceHead = await runGit(sourceWorktreePath, ["rev-parse", "HEAD"]);
+  const alreadyCurrent = beforeHead === sourceHead;
+  const blockingWarnings = reviewPrep.warnings.filter((warning) => {
+    if (alreadyCurrent && (warning.includes("no commits ahead") || warning.includes("No changed files"))) return false;
+    return true;
+  });
+  if (blockingWarnings.length > 0) {
+    throw new Error(`Source worktree is not merge-ready: ${blockingWarnings.join(" | ")}`);
+  }
   const mergeBase = await runGit(repoRoot, ["merge-base", beforeHead, reviewPrep.branch]);
   if (beforeHead !== sourceHead && mergeBase !== beforeHead) {
     throw new Error(`Refusing to integrate: ${reviewPrep.branch} is not a fast-forward of ${branch}.`);
