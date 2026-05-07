@@ -23,6 +23,9 @@ For fast operator snapshots or bounded queue advancement outside a live agent se
 ```bash
 npm run harness:status
 npm run harness:status:json
+npm run harness:leases
+npm run harness:leases:json
+npm run harness:leases -- clear-stale
 npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:queue-session:json -- --scope "bounded queue operation" --max-steps 3 --max-runtime-seconds 30
 npm run harness:schedules
@@ -44,15 +47,19 @@ When operating queued work in a live harness session, use the runtime tools in t
    - confirm whether the queue is paused
    - confirm the active job and active task
    - review blocked or failed job/task IDs before taking action
-2. pause intake with `pause_queue` when you want to stop new pickup without discarding state
-3. resume intake with `resume_queue` when visible queue/task state is acceptable again
-4. stop safely with `stop_queue_safely` when the current active job should move into a reviewable blocked state
-5. advance at most one bounded step with `run_next_queue_job` or run one explicit bounded multi-step session with `run_bounded_queue_session`
-6. inspect scheduled workflows when recurring bounded work should be queued
+   - review additive queue-session lease status before starting bounded queue work
+2. inspect leases with `npm run harness:leases` when queue execution appears blocked by a lease
+   - use `npm run harness:leases -- clear-stale` only for already-expired/stale leases
+   - do not force-clear active leases as a normal operator action
+3. pause intake with `pause_queue` when you want to stop new pickup without discarding state
+4. resume intake with `resume_queue` when visible queue/task state is acceptable again
+5. stop safely with `stop_queue_safely` when the current active job should move into a reviewable blocked state
+6. advance at most one bounded step with `run_next_queue_job` or run one explicit bounded multi-step session with `run_bounded_queue_session`
+7. inspect scheduled workflows when recurring bounded work should be queued
    - use `npm run harness:schedules` for a read-only due-work snapshot
    - use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id>` for dry-run inspection
    - add `--apply` only when you explicitly want to enqueue eligible scheduled jobs
-7. review evidence, blockers, and validation before declaring work complete
+8. review evidence, blockers, and validation before declaring work complete
 
 Recommended operator questions during this loop:
 - is the queue paused intentionally?

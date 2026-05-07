@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   QUEUE_SESSION_LEASE_SCOPE,
   acquireExecutionLease,
+  clearStaleExecutionLeases,
   readExecutionLeaseState,
   releaseExecutionLease,
   summarizeExecutionLeases,
@@ -72,6 +73,32 @@ test("queue-session lease scope remains a generic reusable lease scope", async (
   assert.equal(QUEUE_SESSION_LEASE_SCOPE, "queue-session");
   assert.equal(acquired.acquired, true);
   assert.equal(acquired.state.leases[0]?.scope, QUEUE_SESSION_LEASE_SCOPE);
+});
+
+test("clearStaleExecutionLeases removes only expired leases", async () => {
+  const cwd = await makeTempRepo("execution-leases-clear-stale-");
+
+  await acquireExecutionLease(cwd, {
+    id: "lease-active",
+    scope: "queue:active",
+    owner: "assistant",
+    acquiredAt: "2026-05-06T00:00:00.000Z",
+    expiresAt: "2999-01-01T00:00:00.000Z",
+  });
+  await acquireExecutionLease(cwd, {
+    id: "lease-stale",
+    scope: "queue:stale",
+    owner: "assistant",
+    acquiredAt: "2026-05-06T00:00:00.000Z",
+    expiresAt: "2026-05-06T00:01:00.000Z",
+  });
+
+  const cleared = await clearStaleExecutionLeases(cwd, "2026-05-07T00:00:00.000Z");
+  const state = await readExecutionLeaseState(cwd);
+
+  assert.deepEqual(cleared.removedLeases.map((lease) => lease.id), ["lease-stale"]);
+  assert.deepEqual(cleared.retainedLeases.map((lease) => lease.id), ["lease-active"]);
+  assert.deepEqual(state.leases.map((lease) => lease.id), ["lease-active"]);
 });
 
 test("expired lease is pruned before a new acquire and summary reflects active leases", async () => {

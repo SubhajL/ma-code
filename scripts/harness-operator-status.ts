@@ -41,6 +41,14 @@ function formatIdList(ids: string[], emptyLabel: string): string {
   return ids.length > 0 ? ids.join(", ") : emptyLabel;
 }
 
+function formatQueueLease(summary: QueueInspectionResult["summary"]): string {
+  const lease = summary.queueSessionLease;
+  if (!lease) return "none";
+  if (lease.stale) return `stale lease from ${lease.owner ?? "unknown"} expired at ${lease.expiresAt ?? "unknown"}`;
+  if (lease.held) return `held by ${lease.owner ?? "unknown"} until ${lease.expiresAt ?? "unknown"}`;
+  return "none";
+}
+
 export async function buildHarnessOperatorStatus(options: HarnessStatusOptions = {}): Promise<HarnessStatusView> {
   const cwd = resolve(options.cwd ?? process.cwd());
   const recentLimit = clampRecentLimit(options.recentLimit);
@@ -64,6 +72,8 @@ export function renderHarnessOperatorStatus(view: HarnessStatusView): string {
     `failed jobs: ${formatIdList(summary.failedJobIds, "none")}`,
     `blocked tasks: ${formatIdList(summary.blockedTaskIds, "none")}`,
     `failed tasks: ${formatIdList(summary.failedTaskIds, "none")}`,
+    `active leases: ${summary.activeLeaseCount}`,
+    `queue lease: ${formatQueueLease(summary)}`,
     `recent job ids (last ${recentLimit}): ${formatIdList(summary.recentJobIds, "none")}`,
     `recent task ids (last ${recentLimit}): ${formatIdList(summary.recentTaskIds, "none")}`,
   ];

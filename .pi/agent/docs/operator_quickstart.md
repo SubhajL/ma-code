@@ -9,6 +9,7 @@ For the full operator documentation set, start at:
 ## What this quickstart is
 Current operator surface is intentionally lightweight:
 - a read-only CLI status view
+- a narrow lease inspection/stale-cleanup CLI
 - an explicit bounded queue-session CLI for multi-step queue advancement without a hidden daemon
 - a file-backed scheduled workflow helper for explicit due-work inspection/materialization
 - package-script entrypoints for common validators
@@ -42,7 +43,17 @@ This status surface summarizes:
 - the active job and task
 - job/task status counts
 - blocked and failed items
+- queue-session lease status
 - recent job/task IDs
+
+Inspect leases or clear only stale/expired leases:
+```bash
+npm run harness:leases
+npm run harness:leases:json
+npm run harness:leases -- clear-stale
+```
+
+`clear-stale` preserves active leases. Active lease force-clearing is intentionally not part of the normal Phase 3 operator path.
 
 Run a bounded queue session when one-step queue advancement is too manual:
 ```bash
@@ -89,6 +100,7 @@ npm run validate:tuning-data
 Focused integration proof for the operator/queue/schedule surfaces:
 ```bash
 npm run test:operator-surface
+npm run test:operator-leases
 npm run test:queue-session
 npm run test:scheduled-workflows
 ```

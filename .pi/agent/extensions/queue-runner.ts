@@ -9,8 +9,13 @@ import { dirname, resolve } from "node:path";
 import {
   QUEUE_SESSION_LEASE_SCOPE,
   acquireExecutionLease,
+  defaultExecutionLeaseState,
+  isExecutionLeaseStale,
+  readExecutionLeaseState,
   releaseExecutionLease,
   type AcquireExecutionLeaseResult,
+  type ExecutionLeaseRecord,
+  type ExecutionLeaseState,
 } from "./execution-leases.ts";
 import {
   BUDGET_MODES,
@@ -173,6 +178,16 @@ export interface QueueRunnerResult {
   recoveryDecision: RuntimeRecoveryDecision | null;
 }
 
+export interface QueueSessionLeaseInspectionSummary {
+  held: boolean;
+  owner: string | null;
+  acquiredAt: string | null;
+  expiresAt: string | null;
+  stale: boolean;
+  scopeKey: string | null;
+  leaseType: string | null;
+}
+
 export interface QueueInspectionSummary {
   queuePaused: boolean;
   activeJobId: string | null;
@@ -189,6 +204,8 @@ export interface QueueInspectionSummary {
   failedTaskIds: string[];
   recentJobIds: string[];
   recentTaskIds: string[];
+  activeLeaseCount: number;
+  queueSessionLease: QueueSessionLeaseInspectionSummary | null;
 }
 
 export interface QueueInspectionResult {
@@ -528,7 +545,30 @@ function buildTaskCounts(tasks: TaskRecord[]): Record<string, number> {
   return counts;
 }
 
-function buildQueueInspectionSummary(queueState: QueueState, taskState: TaskState, recentLimit: number): QueueInspectionSummary {
+function buildQueueSessionLeaseInspectionSummary(lease: ExecutionLeaseRecord | null, now: string): QueueSessionLeaseInspectionSummary | null {
+  if (!lease) return null;
+  const stale = isExecutionLeaseStale(lease, now);
+  return {
+    held: !stale,
+    owner: lease.owner,
+    acquiredAt: lease.acquiredAt,
+    expiresAt: lease.expiresAt,
+    stale,
+    scopeKey: lease.scope,
+    leaseType: lease.scope === QUEUE_SESSION_LEASE_SCOPE ? "queue-session" : null,
+  };
+}
+
+function buildQueueInspectionSummary(
+  queueState: QueueState,
+  taskState: TaskState,
+  recentLimit: number,
+  leaseState: ExecutionLeaseState = defaultExecutionLeaseState(),
+): QueueInspectionSummary {
+  const now = nowIso();
+  const activeLeaseCount = leaseState.leases.filter((lease) => !isExecutionLeaseStale(lease, now)).length;
+  const queueSessionLeases = leaseState.leases.filter((lease) => lease.scope === QUEUE_SESSION_LEASE_SCOPE);
+  const queueSessionLease = queueSessionLeases.find((lease) => !isExecutionLeaseStale(lease, now)) ?? queueSessionLeases[0] ?? null;
   const activeJob = queueState.activeJobId ? getJob(queueState, queueState.activeJobId) ?? null : null;
   const activeTask = taskState.activeTaskId ? getTask(taskState, taskState.activeTaskId) ?? null : null;
   const jobCounts = makeEmptyJobCounts();
@@ -564,12 +604,14 @@ function buildQueueInspectionSummary(queueState: QueueState, taskState: TaskStat
     failedTaskIds,
     recentJobIds: queueState.jobs.slice(-recentLimit).map(function (job) { return job.id; }).reverse(),
     recentTaskIds: taskState.tasks.slice(-recentLimit).map(function (task) { return task.id; }).reverse(),
+    activeLeaseCount,
+    queueSessionLease: buildQueueSessionLeaseInspectionSummary(queueSessionLease, now),
   };
 }
 
 export async function inspectQueueState(cwd: string, input: { recentLimit?: number } = {}): Promise<QueueInspectionResult> {
   const recentLimit = Math.max(1, Math.min(input.recentLimit ?? 5, 20));
-  const [queueState, taskState] = await Promise.all([readQueueState(cwd), readTaskState(cwd)]);
+  const [queueState, taskState, leaseState] = await Promise.all([readQueueState(cwd), readTaskState(cwd), readExecutionLeaseState(cwd)]);
   return {
     version: 1,
     queue: queueState,
@@ -577,7 +619,7 @@ export async function inspectQueueState(cwd: string, input: { recentLimit?: numb
       activeTaskId: taskState.activeTaskId,
       tasks: taskState.tasks,
     },
-    summary: buildQueueInspectionSummary(queueState, taskState, recentLimit),
+    summary: buildQueueInspectionSummary(queueState, taskState, recentLimit, leaseState),
   };
 }
 

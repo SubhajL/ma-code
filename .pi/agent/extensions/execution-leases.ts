@@ -48,6 +48,12 @@ export interface ExecutionLeaseSummary {
   leases: Array<Pick<ExecutionLeaseRecord, "id" | "scope" | "owner" | "expiresAt" | "heartbeatAt">>;
 }
 
+export interface ClearStaleExecutionLeasesResult {
+  removedLeases: ExecutionLeaseRecord[];
+  retainedLeases: ExecutionLeaseRecord[];
+  state: ExecutionLeaseState;
+}
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -103,6 +109,10 @@ function isExpired(lease: ExecutionLeaseRecord, now: string): boolean {
   const nowMs = timestampMs(now);
   if (!Number.isFinite(expiresMs) || !Number.isFinite(nowMs)) return false;
   return expiresMs <= nowMs;
+}
+
+export function isExecutionLeaseStale(lease: ExecutionLeaseRecord, now: string = nowIso()): boolean {
+  return isExpired(lease, now);
 }
 
 export function pruneExpiredExecutionLeases(state: ExecutionLeaseState, now: string = nowIso()): ExecutionLeaseState {
@@ -192,6 +202,19 @@ export async function releaseExecutionLease(cwd: string, leaseId: string): Promi
     released: releasedLease !== null,
     releasedLease,
     state: nextState,
+  };
+}
+
+export async function clearStaleExecutionLeases(cwd: string, now: string = nowIso()): Promise<ClearStaleExecutionLeasesResult> {
+  const current = await readExecutionLeaseState(cwd);
+  const retainedState = pruneExpiredExecutionLeases(current, now);
+  const retainedIds = new Set(retainedState.leases.map((lease) => lease.id));
+  const removedLeases = current.leases.filter((lease) => !retainedIds.has(lease.id));
+  await writeExecutionLeaseState(cwd, retainedState);
+  return {
+    removedLeases,
+    retainedLeases: retainedState.leases,
+    state: retainedState,
   };
 }
 

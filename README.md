@@ -128,6 +128,9 @@ Direct repo-root operator/package ergonomics:
 ```bash
 npm install --no-package-lock
 npm run harness:status
+npm run harness:leases
+npm run harness:leases:json
+npm run harness:leases -- clear-stale
 npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:schedules
 npm run harness:package
@@ -137,6 +140,7 @@ npm run harness:sync-main
 npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
+npm run test:operator-leases
 npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
@@ -150,6 +154,15 @@ npm run validate:prompt-semantics
 npm run validate:prompt-semantics:live
 npm run validate:harness-package
 ```
+
+Lease inspection and stale-cleanup examples:
+```bash
+npm run harness:leases
+npm run harness:leases:json
+npm run harness:leases -- clear-stale
+```
+
+The lease helper is intentionally narrow: it lists current execution leases and `clear-stale` removes only already-expired/stale leases. Active lease force-clearing is not a default operator action; inspect status first and prefer waiting for expiry or resolving the owning run.
 
 Bounded queue-session examples:
 ```bash

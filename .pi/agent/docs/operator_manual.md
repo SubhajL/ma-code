@@ -24,6 +24,7 @@ Use it when you need the full operator documentation set instead of a chat-histo
 - configure providers and model routing
 - understand what each role is for
 - inspect queue/task/scheduled state
+- inspect execution lease state and clear only stale leases
 - pause, resume, or stop bounded execution safely
 - run validators and interpret the result surfaces
 - troubleshoot common local/runtime/provider issues
@@ -39,3 +40,9 @@ Use it when you need the full operator documentation set instead of a chat-histo
 7. `operator_safety_rules.md`
 8. `operator_troubleshooting_guide.md`
 9. `operator_extension_guide.md`
+
+## Lease safety boundary
+- Use `npm run harness:status` to see queue-session lease status in the normal operator snapshot.
+- Use `npm run harness:leases` or `npm run harness:leases:json` for focused lease inspection.
+- Use `npm run harness:leases -- clear-stale` only to remove expired/stale leases.
+- Active lease force-clearing is not a default operator action; resolve the owning run or wait for expiry instead.
