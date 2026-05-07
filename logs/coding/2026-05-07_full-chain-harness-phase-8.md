@@ -119,3 +119,25 @@ LOW
 - `g-submit`, `harness:pr-gate`, and `harness:sync-main` remain standalone; `harness:merge` composes them at merge time.
 
 Review Verdict: no_required_fixes
+
+## Creation / Submission (g-create/g-submit) - 2026-05-07
+
+### Creation
+- Branch: `split/task-1778143204032-phase-8-merge-helper`
+- Commit: `e173c9c feat(release): add bounded merge helper`
+- Hook evidence: staged pre-commit quality gates ran and passed; no staged-file-aware checks were configured for this change set.
+
+### Submission
+- PR: https://github.com/SubhajL/ma-code/pull/97
+- Base: `main`
+- Head: `split/task-1778143204032-phase-8-merge-helper`
+- State: OPEN at creation.
+
+### Commands Run
+- `git status -sb`
+- `git rev-list --left-right --count origin/main...HEAD` => `0 1`
+- `git push -u origin split/task-1778143204032-phase-8-merge-helper`
+- `gh pr create --base main --head split/task-1778143204032-phase-8-merge-helper --title "feat(release): add bounded merge helper" --body-file /tmp/phase8-merge-helper-pr.md`
+
+### Lifecycle Note
+- `npm run harness:slice-lifecycle -- check --stage create_ready --json` was attempted before commit and reported blocked because the implementation worktree does not carry the live root `.pi/agent/state/runtime/tasks.json`; RED/GREEN/review evidence was present in the coding log, and task evidence is recorded through `task_update` in the root runtime.
