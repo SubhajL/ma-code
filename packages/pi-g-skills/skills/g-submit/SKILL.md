@@ -98,6 +98,18 @@ If submission fails, report:
 - whether the problem is local git state, auth, Graphite state, or GitHub state
 - the smallest next fix
 
+## Merge helper handoff
+
+`g-submit` remains PR submission/update only. If a submitted PR is ready for merge consideration, record PR URL/state and PR-gate evidence, then hand off to the bounded merge helper instead of merging inside `g-submit`:
+
+```bash
+npm run harness:merge -- check --pr <number>
+npm run harness:merge -- apply --pr <number> --method squash
+npm run harness:merge -- apply --pr <number> --method squash --sync-main
+```
+
+The merge helper re-checks lifecycle `merge_ready`, PR gate pass state, review/comment blockers, and local repo cleanliness. `--sync-main` is explicit only.
+
 ## Out of scope
 
 - do not merge to `main` by default

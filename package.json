@@ -57,7 +57,11 @@
     "test:slice-lifecycle": "node --import tsx --test tests/extension-units/slice-lifecycle.test.ts tests/integration/slice-lifecycle.test.ts",
     "validate:slice-lifecycle": "./scripts/validate-slice-lifecycle.sh",
     "test:domain-governance": "node --import tsx --test tests/extension-units/domain-governance.test.ts tests/integration/domain-governance.test.ts",
-    "validate:domain-governance": "./scripts/validate-domain-governance.sh"
+    "validate:domain-governance": "./scripts/validate-domain-governance.sh",
+    "harness:merge": "node --import tsx scripts/harness-merge.ts",
+    "harness:merge:json": "node --import tsx scripts/harness-merge.ts check --json",
+    "test:merge-helper": "node --import tsx --test tests/extension-units/merge-helper.test.ts tests/integration/merge-helper.test.ts",
+    "validate:merge-helper": "./scripts/validate-merge-helper.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

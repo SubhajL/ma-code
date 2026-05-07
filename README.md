@@ -120,6 +120,21 @@ npm run validate:domain-governance
 npm run harness:init-feature -- --slug checkout-ui --domains frontend
 ```
 
+
+## Merge helper / release policy
+
+Phase 8 adds `harness:merge`, a bounded merge-readiness and apply helper. It composes the slice lifecycle helper, PR gate evidence, PR review/comment state, local repo cleanliness, and optional explicit sync-main.
+
+Useful commands:
+```bash
+npm run harness:merge -- check --pr <number>
+npm run harness:merge -- apply --pr <number> --method squash
+npm run harness:merge -- apply --pr <number> --method squash --sync-main
+npm run validate:merge-helper
+```
+
+`harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied.
+
 ## Slice lifecycle assessment
 
 Phase 6 adds an assess-first slice lifecycle helper that reads existing planning logs, coding logs, task state, git/branch evidence, PR submission summaries, PR-gate output, and sync-main evidence. It does not create a new mutable lifecycle state file.
