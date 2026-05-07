@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "policyName": "slice-lifecycle-phase-6",
+  "description": "Additive lifecycle checkpoints derived from existing task, log, git, PR-gate, and sync-main evidence. No mutable lifecycle state is introduced.",
+  "defaultMode": "assess_first",
+  "allowedSkips": [
+    {
+      "stage": "intake_required",
+      "exemption": "direct_implementation_exemption",
+      "reason": "Small bounded implementation slices may start from an explicit task packet/plan instead of a full intake artifact."
+    }
+  ],
+  "acceptedEvidenceTypes": [
+    "planning_log_path",
+    "coding_log_path",
+    "task_state",
+    "red_evidence",
+    "green_evidence",
+    "g_check_review",
+    "branch_commit_artifact",
+    "pr_url_state",
+    "pr_gate_clean",
+    "merge_evidence",
+    "local_main_sync_evidence"
+  ],
+  "checkpoints": [
+    { "name": "intake_required", "requiredPredecessors": [], "enforcement": "optional", "acceptedEvidence": ["planning_log_path"] },
+    { "name": "planning_ready", "requiredPredecessors": [], "enforcement": "mandatory", "acceptedEvidence": ["planning_log_path"] },
+    { "name": "task_ready", "requiredPredecessors": ["planning_ready"], "enforcement": "mandatory", "acceptedEvidence": ["task_state"] },
+    { "name": "coding_red", "requiredPredecessors": ["task_ready"], "enforcement": "mandatory", "acceptedEvidence": ["red_evidence"] },
+    { "name": "coding_green", "requiredPredecessors": ["coding_red"], "enforcement": "mandatory", "acceptedEvidence": ["green_evidence"] },
+    { "name": "review_ready", "requiredPredecessors": ["coding_green"], "enforcement": "mandatory", "acceptedEvidence": ["green_evidence", "task_state"] },
+    { "name": "checked", "requiredPredecessors": ["review_ready"], "enforcement": "mandatory", "acceptedEvidence": ["g_check_review"] },
+    { "name": "create_ready", "requiredPredecessors": ["checked"], "enforcement": "mandatory", "acceptedEvidence": ["planning_log_path", "red_evidence", "green_evidence", "g_check_review", "task_state"] },
+    { "name": "created", "requiredPredecessors": ["create_ready"], "enforcement": "mandatory", "acceptedEvidence": ["branch_commit_artifact"] },
+    { "name": "submitted", "requiredPredecessors": ["created"], "enforcement": "mandatory", "acceptedEvidence": ["pr_url_state"] },
+    { "name": "pr_gate_clean", "requiredPredecessors": ["submitted"], "enforcement": "mandatory", "acceptedEvidence": ["pr_gate_clean"] },
+    { "name": "merge_ready", "requiredPredecessors": ["pr_gate_clean"], "enforcement": "mandatory", "acceptedEvidence": ["pr_url_state", "pr_gate_clean"] },
+    { "name": "merged", "requiredPredecessors": ["merge_ready"], "enforcement": "future", "acceptedEvidence": ["merge_evidence"] },
+    { "name": "local_main_synced", "requiredPredecessors": ["merged"], "enforcement": "future", "acceptedEvidence": ["local_main_sync_evidence"] }
+  ]
+}

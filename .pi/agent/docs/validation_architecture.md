@@ -88,6 +88,7 @@ Primary assets:
 - `scripts/validate-phase-a-b.sh`
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-graphify-discovery.sh`
+- `scripts/validate-slice-lifecycle.sh`
 - `scripts/validate-prompt-contracts.sh`
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
@@ -140,6 +141,18 @@ Validation role of this layer:
 - checks whether the evidence matches the claimed scope
 - gives priority to validator/reviewer output over worker self-report
 - blocks completion when evidence is missing, contradictory, or too weak
+
+
+### Slice lifecycle validator
+
+Phase 6 adds `scripts/validate-slice-lifecycle.sh` for the assess-first slice lifecycle surface. It verifies:
+
+- machine-readable policy parsing and checkpoint ordering
+- lifecycle helper classification and missing-prerequisite reporting
+- CLI `status` and `check --stage <target>` behavior
+- package/docs/skill wiring for normalized lifecycle evidence
+
+The validator intentionally derives lifecycle state from existing planning logs, coding logs, task state, git/branch evidence, PR-gate evidence, and sync-main evidence. It does not introduce a new mutable runtime lifecycle state file.
 
 ## Graphify evidence lifecycle drift guard
 Graphify evidence lifecycle drift guard: explicit research queue-session orchestration -> graphifyEvidence in packet/handoff -> task_update validator consumption.
@@ -443,6 +456,22 @@ Related cheap static enforcement in `scripts/check-repo-static.sh` keeps the doc
 Graphify final runbook: `.pi/agent/docs/graphify_final_runbook.md` captures the final operator checklist for optional-use decisions, preflight, bounded scan, query verification, evidence, and cleanup boundaries.
 
 It should be used when changes affect Graphify adapter runtime behavior, Graphify-specific test wiring, discovery-policy Graphify fallback selection, Graphify final runbook/checklist guidance, or Graphify prompt skepticism/routing policy.
+
+
+### Dedicated slice lifecycle validator
+Current dedicated slice lifecycle script:
+- `scripts/validate-slice-lifecycle.sh`
+- package alias: `validate:slice-lifecycle`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/lifecycle/slice-lifecycle-policy.json`
+- `.pi/agent/extensions/slice-lifecycle.ts`
+- `scripts/harness-slice-lifecycle.ts`
+- `tests/extension-units/slice-lifecycle.test.ts`
+- `tests/integration/slice-lifecycle.test.ts`
+- docs/package/skill lifecycle evidence wiring
+
+It should be used when changes affect lifecycle checkpoint definitions, lifecycle evidence parsing, create/submit/merge-ready assessment, or lifecycle operator documentation.
 
 ### Dedicated harness-package validator
 Current dedicated harness-package script:

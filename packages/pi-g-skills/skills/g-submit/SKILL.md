@@ -32,6 +32,17 @@ If the submission target is unclear, ask one short question:
 - update existing PR
 - draft PR
 
+
+## Lifecycle evidence
+
+Before submitting, prefer lifecycle preflight when the helper is available:
+
+```bash
+npm run harness:slice-lifecycle -- check --stage created
+```
+
+Submission evidence should include PR URL, base/head branch, PR state, and compact check status. After PR-gate succeeds, record clean/pass evidence so the helper can recognize `pr_gate_clean` and `merge_ready`.
+
 ## Discovery
 
 Use compact repo/PR state inspection first:

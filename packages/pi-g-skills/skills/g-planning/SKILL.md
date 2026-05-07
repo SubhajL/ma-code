@@ -152,3 +152,12 @@ Rules:
 - if a section is empty, write `- none`
 - include the final planning-log path and coding-log path
 - do not implement code in this skill
+
+
+## Lifecycle evidence
+
+When producing or updating a planning artifact, make lifecycle evidence easy for `.pi/agent/extensions/slice-lifecycle.ts` to assess:
+- record the planning log path under `reports/planning/`
+- include explicit acceptance criteria and the first TDD slice when implementation will follow
+- state whether intake was required or a direct-implementation exemption applies
+- keep `logs/CURRENT.md` pointing at the active planning/coding log pair when this is the active feature group

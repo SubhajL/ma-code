@@ -140,3 +140,12 @@ Rules:
 - use bullets, not long prose blocks
 - if a section is empty, write `- none`
 - do not claim completion without evidence
+
+
+## Lifecycle evidence
+
+Before implementation, confirm lifecycle planning readiness unless the task explicitly carries a direct-implementation exemption. For auditable lifecycle assessment:
+- record the active planning log path or direct-implementation exemption
+- preserve exact RED evidence and exact GREEN evidence in the active coding log
+- keep task evidence visible through `task_update` and acceptance criteria
+- hand off to `g-check` so the helper can reach `checked` / `create_ready`
