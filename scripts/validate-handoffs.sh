@@ -197,6 +197,7 @@ setup_temp_runtime() {
 JSON
   cp "$REPO_ROOT/.pi/agent/extensions/handoffs.ts" "$workdir/src/handoffs.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/task-packets.ts" "$workdir/src/task-packets.ts"
+  cp "$REPO_ROOT/.pi/agent/extensions/domain-governance.ts" "$workdir/src/domain-governance.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/harness-routing.ts" "$workdir/src/harness-routing.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/team-activation.ts" "$workdir/src/team-activation.ts"
   cp "$REPO_ROOT/.pi/agent/handoffs/handoff-policy.json" "$workdir/handoffs/handoff-policy.json"

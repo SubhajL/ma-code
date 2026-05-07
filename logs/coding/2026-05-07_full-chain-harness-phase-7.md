@@ -161,3 +161,14 @@ Review Verdict: no_required_fixes
 - `./scripts/validate-harness-package.sh` => PASS.
 - `./scripts/check-foundation-extension-compile.sh` => PASS.
 - `./scripts/validate-task-packets.sh` => PASS.
+
+## CI Fix (2026-05-07) - handoff validator wiring
+
+### Finding
+- PR #96 CI still failed in `validate-handoffs.sh` because the isolated handoff runtime copied `task-packets.ts` without its new `domain-governance.ts` dependency.
+
+### Fix
+- Updated `scripts/validate-handoffs.sh` to copy `domain-governance.ts` into the isolated handoff runtime.
+
+### Validation
+- `./scripts/validate-handoffs.sh` => PASS.
