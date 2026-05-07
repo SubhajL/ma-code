@@ -172,3 +172,35 @@ Review Verdict: no_required_fixes
 
 ### Validation
 - `./scripts/validate-handoffs.sh` => PASS.
+
+## CI Fix (2026-05-07) - queue-runner validator domain governance compatibility
+
+### Finding
+- PR #96 Routing Validators failed in `./scripts/validate-queue-runner.sh --skip-live` after `task-packets.ts` became domain-governance-aware.
+- The isolated queue-runner validator copied `task-packets.ts` without `domain-governance.ts`.
+- After dependency wiring was added, queue-runner unit tests exposed an over-strict governance rule: review-only quality/validator packets preserving a backend domain were blocked because they are assigned to `quality_lead` / `validator_worker`, not `backend_worker`.
+
+### RED Evidence
+- `node --import tsx --test tests/extension-units/domain-governance.test.ts` failed on new regression `review-only governed domain packets can be assigned to quality roles` with `false !== true`.
+- `./scripts/validate-queue-runner.sh --skip-live --report /tmp/phase7-queue-runner-fix.md --summary-json /tmp/phase7-queue-runner-fix.json` failed: 39 pass / 2 fail; structured quality and validator queue jobs were blocked by domain governance.
+
+### Fix
+- Updated `assessDomainGovernance` so frontend/backend/infra role-match blocking applies to implementation worker lanes; non-implementation review/planning packets receive a warning instead of a blocker.
+- Added regression coverage for review-only governed-domain quality packets.
+- Wired `domain-governance.ts` into `scripts/validate-core-workflows.sh` and `scripts/validate-queue-runner.sh` isolated runtimes.
+
+### GREEN Evidence
+- `node --import tsx --test tests/extension-units/domain-governance.test.ts` => PASS, 9/9.
+- `node --import tsx --test tests/integration/domain-governance.test.ts` => PASS, 6/6.
+- `./scripts/validate-domain-governance.sh --report /tmp/phase7-domain-governance-fix.md --summary-json /tmp/phase7-domain-governance-fix.json` => PASS.
+- `./scripts/validate-harness-package.sh --report /tmp/phase7-harness-package-fix.md --summary-json /tmp/phase7-harness-package-fix.json` => PASS.
+- `./scripts/check-foundation-extension-compile.sh` => PASS.
+- `./scripts/validate-task-packets.sh --report /tmp/phase7-task-packets-fix.md --summary-json /tmp/phase7-task-packets-fix.json` => PASS.
+- `./scripts/validate-handoffs.sh --report /tmp/phase7-handoffs-fix.md --summary-json /tmp/phase7-handoffs-fix.json` => PASS.
+- `./scripts/validate-core-workflows.sh --report /tmp/phase7-core-fix.md --summary-json /tmp/phase7-core-fix.json` => PASS.
+- `./scripts/validate-queue-runner.sh --skip-live --report /tmp/phase7-queue-runner-fix3.md --summary-json /tmp/phase7-queue-runner-fix3.json` => PASS.
+- `git diff --check` => PASS.
+
+### Root Worktree Correction
+- The root worktree had drifted to `task/task-1778138959443-phase-6-slice-lifecycle-assessment-helper-and-en` at `a3d8154` while `origin/main` was `4ac9994`.
+- Corrected immediately with clean-state guard: switched root to `main` and fast-forward synced; final root state `HEAD == origin/main == 4ac999496404c80d3e08ca90ba4c1ca6307b4869`, `git status -sb` => `## main...origin/main`.

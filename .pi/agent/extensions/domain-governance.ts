@@ -161,6 +161,7 @@ export function assessDomainGovernance(policy: DomainGovernancePolicy, input: Do
 
   const governedDomainCount = normalizedDomains.filter((domain) => GOVERNED_DOMAINS.includes(domain as GovernedDomain)).length;
   const mixedDomainExplicit = governedDomainCount > 1 && hasMixedDomainEvidence(policy, input);
+  const enforceWorkerRoleMatch = input.workType === "implementation";
 
   for (const domain of normalizedDomains) {
     if (!GOVERNED_DOMAINS.includes(domain as GovernedDomain)) continue;
@@ -169,7 +170,8 @@ export function assessDomainGovernance(policy: DomainGovernancePolicy, input: Do
     expectedRoleByDomain[governedDomain] = expectedRole;
     if (input.assignedRole !== expectedRole) {
       const message = `${governedDomain} domain work should be assigned to ${expectedRole}; received ${input.assignedRole}.`;
-      if (governedDomainCount > 1 && mixedDomainExplicit) warnings.push(`${message} Mixed-domain justification allows a single owner with explicit review/escalation.`);
+      if (!enforceWorkerRoleMatch) warnings.push(`${message} Non-implementation governance treats this as review/planning context, not a worker-lane blocker.`);
+      else if (governedDomainCount > 1 && mixedDomainExplicit) warnings.push(`${message} Mixed-domain justification allows a single owner with explicit review/escalation.`);
       else blockReasons.push(message);
     }
   }

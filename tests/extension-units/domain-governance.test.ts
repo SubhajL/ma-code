@@ -107,6 +107,21 @@ test("shared docs and research intake domains do not require mixed-domain escala
   assert.deepEqual(result.blockReasons, []);
 });
 
+test("review-only governed domain packets can be assigned to quality roles", async () => {
+  const policy = await readPolicy();
+  const result = assessDomainGovernance(policy, {
+    domains: ["backend"],
+    assignedRole: "quality_lead",
+    workType: "review_only",
+    allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+    filesToModify: [],
+  });
+
+  assert.equal(result.pass, true);
+  assert.deepEqual(result.blockReasons, []);
+  assert.match(result.warnings.join("\n"), /backend.*backend_worker/i);
+});
+
 test("implementation slices without concrete path boundaries warn while policy is advisory-first", async () => {
   const policy = await readPolicy();
   const result = assessDomainGovernance(policy, {
