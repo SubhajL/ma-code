@@ -19,7 +19,17 @@ It does not assume:
 
 Architecture boundary note: `.pi/agent/docs/architecture_roadmap_alignment.md` is the canonical operator reference for distinguishing tactical Graphify adapter support, runtime validation enforcement, optional policy-gated mandatory Graphify use, bounded foreground session mode, and future roadmap gaps.
 
-For fast operator snapshots or bounded queue advancement outside a live agent session, use:
+For fast operator snapshots or bounded queue advancement outside a live agent session, prefer the unified front door:
+```bash
+npm run harness:operator -- help
+npm run harness:operator -- status
+npm run harness:operator -- leases
+npm run harness:operator -- queue-session -- --scope "bounded queue operation" --max-steps 3
+npm run harness:operator -- worktree -- status
+npm run harness:operator -- worker-session -- start --id HARNESS-064 --slug "worker lane"
+```
+
+Legacy direct commands remain supported:
 ```bash
 npm run harness:status
 npm run harness:status:json
@@ -85,7 +95,14 @@ Follow `AGENTS.md`:
 - prefer small bounded changes
 - keep scope explicit
 
-When a dedicated worktree helps keep ownership and cleanup obvious, use the helper surface:
+When a dedicated worktree helps keep ownership and cleanup obvious, prefer the unified wrapper front door:
+```bash
+npm run harness:operator -- worktree -- branch-name --id HARNESS-024 --slug "worktree helpers"
+npm run harness:operator -- worktree -- create --id HARNESS-024 --slug "worktree helpers"
+npm run harness:operator -- worktree -- status
+```
+
+Legacy direct worktree commands remain supported:
 ```bash
 npm run harness:worktree -- branch-name --id HARNESS-024 --slug "worktree helpers"
 npm run harness:worktree -- create --id HARNESS-024 --slug "worktree helpers"
@@ -351,6 +368,7 @@ Run the validator script when:
 - before calling a bounded phase complete
 
 Choose the validator that matches the change:
+- prefer `npm run harness:operator -- <subcommand>` as the unified operator front door for status, leases, queue-session, worktree, and worker-session actions; legacy direct commands remain valid
 - use `npm run harness:status` or `npm run harness:status:json` for a read-only operator snapshot before deciding whether to resume, stop, or advance queue work
 - use `npm run harness:queue-session -- --scope "<bounded scope>" --max-steps <n>` when you want bounded multi-step queue advancement without a hidden daemon; it stops at the next waiting point, blocked state, pause, idle state, or configured limit and returns a richer triage summary with action counts, touched job IDs, and a recommended next action
 - use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation

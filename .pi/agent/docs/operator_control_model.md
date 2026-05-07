@@ -19,7 +19,8 @@ This doc outlines:
 - daily operation boundaries
 - testing expectations tied to trust
 
-Current implementation includes a lightweight UI surface in the form of a read-only CLI status script (`scripts/harness-operator-status.ts`).
+Current implementation includes a lightweight CLI operator surface.
+The preferred front door is `npm run harness:operator -- <subcommand>`, which delegates to the existing operator scripts while preserving their behavior.
 It does not yet define a rich widget dashboard or daemon UI.
 
 ## Core principle
@@ -60,8 +61,19 @@ Current repo-local implementation now provides these bounded operator tools thro
 - `run_next_queue_job` for one explicit bounded queue step
 
 Current repo-local implementation also provides a lightweight operator CLI surface:
-- `npm run harness:status`
-- `npm run harness:status:json`
+- preferred front door: `npm run harness:operator -- help`
+- preferred status entry: `npm run harness:operator -- status`
+- direct status entry remains supported: `npm run harness:status`
+- direct JSON status entry remains supported: `npm run harness:status:json`
+
+The preferred unified front door currently covers:
+- `status`
+- `leases`
+- `queue-session`
+- `worktree`
+- `worker-session`
+
+Legacy direct commands remain supported in this phase so the wrapper is additive rather than a runtime redesign.
 
 These controls are intentionally file-backed and reviewable rather than daemon-driven.
 Pause and stop preserve visible queue/task state instead of relying on hidden memory.
