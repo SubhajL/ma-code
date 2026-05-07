@@ -102,6 +102,24 @@ Related docs:
   - `.pi/agent/prompts/templates/propose-migration-path.md`
 
 
+
+## Domain governance
+
+Phase 7 adds advisory-first domain governance for task packets and feature bootstrap docs. Use it to keep frontend/backend/infra ownership explicit without splitting shared intake too early.
+
+Key assets:
+- `.pi/agent/governance/domain-governance-policy.json`
+- `.pi/agent/extensions/domain-governance.ts`
+- `.pi/agent/docs/domain_governance.md`
+- `scripts/validate-domain-governance.sh`
+
+Useful commands:
+```bash
+npm run test:domain-governance
+npm run validate:domain-governance
+npm run harness:init-feature -- --slug checkout-ui --domains frontend
+```
+
 ## Slice lifecycle assessment
 
 Phase 6 adds an assess-first slice lifecycle helper that reads existing planning logs, coding logs, task state, git/branch evidence, PR submission summaries, PR-gate output, and sync-main evidence. It does not create a new mutable lifecycle state file.
@@ -112,6 +130,7 @@ Use it before create/submit/merge-ready claims:
 npm run harness:slice-lifecycle -- status
 npm run harness:slice-lifecycle -- check --stage create_ready
 npm run validate:slice-lifecycle
+npm run validate:domain-governance
 ```
 
 Policy and docs live at `.pi/agent/lifecycle/slice-lifecycle-policy.json` and `.pi/agent/docs/slice_lifecycle.md`.

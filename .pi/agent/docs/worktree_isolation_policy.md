@@ -77,6 +77,16 @@ Typical disallowed examples:
 - one worker refactoring files while another updates adjacent code in the same worktree
 - recovery and build both modifying the same runtime file set concurrently
 
+
+## Domain ownership overlay
+
+Domain governance complements worktree isolation:
+- single-domain slices should map to the default domain worker (`frontend_worker`, `backend_worker`, or `infra_worker`)
+- mixed-domain slices require explicit escalation, multi-lane notes, or review checkpoints before packet generation
+- path ownership remains advisory-first in Phase 7, but packets should still record `allowedPaths` and `filesToModify` when implementation work is expected
+
+See `.pi/agent/docs/domain_governance.md` for the policy surface.
+
 ## Branch naming policy
 Branches should map to bounded work, not vague goals.
 

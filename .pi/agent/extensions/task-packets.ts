@@ -14,6 +14,7 @@ import {
   type HarnessRole,
   type RouteReason,
 } from "./harness-routing.ts";
+import { assessDomainGovernance, DEFAULT_DOMAIN_GOVERNANCE_POLICY } from "./domain-governance.ts";
 import {
   DOMAIN_IDS,
   TEAM_IDS,
@@ -583,6 +584,20 @@ export function generateTaskPacket(
   const filesToModify = uniqueStrings(input.filesToModify ?? defaultFilesToModify);
   const expectedProof = uniqueStrings(input.expectedProof ?? [...validationExpectations, ...evidenceExpectations, ...policy.defaults.expected_proof]);
 
+  const domainGovernance = assessDomainGovernance(DEFAULT_DOMAIN_GOVERNANCE_POLICY, {
+    domains,
+    assignedRole: input.assignedRole,
+    workType: input.workType,
+    allowedPaths,
+    filesToModify,
+    escalationInstructions: input.escalationInstructions,
+    migrationPathNote: input.migrationPathNote,
+    mixedDomainJustification: input.crossModelPlanningNote,
+  });
+  if (!domainGovernance.pass) {
+    throw new Error(`Domain governance failed: ${domainGovernance.blockReasons.join("; ")}`);
+  }
+
   const route = resolveHarnessRoute(routingConfig, {
     role: input.assignedRole,
     reason: input.routeReason ?? "default",
@@ -647,7 +662,7 @@ export function generateTaskPacket(
   return {
     packet,
     renderedPacket: renderTaskPacket(packet),
-    policyNotes: [...policy.notes, ...route.policyNotes, ...route.blockedAdjustments],
+    policyNotes: [...policy.notes, ...domainGovernance.warnings, ...route.policyNotes, ...route.blockedAdjustments],
   };
 }
 

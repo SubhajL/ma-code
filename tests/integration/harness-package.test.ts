@@ -49,6 +49,8 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(result.packageVersion, manifest.packageVersion);
   assert.equal(result.mergedPackageJson, true);
   assert.ok(result.copiedAssets.includes(".pi/agent/extensions/safe-bash.ts"));
+  assert.ok(result.copiedAssets.includes(".pi/agent/governance/domain-governance-policy.json"));
+  assert.ok(result.copiedAssets.includes(".pi/agent/skills/frontend-safety/SKILL.md"));
   assert.ok(result.copiedAssets.includes("scripts/harness-operator-status.ts"));
   assert.ok(result.copiedAssets.includes("scripts/harness-init-feature.ts"));
   assert.ok(result.copiedAssets.includes("tests/integration/core-workflows.test.ts"));
@@ -81,6 +83,7 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(packageJson.name, "target-repo");
   assert.equal(packageJson.scripts.test, "echo existing-test-script");
   assert.equal(packageJson.scripts["harness:package"], "node --import tsx scripts/harness-package.ts manifest");
+  assert.equal(packageJson.scripts["validate:domain-governance"], "./scripts/validate-domain-governance.sh");
   assert.equal(packageJson.scripts["harness:init-feature"], "node --import tsx scripts/harness-init-feature.ts");
   assert.equal(packageJson.devDependencies.tsx, "^4.20.5");
 
@@ -140,6 +143,28 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
 
   assert.equal(await exists(join(destinationRoot, "docs", "frontend")), false);
   assert.equal(await exists(join(destinationRoot, "docs", "backend")), false);
+
+  const frontendInit = await execFile(
+    process.execPath,
+    [
+      "--import",
+      tsxImportPath,
+      join(destinationRoot, "scripts", "harness-init-feature.ts"),
+      "--slug",
+      "checkout-ui",
+      "--domains",
+      "frontend",
+      "--json",
+    ],
+    {
+      cwd: destinationRoot,
+      encoding: "utf8",
+    },
+  );
+  const frontendInitJson = JSON.parse(frontendInit.stdout) as { createdFiles: string[]; domains: string[] };
+  assert.deepEqual(frontendInitJson.domains, ["frontend"]);
+  assert.ok(frontendInitJson.createdFiles.includes("docs/frontend/README.md"));
+  assert.equal(await exists(join(destinationRoot, "docs", "frontend", "README.md")), true);
   assert.equal(await exists(join(destinationRoot, "logs", "harness-actions.jsonl")), false);
   assert.equal(await exists(join(destinationRoot, "reports", "validation")), false);
 });
