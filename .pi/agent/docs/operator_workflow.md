@@ -463,3 +463,17 @@ It does not validate future items like:
 When those exist, they should add new validation scripts or extend the current validator in bounded ways.
 
 - For Graphify adapter or Graphify fallback-selection changes, use `bash scripts/validate-graphify-discovery.sh`; add `--smoke` only when one explicit installed-CLI proof is needed, and confirm generated artifacts stay under ignored `.pi/agent/artifacts/graphify/<task-id>/`.
+
+## Merge helper / release policy
+
+Phase 8 adds `harness:merge`, a bounded merge-readiness and apply helper. It composes the slice lifecycle helper, PR gate evidence, PR review/comment state, local repo cleanliness, and optional explicit sync-main.
+
+Useful commands:
+```bash
+npm run harness:merge -- check --pr <number>
+npm run harness:merge -- apply --pr <number> --method squash
+npm run harness:merge -- apply --pr <number> --method squash --sync-main
+npm run validate:merge-helper
+```
+
+`harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied.

@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "policyName": "merge-release-policy-phase-8",
+  "description": "Bounded merge readiness and apply policy. This is not deployment, tagging, changelog, or release automation.",
+  "requiredLifecycleStage": "merge_ready",
+  "requiredPrGateState": "pass",
+  "allowedMergeMethods": ["squash", "merge", "rebase"],
+  "defaultMergeMethod": "squash",
+  "blockDraftPrs": true,
+  "blockRequestedChanges": true,
+  "blockBlockingComments": true,
+  "blockLocalDirtOnApply": true,
+  "allowAutoSyncMainByDefault": false,
+  "postMergeEvidenceExpectations": [
+    "merged proof",
+    "optional sync-main proof"
+  ],
+  "outOfScope": [
+    "deployment automation",
+    "release tagging",
+    "changelog publishing",
+    "environment release orchestration"
+  ]
+}
