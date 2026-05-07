@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-07_execution-leases-phase-4.md`
+- `logs/coding/2026-05-07_execution-leases-phase-5.md`
 
 ## Current planning log
-- `reports/planning/2026-05-07_execution-leases-phase-4-plan.md`
+- `reports/planning/2026-05-07_execution-leases-phase-5-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,6 +16,6 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded execution-leases Phase 4 work.
+- These files capture the bounded execution-leases Phase 5 work.
 - Update this pointer file whenever a new feature-group log becomes the active working log.
 - Prefer one paired coding/planning log set per bounded feature group.

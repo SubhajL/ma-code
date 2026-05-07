@@ -125,8 +125,20 @@ Key outputs:
 - canonical Graphify validator: `scripts/validate-graphify-discovery.sh` (covers adapter proof plus discovery-policy selector coverage for Graphify fallback choices; `--smoke` adds one explicit installed-CLI proof)
 
 Direct repo-root operator/package ergonomics:
+
+Preferred unified operator front door:
 ```bash
 npm install --no-package-lock
+npm run harness:operator -- help
+npm run harness:operator -- status
+npm run harness:operator -- leases
+npm run harness:operator -- queue-session -- --scope "bounded queue operation" --max-steps 3
+npm run harness:operator -- worktree -- status
+npm run harness:operator -- worker-session -- start --id HARNESS-064 --slug "worker lane"
+```
+
+Legacy operator commands remain supported:
+```bash
 npm run harness:status
 npm run harness:leases
 npm run harness:leases:json
@@ -145,6 +157,7 @@ npm run test:queue-runner
 npm run test:core-workflows
 npm run test:operator-surface
 npm run test:operator-leases
+npm run test:operator-control-plane
 npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
@@ -167,6 +180,8 @@ npm run harness:leases
 npm run harness:leases:json
 npm run harness:leases -- clear-stale
 ```
+
+The preferred wrapper is intentionally thin: `harness:operator` delegates to the existing status, leases, queue-session, worktree, and worker-session scripts without changing runtime semantics. The legacy commands remain valid.
 
 The lease helper is intentionally narrow: it lists current execution leases and `clear-stale` removes only already-expired/stale leases. Active lease force-clearing is not a default operator action; inspect status first and prefer waiting for expiry or resolving the owning run.
 

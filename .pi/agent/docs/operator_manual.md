@@ -23,6 +23,7 @@ Use it when you need the full operator documentation set instead of a chat-histo
 - install the harness into a repo
 - configure providers and model routing
 - understand what each role is for
+- use `npm run harness:operator -- <subcommand>` as the preferred front door while understanding that legacy commands remain supported
 - inspect queue/task/scheduled state
 - inspect execution lease state and clear only stale leases
 - start/status/release explicit worker-lane sessions with lease-owned worktrees
@@ -42,6 +43,11 @@ Use it when you need the full operator documentation set instead of a chat-histo
 7. `operator_safety_rules.md`
 8. `operator_troubleshooting_guide.md`
 9. `operator_extension_guide.md`
+
+## Preferred operator front door
+- Prefer `npm run harness:operator -- help` to discover the unified operator surface.
+- Prefer `npm run harness:operator -- status`, `leases`, `queue-session`, `worktree`, and `worker-session` for day-to-day operator entry.
+- Legacy commands such as `harness:status`, `harness:leases`, `harness:queue-session`, `harness:worktree`, and `harness:worker-session` remain supported in this phase.
 
 ## Lease safety boundary
 - Use `npm run harness:status` to see queue-session lease status in the normal operator snapshot.

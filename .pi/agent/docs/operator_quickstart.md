@@ -29,7 +29,16 @@ npm install --no-package-lock
 ```
 
 ## 3. Inspect current harness state quickly
-Human-friendly text view:
+Preferred unified front door:
+```bash
+npm run harness:operator -- help
+npm run harness:operator -- status
+npm run harness:operator -- leases
+npm run harness:operator -- queue-session -- --scope "bounded queue operation" --max-steps 3
+npm run harness:operator -- worktree -- status
+```
+
+Legacy direct commands remain supported. Human-friendly text view:
 ```bash
 npm run harness:status
 ```
@@ -124,6 +133,7 @@ Focused integration proof for the operator/queue/schedule surfaces:
 ```bash
 npm run test:operator-surface
 npm run test:operator-leases
+npm run test:operator-control-plane
 npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:integrate-worktree
