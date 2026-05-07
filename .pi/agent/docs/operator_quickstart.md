@@ -73,6 +73,18 @@ npm run harness:schedules
 npm run harness:schedules:json
 ```
 
+Integrate a validated linked worktree branch into local main through the bounded helper:
+```bash
+npm run harness:integrate -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers
+npm run harness:integrate:json -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers --skip-validation
+```
+
+This integration helper:
+- requires a merge-ready linked worktree
+- uses fast-forward-only merge semantics into local `main`
+- tolerates only narrow generated validation artifacts in the root worktree
+- writes post-merge validator reports to temp paths rather than repo-local report files by default
+
 Check PR CI/security gates without `gh --watch`:
 ```bash
 npm run harness:pr-gate -- --pr <number> --max-attempts 20
@@ -103,6 +115,7 @@ npm run test:operator-surface
 npm run test:operator-leases
 npm run test:queue-session
 npm run test:scheduled-workflows
+npm run test:integrate-worktree
 ```
 
 ## 5. Use live queue controls inside a harness session

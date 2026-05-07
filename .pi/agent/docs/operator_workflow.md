@@ -28,6 +28,7 @@ npm run harness:leases:json
 npm run harness:leases -- clear-stale
 npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:queue-session:json -- --scope "bounded queue operation" --max-steps 3 --max-runtime-seconds 30
+npm run harness:integrate -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers
 npm run harness:schedules
 npm run harness:schedules:json
 npm run harness:pr-gate -- --pr <number> --max-attempts 20
@@ -97,6 +98,17 @@ After merge or explicit abandonment, remove only a clean linked worktree:
 ```bash
 npm run harness:worktree -- cleanup --path ../ma-code-worktrees/harness-024-worktree-helpers
 ```
+
+To move a validated linked worktree branch into local main, use the bounded integration helper instead of raw `git merge` on `main`:
+```bash
+npm run harness:integrate -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers
+npm run harness:integrate:json -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers --skip-validation
+```
+- requires review-prep/merge-ready source worktree evidence
+- uses fast-forward-only merge semantics into local `main`
+- blocks on tracked dirt and unexpected untracked files in the root worktree
+- tolerates only narrow generated validation artifacts
+- writes post-merge validator report outputs to temp paths by default
 
 For PR CI/security gate checks, use the bounded helper instead of `gh pr checks --watch`:
 ```bash
@@ -329,6 +341,7 @@ Choose the validator that matches the change:
 - use `npm run harness:queue-session -- --scope "<bounded scope>" --max-steps <n>` when you want bounded multi-step queue advancement without a hidden daemon; it stops at the next waiting point, blocked state, pause, idle state, or configured limit and returns a richer triage summary with action counts, touched job IDs, and a recommended next action
 - use `npm run harness:schedules` or `npm run harness:schedules:json` to inspect due scheduled workflows, then use `node --import tsx scripts/harness-scheduled-workflows.ts materialize --workflow <id> --apply` only for explicit queue creation
 - use `npm run harness:worktree -- status` to inspect linked worktrees and `npm run harness:worktree -- review-prep --path <worktree>` before claiming a worktree is ready for review or cleanup
+- use `npm run harness:integrate -- --worktree <worktree>` when the next safe action is a local fast-forward integration from a merge-ready linked worktree into root `main`
 - use `./scripts/validate-extension-unit-tests.sh` plus `./scripts/check-foundation-extension-compile.sh` for discovery-policy helper changes
 - use `./scripts/validate-phase-a-b.sh` for foundation/runtime-safety changes
 - use `./scripts/validate-queue-semantics.sh` for queue schema/semantics changes

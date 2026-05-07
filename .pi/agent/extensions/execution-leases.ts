@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 export const LEASES_FILE = ".pi/agent/state/runtime/leases.json";
 export const EXECUTION_LEASE_STATE_VERSION = 1 as const;
 export const QUEUE_SESSION_LEASE_SCOPE = "queue-session";
+export const LOCAL_MAIN_INTEGRATION_LEASE_SCOPE = "local-main-integration";
 
 export interface ExecutionLeaseRecord {
   id: string;
@@ -216,6 +217,24 @@ export async function clearStaleExecutionLeases(cwd: string, now: string = nowIs
     retainedLeases: retainedState.leases,
     state: retainedState,
   };
+}
+
+export async function acquireLocalMainIntegrationLease(
+  cwd: string,
+  input: { id: string; owner: string; expiresAt: string; acquiredAt?: string; now?: string },
+): Promise<AcquireExecutionLeaseResult> {
+  return acquireExecutionLease(cwd, {
+    id: input.id,
+    scope: LOCAL_MAIN_INTEGRATION_LEASE_SCOPE,
+    owner: input.owner,
+    acquiredAt: input.acquiredAt,
+    expiresAt: input.expiresAt,
+    now: input.now,
+  });
+}
+
+export async function releaseLocalMainIntegrationLease(cwd: string, leaseId: string): Promise<ReleaseExecutionLeaseResult> {
+  return releaseExecutionLease(cwd, leaseId);
 }
 
 export function summarizeExecutionLeases(state: ExecutionLeaseState): ExecutionLeaseSummary {

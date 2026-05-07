@@ -75,7 +75,7 @@ function parseDirtyTrackedFiles(porcelain: string): string[] {
     .map((line) => line.slice(3).replace(/^"|"$/g, ""));
 }
 
-function isAllowedBookkeepingPath(path: string): boolean {
+export function isAllowedBookkeepingPath(path: string): boolean {
   return (
     /^\.pi\/agent\/state\/runtime\/[^/]+\.json$/.test(path) ||
     /^\.pi\/agent\/state\/runtime\/[^/]+\.lock$/.test(path) ||
@@ -83,12 +83,12 @@ function isAllowedBookkeepingPath(path: string): boolean {
   );
 }
 
-async function readDirtyTrackedFiles(repoRoot: string): Promise<string[]> {
+export async function readDirtyTrackedFiles(repoRoot: string): Promise<string[]> {
   const porcelain = await runGit(repoRoot, ["status", "--porcelain", "--untracked-files=no"]);
   return parseDirtyTrackedFiles(porcelain);
 }
 
-async function listPreservedLocalBookkeeping(repoRoot: string): Promise<string[]> {
+export async function listPreservedLocalBookkeeping(repoRoot: string): Promise<string[]> {
   const ignored = await runGit(repoRoot, [
     "status",
     "--porcelain",

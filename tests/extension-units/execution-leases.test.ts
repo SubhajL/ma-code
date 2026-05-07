@@ -4,11 +4,14 @@ import { join } from "node:path";
 import test from "node:test";
 
 import {
+  LOCAL_MAIN_INTEGRATION_LEASE_SCOPE,
   QUEUE_SESSION_LEASE_SCOPE,
   acquireExecutionLease,
+  acquireLocalMainIntegrationLease,
   clearStaleExecutionLeases,
   readExecutionLeaseState,
   releaseExecutionLease,
+  releaseLocalMainIntegrationLease,
   summarizeExecutionLeases,
 } from "../../.pi/agent/extensions/execution-leases.ts";
 import { makeTempRepo } from "./test-utils.ts";
@@ -73,6 +76,25 @@ test("queue-session lease scope remains a generic reusable lease scope", async (
   assert.equal(QUEUE_SESSION_LEASE_SCOPE, "queue-session");
   assert.equal(acquired.acquired, true);
   assert.equal(acquired.state.leases[0]?.scope, QUEUE_SESSION_LEASE_SCOPE);
+});
+
+test("local-main integration lease helpers acquire and release one scoped lease", async () => {
+  const cwd = await makeTempRepo("execution-leases-integration-");
+
+  const acquired = await acquireLocalMainIntegrationLease(cwd, {
+    id: "lease-integration-main",
+    owner: "assistant",
+    acquiredAt: "2026-05-07T00:00:00.000Z",
+    expiresAt: "2026-05-07T00:30:00.000Z",
+  });
+
+  assert.equal(LOCAL_MAIN_INTEGRATION_LEASE_SCOPE, "local-main-integration");
+  assert.equal(acquired.acquired, true);
+  assert.equal(acquired.lease?.scope, LOCAL_MAIN_INTEGRATION_LEASE_SCOPE);
+
+  const released = await releaseLocalMainIntegrationLease(cwd, "lease-integration-main");
+  assert.equal(released.released, true);
+  assert.deepEqual((await readExecutionLeaseState(cwd)).leases, []);
 });
 
 test("clearStaleExecutionLeases removes only expired leases", async () => {

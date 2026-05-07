@@ -135,6 +135,7 @@ npm run harness:queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:schedules
 npm run harness:package
 npm run harness:worktree -- status
+npm run harness:integrate -- --worktree ../ma-code-worktrees/example-branch
 npm run harness:pr-gate -- --pr 63 --max-attempts 20
 npm run harness:sync-main
 npm run test:queue-runner
@@ -144,6 +145,7 @@ npm run test:operator-leases
 npm run test:queue-session
 npm run test:scheduled-workflows
 npm run test:worktree-helper
+npm run test:integrate-worktree
 npm run test:pr-gate
 npm run test:sync-main
 npm run test:harness-package
@@ -194,6 +196,14 @@ node --import tsx scripts/harness-sync-main.ts --json
 ```
 
 The sync helper performs only a fast-forward update of local `main` from `origin/main`, preserves ignored runtime bookkeeping, and blocks when non-bookkeeping tracked dirt is present.
+
+Safe local worktree-branch integration examples:
+```bash
+npm run harness:integrate -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers
+npm run harness:integrate:json -- --worktree ../ma-code-worktrees/harness-024-worktree-helpers --skip-validation
+```
+
+The integration helper is the bounded path for moving a validated linked worktree branch into local `main` with `--ff-only` semantics. It reuses worktree review-prep, acquires one integration lease, tolerates only narrow generated validation artifacts, and writes post-merge validator reports to temp paths instead of polluting the repo root.
 
 Phase 0 durable bootstrap now also expects target repos to carry durable docs under `docs/`, including `docs/product/intake-policy.md` plus initiative templates under `docs/initiatives/TEMPLATE/` for major feature planning.
 
