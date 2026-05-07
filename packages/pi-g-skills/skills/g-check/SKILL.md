@@ -27,6 +27,17 @@ If the target is unclear, ask one short question:
 - `commit-range`
 - `pr-diff`
 
+
+## Lifecycle evidence
+
+When completing review, include normalized lifecycle evidence in the Pi coding log:
+- review scope (`working-tree`, `last-commit`, `commit-range`, or `pr-diff`)
+- exact commands run
+- severity findings
+- `Review Verdict: no_required_fixes` or `Review Verdict: changes_required`
+
+The lifecycle helper treats a `no_required_fixes` verdict as the `checked` checkpoint when RED/GREEN and task evidence are also present.
+
 ## Discovery
 
 Use Auggie-first discovery when available and bounded:

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/handoffs.ts";
 import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
+import { assessSliceLifecycle } from "../../.pi/agent/extensions/slice-lifecycle.ts";
 import recoveryRuntime from "../../.pi/agent/extensions/recovery-runtime.ts";
 import safeBash from "../../.pi/agent/extensions/safe-bash.ts";
 import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
@@ -28,6 +29,7 @@ async function setupCoreWorkflowRepo() {
     ".pi/agent/handoffs/handoff-policy.json",
     ".pi/agent/validation/completion-gate-policy.json",
     ".pi/agent/recovery/recovery-policy.json",
+    ".pi/agent/lifecycle/slice-lifecycle-policy.json",
   ]) {
     await copyFixtureRepoFile(cwd, relativePath);
   }
@@ -575,4 +577,26 @@ test("provider/tool block workflow exercises safe-bash blocking and bounded reco
   assert.match(auditLog, /"extension":"safe-bash"/);
   assert.match(auditLog, /"action":"blocked"/);
   assert.match(auditLog, /git reset --hard HEAD~1/);
+});
+
+
+test("slice lifecycle helper derives create_ready from existing planning, coding, and task evidence", async () => {
+  const cwd = await makeTempRepo("core-slice-lifecycle-");
+  await mkdir(join(cwd, ".pi", "agent", "lifecycle"), { recursive: true });
+  await mkdir(join(cwd, ".pi", "agent", "state", "runtime"), { recursive: true });
+  await mkdir(join(cwd, "logs", "coding"), { recursive: true });
+  await mkdir(join(cwd, "reports", "planning"), { recursive: true });
+  await copyFixtureRepoFile(cwd, ".pi/agent/lifecycle/slice-lifecycle-policy.json");
+  await writeFile(join(cwd, "logs", "CURRENT.md"), "# Current Harness Logs\n\n## Current coding log\n- `logs/coding/current.md`\n\n## Current planning log\n- `reports/planning/current-plan.md`\n");
+  await writeFile(join(cwd, "reports", "planning", "current-plan.md"), "# Plan\n\n## Acceptance Criteria\n- Lifecycle evidence is assessable.\n\n## TDD Slice\n- tracer behavior.\n");
+  await writeFile(join(cwd, "logs", "coding", "current.md"), "# Coding\n\n### RED Evidence\n- Command: fail first.\n\n### GREEN Evidence\n- Command: pass now.\n\n## Review (2026-05-07) - working-tree\n\n### Findings\nCRITICAL\n- none\n\nHIGH\n- none\n\nReview Verdict: no_required_fixes\n");
+  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"), JSON.stringify({
+    activeTaskId: "task-lifecycle",
+    tasks: [{ id: "task-lifecycle", status: "review", taskClass: "implementation", acceptance: ["Lifecycle evidence is assessable"], validation: { decision: "pass", source: "validator" } }],
+  }, null, 2));
+
+  const assessment = await assessSliceLifecycle({ cwd, targetStage: "create_ready" });
+
+  assert.equal(assessment.currentStage, "create_ready");
+  assert.equal(assessment.target?.ready, true);
 });

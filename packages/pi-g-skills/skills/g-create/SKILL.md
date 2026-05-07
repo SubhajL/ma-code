@@ -32,6 +32,17 @@ If the review target is unclear, ask one short question:
 - staged review set
 - selected files only
 
+
+## Lifecycle evidence
+
+Before creating a branch/commit artifact, prefer a lifecycle preflight when the helper is available:
+
+```bash
+npm run harness:slice-lifecycle -- check --stage create_ready
+```
+
+Do not use this as a blanket blocker for tiny explicitly exempted slices, but when the repo expects full discipline, `create_ready` requires planning, task, RED/GREEN, and `g-check` evidence. After creation, append branch and commit evidence so the helper can recognize `created`.
+
 ## Discovery
 
 Use the smallest credible repo-state inspection path:

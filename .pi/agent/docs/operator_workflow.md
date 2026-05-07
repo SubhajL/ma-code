@@ -46,6 +46,8 @@ npm run harness:schedules
 npm run harness:schedules:json
 npm run harness:pr-gate -- --pr <number> --max-attempts 20
 npm run harness:sync-main
+npm run harness:slice-lifecycle -- status
+npm run harness:slice-lifecycle -- check --stage create_ready
 ```
 
 Related operator docs:
@@ -81,6 +83,19 @@ Recommended operator questions during this loop:
 - does the linked active task match the queue state?
 - are there blocked or failed items that need a human decision?
 - should the next action be resume, stop, one bounded queue step, or one bounded queue session?
+
+
+### Slice lifecycle assessment
+
+Use the slice lifecycle helper as an assess-first preflight before create, submit, and merge-ready claims:
+
+```bash
+npm run harness:slice-lifecycle -- status
+npm run harness:slice-lifecycle -- check --stage create_ready
+npm run harness:slice-lifecycle -- check --stage merge_ready --json
+```
+
+The helper reads existing logs/task/git/PR-gate/sync-main evidence and reports the current checkpoint, missing prerequisites, blocking gaps, and next allowed actions. It does not create a second mutable workflow state machine. See `.pi/agent/docs/slice_lifecycle.md`.
 
 ## Core operating loop
 
