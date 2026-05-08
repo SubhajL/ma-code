@@ -23,6 +23,7 @@ required_files=(
   ".pi/agent/state/schemas/lifecycle-evidence.schema.json"
   ".pi/agent/state/schemas/product-slice-plan.schema.json"
   ".pi/agent/state/schemas/stitch-screen-artifact.schema.json"
+  ".pi/agent/state/schemas/live-stitch-artifact.schema.json"
   ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
   ".pi/agent/state/schemas/slice-contract.schema.json"
   ".pi/agent/state/schemas/frontend-validation-evidence.schema.json"
@@ -33,6 +34,7 @@ required_files=(
   ".pi/agent/extensions/product-slice-lifecycle.ts"
   ".pi/agent/extensions/stitch-prompt-generator.ts"
   ".pi/agent/extensions/stitch-artifact-adapter.ts"
+  ".pi/agent/extensions/live-stitch-adapter.ts"
   ".pi/agent/extensions/screen-artifact-approval.ts"
   ".pi/agent/extensions/slice-contracts.ts"
   ".pi/agent/extensions/frontend-packet-generator.ts"
@@ -44,6 +46,7 @@ required_files=(
   "tests/extension-units/product-slice-lifecycle.test.ts"
   "tests/extension-units/stitch-prompt-generator.test.ts"
   "tests/extension-units/stitch-artifact-adapter.test.ts"
+  "tests/extension-units/live-stitch-adapter.test.ts"
   "tests/extension-units/screen-artifact-approval.test.ts"
   "tests/extension-units/slice-contracts.test.ts"
   "tests/extension-units/frontend-packet-generator.test.ts"
@@ -66,6 +69,7 @@ required_files=(
   "scripts/validate-product-slice-lifecycle.sh"
   "scripts/validate-stitch-prompts.sh"
   "scripts/validate-stitch-artifacts.sh"
+  "scripts/validate-live-stitch-artifacts.sh"
   "scripts/validate-screen-artifact-approval.sh"
   "scripts/validate-slice-contracts.sh"
   "scripts/validate-frontend-packets.sh"
@@ -90,7 +94,9 @@ required_files=(
   "scripts/harness-stitch-prompt.ts"
   "tests/integration/stitch-prompt.test.ts"
   "scripts/harness-stitch-artifact.ts"
+  "scripts/harness-live-stitch-artifact.ts"
   "tests/integration/stitch-artifact.test.ts"
+  "tests/integration/live-stitch-artifact.test.ts"
   "scripts/harness-screen-approval.ts"
   "scripts/harness-slice-contract.ts"
   "tests/integration/screen-artifact-approval.test.ts"
@@ -111,6 +117,7 @@ required_files=(
   ".pi/agent/docs/product_slice_lifecycle.md"
   ".pi/agent/docs/stitch_prompt_generation.md"
   ".pi/agent/docs/stitch_artifacts.md"
+  ".pi/agent/docs/live_stitch_adapter.md"
   ".pi/agent/docs/screen_artifact_approval.md"
   ".pi/agent/docs/slice_contracts.md"
   ".pi/agent/docs/frontend_packet_generation.md"
@@ -193,6 +200,7 @@ for rel in [
     ".pi/agent/state/schemas/lifecycle-evidence.schema.json",
     ".pi/agent/state/schemas/product-slice-plan.schema.json",
     ".pi/agent/state/schemas/stitch-screen-artifact.schema.json",
+    ".pi/agent/state/schemas/live-stitch-artifact.schema.json",
     ".pi/agent/state/schemas/screen-artifact-approval.schema.json",
     ".pi/agent/state/schemas/slice-contract.schema.json",
     ".pi/agent/state/schemas/frontend-validation-evidence.schema.json",
@@ -231,10 +239,12 @@ product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").re
 product_slice_lifecycle_doc = (root / ".pi/agent/docs/product_slice_lifecycle.md").read_text(encoding="utf-8")
 stitch_prompt_generation_doc = (root / ".pi/agent/docs/stitch_prompt_generation.md").read_text(encoding="utf-8")
 stitch_artifacts_doc = (root / ".pi/agent/docs/stitch_artifacts.md").read_text(encoding="utf-8")
+live_stitch_adapter_doc = (root / ".pi/agent/docs/live_stitch_adapter.md").read_text(encoding="utf-8")
 slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(encoding="utf-8")
 lifecycle_evidence_schema = json.loads((root / ".pi/agent/state/schemas/lifecycle-evidence.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
 stitch_screen_artifact_schema = json.loads((root / ".pi/agent/state/schemas/stitch-screen-artifact.schema.json").read_text(encoding="utf-8"))
+live_stitch_artifact_schema = json.loads((root / ".pi/agent/state/schemas/live-stitch-artifact.schema.json").read_text(encoding="utf-8"))
 screen_artifact_approval_schema = json.loads((root / ".pi/agent/state/schemas/screen-artifact-approval.schema.json").read_text(encoding="utf-8"))
 slice_contract_schema = json.loads((root / ".pi/agent/state/schemas/slice-contract.schema.json").read_text(encoding="utf-8"))
 frontend_validation_evidence_schema = json.loads((root / ".pi/agent/state/schemas/frontend-validation-evidence.schema.json").read_text(encoding="utf-8"))
@@ -276,6 +286,7 @@ slice_lifecycle_extension = (root / ".pi/agent/extensions/slice-lifecycle.ts").r
 product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
 stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifact-adapter.ts").read_text(encoding="utf-8")
+live_stitch_adapter_extension = (root / ".pi/agent/extensions/live-stitch-adapter.ts").read_text(encoding="utf-8")
 screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifact-approval.ts").read_text(encoding="utf-8")
 slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
 frontend_packet_extension = (root / ".pi/agent/extensions/frontend-packet-generator.ts").read_text(encoding="utf-8")
@@ -295,6 +306,7 @@ harness_slice_lifecycle_cli = (root / "scripts/harness-slice-lifecycle.ts").read
 harness_merge_cli = (root / "scripts/harness-merge.ts").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
+live_stitch_artifact_validator = (root / "scripts/validate-live-stitch-artifacts.sh").read_text(encoding="utf-8")
 screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-approval.sh").read_text(encoding="utf-8")
 slice_contract_validator = (root / "scripts/validate-slice-contracts.sh").read_text(encoding="utf-8")
 frontend_packet_validator = (root / "scripts/validate-frontend-packets.sh").read_text(encoding="utf-8")
@@ -1062,6 +1074,49 @@ for needle in [
 assert "screen-artifact-approval.ts" in foundation_compile_validator
 assert "scripts/validate-screen-artifact-approval.sh" in validation_doc
 assert "harness:screen-approval" in stitch_artifacts_doc
+
+assert live_stitch_artifact_schema["properties"]["mode"]["const"] == "live"
+assert live_stitch_artifact_schema["properties"]["phase"]["const"] == "stitch_generation"
+assert live_stitch_artifact_schema["properties"]["constraints"]["properties"]["requiresHumanApproval"]["const"] is True
+for needle in [
+    "planLiveStitchArtifact",
+    "applyLiveStitchArtifact",
+    "writeLiveStitchArtifactArtifacts",
+    "STITCH_API_KEY",
+    "Forbidden live Stitch provider argument",
+    "requiresHumanApproval: true",
+    "queueJobsCreated: false",
+]:
+    assert needle in live_stitch_adapter_extension, needle
+for needle in [
+    "mock mode remains default",
+    "live output still requires human approval",
+    "does not create task packets",
+    "does not create queue jobs",
+    "does not dispatch workers",
+    "does not run as a daemon",
+]:
+    assert needle in live_stitch_adapter_doc, needle
+for needle in [
+    "Phase 13 live Stitch generation",
+    "harness:live-stitch-artifact",
+    "generated live output still requires human approval",
+]:
+    assert needle in product_planning_doc, needle
+for needle in [
+    "live-stitch-artifact-validator: unit tests",
+    "live-stitch-artifact-validator: integration tests",
+    "live-stitch-artifact-validator: compile helper and CLI",
+]:
+    assert needle in live_stitch_artifact_validator
+assert "harness:live-stitch-artifact" in package_json.get("scripts", {})
+assert "harness:live-stitch-artifact" in package_template_json.get("scripts", {})
+assert "test:live-stitch-artifact" in package_json.get("scripts", {})
+assert "validate:live-stitch-artifact" in package_json.get("scripts", {})
+assert "harness:live-stitch-artifact" in stitch_artifacts_doc
+assert "live_stitch_adapter.md" in stitch_artifacts_doc
+assert "live-stitch-adapter.ts" in foundation_compile_validator
+assert "mode: `mock` or `live`" in screen_artifact_approval_doc
 
 assert slice_contract_schema["properties"]["status"]["enum"] == ["draft", "ready_for_review", "approved", "blocked"]
 assert slice_contract_schema["properties"]["nextAllowedPhase"]["const"] == "fe_implementation"

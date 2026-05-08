@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/live-stitch-artifact.schema.json",
+  "title": "Live Stitch Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "initiativeId",
+    "sliceId",
+    "artifactId",
+    "mode",
+    "phase",
+    "status",
+    "approvalRef",
+    "sourcePrompt",
+    "managedArtifacts",
+    "screens",
+    "constraints",
+    "nextAllowedPhase",
+    "nextBlockedUntil"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "initiativeId": { "type": "string", "minLength": 1 },
+    "sliceId": { "type": "string", "minLength": 1 },
+    "artifactId": { "type": "string", "minLength": 1 },
+    "mode": { "const": "live" },
+    "phase": { "const": "stitch_generation" },
+    "status": { "enum": ["generated_live", "blocked", "failed"] },
+    "approvalRef": { "type": ["string", "null"] },
+    "sourcePrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promptPath", "promptMetadataPath", "promptHash"],
+      "properties": {
+        "promptPath": { "type": "string", "pattern": "^docs/initiatives/[^/]+/stitch-prompts/[^/]+\\.prompt\\.md$" },
+        "promptMetadataPath": { "type": "string", "pattern": "^docs/initiatives/[^/]+/stitch-prompts/[^/]+\\.prompt\\.json$" },
+        "promptHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "managedArtifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "manifestPath", "outputHashes"],
+      "properties": {
+        "root": { "type": "string", "pattern": "^\\.pi/agent/artifacts/stitch/[^/]+/[^/]+/[^/]+$" },
+        "manifestPath": { "type": "string", "pattern": "^\\.pi/agent/artifacts/stitch/[^/]+/[^/]+/[^/]+/manifest\\.json$" },
+        "outputHashes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "sha256", "bytes"],
+            "properties": {
+              "path": { "type": "string", "pattern": "^\\.pi/agent/artifacts/stitch/" },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "bytes": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "screens": { "type": "array" },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["liveStitchCalled", "taskPacketsCreated", "queueJobsCreated", "requiresHumanApproval"],
+      "properties": {
+        "liveStitchCalled": { "type": "boolean" },
+        "taskPacketsCreated": { "const": false },
+        "queueJobsCreated": { "const": false },
+        "requiresHumanApproval": { "const": true }
+      }
+    },
+    "nextAllowedPhase": { "const": "screen_approval" },
+    "nextBlockedUntil": { "const": "human_artifact_review" }
+  }
+}
