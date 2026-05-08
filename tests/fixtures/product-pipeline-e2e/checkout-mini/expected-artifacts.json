@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "initiativeId": "checkout-mini",
+  "artifacts": [
+    "docs/initiatives/checkout-mini/intake.json",
+    "docs/initiatives/checkout-mini/prd.md",
+    "docs/initiatives/checkout-mini/backlog.md",
+    "docs/initiatives/checkout-mini/stitch-prompts/checkout-summary.md",
+    "docs/initiatives/checkout-mini/stitch-prompts/checkout-summary.metadata.json",
+    "docs/initiatives/checkout-mini/screen-artifacts/checkout-summary.screen.json",
+    "docs/initiatives/checkout-mini/screen-artifacts/checkout-summary.approval.json",
+    "docs/initiatives/checkout-mini/contracts/checkout-summary.contract.json",
+    "docs/initiatives/checkout-mini/packets/checkout-summary.frontend.packet.json",
+    "docs/initiatives/checkout-mini/validation/checkout-summary.frontend.validation.json",
+    "docs/initiatives/checkout-mini/packets/checkout-summary.backend.packet.json",
+    "docs/initiatives/checkout-mini/validation/checkout-summary.backend.validation.json",
+    "docs/initiatives/checkout-mini/quality/checkout-summary.readiness.json"
+  ]
+}

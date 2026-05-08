@@ -99,6 +99,25 @@ Should not normally:
 - redefine acceptance criteria on the fly
 - skip quality routing after implementation
 
+### Parallel worker lanes
+Phase 12 parallel worker lanes are a bounded build-team execution aid, not a queue-runner replacement.
+
+Use when:
+- the product pipeline has whole slices that are ready for worker execution
+- Phase 10 `parallelAllowed: true` proof exists for every cross-slice pair
+- packet artifacts exist for each lane
+- HITL gates are resolved
+- worker-session/worktree isolation is available
+
+Rules:
+- no daemon or background queue execution is introduced
+- same-slice phases remain sequential; never parallelize multiple phases inside one slice
+- cross-slice parallelism requires Phase 10 proof and is capped by `--max-parallel`
+- active worker-lane or top-level orchestration lease conflicts block apply/run
+- failed worktrees are preserved for inspection
+- cleanup is explicit and refuses dirty worktrees
+- do not edit `.pi/agent/state/runtime/*.json` directly; use execution lease and worker-session helpers
+
 ### Quality team
 Definition:
 - lead: `quality_lead`
@@ -185,6 +204,16 @@ Phase 9 adds an additive BE packet preview helper:
 - validator: `scripts/validate-backend-packets.sh`
 
 The backend packet generation helper follows frontend validation and validates the Phase 8 frontend packet, passed FE validation evidence, current contract hash, backend API/data expectations, backend allowed paths, backend TDD seeds, and backend-applicable slice plan before producing a normal `backend_worker` implementation task packet. It requests the Phase 7 `backend_implementation` routing lane and writes only preview artifacts under `docs/initiatives/<slug>/packets/` when `--apply` is used. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, no FE packet changes, and no product code. See `.pi/agent/docs/backend_packet_generation.md`.
+
+## Current slice dependency decision surface
+Phase 10 adds an additive pure dependency analyzer for future cross-slice parallelism:
+- `.pi/agent/extensions/slice-dependency-decision.ts`
+- schema: `.pi/agent/state/schemas/slice-dependency-decision.schema.json`
+- CLI: `scripts/harness-slice-dependencies.ts`
+- package alias: `harness:slice-dependencies`
+- validator: `scripts/validate-slice-dependencies.sh`
+
+The slice dependency decision helper compares two or more slice summaries or artifact paths and returns structured blockers/proof for shared files, contracts, schemas, migrations, config, tests, fixtures, same-slice requests, missing proof, and unknown lease/worktree conflict checks. Phase 10 does not change queue-runner behavior, does not create task packets, does not create queue jobs, does not acquire leases, does not start worker sessions, and does not schedule cross-slice parallel work. Intra-slice phases remain sequential. See `.pi/agent/docs/slice_dependency_decision.md`.
 
 ## Current executable handoff surface
 For the current repo-local slice, executable handoff generation now lives at:
@@ -652,3 +681,7 @@ Phase 11 adds an additive product pipeline runtime:
 The product pipeline reads `docs/initiatives/<slug>/pipeline.json`, computes the slice DAG, shows HITL gates, and consumes Phase 10 parallel decisions. Dry-run writes no files. Apply performs one bounded foreground materialization step and writes only a pipeline run artifact under `docs/initiatives/<slug>/pipeline-runs/`. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, and no product code.
 
 Intra-slice phases remain sequential. Cross-slice parallelism requires explicit Phase 10 `parallelAllowed: true` proof; missing proof is blocked rather than inferred as safe.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.

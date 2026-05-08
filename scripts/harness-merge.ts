@@ -95,6 +95,7 @@ export interface BuildMergeReadinessOptions {
   method?: string;
   mode?: MergeMode;
   syncMain?: boolean;
+  lifecycleEvidenceFile?: string;
 }
 
 export interface ApplyMergeOptions extends BuildMergeReadinessOptions {
@@ -300,7 +301,7 @@ export async function buildMergeReadiness(
   const runner = deps.runner ?? ((command, args) => defaultRunner(command, args, repoRoot));
   const [repo, lifecycle, prGate, pr] = await Promise.all([
     readRepoState(repoRoot),
-    deps.lifecycle ?? assessSliceLifecycle({ cwd: repoRoot, targetStage: policy.requiredLifecycleStage }),
+    deps.lifecycle ?? assessSliceLifecycle({ cwd: repoRoot, targetStage: policy.requiredLifecycleStage, evidenceFile: options.lifecycleEvidenceFile }),
     deps.prGate ?? buildPrGateSession({ pr: options.pr, maxAttempts: 1 }, { runner }),
     readPrDetails(options.pr, runner),
   ]);
@@ -361,7 +362,7 @@ export function renderMergeReadiness(payload: Awaited<ReturnType<typeof buildMer
   return `${lines.join("\n")}\n`;
 }
 
-function parseArgs(argv: string[]): { command: "check" | "apply" | "help"; pr: string; method?: string; syncMain: boolean; json: boolean; repoRoot?: string } {
+function parseArgs(argv: string[]): { command: "check" | "apply" | "help"; pr: string; method?: string; syncMain: boolean; json: boolean; repoRoot?: string; lifecycleEvidenceFile?: string } {
   const [commandRaw = "help", ...rest] = argv;
   const command = commandRaw === "check" || commandRaw === "apply" ? commandRaw : "help";
   let pr = "";
@@ -369,6 +370,7 @@ function parseArgs(argv: string[]): { command: "check" | "apply" | "help"; pr: s
   let syncMain = false;
   let json = false;
   let repoRoot: string | undefined;
+  let lifecycleEvidenceFile: string | undefined;
   for (let i = 0; i < rest.length; i += 1) {
     const arg = rest[i];
     if (arg === "--json") { json = true; continue; }
@@ -376,14 +378,15 @@ function parseArgs(argv: string[]): { command: "check" | "apply" | "help"; pr: s
     if (arg === "--pr") { pr = rest[++i] ?? ""; continue; }
     if (arg === "--method") { method = rest[++i]; continue; }
     if (arg === "--repo") { repoRoot = rest[++i]; continue; }
+    if (arg === "--lifecycle-evidence" || arg === "--evidence-file") { lifecycleEvidenceFile = rest[++i]; continue; }
     if (!arg.startsWith("-") && !pr) { pr = arg; continue; }
     throw new Error(`Unknown argument: ${arg}`);
   }
-  return { command, pr, method, syncMain, json, repoRoot };
+  return { command, pr, method, syncMain, json, repoRoot, lifecycleEvidenceFile };
 }
 
 function usage(): string {
-  return `Usage: harness-merge <check|apply> --pr <number> [options]\n\nOptions:\n  --method <squash|merge|rebase>  Merge method (default from policy)\n  --sync-main                     After apply, explicitly run sync-main\n  --repo <path>                    Repo root or worktree path\n  --json                           Emit JSON\n  -h, --help                       Show help\n`;
+  return `Usage: harness-merge <check|apply> --pr <number> [options]\n\nOptions:\n  --method <squash|merge|rebase>  Merge method (default from policy)\n  --sync-main                     After apply, explicitly run sync-main\n  --repo <path>                    Repo root or worktree path\n  --lifecycle-evidence <path>      Lifecycle evidence bundle JSON\n  --json                           Emit JSON\n  -h, --help                       Show help\n`;
 }
 
 async function main(): Promise<void> {
@@ -394,13 +397,13 @@ async function main(): Promise<void> {
   }
   if (!args.pr) throw new Error("--pr is required.");
   if (args.command === "check") {
-    const payload = await buildMergeReadiness({ pr: args.pr, method: args.method, mode: "check", syncMain: args.syncMain, repoRoot: args.repoRoot });
+    const payload = await buildMergeReadiness({ pr: args.pr, method: args.method, mode: "check", syncMain: args.syncMain, repoRoot: args.repoRoot, lifecycleEvidenceFile: args.lifecycleEvidenceFile });
     if (args.json) process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
     else process.stdout.write(renderMergeReadiness(payload));
     if (!payload.readiness.ready) process.exitCode = 1;
     return;
   }
-  const result = await applyMerge({ pr: args.pr, method: args.method, syncMain: args.syncMain, repoRoot: args.repoRoot });
+  const result = await applyMerge({ pr: args.pr, method: args.method, syncMain: args.syncMain, repoRoot: args.repoRoot, lifecycleEvidenceFile: args.lifecycleEvidenceFile });
   if (args.json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
   else {
     process.stdout.write(result.status === "merged" ? "Harness merge applied\n" : "Harness merge blocked\n");

@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "taskId": "task-1778227621984",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Add deterministic lifecycle evidence support so worktree PRs can reach merge_ready without reading protected runtime JSON from the worktree.",
+      "Support direct-implementation exemption or equivalent evidence so valid active-task RED/GREEN/review/PR-gate evidence can satisfy lifecycle checks without full intake docs.",
+      "Keep merge safety gates intact: failed PR gate, dirty apply repo, draft PR, requested changes, and non-clean merge state still block.",
+      "Add tests covering worktree/no-runtime-state merge readiness and invalid/missing evidence blocking.",
+      "Update docs/static checks and package wiring if a new command/schema is added.",
+      "Create a PR, verify compact PR state/checks, and merge only through the bounded merge helper if it passes.",
+      "Sync local root main after merge if merge succeeds."
+    ],
+    "tddSlice": "assessSliceLifecycle evidenceFile tracer for merge_ready in worktrees"
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Lifecycle evidence bundle allows merge readiness in isolated worktrees"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778227621984-lifecycle-evidence-merge-readiness",
+    "commit": "830d0f921e1aa2b7ca7e4be670a237dd122b5127"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/113",
+    "state": "OPEN"
+  }
+}

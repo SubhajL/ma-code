@@ -545,6 +545,29 @@ check_9_sync_main_integration() {
   fi
 }
 
+check_product_pipeline_e2e_validator() {
+  local name="9a. product pipeline E2E pilot validator"
+  local out="$TMP_ROOT/check_product_pipeline_e2e_validator.txt"
+  local report="$TMP_ROOT/product-pipeline-e2e.md"
+  local summary="$TMP_ROOT/product-pipeline-e2e.json"
+  local cmd="cd $REPO_ROOT && ./scripts/validate-product-pipeline-e2e.sh --report $report --summary-json $summary"
+
+  if (
+    cd "$REPO_ROOT" &&
+    ./scripts/validate-product-pipeline-e2e.sh --report "$report" --summary-json "$summary" >"$out" 2>&1
+  ); then
+    local detail="product pipeline E2E pilot passed for checkout-mini success path, HITL visibility, blocked paths, idempotency, reports, and fake-boundary safety."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`\n- summary: $summary"
+  else
+    local detail="product pipeline E2E pilot validator failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
 check_10_operator_surface_wiring() {
   local name="10. operator/control-plane/queue-session/integrate/worker-session/schedule/worktree/PR-gate/sync-main package/docs wiring"
   local out="$TMP_ROOT/check_10_operator_surface_wiring.txt"
@@ -633,6 +656,7 @@ main() {
   check_integrate_worktree_integration
   check_8_pr_gate_integration
   check_9_sync_main_integration
+  check_product_pipeline_e2e_validator
   check_10_operator_surface_wiring
 
   cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "mode": "mock",
+  "liveStitchCalled": false,
+  "screenId": "checkout-summary",
+  "states": [
+    "loading",
+    "empty",
+    "error",
+    "success"
+  ]
+}

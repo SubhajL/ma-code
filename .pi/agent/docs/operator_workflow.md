@@ -27,6 +27,7 @@ npm run harness:operator -- leases
 npm run harness:operator -- queue-session -- --scope "bounded queue operation" --max-steps 3
 npm run harness:operator -- worktree -- status
 npm run harness:operator -- worker-session -- start --id HARNESS-064 --slug "worker lane"
+npm run harness:operator -- parallel-worker-lanes dry-run --initiative <slug> --max-parallel 2
 ```
 
 Legacy direct commands remain supported:
@@ -48,6 +49,7 @@ npm run harness:pr-gate -- --pr <number> --max-attempts 20
 npm run harness:sync-main
 npm run harness:slice-lifecycle -- status
 npm run harness:slice-lifecycle -- check --stage create_ready
+npm run harness:parallel-worker-lanes -- dry-run --initiative <slug> --max-parallel 2
 ```
 
 Related operator docs:
@@ -155,6 +157,20 @@ npm run harness:worker-session -- release --scope harness-064 --cleanup
 - worker sessions differ from queue sessions: they reserve a worker lane and worktree but do not dispatch or execute queued jobs
 - release preserves the worktree by default
 - cleanup is explicit and refuses dirty worktrees
+
+For cross-slice product implementation lanes, use Phase 12 parallel worker lanes only when Phase 10 proof allows different whole slices to run together:
+```bash
+npm run harness:parallel-worker-lanes -- dry-run --initiative <slug> --max-parallel 2
+npm run harness:parallel-worker-lanes -- apply --initiative <slug> --max-parallel 2
+npm run harness:parallel-worker-lanes -- run --initiative <slug> --max-parallel 2 --max-runtime-seconds 300 --worker-command '<explicit command>'
+npm run harness:parallel-worker-lanes -- status --initiative <slug>
+npm run harness:parallel-worker-lanes -- cleanup --initiative <slug> --lane-id <lane-id>
+```
+- no daemon is created; `run` is foreground and bounded
+- same-slice phases remain sequential; parallelism is only across different whole slices
+- cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof for every active pair
+- lane manifests are written under initiative docs, while leases are managed by helpers rather than raw runtime JSON edits
+- failed worktrees are preserved for inspection; successful cleanup is explicit and refuses dirty worktrees
 
 For PR CI/security gate checks, use the bounded helper instead of `gh pr checks --watch`:
 ```bash
@@ -479,12 +495,13 @@ Phase 8 adds `harness:merge`, a bounded merge-readiness and apply helper. It com
 Useful commands:
 ```bash
 npm run harness:merge -- check --pr <number>
+npm run harness:merge -- check --pr <number> --lifecycle-evidence reports/lifecycle/<task-id>.merge-evidence.json
 npm run harness:merge -- apply --pr <number> --method squash
 npm run harness:merge -- apply --pr <number> --method squash --sync-main
 npm run validate:merge-helper
 ```
 
-`harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied.
+`harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied. For isolated worktree runs where protected runtime task state is unavailable, pass a reviewed lifecycle evidence bundle with `--lifecycle-evidence`; missing RED/GREEN, g-check, PR URL, or PR-gate pass evidence still blocks merge readiness.
 
 ### Product pipeline runtime
 
@@ -500,3 +517,7 @@ npm run harness:operator -- product-pipeline dry-run --initiative <feature-slug>
 Use dry-run first: it writes no files, shows the complete slice DAG, reports HITL gates, and reports Phase 10 parallel decisions. Use apply only for one bounded foreground materialization step. Apply stops at HITL gates, writes only `docs/initiatives/<slug>/pipeline-runs/<run-id>.json`, and does not create runtime tasks, queue jobs, worker sessions, handoffs, or product code.
 
 Parallelism remains conservative: intra-slice phases remain sequential, and cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof for every active pair. Missing proof blocks parallel materialization.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.

@@ -160,6 +160,15 @@ npm run validate:backend-packet
 
 The helper validates passed FE validation evidence, current contract hash, backend API/data expectations, backend allowed paths, backend TDD seeds, and backend-applicable slice planning. It writes only `docs/initiatives/<slug>/packets/<slice-id>.backend.packet.{json,md}` in apply mode. It creates no runtime tasks, no queue jobs, no worker sessions, no FE packet changes, and no product code. Generated packets use the Phase 7 `backend_implementation` routing lane with verified fallback behavior until requested models are verified.
 
+Phase 10 adds `harness:slice-dependencies`, a pure/read-only slice dependency decision helper for future cross-slice parallelism proof.
+
+```bash
+npm run harness:slice-dependencies -- --check <slice-summary.json> <slice-summary.json> --json
+npm run validate:slice-dependencies
+```
+
+The helper returns structured blockers and proof flags for same-slice requests, missing files/allowed-path proof, shared files, contracts, schema/migration/config/test/fixture paths, and lease/worktree conflict readiness. It does not change queue-runner behavior, does not create runtime tasks, does not create queue jobs, does not acquire leases, does not start worker sessions, and does not schedule cross-slice parallel work. Intra-slice phases remain sequential. See `.pi/agent/docs/slice_dependency_decision.md`.
+
 ## Domain governance
 
 Phase 7 adds advisory-first domain governance for task packets and feature bootstrap docs. Use it to keep frontend/backend/infra ownership explicit without splitting shared intake too early.
@@ -442,3 +451,7 @@ npm run validate:product-pipeline
 ```
 
 Dry-run writes no files and shows the slice DAG, HITL gates, sequential phase order, and Phase 10 parallel decisions. Apply performs one bounded foreground materialization step, stops at HITL gates, and writes only a durable pipeline run artifact under `docs/initiatives/<slug>/pipeline-runs/`. It creates no runtime tasks, queue jobs, worker sessions, handoffs, daemon, or product code. Intra-slice phases remain sequential; cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.

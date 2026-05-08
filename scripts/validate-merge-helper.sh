@@ -2,12 +2,13 @@
 set -euo pipefail
 NODE_BIN="${NODE_BIN:-node}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+TSX_IMPORT="${TSX_IMPORT:-tsx}"
 
 echo "merge-helper-validator: unit tests"
-"$NODE_BIN" --import tsx --test tests/extension-units/merge-helper.test.ts
+"$NODE_BIN" --import "$TSX_IMPORT" --test tests/extension-units/merge-helper.test.ts
 
 echo "merge-helper-validator: integration tests"
-"$NODE_BIN" --import tsx --test tests/integration/merge-helper.test.ts
+"$NODE_BIN" --import "$TSX_IMPORT" --test tests/integration/merge-helper.test.ts
 
 echo "merge-helper-validator: compile helper"
 npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
@@ -39,6 +40,10 @@ for path in ['README.md', '.pi/agent/docs/operator_workflow.md', '.pi/agent/docs
 doc = (root / '.pi/agent/docs/merge_release_policy.md').read_text(encoding='utf-8')
 for phrase in ['merge_ready', 'PR gate', '--sync-main', 'not deployment']:
     assert phrase in doc, f'merge policy doc missing {phrase}'
+merge_cli = (root / 'scripts/harness-merge.ts').read_text(encoding='utf-8')
+assert '--lifecycle-evidence' in merge_cli
+operator_doc = (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8')
+assert '--lifecycle-evidence' in operator_doc
 print('merge-helper-wiring-ok')
 PY
 

@@ -20,14 +20,17 @@ required_files=(
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
   ".pi/agent/state/schemas/leases.schema.json"
+  ".pi/agent/state/schemas/lifecycle-evidence.schema.json"
   ".pi/agent/state/schemas/product-slice-plan.schema.json"
   ".pi/agent/state/schemas/stitch-screen-artifact.schema.json"
   ".pi/agent/state/schemas/live-stitch-artifact.schema.json"
   ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
   ".pi/agent/state/schemas/slice-contract.schema.json"
   ".pi/agent/state/schemas/frontend-validation-evidence.schema.json"
+  ".pi/agent/state/schemas/slice-dependency-decision.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
+  ".pi/agent/extensions/slice-lifecycle.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
   ".pi/agent/extensions/stitch-prompt-generator.ts"
   ".pi/agent/extensions/stitch-artifact-adapter.ts"
@@ -36,6 +39,7 @@ required_files=(
   ".pi/agent/extensions/slice-contracts.ts"
   ".pi/agent/extensions/frontend-packet-generator.ts"
   ".pi/agent/extensions/backend-packet-generator.ts"
+  ".pi/agent/extensions/slice-dependency-decision.ts"
   ".pi/agent/extensions/product-pipeline.ts"
   ".pi/agent/state/schemas/product-pipeline.schema.json"
   "tests/extension-units/execution-leases.test.ts"
@@ -47,6 +51,7 @@ required_files=(
   "tests/extension-units/slice-contracts.test.ts"
   "tests/extension-units/frontend-packet-generator.test.ts"
   "tests/extension-units/backend-packet-generator.test.ts"
+  "tests/extension-units/slice-dependency-decision.test.ts"
   "tests/extension-units/product-pipeline.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
@@ -69,7 +74,14 @@ required_files=(
   "scripts/validate-slice-contracts.sh"
   "scripts/validate-frontend-packets.sh"
   "scripts/validate-backend-packets.sh"
+  "scripts/validate-slice-dependencies.sh"
+  "scripts/harness-slice-dependencies.ts"
   "scripts/validate-product-pipeline.sh"
+  "scripts/validate-product-pipeline-e2e.sh"
+  "tests/integration/product-pipeline-e2e.test.ts"
+  "tests/fixtures/product-pipeline-e2e/checkout-mini/README.md"
+  "tests/fixtures/product-pipeline-e2e/checkout-mini/expected-artifacts.json"
+  ".pi/agent/docs/product_pipeline_e2e_pilot.md"
   "scripts/harness-fe-packet.ts"
   "scripts/harness-be-packet.ts"
   "scripts/harness-product-pipeline.ts"
@@ -91,6 +103,7 @@ required_files=(
   "tests/integration/slice-contracts.test.ts"
   "tests/integration/frontend-packet-generator.test.ts"
   "tests/integration/backend-packet-generator.test.ts"
+  "tests/integration/slice-dependency-decision.test.ts"
   "tests/integration/product-pipeline.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
@@ -109,7 +122,15 @@ required_files=(
   ".pi/agent/docs/slice_contracts.md"
   ".pi/agent/docs/frontend_packet_generation.md"
   ".pi/agent/docs/backend_packet_generation.md"
+  ".pi/agent/docs/slice_dependency_decision.md"
   ".pi/agent/docs/product_pipeline_runtime.md"
+  ".pi/agent/docs/parallel_worker_lanes.md"
+  ".pi/agent/extensions/parallel-worker-lanes.ts"
+  ".pi/agent/state/schemas/parallel-worker-lanes.schema.json"
+  "scripts/harness-parallel-worker-lanes.ts"
+  "scripts/validate-parallel-worker-lanes.sh"
+  "tests/extension-units/parallel-worker-lanes.test.ts"
+  "tests/integration/parallel-worker-lanes.test.ts"
   ".pi/agent/docs/phase_model_routing.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
@@ -176,11 +197,15 @@ for rel in [
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
     ".pi/agent/state/schemas/leases.schema.json",
+    ".pi/agent/state/schemas/lifecycle-evidence.schema.json",
     ".pi/agent/state/schemas/product-slice-plan.schema.json",
     ".pi/agent/state/schemas/stitch-screen-artifact.schema.json",
     ".pi/agent/state/schemas/live-stitch-artifact.schema.json",
     ".pi/agent/state/schemas/screen-artifact-approval.schema.json",
     ".pi/agent/state/schemas/slice-contract.schema.json",
+    ".pi/agent/state/schemas/frontend-validation-evidence.schema.json",
+    ".pi/agent/state/schemas/slice-dependency-decision.schema.json",
+    ".pi/agent/state/schemas/parallel-worker-lanes.schema.json",
     ".pi/agent/package/templates/runtime/leases.json",
     "docs/initiatives/TEMPLATE/slice-plan.json",
     "package.json",
@@ -216,6 +241,7 @@ stitch_prompt_generation_doc = (root / ".pi/agent/docs/stitch_prompt_generation.
 stitch_artifacts_doc = (root / ".pi/agent/docs/stitch_artifacts.md").read_text(encoding="utf-8")
 live_stitch_adapter_doc = (root / ".pi/agent/docs/live_stitch_adapter.md").read_text(encoding="utf-8")
 slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(encoding="utf-8")
+lifecycle_evidence_schema = json.loads((root / ".pi/agent/state/schemas/lifecycle-evidence.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
 stitch_screen_artifact_schema = json.loads((root / ".pi/agent/state/schemas/stitch-screen-artifact.schema.json").read_text(encoding="utf-8"))
 live_stitch_artifact_schema = json.loads((root / ".pi/agent/state/schemas/live-stitch-artifact.schema.json").read_text(encoding="utf-8"))
@@ -256,6 +282,7 @@ graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
 execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts").read_text(encoding="utf-8")
+slice_lifecycle_extension = (root / ".pi/agent/extensions/slice-lifecycle.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
 stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifact-adapter.ts").read_text(encoding="utf-8")
@@ -264,9 +291,19 @@ screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifa
 slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
 frontend_packet_extension = (root / ".pi/agent/extensions/frontend-packet-generator.ts").read_text(encoding="utf-8")
 backend_packet_extension = (root / ".pi/agent/extensions/backend-packet-generator.ts").read_text(encoding="utf-8")
+slice_dependency_decision_extension = (root / ".pi/agent/extensions/slice-dependency-decision.ts").read_text(encoding="utf-8")
+slice_dependency_decision_schema = json.loads((root / ".pi/agent/state/schemas/slice-dependency-decision.schema.json").read_text(encoding="utf-8"))
+slice_dependency_decision_doc = (root / ".pi/agent/docs/slice_dependency_decision.md").read_text(encoding="utf-8")
 product_pipeline_extension = (root / ".pi/agent/extensions/product-pipeline.ts").read_text(encoding="utf-8")
+parallel_worker_lanes_extension = (root / ".pi/agent/extensions/parallel-worker-lanes.ts").read_text(encoding="utf-8")
+parallel_worker_lanes_schema = json.loads((root / ".pi/agent/state/schemas/parallel-worker-lanes.schema.json").read_text(encoding="utf-8"))
+parallel_worker_lanes_doc = (root / ".pi/agent/docs/parallel_worker_lanes.md").read_text(encoding="utf-8")
+parallel_worker_lanes_validator = (root / "scripts/validate-parallel-worker-lanes.sh").read_text(encoding="utf-8")
 product_pipeline_schema = json.loads((root / ".pi/agent/state/schemas/product-pipeline.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
+slice_lifecycle_validator = (root / "scripts/validate-slice-lifecycle.sh").read_text(encoding="utf-8")
+harness_slice_lifecycle_cli = (root / "scripts/harness-slice-lifecycle.ts").read_text(encoding="utf-8")
+harness_merge_cli = (root / "scripts/harness-merge.ts").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
 live_stitch_artifact_validator = (root / "scripts/validate-live-stitch-artifacts.sh").read_text(encoding="utf-8")
@@ -274,7 +311,11 @@ screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-a
 slice_contract_validator = (root / "scripts/validate-slice-contracts.sh").read_text(encoding="utf-8")
 frontend_packet_validator = (root / "scripts/validate-frontend-packets.sh").read_text(encoding="utf-8")
 backend_packet_validator = (root / "scripts/validate-backend-packets.sh").read_text(encoding="utf-8")
+slice_dependency_validator = (root / "scripts/validate-slice-dependencies.sh").read_text(encoding="utf-8")
 product_pipeline_validator = (root / "scripts/validate-product-pipeline.sh").read_text(encoding="utf-8")
+product_pipeline_e2e_validator = (root / "scripts/validate-product-pipeline-e2e.sh").read_text(encoding="utf-8")
+product_pipeline_e2e_test = (root / "tests/integration/product-pipeline-e2e.test.ts").read_text(encoding="utf-8")
+product_pipeline_e2e_doc = (root / ".pi/agent/docs/product_pipeline_e2e_pilot.md").read_text(encoding="utf-8")
 slice_contract_doc = (root / ".pi/agent/docs/slice_contracts.md").read_text(encoding="utf-8")
 frontend_packet_doc = (root / ".pi/agent/docs/frontend_packet_generation.md").read_text(encoding="utf-8")
 backend_packet_doc = (root / ".pi/agent/docs/backend_packet_generation.md").read_text(encoding="utf-8")
@@ -899,6 +940,30 @@ for needle in [
 ]:
     assert needle in product_planning_doc
 assert "intentionally separate from the product-slice planning/DAG lifecycle" in slice_lifecycle_doc
+assert lifecycle_evidence_schema["title"] == "Lifecycle Evidence Bundle"
+assert lifecycle_evidence_schema["properties"]["version"]["const"] == 1
+assert "directImplementationExemption" in lifecycle_evidence_schema["properties"]
+for needle in [
+    "SliceLifecycleEvidenceBundle",
+    "evidenceFile",
+    "directImplementationExemption",
+    "lifecycleEvidencePath",
+]:
+    assert needle in slice_lifecycle_extension, needle
+for needle in [
+    "--evidence-file",
+    "reports/lifecycle/<task-id>.merge-evidence.json",
+]:
+    assert needle in slice_lifecycle_doc, needle
+assert "--evidence-file" in harness_slice_lifecycle_cli
+assert "--lifecycle-evidence" in harness_merge_cli
+assert "--lifecycle-evidence" in operator_workflow_doc
+for needle in [
+    "slice-lifecycle-validator: unit tests",
+    "slice-lifecycle-validator: integration tests",
+    "slice-lifecycle-validator: compile helper and CLI",
+]:
+    assert needle in slice_lifecycle_validator
 for needle in [
     "product-slice-lifecycle-validator: unit tests",
     "product-slice-lifecycle-validator: compile helper",
@@ -1188,6 +1253,55 @@ assert "backend packet generation" in team_orchestration_doc.lower()
 assert "backend packet generation" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
 assert "backend packet generation" in backend_worker_prompt.lower()
 assert "Backend packet generation" in readme_doc
+assert slice_dependency_decision_schema["properties"]["version"]["const"] == 1
+assert slice_dependency_decision_schema["properties"]["decision"]["enum"] == ["blocked", "allowed"]
+assert slice_dependency_decision_schema["properties"]["recommendedExecution"]["enum"] == ["sequential", "parallel_candidate"]
+for blocker in ["shared_file", "shared_contract", "shared_schema", "shared_config", "shared_test", "same_slice", "missing_proof", "lease_conflict_unknown"]:
+    assert blocker in slice_dependency_decision_schema["$defs"]["blocker"]["properties"]["type"]["enum"], blocker
+for proof_key in ["distinctSlices", "disjointFilesToModify", "disjointAllowedPaths", "disjointContracts", "noSharedSchemaOrMigration", "noSharedConfig", "noSharedTestsOrFixtures", "leaseConflictCheckAvailable"]:
+    assert proof_key in slice_dependency_decision_schema["$defs"]["proof"]["required"], proof_key
+for needle in [
+    "decideSliceParallelism",
+    "shared_file",
+    "lease_conflict_unknown",
+    "parallel_candidate",
+]:
+    assert needle in slice_dependency_decision_extension, needle
+for forbidden in ["node:fs", "writeFile", "mkdir", "run_next_queue_job", "acquireLease", "task_update"]:
+    assert forbidden not in slice_dependency_decision_extension, forbidden
+for needle in [
+    "Phase 10 does not dispatch work",
+    "does not change queue-runner behavior",
+    "does not schedule cross-slice parallel work",
+    "Intra-slice phases remain sequential",
+    "same-slice phase parallelism is still forbidden",
+]:
+    assert needle in slice_dependency_decision_doc, needle
+for needle in [
+    "slice-dependency-validator: unit tests",
+    "slice-dependency-validator: integration tests",
+    "slice-dependency-validator: compile helper and cli",
+]:
+    assert needle in slice_dependency_validator, needle
+for needle in [
+    "Phase 10 slice dependency decision",
+    "harness:slice-dependencies",
+    "no runtime tasks",
+    "no queue jobs",
+    "no worker sessions",
+    "does not schedule cross-slice parallel work",
+    "Intra-slice phases remain sequential",
+]:
+    assert needle in product_planning_doc, needle
+assert "slice-dependency-decision.ts" in foundation_compile_validator
+assert "slice-dependency-decision.schema.json" in validation_doc
+assert "scripts/validate-slice-dependencies.sh" in validation_doc
+for script_name in ["harness:slice-dependencies", "test:slice-dependencies", "validate:slice-dependencies"]:
+    assert script_name in package_json.get("scripts", {}), script_name
+    assert script_name in package_template_json.get("scripts", {}), script_name
+assert "slice dependency decision" in team_orchestration_doc.lower()
+assert "slice dependency decision" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
+assert "slice dependency" in readme_doc.lower()
 for needle in [
     "buildProductPipelineRun",
     "computeNextReadySlices",
@@ -1211,8 +1325,70 @@ for needle in [
     "product-pipeline-validator: compile helper and cli",
 ]:
     assert needle in product_pipeline_validator, needle
+for needle in [
+    "boundedFullAutoReadiness",
+    "blockedPathsProven",
+    "hitlGatesProven",
+    "goNoGo",
+    "liveProviderCalls",
+    "liveStitchCalls",
+    "trackedRuntimeJsonFiles",
+    "waiting_for_human",
+]:
+    assert needle in product_pipeline_e2e_validator, needle
+for needle in [
+    "validate-product-pipeline-e2e.sh",
+    "checkout-mini",
+    "boundedFullAutoReadiness",
+    "blockedPathsProven",
+    "live boundaries",
+]:
+    assert needle in product_pipeline_e2e_test, needle
+for needle in [
+    "Phase 14",
+    "checkout-mini",
+    "No daemon/watch mode is introduced",
+    "No live provider or live Stitch call is required by default",
+    "boundedFullAutoReadiness",
+]:
+    assert needle in product_pipeline_e2e_doc, needle
+assert "validate:product-pipeline-e2e" in package_json.get("scripts", {})
+assert "product_pipeline_e2e" in core_workflows_validator or "product pipeline E2E pilot" in core_workflows_validator
 assert product_pipeline_schema["title"] == "Product Pipeline Run"
 assert "product-pipeline.ts" in foundation_compile_validator
+for needle in [
+    "planParallelWorkerLanes",
+    "buildParallelWorkerLaneManifest",
+    "parallelWorkerLaneManifestPath",
+    "activeLeaseScopesFromRecords",
+    "Missing Phase 10 parallelAllowed proof",
+    "Same-slice phase parallelism is forbidden",
+]:
+    assert needle in parallel_worker_lanes_extension, needle
+for needle in [
+    "No daemon",
+    "Same-slice phases are sequential",
+    "Cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof",
+    "Operators must not edit `.pi/agent/state/runtime/*.json` directly",
+    "Failed lane worktrees are preserved",
+]:
+    assert needle in parallel_worker_lanes_doc, needle
+for needle in [
+    "parallel-worker-lanes.test.ts",
+    "check-foundation-extension-compile.sh",
+    "check-repo-static.sh",
+]:
+    assert needle in parallel_worker_lanes_validator, needle
+assert parallel_worker_lanes_schema["title"] == "Parallel Worker Lanes Manifest"
+assert "parallel-worker-lanes.ts" in foundation_compile_validator
+assert "harness:parallel-worker-lanes" in package_json.get("scripts", {})
+assert "harness:parallel-worker-lanes" in package_template_json.get("scripts", {})
+assert "test:parallel-worker-lanes" in package_json.get("scripts", {})
+assert "validate:parallel-worker-lanes" in package_json.get("scripts", {})
+assert "parallel-worker-lanes" in (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
+assert "parallel worker lanes" in team_orchestration_doc.lower()
+assert "parallel-worker-lanes" in product_pipeline_doc
+assert "parallel-worker-lanes" in operator_workflow_doc
 assert "harness:product-pipeline" in package_json.get("scripts", {})
 assert "harness:product-pipeline" in package_template_json.get("scripts", {})
 assert "test:product-pipeline" in package_json.get("scripts", {})

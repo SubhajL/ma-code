@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ma-code.local/schemas/slice-dependency-decision.schema.json",
+  "title": "SliceDependencyDecision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "sliceIds",
+    "parallelAllowed",
+    "decision",
+    "blockers",
+    "proof",
+    "recommendedExecution",
+    "notes"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "sliceIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "parallelAllowed": { "type": "boolean" },
+    "decision": { "enum": ["blocked", "allowed"] },
+    "blockers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/blocker" }
+    },
+    "proof": { "$ref": "#/$defs/proof" },
+    "recommendedExecution": { "enum": ["sequential", "parallel_candidate"] },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "sliceIds", "paths", "reason"],
+      "properties": {
+        "type": {
+          "enum": [
+            "shared_file",
+            "shared_contract",
+            "shared_schema",
+            "shared_config",
+            "shared_test",
+            "same_slice",
+            "missing_proof",
+            "lease_conflict_unknown"
+          ]
+        },
+        "sliceIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "distinctSlices",
+        "disjointFilesToModify",
+        "disjointAllowedPaths",
+        "disjointContracts",
+        "noSharedSchemaOrMigration",
+        "noSharedConfig",
+        "noSharedTestsOrFixtures",
+        "leaseConflictCheckAvailable"
+      ],
+      "properties": {
+        "distinctSlices": { "type": "boolean" },
+        "disjointFilesToModify": { "type": "boolean" },
+        "disjointAllowedPaths": { "type": "boolean" },
+        "disjointContracts": { "type": "boolean" },
+        "noSharedSchemaOrMigration": { "type": "boolean" },
+        "noSharedConfig": { "type": "boolean" },
+        "noSharedTestsOrFixtures": { "type": "boolean" },
+        "leaseConflictCheckAvailable": { "type": "boolean" }
+      }
+    }
+  }
+}
