@@ -134,6 +134,19 @@ npm run validate:slice-contract
 
 The helper does not create task packets, handoffs, queue jobs, worker sessions, or runtime state. It gates FE implementation on a current approved screen artifact and a current slice contract.
 
+## Frontend packet generation
+
+Phase 8 adds `harness:fe-packet`, a preview-only frontend packet generator that turns approved UI-facing slice artifacts into a valid `frontend_worker` implementation task packet.
+
+Useful commands:
+```bash
+npm run harness:fe-packet -- --initiative checkout-ui --slice slice-001 --dry-run
+npm run harness:fe-packet -- --initiative checkout-ui --slice slice-001 --apply
+npm run validate:frontend-packet
+```
+
+The helper validates the approved screen artifact, hash-bound approval sidecar, current contract, and UI-facing slice plan. It writes only `docs/initiatives/<slug>/packets/<slice-id>.frontend.packet.{json,md}` in apply mode. It creates no runtime tasks, no queue jobs, no worker sessions, and no backend packets; backend packet generation waits for a later phase. Generated packets use the Phase 7 `frontend_implementation` routing lane with verified fallback behavior until requested models are verified.
+
 ## Domain governance
 
 Phase 7 adds advisory-first domain governance for task packets and feature bootstrap docs. Use it to keep frontend/backend/infra ownership explicit without splitting shared intake too early.

@@ -507,6 +507,20 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect approved-screen-to-contract generation, contract schema shape, dry-run/apply behavior, or FE/BE contract gating documentation.
 
+### Dedicated frontend packet validator
+Current dedicated frontend packet script:
+- `scripts/validate-frontend-packets.sh`
+- package alias: `validate:frontend-packet`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/extensions/frontend-packet-generator.ts`
+- `scripts/harness-fe-packet.ts`
+- `tests/extension-units/frontend-packet-generator.test.ts`
+- `tests/integration/frontend-packet-generator.test.ts`
+- package/static/compile wiring that keeps Phase 8 preview-only and consumes the Phase 7 `frontend_implementation` routing lane
+
+It should be used when changes affect FE packet generation, approved artifact/contract validation, dry-run/apply preview behavior, or documentation that no runtime tasks, queue jobs, worker sessions, backend packets, or product code are created.
+
 ### Dedicated same-runtime bridge validator
 Current dedicated same-runtime bridge script:
 - `scripts/validate-same-runtime-bridge.sh`

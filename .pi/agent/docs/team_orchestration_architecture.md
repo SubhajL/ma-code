@@ -167,6 +167,15 @@ For the current repo-local slice, executable task packet generation now lives at
 
 It gives the orchestrator and build lead a deterministic packet-generation surface.
 
+## Current frontend packet preview surface
+Phase 8 adds an additive FE packet preview helper:
+- `.pi/agent/extensions/frontend-packet-generator.ts`
+- CLI: `scripts/harness-fe-packet.ts`
+- package alias: `harness:fe-packet`
+- validator: `scripts/validate-frontend-packets.sh`
+
+The frontend packet generation helper validates the approved screen artifact, hash-bound approval sidecar, current contract, and UI-facing slice plan before producing a normal `frontend_worker` implementation task packet. It requests the Phase 7 `frontend_implementation` routing lane and writes only preview artifacts under `docs/initiatives/<slug>/packets/` when `--apply` is used. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, no backend packets, and no product code. See `.pi/agent/docs/frontend_packet_generation.md`.
+
 ## Current executable handoff surface
 For the current repo-local slice, executable handoff generation now lives at:
 - `.pi/agent/extensions/handoffs.ts`

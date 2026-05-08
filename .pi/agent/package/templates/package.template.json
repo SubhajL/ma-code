@@ -41,7 +41,10 @@
     "validate:screen-approval": "./scripts/validate-screen-artifact-approval.sh",
     "harness:slice-contract": "node --import tsx scripts/harness-slice-contract.ts",
     "test:slice-contract": "node --import tsx --test tests/extension-units/slice-contracts.test.ts tests/integration/slice-contracts.test.ts",
-    "validate:slice-contract": "./scripts/validate-slice-contracts.sh"
+    "validate:slice-contract": "./scripts/validate-slice-contracts.sh",
+    "harness:fe-packet": "node --import tsx scripts/harness-fe-packet.ts",
+    "test:frontend-packet": "node --import tsx --test tests/extension-units/frontend-packet-generator.test.ts tests/integration/frontend-packet-generator.test.ts",
+    "validate:frontend-packet": "./scripts/validate-frontend-packets.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

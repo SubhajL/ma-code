@@ -100,10 +100,15 @@ After hash-bound screen artifact approval and before FE implementation, generate
 
 Phase 6 slice contract generation requires the current screen artifact approval sidecar to be `approved` and hash-matched to the mock artifact. It captures UI states, required data, API/data placeholders, errors, auth assumptions, mock plan, TDD seeds, and out-of-scope notes. It does not create task packets, does not create handoffs, does not create queue jobs, does not start worker sessions, does not dispatch workers, does not write protected runtime JSON, and does not implement frontend or backend code. See `.pi/agent/docs/slice_contracts.md`.
 
-### 9. Task-packet handoff
-Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, Phase 4 mock Stitch artifact generation, Phase 5 screen artifact approval, and Phase 6 slice contract generation. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, `harness:stitch-artifact`, `harness:screen-approval`, or `harness:slice-contract`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, human artifact review, hash-bound screen artifact approval, and current slice contract generation.
+### 9. Phase 8 frontend packet generation
+After Phase 6 produces a current contract, generate a preview-only FE packet for UI-facing slices. Use `npm run harness:fe-packet -- --initiative <feature-slug> --slice <slice-id> --dry-run` to inspect the generated `frontend_worker` packet without writing, and `--apply` to write only `docs/initiatives/<feature-slug>/packets/<slice-id>.frontend.packet.json` plus Markdown.
 
-Map approved slices into current harness task packets or queue jobs.
+Phase 8 frontend packet generation validates the approved screen artifact, hash-bound approval sidecar, current contract, and UI-facing slice plan. It creates no runtime tasks, no queue jobs, no worker sessions, no backend packets, and no product code. Generated packets use the Phase 7 `frontend_implementation` routing lane with verified fallback behavior. See `.pi/agent/docs/frontend_packet_generation.md`.
+
+### 10. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, Phase 4 mock Stitch artifact generation, Phase 5 screen artifact approval, and Phase 6 slice contract generation. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, `harness:stitch-artifact`, `harness:screen-approval`, or `harness:slice-contract`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, human artifact review, hash-bound screen artifact approval, and current slice contract generation. Use `harness:fe-packet` only for Phase 8 preview artifacts; backend packets wait for a later phase.
+
+Map approved slices into current harness task packets or queue jobs only after explicit scheduler/queue gates exist.
 Preserve:
 - goal and non-goals
 - scope boundaries
