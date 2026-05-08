@@ -186,6 +186,16 @@ Phase 9 adds an additive BE packet preview helper:
 
 The backend packet generation helper follows frontend validation and validates the Phase 8 frontend packet, passed FE validation evidence, current contract hash, backend API/data expectations, backend allowed paths, backend TDD seeds, and backend-applicable slice plan before producing a normal `backend_worker` implementation task packet. It requests the Phase 7 `backend_implementation` routing lane and writes only preview artifacts under `docs/initiatives/<slug>/packets/` when `--apply` is used. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, no FE packet changes, and no product code. See `.pi/agent/docs/backend_packet_generation.md`.
 
+## Current slice dependency decision surface
+Phase 10 adds an additive pure dependency analyzer for future cross-slice parallelism:
+- `.pi/agent/extensions/slice-dependency-decision.ts`
+- schema: `.pi/agent/state/schemas/slice-dependency-decision.schema.json`
+- CLI: `scripts/harness-slice-dependencies.ts`
+- package alias: `harness:slice-dependencies`
+- validator: `scripts/validate-slice-dependencies.sh`
+
+The slice dependency decision helper compares two or more slice summaries or artifact paths and returns structured blockers/proof for shared files, contracts, schemas, migrations, config, tests, fixtures, same-slice requests, missing proof, and unknown lease/worktree conflict checks. Phase 10 does not change queue-runner behavior, does not create task packets, does not create queue jobs, does not acquire leases, does not start worker sessions, and does not schedule cross-slice parallel work. Intra-slice phases remain sequential. See `.pi/agent/docs/slice_dependency_decision.md`.
+
 ## Current executable handoff surface
 For the current repo-local slice, executable handoff generation now lives at:
 - `.pi/agent/extensions/handoffs.ts`
