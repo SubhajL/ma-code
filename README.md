@@ -286,9 +286,13 @@ node --import tsx scripts/harness-package.ts bootstrap --dest /path/to/target-re
 npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --dry-run
 npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --apply
 npm run harness:init-feature -- --slug example-major-feature
+npm run harness:screen-approval -- status --initiative example-major-feature --slice slice-001
+npm run harness:screen-approval -- approve --initiative example-major-feature --slice slice-001 --by reviewer --note "Approved for FE implementation."
 ```
 
 The bounded `harness:product-intake` helper is the safe Phase 1 entry point for major product work. Dry-run validates inputs and planned files without writing; apply captures `docs/initiatives/<feature-slug>/intake.json` and, only for clear intake, reuses `harness:init-feature` to scaffold PRD/backlog/decisions. PRD/backlog happen before Stitch; Phase 1 product intake never creates Stitch artifacts, task packets, queue jobs, frontend packets, or backend packets.
+
+The `harness:screen-approval` helper is the safe Phase 5 gate after mock screen artifact generation. It writes only `docs/initiatives/<feature-slug>/screen-artifacts/<slice-id>.approval.json`, binds approval to the current artifact hash, and does not create Stitch calls, task packets, queue jobs, worker dispatch, frontend code, backend code, or protected runtime JSON.
 
 The lower-level `harness:init-feature` helper scaffolds `docs/initiatives/<feature-slug>/` from the repo-local initiative templates and prints optional next-step suggestions for `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues`.
 

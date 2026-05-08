@@ -90,8 +90,13 @@ After human prompt review, generate a mock-only screen artifact for each UI-faci
 
 Phase 4 mock Stitch artifact generation is mock-only: it consumes Phase 3 prompt metadata, validates source hashes, does not call Stitch, does not create task packets, does not create queue jobs, does not dispatch workers, and does not implement frontend or backend code. It records `nextAllowedPhase: screen_approval` and `nextBlockedUntil: human_artifact_review`. See `.pi/agent/docs/stitch_artifacts.md`.
 
-### 7. Task-packet handoff
-Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, and Phase 4 mock Stitch artifact generation. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, or `harness:stitch-artifact`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, and human artifact review.
+### 7. Phase 5 screen artifact approval
+After human artifact review, approve or reject the mock screen artifact before FE implementation. Use `npm run harness:screen-approval -- status --initiative <feature-slug> --slice <slice-id>` to inspect approval state, `approve --by <reviewer> --note <text>` to write an approved sidecar, and `reject --by <reviewer> --reason <text>` to write a rejected sidecar.
+
+Phase 5 screen artifact approval writes only `docs/initiatives/<feature-slug>/screen-artifacts/<slice-id>.approval.json`. It binds human approval to the current mock artifact hash, requires reviewer identity and notes for approval, requires a rejection reason for rejection, does not call Stitch, does not create task packets, does not create queue jobs, does not dispatch workers, does not write protected runtime JSON, and does not implement frontend or backend code. See `.pi/agent/docs/screen_artifact_approval.md`.
+
+### 8. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, Phase 4 mock Stitch artifact generation, and Phase 5 screen artifact approval. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, `harness:stitch-artifact`, or `harness:screen-approval`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, human artifact review, and hash-bound screen artifact approval.
 
 Map approved slices into current harness task packets or queue jobs.
 Preserve:

@@ -89,6 +89,7 @@ Primary assets:
 - `scripts/validate-skill-routing.sh`
 - `scripts/validate-graphify-discovery.sh`
 - `scripts/validate-slice-lifecycle.sh`
+- `scripts/validate-screen-artifact-approval.sh`
 - `scripts/validate-prompt-contracts.sh`
 - `.pi/agent/docs/runtime_validation_runbook.md`
 - `.pi/agent/docs/operator_workflow.md`
@@ -105,6 +106,7 @@ Current structure:
 
 Validation role of this layer:
 - verifies that policy and runtime controls are wired correctly
+- verifies product-pipeline gates such as hash-bound screen artifact approval before FE implementation
 - provides repeatable regression coverage for the current harness slice
 - gives a standard path for local validation before claiming completion
 
