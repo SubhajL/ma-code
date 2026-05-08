@@ -272,3 +272,6 @@ export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput 
     policyPath: join(cwd, DEFAULT_POLICY_PATH),
   };
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function sliceLifecycleExtension(): void {}
