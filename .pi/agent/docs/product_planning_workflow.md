@@ -95,8 +95,13 @@ After human artifact review, approve or reject the mock screen artifact before F
 
 Phase 5 screen artifact approval writes only `docs/initiatives/<feature-slug>/screen-artifacts/<slice-id>.approval.json`. It binds human approval to the current mock artifact hash, requires reviewer identity and notes for approval, requires a rejection reason for rejection, does not call Stitch, does not create task packets, does not create queue jobs, does not dispatch workers, does not write protected runtime JSON, and does not implement frontend or backend code. See `.pi/agent/docs/screen_artifact_approval.md`.
 
-### 8. Task-packet handoff
-Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, Phase 4 mock Stitch artifact generation, and Phase 5 screen artifact approval. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, `harness:stitch-artifact`, or `harness:screen-approval`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, human artifact review, and hash-bound screen artifact approval.
+### 8. Phase 6 slice contract generation
+After hash-bound screen artifact approval and before FE implementation, generate a shared slice contract. Use `npm run harness:slice-contract -- --initiative <feature-slug> --slice <slice-id> --dry-run` to inspect deterministic JSON/Markdown output without writing, and `--apply` to write only `docs/initiatives/<feature-slug>/contracts/<slice-id>.contract.json` plus a Markdown summary.
+
+Phase 6 slice contract generation requires the current screen artifact approval sidecar to be `approved` and hash-matched to the mock artifact. It captures UI states, required data, API/data placeholders, errors, auth assumptions, mock plan, TDD seeds, and out-of-scope notes. It does not create task packets, does not create handoffs, does not create queue jobs, does not start worker sessions, does not dispatch workers, does not write protected runtime JSON, and does not implement frontend or backend code. See `.pi/agent/docs/slice_contracts.md`.
+
+### 9. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, Phase 4 mock Stitch artifact generation, Phase 5 screen artifact approval, and Phase 6 slice contract generation. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, `harness:stitch-artifact`, `harness:screen-approval`, or `harness:slice-contract`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, human artifact review, hash-bound screen artifact approval, and current slice contract generation.
 
 Map approved slices into current harness task packets or queue jobs.
 Preserve:

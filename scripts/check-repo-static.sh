@@ -23,17 +23,20 @@ required_files=(
   ".pi/agent/state/schemas/product-slice-plan.schema.json"
   ".pi/agent/state/schemas/stitch-screen-artifact.schema.json"
   ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
+  ".pi/agent/state/schemas/slice-contract.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
   ".pi/agent/extensions/stitch-prompt-generator.ts"
   ".pi/agent/extensions/stitch-artifact-adapter.ts"
   ".pi/agent/extensions/screen-artifact-approval.ts"
+  ".pi/agent/extensions/slice-contracts.ts"
   "tests/extension-units/execution-leases.test.ts"
   "tests/extension-units/product-slice-lifecycle.test.ts"
   "tests/extension-units/stitch-prompt-generator.test.ts"
   "tests/extension-units/stitch-artifact-adapter.test.ts"
   "tests/extension-units/screen-artifact-approval.test.ts"
+  "tests/extension-units/slice-contracts.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -51,6 +54,7 @@ required_files=(
   "scripts/validate-stitch-prompts.sh"
   "scripts/validate-stitch-artifacts.sh"
   "scripts/validate-screen-artifact-approval.sh"
+  "scripts/validate-slice-contracts.sh"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
@@ -62,7 +66,9 @@ required_files=(
   "scripts/harness-stitch-artifact.ts"
   "tests/integration/stitch-artifact.test.ts"
   "scripts/harness-screen-approval.ts"
+  "scripts/harness-slice-contract.ts"
   "tests/integration/screen-artifact-approval.test.ts"
+  "tests/integration/slice-contracts.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -76,6 +82,7 @@ required_files=(
   ".pi/agent/docs/stitch_prompt_generation.md"
   ".pi/agent/docs/stitch_artifacts.md"
   ".pi/agent/docs/screen_artifact_approval.md"
+  ".pi/agent/docs/slice_contracts.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
   "packages/pi-g-skills/README.md"
@@ -144,6 +151,7 @@ for rel in [
     ".pi/agent/state/schemas/product-slice-plan.schema.json",
     ".pi/agent/state/schemas/stitch-screen-artifact.schema.json",
     ".pi/agent/state/schemas/screen-artifact-approval.schema.json",
+    ".pi/agent/state/schemas/slice-contract.schema.json",
     ".pi/agent/package/templates/runtime/leases.json",
     "docs/initiatives/TEMPLATE/slice-plan.json",
     "package.json",
@@ -179,6 +187,7 @@ slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(enc
 product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
 stitch_screen_artifact_schema = json.loads((root / ".pi/agent/state/schemas/stitch-screen-artifact.schema.json").read_text(encoding="utf-8"))
 screen_artifact_approval_schema = json.loads((root / ".pi/agent/state/schemas/screen-artifact-approval.schema.json").read_text(encoding="utf-8"))
+slice_contract_schema = json.loads((root / ".pi/agent/state/schemas/slice-contract.schema.json").read_text(encoding="utf-8"))
 product_slice_template = json.loads((root / "docs/initiatives/TEMPLATE/slice-plan.json").read_text(encoding="utf-8"))
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
@@ -217,10 +226,13 @@ product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-
 stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifact-adapter.ts").read_text(encoding="utf-8")
 screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifact-approval.ts").read_text(encoding="utf-8")
+slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
 screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-approval.sh").read_text(encoding="utf-8")
+slice_contract_validator = (root / "scripts/validate-slice-contracts.sh").read_text(encoding="utf-8")
+slice_contract_doc = (root / ".pi/agent/docs/slice_contracts.md").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -950,6 +962,49 @@ for needle in [
 assert "screen-artifact-approval.ts" in foundation_compile_validator
 assert "scripts/validate-screen-artifact-approval.sh" in validation_doc
 assert "harness:screen-approval" in stitch_artifacts_doc
+
+assert slice_contract_schema["properties"]["status"]["enum"] == ["draft", "ready_for_review", "approved", "blocked"]
+assert slice_contract_schema["properties"]["nextAllowedPhase"]["const"] == "fe_implementation"
+for key in ["sourceScreenArtifact", "uiStateContract", "apiContract", "errors", "mockPlan", "tddSeeds", "outOfScope"]:
+    assert key in slice_contract_schema["required"], key
+for needle in [
+    "generateSliceContract",
+    "writeSliceContractArtifacts",
+    "screen artifact approval",
+    "Screen artifact approval is not approved",
+    "Stale screen artifact approval",
+    "Auth requirements are unset",
+]:
+    assert needle in slice_contract_extension, needle
+for needle in [
+    "writes no files",
+    "writes only",
+    "does not create task packets",
+    "does not create queue jobs",
+    "worker sessions",
+    "current slice contract",
+]:
+    assert needle in slice_contract_doc, needle
+for needle in [
+    "Phase 6 slice contract generation",
+    "harness:slice-contract",
+    "does not create task packets",
+    "does not create queue jobs",
+    "does not write protected runtime JSON",
+    "before FE implementation",
+]:
+    assert needle in product_planning_doc, needle
+for needle in [
+    "slice-contract-validator: unit tests",
+    "slice-contract-validator: integration tests",
+    "slice-contract-validator: compile helper and CLI",
+]:
+    assert needle in slice_contract_validator
+assert "slice-contracts.ts" in foundation_compile_validator
+assert "scripts/validate-slice-contracts.sh" in validation_doc
+assert "harness:slice-contract" in package_json.get("scripts", {})
+assert "contracts/<slice-id>.contract.json" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8")
+assert "Phase 6 slice contract path and hash" in team_orchestration_doc
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",

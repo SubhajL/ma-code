@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_screen-artifact-approval-phase-5.md`
+- `logs/coding/2026-05-08_slice-contracts-phase-6.md`
 
 ## Current planning log
-- `reports/planning/2026-05-08_screen-artifact-approval-phase-5-plan.md`
+- `reports/planning/2026-05-07_slice-contracts-phase-6-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,4 +16,4 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded Phase 5 screen artifact approval work.
+- These files capture the bounded Phase 6 slice contract work.
