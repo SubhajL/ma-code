@@ -139,3 +139,8 @@ Review Verdict: no_required_fixes
 
 ### Next Action
 - Wait for PR checks, run bounded PR gate/merge helper if clean, then sync local main as explicitly requested.
+
+## Lifecycle Evidence (2026-05-09 23:35 local)
+
+- Added `reports/lifecycle/2026-05-09_issue-materialization-phase-a.json` so the bounded merge helper can verify `merge_ready` without reading runtime task state from this isolated worktree.
+- Evidence bundle records task acceptance, RED/GREEN, `Review Verdict: no_required_fixes`, branch/commit, PR URL, and PR-gate pass/CLEAN state.

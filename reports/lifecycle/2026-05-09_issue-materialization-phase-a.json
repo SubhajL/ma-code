@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "taskId": "task-1778282674405",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Add bounded foreground helper harness:issue-materialize with dry-run and apply modes.",
+      "Dry-run validates source issue data and reports planned artifacts without writing files.",
+      "Apply writes only under docs/initiatives/<slug>/ and refuses overwrite unless explicit safe overwrite is provided.",
+      "Materialized greenfield scaffold artifacts include all 18 slices with HITL/AFK classification, explicit dependencies, queueReadiness not_ready, and required path metadata.",
+      "Issues 2 and 3 depend on Issue 1; Issue 4 depends on Issues 2 and 3.",
+      "Each AFK issue includes acceptance criteria and validation proof.",
+      "Generate backlog.md, issues.json, slice-plan.json, pipeline.json, per-slice summary JSON, and materialization report md/json with source hash and approval metadata.",
+      "Add validation/tests including schema, dry-run no-write, apply write boundaries, dependency, parallel-readiness, and no runtime state/task/queue mutation behavior.",
+      "Do not modify .pi/agent/state/runtime/*.json via implementation.",
+      "Create PR after validation; merge and sync main only through bounded approved helper if gates pass."
+    ],
+    "tddSlice": "First tracer behavior: dry-run validates approved g-issues source, reports planned artifacts, and writes no files."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "All Phase A issue materialization acceptance criteria are covered by tests and generated artifacts."
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778282674405-issue-materialize",
+    "commit": "605c550"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/115",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
