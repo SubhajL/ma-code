@@ -31,6 +31,7 @@
     "verdict": "no_required_fixes"
   },
   "creation": {
-    "branch": "split/task-1778232997531-phase14-product-pipeline-e2e"
+    "branch": "split/task-1778232997531-phase14-product-pipeline-e2e",
+    "commit": "a08484ea4ae78e7fabce35e367e08728b3f87900"
   }
 }
