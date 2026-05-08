@@ -83,6 +83,7 @@ required_files=(
   ".pi/agent/docs/stitch_artifacts.md"
   ".pi/agent/docs/screen_artifact_approval.md"
   ".pi/agent/docs/slice_contracts.md"
+  ".pi/agent/docs/phase_model_routing.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
   "packages/pi-g-skills/README.md"
@@ -170,6 +171,8 @@ queue_semantics_doc = (root / ".pi/agent/docs/queue_semantics.md").read_text(enc
 validation_recovery_doc = (root / ".pi/agent/docs/validation_recovery_architecture.md").read_text(encoding="utf-8")
 prompt_semantics_doc = (root / ".pi/agent/docs/validation_architecture.md").read_text(encoding="utf-8")
 operator_workflow_doc = (root / ".pi/agent/docs/operator_workflow.md").read_text(encoding="utf-8")
+phase_model_routing_doc = (root / ".pi/agent/docs/phase_model_routing.md").read_text(encoding="utf-8")
+operator_model_routing_doc = (root / ".pi/agent/docs/operator_model_routing_guide.md").read_text(encoding="utf-8")
 discovery_policy_doc = (root / ".pi/agent/docs/discovery_policy.md").read_text(encoding="utf-8")
 orchestrator_prompt = (root / ".pi/agent/prompts/roles/orchestrator.md").read_text(encoding="utf-8")
 operator_role_doc = (root / ".pi/agent/docs/operator_role_guide.md").read_text(encoding="utf-8")
@@ -242,6 +245,7 @@ extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").r
 foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
 package_json = json.loads((root / "package.json").read_text(encoding="utf-8"))
+models_json = json.loads((root / ".pi/agent/models.json").read_text(encoding="utf-8"))
 assert "tactical vs strategic rule" in workflow_doc.lower()
 for needle in [
     "request-architecture-review.md",
@@ -1005,6 +1009,42 @@ assert "scripts/validate-slice-contracts.sh" in validation_doc
 assert "harness:slice-contract" in package_json.get("scripts", {})
 assert "contracts/<slice-id>.contract.json" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8")
 assert "Phase 6 slice contract path and hash" in team_orchestration_doc
+phase_profiles = models_json.get("phase_routing_profiles", {})
+assert set(phase_profiles) == {"screen_design", "frontend_implementation", "backend_implementation"}
+for lane, expected_target, expected_fallback in [
+    ("screen_design", "opus-4.7", "anthropic/claude-opus-4-5"),
+    ("frontend_implementation", "opus-4.7", "anthropic/claude-opus-4-5"),
+    ("backend_implementation", "gpt-5.5", "openai-codex/gpt-5.4"),
+]:
+    profile = phase_profiles[lane]
+    assert profile["targetModelRequest"] == expected_target
+    assert profile["verificationStatus"] in {"unverified", "verified", "unavailable"}
+    assert profile["verificationStatus"] != "verified"
+    assert profile["verifiedModelId"] is None
+    assert profile["fallbackModelId"] == expected_fallback
+    assert profile["targetModelRequest"] != profile["fallbackModelId"]
+    assert profile["thinking"] in profile["allowedThinking"]
+    assert profile["activation"] == "fallback_until_verified"
+for needle in [
+    "phaseLane",
+    "phase_routing_profiles",
+    "Unverified requested model IDs cannot become active defaults",
+    "does not create task packets",
+    "does not create queue jobs",
+    "worker sessions",
+]:
+    assert needle in phase_model_routing_doc, needle
+for needle in [
+    "phaseLane",
+    "phase_routing_profiles",
+    "unverified requested models remain desired targets only",
+    "no task packets",
+    "queue jobs",
+    "worker sessions",
+]:
+    assert needle in team_orchestration_doc, needle
+assert "phase_model_routing.md" in readme_doc
+assert "phase_model_routing.md" in operator_model_routing_doc
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",

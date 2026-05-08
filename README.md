@@ -103,6 +103,24 @@ Related docs:
 
 
 
+## Phase model routing
+
+Phase 7 adds optional `phaseLane` support to `resolve_harness_route` for product pipeline phases. Existing role-only calls remain backward compatible.
+
+Supported lanes:
+- `screen_design`
+- `frontend_implementation`
+- `backend_implementation`
+
+Requested future targets such as `opus-4.7` and `gpt-5.5` are represented in `.pi/agent/models.json` as unverified requests and use verified fallbacks until exact provider/model IDs are verified. See `.pi/agent/docs/phase_model_routing.md`.
+
+Useful commands:
+```bash
+npm run validate:harness-routing -- --report /tmp/phase7-routing.md --summary-json /tmp/phase7-routing.json
+```
+
+Phase 7 routing does not create task packets, queue jobs, worker sessions, handoffs, or dispatch behavior.
+
 ## Slice contracts
 
 Phase 6 adds `harness:slice-contract`, a deterministic helper that reads the approved mock screen artifact plus hash-bound approval sidecar and writes shared FE/BE contract artifacts only under `docs/initiatives/<slug>/contracts/`.

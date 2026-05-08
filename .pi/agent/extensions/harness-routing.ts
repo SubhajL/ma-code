@@ -30,11 +30,17 @@ export const ROUTE_REASONS = [
 ] as const;
 
 export const BUDGET_MODES = ["default", "balanced", "conserve", "high"] as const;
+export const PHASE_LANES = ["screen_design", "frontend_implementation", "backend_implementation"] as const;
+export const PHASE_VERIFICATION_STATUSES = ["unverified", "verified", "unavailable"] as const;
+export const PHASE_PROFILE_ACTIVATIONS = ["fallback_until_verified"] as const;
 export const THINKING_LEVEL_ORDER = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
 export type HarnessRole = (typeof ROLE_IDS)[number];
 export type RouteReason = (typeof ROUTE_REASONS)[number];
 export type BudgetMode = (typeof BUDGET_MODES)[number];
+export type PhaseLane = (typeof PHASE_LANES)[number];
+export type PhaseModelVerificationStatus = (typeof PHASE_VERIFICATION_STATUSES)[number];
+export type PhaseProfileActivation = (typeof PHASE_PROFILE_ACTIVATIONS)[number];
 
 export interface RoutingDefault {
   provider: string;
@@ -73,9 +79,22 @@ export interface ThinkingPolicy {
   critical_role_minimum: string | null;
 }
 
+
+export interface PhaseRoutingProfile {
+  intendedUse: string;
+  targetModelRequest: string;
+  verificationStatus: PhaseModelVerificationStatus;
+  verifiedModelId: string | null;
+  fallbackModelId: string;
+  thinking: string;
+  allowedThinking: string[];
+  activation: PhaseProfileActivation;
+}
+
 export interface HarnessRoutingConfig {
   notes: string[];
   routing_defaults: Record<HarnessRole, RoutingDefault>;
+  phase_routing_profiles: Partial<Record<PhaseLane, PhaseRoutingProfile>>;
   routing_policy: RoutingPolicy;
   thinking_policy: ThinkingPolicy;
 }
@@ -86,6 +105,7 @@ export interface RouteResolutionInput {
   budgetMode?: BudgetMode;
   failedModels?: string[];
   modelOverride?: string;
+  phaseLane?: PhaseLane;
 }
 
 export interface RouteResolution {
@@ -103,7 +123,13 @@ export interface RouteResolution {
     | "budget_override"
     | "stronger_override"
     | "fallback"
-    | "explicit_override";
+    | "explicit_override"
+    | "phase_profile"
+    | "phase_fallback";
+  phaseLane: PhaseLane | null;
+  phaseRoutingSource: "none" | "verified_model" | "fallback_until_verified" | "fallback_unavailable" | "explicit_override_precedence";
+  requestedModelVerificationStatus: PhaseModelVerificationStatus | null;
+  requestedModelTarget: string | null;
   fallbackOrder: string[];
   budgetOverrides: string[];
   failedModels: string[];
@@ -119,6 +145,7 @@ const ResolveHarnessRouteSchema = Type.Object({
   budgetMode: Type.Optional(StringEnum(BUDGET_MODES)),
   failedModels: Type.Optional(Type.Array(Type.String())),
   modelOverride: Type.Optional(Type.String()),
+  phaseLane: Type.Optional(StringEnum(PHASE_LANES)),
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -132,6 +159,60 @@ function uniqueStrings(values: string[]): string[] {
 function roleMatches(list: string[] | undefined, role: HarnessRole): boolean {
   if (!list || list.length === 0) return false;
   return list.includes("*") || list.includes(role);
+}
+
+function isPhaseLane(value: unknown): value is PhaseLane {
+  return typeof value === "string" && PHASE_LANES.includes(value as PhaseLane);
+}
+
+function parseStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+function parsePhaseProfile(raw: unknown, phaseLane: PhaseLane): PhaseRoutingProfile {
+  if (!isRecord(raw)) {
+    throw new Error(`Missing phase routing profile for lane: ${phaseLane}`);
+  }
+
+  const intendedUse = typeof raw.intendedUse === "string" ? raw.intendedUse : "";
+  const targetModelRequest = typeof raw.targetModelRequest === "string" ? raw.targetModelRequest : "";
+  const verificationStatus = typeof raw.verificationStatus === "string" && PHASE_VERIFICATION_STATUSES.includes(raw.verificationStatus as PhaseModelVerificationStatus)
+    ? (raw.verificationStatus as PhaseModelVerificationStatus)
+    : null;
+  const verifiedModelId = raw.verifiedModelId === null || raw.verifiedModelId === undefined ? null : typeof raw.verifiedModelId === "string" ? raw.verifiedModelId : "";
+  const fallbackModelId = typeof raw.fallbackModelId === "string" ? raw.fallbackModelId : "";
+  const thinking = typeof raw.thinking === "string" ? raw.thinking : "";
+  const allowedThinking = parseStringArray(raw.allowedThinking);
+  const activation = typeof raw.activation === "string" && PHASE_PROFILE_ACTIVATIONS.includes(raw.activation as PhaseProfileActivation)
+    ? (raw.activation as PhaseProfileActivation)
+    : null;
+
+  if (!intendedUse || !targetModelRequest || !verificationStatus || !fallbackModelId || !thinking || allowedThinking.length === 0 || !activation) {
+    throw new Error(`Incomplete phase routing profile for lane: ${phaseLane}`);
+  }
+  if (!allowedThinking.includes(thinking)) {
+    throw new Error(`Invalid phase routing profile for ${phaseLane}: thinking must be in allowedThinking.`);
+  }
+  if (verificationStatus === "verified" && (!verifiedModelId || verifiedModelId.trim().length === 0)) {
+    throw new Error(`Invalid phase routing profile for ${phaseLane}: verifiedModelId is required when verificationStatus is verified.`);
+  }
+  if (verificationStatus !== "verified" && verifiedModelId !== null) {
+    throw new Error(`Invalid phase routing profile for ${phaseLane}: verifiedModelId must be null until the requested model is verified.`);
+  }
+  if (verificationStatus !== "verified" && (targetModelRequest === fallbackModelId || fallbackModelId.endsWith(`/${targetModelRequest}`))) {
+    throw new Error(`Invalid phase routing profile for ${phaseLane}: unverified targetModelRequest cannot also be the active fallbackModelId.`);
+  }
+
+  return {
+    intendedUse,
+    targetModelRequest,
+    verificationStatus,
+    verifiedModelId,
+    fallbackModelId,
+    thinking,
+    allowedThinking,
+    activation,
+  };
 }
 
 function thinkingIndex(levelOrder: string[], level: string): number {
@@ -202,6 +283,7 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
   const routingDefaultsRaw = raw.routing_defaults;
   const routingPolicyRaw = raw.routing_policy;
   const thinkingPolicyRaw = raw.thinking_policy;
+  const phaseProfilesRaw = raw.phase_routing_profiles;
 
   if (!isRecord(routingDefaultsRaw)) {
     throw new Error("routing_defaults is required.");
@@ -339,9 +421,25 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
         : null;
   }
 
+  const phase_routing_profiles: Partial<Record<PhaseLane, PhaseRoutingProfile>> = {};
+  if (phaseProfilesRaw !== undefined) {
+    if (!isRecord(phaseProfilesRaw)) {
+      throw new Error("phase_routing_profiles must be an object when present.");
+    }
+    for (const key of Object.keys(phaseProfilesRaw)) {
+      if (!isPhaseLane(key)) {
+        throw new Error(`Unknown phase routing profile lane: ${key}`);
+      }
+    }
+    for (const phaseLane of PHASE_LANES) {
+      phase_routing_profiles[phaseLane] = parsePhaseProfile(phaseProfilesRaw[phaseLane], phaseLane);
+    }
+  }
+
   return {
     notes,
     routing_defaults,
+    phase_routing_profiles,
     routing_policy: {
       critical_roles: criticalRoles,
       override_reasons,
@@ -390,6 +488,7 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
   const defaultRoute = availableFallbacks[0];
   let selectedModelId = defaultRoute;
   let source: RouteResolution["source"] = "default";
+  let explicitOverrideApplied = false;
 
   if (blockedByReason) {
     blockedAdjustments.push(`${input.role} is blocked from ${reason} adjustments by routing policy.`);
@@ -407,10 +506,12 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
     if (isBudgetOverride && (budgetOverridesAllowed || reason === "human_override")) {
       selectedModelId = normalizedOverride;
       source = "explicit_override";
+      explicitOverrideApplied = true;
       policyNotes.push(`Applied explicit budget override ${normalizedOverride}.`);
     } else if (isFallbackOverride && !blockedByReason && reasonRule.may_use_fallback_order) {
       selectedModelId = normalizedOverride;
       source = normalizedOverride === defaultRoute ? "default" : "explicit_override";
+      explicitOverrideApplied = true;
       policyNotes.push(`Applied explicit override ${normalizedOverride}.`);
     } else {
       blockedAdjustments.push(
@@ -437,10 +538,45 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
     source = failedModels.length > 0 && defaultRoute !== fallbackOrder[0] ? "fallback" : "default";
   }
 
+  let phaseLane: PhaseLane | null = null;
+  let phaseRoutingSource: RouteResolution["phaseRoutingSource"] = "none";
+  let requestedModelVerificationStatus: PhaseModelVerificationStatus | null = null;
+  let requestedModelTarget: string | null = null;
+  let baseThinking = roleConfig.thinking;
+
+  if (input.phaseLane !== undefined) {
+    if (!isPhaseLane(input.phaseLane)) {
+      throw new Error(`Unknown phase lane: ${String(input.phaseLane)}`);
+    }
+    phaseLane = input.phaseLane;
+    const phaseProfile = config.phase_routing_profiles[phaseLane];
+    if (!phaseProfile) {
+      throw new Error(`Missing phase routing profile for lane: ${phaseLane}`);
+    }
+    requestedModelVerificationStatus = phaseProfile.verificationStatus;
+    requestedModelTarget = phaseProfile.targetModelRequest;
+
+    if (explicitOverrideApplied) {
+      phaseRoutingSource = "explicit_override_precedence";
+      policyNotes.push(`Explicit model override takes precedence over phase lane ${phaseLane}.`);
+    } else if (phaseProfile.verificationStatus === "verified" && phaseProfile.verifiedModelId) {
+      selectedModelId = normalizeModelId(phaseProfile.verifiedModelId, roleConfig.provider);
+      source = "phase_profile";
+      phaseRoutingSource = "verified_model";
+      policyNotes.push(`Applied verified phase routing profile ${phaseLane} with ${selectedModelId}.`);
+    } else {
+      selectedModelId = normalizeModelId(phaseProfile.fallbackModelId, roleConfig.provider);
+      source = "phase_fallback";
+      phaseRoutingSource = phaseProfile.verificationStatus === "unavailable" ? "fallback_unavailable" : "fallback_until_verified";
+      policyNotes.push(`Phase lane ${phaseLane} requested ${phaseProfile.targetModelRequest} (${phaseProfile.verificationStatus}); using verified fallback ${selectedModelId}.`);
+    }
+    baseThinking = phaseProfile.thinking;
+  }
+
   const selected = splitModelId(selectedModelId);
   const resolvedThinking = resolveThinkingLevel(
     config.thinking_policy,
-    roleConfig.thinking,
+    baseThinking,
     input.role,
     reason,
     budgetMode,
@@ -457,6 +593,10 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
     budgetGuidance: roleConfig.budget_guidance,
     criticalRole,
     source,
+    phaseLane,
+    phaseRoutingSource,
+    requestedModelVerificationStatus,
+    requestedModelTarget,
     fallbackOrder,
     budgetOverrides,
     failedModels,

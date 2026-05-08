@@ -77,3 +77,7 @@ Not just intuition.
 ## Where routing changes are documented
 Current before/after tuning history is recorded in:
 - `.pi/agent/models.json` under `tuning_history`
+
+
+## Phase routing profiles
+Phase 7 adds optional `phaseLane` support to `resolve_harness_route` through `.pi/agent/models.json` `phase_routing_profiles`. Unverified requested models are not active defaults; they use verified fallbacks until provider/model IDs are verified. See `.pi/agent/docs/phase_model_routing.md`.

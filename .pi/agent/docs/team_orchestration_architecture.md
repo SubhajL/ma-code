@@ -147,6 +147,8 @@ For the current repo-local slice, executable model/provider routing now lives at
 
 This remains the provider/model lane resolver used by the orchestrator and later orchestration layers.
 
+Phase 7 extends the same routing surface with optional `phaseLane` values (`screen_design`, `frontend_implementation`, `backend_implementation`). Phase routing uses `phase_routing_profiles` from `.pi/agent/models.json`; unverified requested models remain desired targets only and route to verified fallbacks until exact provider/model IDs are verified. This adds no task packets, queue jobs, worker sessions, handoffs, or dispatch behavior. See `.pi/agent/docs/phase_model_routing.md`.
+
 ## Current executable team activation surface
 For the current repo-local slice, executable team activation now lives at:
 - `.pi/agent/extensions/team-activation.ts`
