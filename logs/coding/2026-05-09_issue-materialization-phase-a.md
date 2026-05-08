@@ -118,3 +118,24 @@ LOW
 - Generated issues and summaries preserve `queueReadiness=not_ready` for every slice.
 
 Review Verdict: no_required_fixes
+
+## Submission (2026-05-09 23:34 local)
+
+### PR
+- URL: https://github.com/SubhajL/ma-code/pull/115
+- Base: `main`
+- Head: `split/task-1778282674405-issue-materialize`
+- State: OPEN, non-draft
+
+### Commands Run
+- `git push -u origin split/task-1778282674405-issue-materialize`
+- `gh pr create --base main --head split/task-1778282674405-issue-materialize --title "feat(harness): add issue materialization phase A" --body-file /tmp/issue-materialize-pr-body.md`
+- `gh pr view 115 --json number,url,state,mergeStateStatus,headRefName,baseRefName,isDraft`
+- `gh pr checks 115`
+
+### Check Snapshot
+- PR mergeStateStatus: `BLOCKED` immediately after creation while checks were pending.
+- Pending checks at submission snapshot: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, Routing Validators.
+
+### Next Action
+- Wait for PR checks, run bounded PR gate/merge helper if clean, then sync local main as explicitly requested.
