@@ -88,3 +88,17 @@ LOW
 - Additive helper/CLI/schema/docs only; no task packet schema change and no FE/BE implementation.
 
 Review Verdict: no_required_fixes
+
+## Submission (2026-05-08) - PR #103
+
+### Submitted
+- Branch: `split/task-1778208564572-slice-contracts`
+- Base: `main`
+- PR: https://github.com/SubhajL/ma-code/pull/103
+- PR state after creation: open, non-draft, mergeStateStatus initially `BLOCKED` while checks were pending.
+- Checks later passed: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, Routing Validators.
+
+### Merge Helper Check
+- Command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-merge.ts check --pr 103`
+- Result: blocked because lifecycle helper reported `planning_ready` despite RED/GREEN/review/PR evidence in this isolated worktree.
+- Next action: use repository PR gate evidence plus explicit user request if merge remains clean.
