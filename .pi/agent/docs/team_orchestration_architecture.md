@@ -176,6 +176,16 @@ Phase 8 adds an additive FE packet preview helper:
 
 The frontend packet generation helper validates the approved screen artifact, hash-bound approval sidecar, current contract, and UI-facing slice plan before producing a normal `frontend_worker` implementation task packet. It requests the Phase 7 `frontend_implementation` routing lane and writes only preview artifacts under `docs/initiatives/<slug>/packets/` when `--apply` is used. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, no backend packets, and no product code. See `.pi/agent/docs/frontend_packet_generation.md`.
 
+## Current backend packet preview surface
+Phase 9 adds an additive BE packet preview helper:
+- `.pi/agent/extensions/backend-packet-generator.ts`
+- FE evidence schema: `.pi/agent/state/schemas/frontend-validation-evidence.schema.json`
+- CLI: `scripts/harness-be-packet.ts`
+- package alias: `harness:be-packet`
+- validator: `scripts/validate-backend-packets.sh`
+
+The backend packet generation helper follows frontend validation and validates the Phase 8 frontend packet, passed FE validation evidence, current contract hash, backend API/data expectations, backend allowed paths, backend TDD seeds, and backend-applicable slice plan before producing a normal `backend_worker` implementation task packet. It requests the Phase 7 `backend_implementation` routing lane and writes only preview artifacts under `docs/initiatives/<slug>/packets/` when `--apply` is used. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, no FE packet changes, and no product code. See `.pi/agent/docs/backend_packet_generation.md`.
+
 ## Current executable handoff surface
 For the current repo-local slice, executable handoff generation now lives at:
 - `.pi/agent/extensions/handoffs.ts`

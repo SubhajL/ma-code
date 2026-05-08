@@ -147,6 +147,19 @@ npm run validate:frontend-packet
 
 The helper validates the approved screen artifact, hash-bound approval sidecar, current contract, and UI-facing slice plan. It writes only `docs/initiatives/<slug>/packets/<slice-id>.frontend.packet.{json,md}` in apply mode. It creates no runtime tasks, no queue jobs, no worker sessions, and no backend packets; backend packet generation waits for a later phase. Generated packets use the Phase 7 `frontend_implementation` routing lane with verified fallback behavior until requested models are verified.
 
+## Backend packet generation
+
+Phase 9 adds `harness:be-packet`, a preview-only backend packet generator that follows frontend validation and turns a Phase 8 FE packet, passed FE validation evidence, and current slice contract into a valid `backend_worker` implementation task packet.
+
+Useful commands:
+```bash
+npm run harness:be-packet -- --initiative checkout-ui --slice slice-001 --dry-run
+npm run harness:be-packet -- --initiative checkout-ui --slice slice-001 --apply
+npm run validate:backend-packet
+```
+
+The helper validates passed FE validation evidence, current contract hash, backend API/data expectations, backend allowed paths, backend TDD seeds, and backend-applicable slice planning. It writes only `docs/initiatives/<slug>/packets/<slice-id>.backend.packet.{json,md}` in apply mode. It creates no runtime tasks, no queue jobs, no worker sessions, no FE packet changes, and no product code. Generated packets use the Phase 7 `backend_implementation` routing lane with verified fallback behavior until requested models are verified.
+
 ## Domain governance
 
 Phase 7 adds advisory-first domain governance for task packets and feature bootstrap docs. Use it to keep frontend/backend/infra ownership explicit without splitting shared intake too early.

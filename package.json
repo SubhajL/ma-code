@@ -79,7 +79,10 @@
     "validate:slice-contract": "./scripts/validate-slice-contracts.sh",
     "harness:fe-packet": "node --import tsx scripts/harness-fe-packet.ts",
     "test:frontend-packet": "node --import tsx --test tests/extension-units/frontend-packet-generator.test.ts tests/integration/frontend-packet-generator.test.ts",
-    "validate:frontend-packet": "./scripts/validate-frontend-packets.sh"
+    "validate:frontend-packet": "./scripts/validate-frontend-packets.sh",
+    "harness:be-packet": "node --import tsx scripts/harness-be-packet.ts",
+    "test:backend-packet": "node --import tsx --test tests/extension-units/backend-packet-generator.test.ts tests/integration/backend-packet-generator.test.ts",
+    "validate:backend-packet": "./scripts/validate-backend-packets.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

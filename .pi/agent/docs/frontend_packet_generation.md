@@ -30,7 +30,7 @@ npm run validate:frontend-packet
 - It creates no runtime tasks.
 - It creates no queue jobs.
 - It starts no worker sessions.
-- It creates no backend packets; backend packets wait for a later phase.
+- It creates no backend packets; backend packets wait for a later phase and are handled by Phase 9 after FE validation.
 - It does not implement product code.
 
 ## Gates
