@@ -99,6 +99,25 @@ Should not normally:
 - redefine acceptance criteria on the fly
 - skip quality routing after implementation
 
+### Parallel worker lanes
+Phase 12 parallel worker lanes are a bounded build-team execution aid, not a queue-runner replacement.
+
+Use when:
+- the product pipeline has whole slices that are ready for worker execution
+- Phase 10 `parallelAllowed: true` proof exists for every cross-slice pair
+- packet artifacts exist for each lane
+- HITL gates are resolved
+- worker-session/worktree isolation is available
+
+Rules:
+- no daemon or background queue execution is introduced
+- same-slice phases remain sequential; never parallelize multiple phases inside one slice
+- cross-slice parallelism requires Phase 10 proof and is capped by `--max-parallel`
+- active worker-lane or top-level orchestration lease conflicts block apply/run
+- failed worktrees are preserved for inspection
+- cleanup is explicit and refuses dirty worktrees
+- do not edit `.pi/agent/state/runtime/*.json` directly; use execution lease and worker-session helpers
+
 ### Quality team
 Definition:
 - lead: `quality_lead`

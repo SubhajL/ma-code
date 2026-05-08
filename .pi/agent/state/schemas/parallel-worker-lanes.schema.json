@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/parallel-worker-lanes.schema.json",
+  "title": "Parallel Worker Lanes Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "initiativeId", "runId", "status", "maxParallelSlices", "mode", "orchestrationLeaseId", "lanes", "blockers", "parallelProof", "lastAction"],
+  "properties": {
+    "version": { "const": 1 },
+    "initiativeId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "runId": { "type": "string", "pattern": "^run-[A-Za-z0-9TZ-]+$" },
+    "status": { "enum": ["planned", "materialized", "running", "blocked", "done", "failed"] },
+    "maxParallelSlices": { "type": "integer", "minimum": 1 },
+    "mode": { "enum": ["dry_run", "apply", "run", "status"] },
+    "orchestrationLeaseId": { "type": "string" },
+    "lanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["laneId", "sliceId", "phase", "packetPath", "dependencyDecisionRef", "workerSessionScope", "leaseId", "branchName", "worktreePath", "status", "startedAt", "finishedAt", "exitCode", "blockers", "cleanupPolicy"],
+        "properties": {
+          "laneId": { "type": "string" },
+          "sliceId": { "type": "string" },
+          "phase": { "type": "string" },
+          "packetPath": { "type": "string" },
+          "dependencyDecisionRef": { "type": "string" },
+          "workerSessionScope": { "type": "string" },
+          "leaseId": { "type": "string" },
+          "branchName": { "type": "string" },
+          "worktreePath": { "type": "string" },
+          "status": { "enum": ["planned", "leased", "running", "blocked", "done", "failed"] },
+          "startedAt": { "type": ["string", "null"] },
+          "finishedAt": { "type": ["string", "null"] },
+          "exitCode": { "type": ["integer", "null"] },
+          "blockers": { "type": "array", "items": { "type": "string" } },
+          "cleanupPolicy": { "const": "preserve_on_failure" }
+        }
+      }
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "parallelProof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase10Decision", "sameSliceParallelism", "leaseConflicts"],
+      "properties": {
+        "phase10Decision": { "enum": ["allowed", "blocked", "missing"] },
+        "sameSliceParallelism": { "const": false },
+        "leaseConflicts": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "lastAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "summary", "at"],
+      "properties": {
+        "action": { "enum": ["dry_run", "apply", "run", "status"] },
+        "summary": { "type": "string" },
+        "at": { "type": "string" }
+      }
+    }
+  }
+}

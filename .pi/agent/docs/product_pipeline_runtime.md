@@ -10,13 +10,16 @@ npm run harness:product-pipeline -- dry-run --initiative <slug> --json
 npm run harness:product-pipeline -- apply --initiative <slug> --max-parallel 1
 npm run harness:product-pipeline -- status --initiative <slug>
 npm run harness:operator -- product-pipeline dry-run --initiative <slug>
+npm run harness:parallel-worker-lanes -- dry-run --initiative <slug> --max-parallel 2
 ```
 
 ## Durable files
 
 - Initiative plan: `docs/initiatives/<slug>/pipeline.json`
 - Run artifacts: `docs/initiatives/<slug>/pipeline-runs/<run-id>.json`
+- Parallel lane manifests: `docs/initiatives/<slug>/pipeline-runs/<run-id>.parallel-lanes.json`
 - Schema: `.pi/agent/state/schemas/product-pipeline.schema.json`
+- Parallel lane schema: `.pi/agent/state/schemas/parallel-worker-lanes.schema.json`
 
 The product pipeline never directly edits `.pi/agent/state/runtime/*.json`. Runtime task/queue state remains controlled by existing runtime helpers.
 
@@ -69,7 +72,7 @@ This phase materializes previews only:
 - `materializedWork.worktreePaths` remains empty.
 - No queue jobs, worker sessions, handoffs, product code, or runtime JSON are created by this helper.
 
-Future worker-session or queue materialization must add explicit dependency tests and continue to use existing runtime helpers rather than raw JSON edits.
+Phase 12 worker-session materialization is delegated to `.pi/agent/docs/parallel_worker_lanes.md`. It continues to use existing worker-session/worktree and execution-lease helpers rather than raw JSON edits. It is foreground-only, has no daemon, preserves failed worktrees, keeps same-slice phases sequential, and requires Phase 10 `parallelAllowed: true` proof for every cross-slice lane pair.
 
 ## Validation
 
@@ -77,4 +80,5 @@ Future worker-session or queue materialization must add explicit dependency test
 node --import tsx --test tests/extension-units/product-pipeline.test.ts
 node --import tsx --test tests/integration/product-pipeline.test.ts
 ./scripts/validate-product-pipeline.sh
+./scripts/validate-parallel-worker-lanes.sh
 ```
