@@ -67,6 +67,8 @@ test("valid UI slice produces deterministic Stitch prompt Markdown and metadata"
   assert.equal(first.metadata.sliceId, "slice-001");
   assert.equal(first.metadata.promptPath, "docs/initiatives/checkout-redesign/stitch-prompts/slice-001.prompt.md");
   assert.deepEqual(first.metadata.targetScreens, ["Checkout review"]);
+  assert.match(first.metadata.promptHash, /^[a-f0-9]{64}$/);
+  assert.equal(first.metadata.promptHash, second.metadata.promptHash);
   assert.match(first.metadata.sourceHashes.prd, /^[a-f0-9]{64}$/);
 
   await assert.rejects(readFile(join(repoRoot, "docs", "initiatives", "checkout-redesign", "stitch-prompts", "slice-001.prompt.md"), "utf8"), /ENOENT/);

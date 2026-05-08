@@ -32,7 +32,10 @@
     "validate:tuning-data": "./scripts/collect-harness-tuning-data.sh",
     "test:discovery-policy": "node --import tsx --test tests/extension-units/discovery-policy.test.ts",
     "test:domain-governance": "node --import tsx --test tests/extension-units/domain-governance.test.ts tests/integration/domain-governance.test.ts",
-    "validate:domain-governance": "./scripts/validate-domain-governance.sh"
+    "validate:domain-governance": "./scripts/validate-domain-governance.sh",
+    "harness:stitch-artifact": "node --import tsx scripts/harness-stitch-artifact.ts",
+    "test:stitch-artifact": "node --import tsx --test tests/extension-units/stitch-artifact-adapter.test.ts tests/integration/stitch-artifact.test.ts",
+    "validate:stitch-artifact": "./scripts/validate-stitch-artifacts.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

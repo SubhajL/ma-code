@@ -101,6 +101,7 @@ test("harness-stitch-prompt apply writes prompt and metadata artifacts", async (
   const metadata = JSON.parse(await readFile(join(repoPath, "docs", "initiatives", "checkout-redesign", "stitch-prompts", "slice-001.prompt.json"), "utf8"));
   assert.match(prompt, /# Stitch Prompt: checkout-redesign \/ slice-001/);
   assert.equal(metadata.nextBlockedUntil, "human_prompt_review");
+  assert.match(metadata.promptHash, /^[a-f0-9]{64}$/);
   assert.match(metadata.sourceHashes.slicePlan, /^[a-f0-9]{64}$/);
   assert.deepEqual(json.metadata, metadata);
 });

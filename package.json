@@ -67,7 +67,10 @@
     "harness:merge": "node --import tsx scripts/harness-merge.ts",
     "harness:merge:json": "node --import tsx scripts/harness-merge.ts check --json",
     "test:merge-helper": "node --import tsx --test tests/extension-units/merge-helper.test.ts tests/integration/merge-helper.test.ts",
-    "validate:merge-helper": "./scripts/validate-merge-helper.sh"
+    "validate:merge-helper": "./scripts/validate-merge-helper.sh",
+    "harness:stitch-artifact": "node --import tsx scripts/harness-stitch-artifact.ts",
+    "test:stitch-artifact": "node --import tsx --test tests/extension-units/stitch-artifact-adapter.test.ts tests/integration/stitch-artifact.test.ts",
+    "validate:stitch-artifact": "./scripts/validate-stitch-artifacts.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

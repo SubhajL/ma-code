@@ -38,6 +38,7 @@ export interface StitchPromptMetadata {
   phase: "stitch_prompt";
   status: StitchPromptStatus;
   promptPath: string;
+  promptHash: string;
   sources: StitchPromptSources;
   sourceHashes: StitchPromptSourceHashes;
   targetScreens: string[];
@@ -265,6 +266,7 @@ export async function generateStitchPrompt(options: GenerateStitchPromptOptions)
   const targetScreens = stringArray(rawSlice.targetScreens);
   const promptPath = `docs/initiatives/${initiativeId}/stitch-prompts/${sliceId}.prompt.md`;
   const metadataPath = `docs/initiatives/${initiativeId}/stitch-prompts/${sliceId}.prompt.json`;
+  const prompt = renderPrompt({ initiativeId, rawSlice, targetScreens, intake, prd, backlog });
   const metadata: StitchPromptMetadata = {
     version: 1,
     initiativeId,
@@ -272,6 +274,7 @@ export async function generateStitchPrompt(options: GenerateStitchPromptOptions)
     phase: "stitch_prompt",
     status: "draft",
     promptPath,
+    promptHash: sha256(prompt),
     sources,
     sourceHashes: {
       intake: sha256(intake),
@@ -285,7 +288,6 @@ export async function generateStitchPrompt(options: GenerateStitchPromptOptions)
     nextBlockedUntil: "human_prompt_review",
   };
 
-  const prompt = renderPrompt({ initiativeId, rawSlice, targetScreens, intake, prd, backlog });
   return { repoRoot, initiativeId, sliceId, promptPath, metadataPath, prompt, metadata };
 }
 
