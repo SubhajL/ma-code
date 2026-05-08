@@ -110,3 +110,15 @@ LOW
 - Additive routing metadata and optional input only; no packet, queue, worker-session, handoff, or dispatch behavior.
 
 Review Verdict: no_required_fixes
+
+## Submission (2026-05-08) - PR #105
+
+### Submitted
+- Branch: `split/task-1778210507358-phase-model-routing-phase-7`
+- Base: `main`
+- PR: https://github.com/SubhajL/ma-code/pull/105
+- PR state after creation: open, non-draft, mergeStateStatus `BLOCKED` while checks were pending.
+
+### Lifecycle Preflight
+- `./scripts/harness-slice-lifecycle.ts check --stage created` reported `planning_ready` and blocked because lifecycle helper did not infer this task's tool-state evidence from the worktree.
+- Evidence remains recorded in this Pi coding log and task state.
