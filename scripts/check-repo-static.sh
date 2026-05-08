@@ -26,6 +26,7 @@ required_files=(
   ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
   ".pi/agent/state/schemas/slice-contract.schema.json"
   ".pi/agent/state/schemas/frontend-validation-evidence.schema.json"
+  ".pi/agent/state/schemas/slice-dependency-decision.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
   ".pi/agent/extensions/slice-lifecycle.ts"
@@ -36,6 +37,7 @@ required_files=(
   ".pi/agent/extensions/slice-contracts.ts"
   ".pi/agent/extensions/frontend-packet-generator.ts"
   ".pi/agent/extensions/backend-packet-generator.ts"
+  ".pi/agent/extensions/slice-dependency-decision.ts"
   ".pi/agent/extensions/product-pipeline.ts"
   ".pi/agent/state/schemas/product-pipeline.schema.json"
   "tests/extension-units/execution-leases.test.ts"
@@ -46,6 +48,7 @@ required_files=(
   "tests/extension-units/slice-contracts.test.ts"
   "tests/extension-units/frontend-packet-generator.test.ts"
   "tests/extension-units/backend-packet-generator.test.ts"
+  "tests/extension-units/slice-dependency-decision.test.ts"
   "tests/extension-units/product-pipeline.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
@@ -67,6 +70,8 @@ required_files=(
   "scripts/validate-slice-contracts.sh"
   "scripts/validate-frontend-packets.sh"
   "scripts/validate-backend-packets.sh"
+  "scripts/validate-slice-dependencies.sh"
+  "scripts/harness-slice-dependencies.ts"
   "scripts/validate-product-pipeline.sh"
   "scripts/harness-fe-packet.ts"
   "scripts/harness-be-packet.ts"
@@ -87,6 +92,7 @@ required_files=(
   "tests/integration/slice-contracts.test.ts"
   "tests/integration/frontend-packet-generator.test.ts"
   "tests/integration/backend-packet-generator.test.ts"
+  "tests/integration/slice-dependency-decision.test.ts"
   "tests/integration/product-pipeline.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
@@ -104,6 +110,7 @@ required_files=(
   ".pi/agent/docs/slice_contracts.md"
   ".pi/agent/docs/frontend_packet_generation.md"
   ".pi/agent/docs/backend_packet_generation.md"
+  ".pi/agent/docs/slice_dependency_decision.md"
   ".pi/agent/docs/product_pipeline_runtime.md"
   ".pi/agent/docs/phase_model_routing.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
@@ -176,6 +183,8 @@ for rel in [
     ".pi/agent/state/schemas/stitch-screen-artifact.schema.json",
     ".pi/agent/state/schemas/screen-artifact-approval.schema.json",
     ".pi/agent/state/schemas/slice-contract.schema.json",
+    ".pi/agent/state/schemas/frontend-validation-evidence.schema.json",
+    ".pi/agent/state/schemas/slice-dependency-decision.schema.json",
     ".pi/agent/package/templates/runtime/leases.json",
     "docs/initiatives/TEMPLATE/slice-plan.json",
     "package.json",
@@ -258,6 +267,9 @@ screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifa
 slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
 frontend_packet_extension = (root / ".pi/agent/extensions/frontend-packet-generator.ts").read_text(encoding="utf-8")
 backend_packet_extension = (root / ".pi/agent/extensions/backend-packet-generator.ts").read_text(encoding="utf-8")
+slice_dependency_decision_extension = (root / ".pi/agent/extensions/slice-dependency-decision.ts").read_text(encoding="utf-8")
+slice_dependency_decision_schema = json.loads((root / ".pi/agent/state/schemas/slice-dependency-decision.schema.json").read_text(encoding="utf-8"))
+slice_dependency_decision_doc = (root / ".pi/agent/docs/slice_dependency_decision.md").read_text(encoding="utf-8")
 product_pipeline_extension = (root / ".pi/agent/extensions/product-pipeline.ts").read_text(encoding="utf-8")
 product_pipeline_schema = json.loads((root / ".pi/agent/state/schemas/product-pipeline.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
@@ -270,6 +282,7 @@ screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-a
 slice_contract_validator = (root / "scripts/validate-slice-contracts.sh").read_text(encoding="utf-8")
 frontend_packet_validator = (root / "scripts/validate-frontend-packets.sh").read_text(encoding="utf-8")
 backend_packet_validator = (root / "scripts/validate-backend-packets.sh").read_text(encoding="utf-8")
+slice_dependency_validator = (root / "scripts/validate-slice-dependencies.sh").read_text(encoding="utf-8")
 product_pipeline_validator = (root / "scripts/validate-product-pipeline.sh").read_text(encoding="utf-8")
 slice_contract_doc = (root / ".pi/agent/docs/slice_contracts.md").read_text(encoding="utf-8")
 frontend_packet_doc = (root / ".pi/agent/docs/frontend_packet_generation.md").read_text(encoding="utf-8")
@@ -1165,6 +1178,55 @@ assert "backend packet generation" in team_orchestration_doc.lower()
 assert "backend packet generation" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
 assert "backend packet generation" in backend_worker_prompt.lower()
 assert "Backend packet generation" in readme_doc
+assert slice_dependency_decision_schema["properties"]["version"]["const"] == 1
+assert slice_dependency_decision_schema["properties"]["decision"]["enum"] == ["blocked", "allowed"]
+assert slice_dependency_decision_schema["properties"]["recommendedExecution"]["enum"] == ["sequential", "parallel_candidate"]
+for blocker in ["shared_file", "shared_contract", "shared_schema", "shared_config", "shared_test", "same_slice", "missing_proof", "lease_conflict_unknown"]:
+    assert blocker in slice_dependency_decision_schema["$defs"]["blocker"]["properties"]["type"]["enum"], blocker
+for proof_key in ["distinctSlices", "disjointFilesToModify", "disjointAllowedPaths", "disjointContracts", "noSharedSchemaOrMigration", "noSharedConfig", "noSharedTestsOrFixtures", "leaseConflictCheckAvailable"]:
+    assert proof_key in slice_dependency_decision_schema["$defs"]["proof"]["required"], proof_key
+for needle in [
+    "decideSliceParallelism",
+    "shared_file",
+    "lease_conflict_unknown",
+    "parallel_candidate",
+]:
+    assert needle in slice_dependency_decision_extension, needle
+for forbidden in ["node:fs", "writeFile", "mkdir", "run_next_queue_job", "acquireLease", "task_update"]:
+    assert forbidden not in slice_dependency_decision_extension, forbidden
+for needle in [
+    "Phase 10 does not dispatch work",
+    "does not change queue-runner behavior",
+    "does not schedule cross-slice parallel work",
+    "Intra-slice phases remain sequential",
+    "same-slice phase parallelism is still forbidden",
+]:
+    assert needle in slice_dependency_decision_doc, needle
+for needle in [
+    "slice-dependency-validator: unit tests",
+    "slice-dependency-validator: integration tests",
+    "slice-dependency-validator: compile helper and cli",
+]:
+    assert needle in slice_dependency_validator, needle
+for needle in [
+    "Phase 10 slice dependency decision",
+    "harness:slice-dependencies",
+    "no runtime tasks",
+    "no queue jobs",
+    "no worker sessions",
+    "does not schedule cross-slice parallel work",
+    "Intra-slice phases remain sequential",
+]:
+    assert needle in product_planning_doc, needle
+assert "slice-dependency-decision.ts" in foundation_compile_validator
+assert "slice-dependency-decision.schema.json" in validation_doc
+assert "scripts/validate-slice-dependencies.sh" in validation_doc
+for script_name in ["harness:slice-dependencies", "test:slice-dependencies", "validate:slice-dependencies"]:
+    assert script_name in package_json.get("scripts", {}), script_name
+    assert script_name in package_template_json.get("scripts", {}), script_name
+assert "slice dependency decision" in team_orchestration_doc.lower()
+assert "slice dependency decision" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
+assert "slice dependency" in readme_doc.lower()
 for needle in [
     "buildProductPipelineRun",
     "computeNextReadySlices",

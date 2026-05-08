@@ -110,7 +110,11 @@ After frontend implementation has passed validation, generate a preview-only BE 
 
 Phase 9 backend packet generation follows FE validation. It validates the Phase 8 frontend packet artifact, passed FE validation evidence, current contract hash, backend API/data expectations, backend allowed paths, backend TDD seeds, and backend-applicable slice plan. It creates no runtime tasks, no queue jobs, no worker sessions, no FE packet changes, and no product code. Generated packets use the Phase 7 `backend_implementation` routing lane with verified fallback behavior. See `.pi/agent/docs/backend_packet_generation.md`.
 
-### 11. Task-packet handoff
+### 11. Phase 10 slice dependency decision
+
+Phase 10 adds `harness:slice-dependencies`, a conservative decision surface for future cross-slice parallelism. It accepts two or more slice summaries or artifact paths, returns structured blockers/proof, and permits `parallel_candidate` only for distinct slices with disjoint files, allowed mutating paths, contracts, schemas, migrations, config, tests, and fixtures. It creates no runtime tasks, no queue jobs, no worker sessions, no leases, and does not schedule cross-slice parallel work. Intra-slice phases remain sequential. See `.pi/agent/docs/slice_dependency_decision.md`.
+
+### 12. Task-packet handoff
 Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, Phase 4 mock Stitch artifact generation, Phase 5 screen artifact approval, and Phase 6 slice contract generation. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, `harness:stitch-artifact`, `harness:screen-approval`, or `harness:slice-contract`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, human artifact review, hash-bound screen artifact approval, and current slice contract generation. Use `harness:fe-packet` only for Phase 8 frontend preview artifacts and `harness:be-packet` only for Phase 9 backend preview artifacts after FE validation.
 
 Map approved slices into current harness task packets or queue jobs only after explicit scheduler/queue gates exist.
