@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "taskId": "task-1778225840154",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Live Stitch adapter exists and is test-covered.",
+      "Mock Stitch artifact path remains unchanged/default.",
+      "Dry-run writes no files.",
+      "Apply requires explicit live approval reference.",
+      "Apply blocks unsafe/missing auth/stale/unmanaged/forbidden live conditions.",
+      "No task packets, queue jobs, worker sessions, or FE/BE code are created.",
+      "Validation commands pass and PR is merged/synced."
+    ],
+    "tddSlice": "Live Stitch adapter dry-run reports planned managed paths and writes no files."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Live Stitch adapter branch is updated onto current origin/main.",
+      "Validation and PR gate pass.",
+      "Merge helper readiness passes."
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": { "red": true, "green": true },
+  "review": { "verdict": "no_required_fixes" },
+  "creation": {
+    "branch": "split/task-1778225840154-phase-13-live-stitch-adapter",
+    "commit": "72e2e7eec61a7bc6c656506757c26ae29f6ad360"
+  },
+  "pr": { "url": "https://github.com/SubhajL/ma-code/pull/112", "state": "OPEN" },
+  "prGate": { "status": "pass", "mergeStateStatus": "CLEAN" }
+}
