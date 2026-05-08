@@ -5,6 +5,7 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NODE_BIN="${NODE_BIN:-node}"
+TSX_IMPORT="${TSX_IMPORT:-tsx}"
 TMP_ROOT="$(mktemp -d)"
 cleanup() {
   if [[ -n "$TMP_ROOT" && -d "$TMP_ROOT" ]]; then
@@ -17,10 +18,10 @@ trap cleanup EXIT
 cd "$REPO_ROOT"
 
 echo "slice-lifecycle-validator: unit tests"
-"$NODE_BIN" --import tsx --test tests/extension-units/slice-lifecycle.test.ts
+"$NODE_BIN" --import "$TSX_IMPORT" --test tests/extension-units/slice-lifecycle.test.ts
 
 echo "slice-lifecycle-validator: integration tests"
-"$NODE_BIN" --import tsx --test tests/integration/slice-lifecycle.test.ts
+"$NODE_BIN" --import "$TSX_IMPORT" --test tests/integration/slice-lifecycle.test.ts
 
 echo "slice-lifecycle-validator: compile helper and CLI"
 npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
@@ -57,6 +58,6 @@ print('slice-lifecycle-wiring-ok')
 PY
 
 echo "slice-lifecycle-validator: manual CLI smoke"
-"$NODE_BIN" --import tsx scripts/harness-slice-lifecycle.ts status --json >/dev/null
+"$NODE_BIN" --import "$TSX_IMPORT" scripts/harness-slice-lifecycle.ts status --json >/dev/null
 
 echo "slice-lifecycle-validation: PASS"

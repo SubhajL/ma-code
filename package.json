@@ -57,6 +57,8 @@
     "harness:slice-lifecycle:json": "node --import tsx scripts/harness-slice-lifecycle.ts status --json",
     "test:slice-lifecycle": "node --import tsx --test tests/extension-units/slice-lifecycle.test.ts tests/integration/slice-lifecycle.test.ts",
     "validate:slice-lifecycle": "./scripts/validate-slice-lifecycle.sh",
+    "test:product-slice-lifecycle": "node --import tsx --test tests/extension-units/product-slice-lifecycle.test.ts",
+    "validate:product-slice-lifecycle": "./scripts/validate-product-slice-lifecycle.sh",
     "test:domain-governance": "node --import tsx --test tests/extension-units/domain-governance.test.ts tests/integration/domain-governance.test.ts",
     "validate:domain-governance": "./scripts/validate-domain-governance.sh",
     "harness:merge": "node --import tsx scripts/harness-merge.ts",

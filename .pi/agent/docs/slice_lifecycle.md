@@ -1,6 +1,8 @@
 # Slice Lifecycle Policy
 
-Phase 6 adds an assess-first lifecycle model for bounded harness slices. It unifies evidence that already exists in planning logs, coding logs, task state, git artifacts, PR submission output, PR-gate checks, and sync-main evidence. It does **not** introduce a new mutable runtime state machine.
+Phase 6 adds an assess-first lifecycle model for bounded harness implementation slices. It unifies evidence that already exists in planning logs, coding logs, task state, git artifacts, PR submission output, PR-gate checks, and sync-main evidence. It does **not** introduce a new mutable runtime state machine.
+
+This implementation slice lifecycle is intentionally separate from the product-slice planning/DAG lifecycle in `.pi/agent/docs/product_slice_lifecycle.md` and `.pi/agent/extensions/product-slice-lifecycle.ts`. Product-slice lifecycle controls Stitch/FE/BE product phase order; this implementation lifecycle controls coding/review/PR/merge evidence.
 
 ## Machine-readable policy
 

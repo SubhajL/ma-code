@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/product-slice-plan.schema.json",
+  "title": "Product Slice Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "initiativeId", "status", "slices", "policy"],
+  "properties": {
+    "version": { "const": 1 },
+    "initiativeId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "ready", "blocked"] },
+    "slices": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slice" }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intraSliceParallelism", "unknownTransition", "requiredPhaseOrder"],
+      "properties": {
+        "intraSliceParallelism": { "const": "forbidden" },
+        "unknownTransition": { "const": "blocked" },
+        "requiredPhaseOrder": { "$ref": "#/$defs/requiredPhaseOrder" }
+      }
+    }
+  },
+  "$defs": {
+    "phase": {
+      "enum": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ]
+    },
+    "requiredPhaseOrder": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "stitch_prompt" },
+        { "const": "stitch_generation" },
+        { "const": "screen_approval" },
+        { "const": "slice_contract" },
+        { "const": "fe_implementation" },
+        { "const": "fe_validation" },
+        { "const": "be_implementation" },
+        { "const": "be_validation" },
+        { "const": "quality" }
+      ],
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "phaseEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(stitch_prompt|stitch_generation|screen_approval|slice_contract|fe_implementation|fe_validation|be_implementation|be_validation|quality)$": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "artifactPath", "evidence"],
+          "properties": {
+            "status": { "enum": ["missing", "ready", "approved", "done", "blocked"] },
+            "artifactPath": { "type": ["string", "null"] },
+            "evidence": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "slice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sliceId", "title", "type", "status", "currentPhase", "phaseOrder", "phaseEvidence", "dependencies", "blockedReason"],
+      "properties": {
+        "sliceId": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "type": { "enum": ["HITL", "AFK"] },
+        "status": { "enum": ["planned", "active", "blocked", "done"] },
+        "currentPhase": { "$ref": "#/$defs/phase" },
+        "phaseOrder": { "$ref": "#/$defs/requiredPhaseOrder" },
+        "phaseEvidence": { "$ref": "#/$defs/phaseEvidence" },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "blockedReason": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
