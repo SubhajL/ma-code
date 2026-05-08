@@ -7,6 +7,7 @@ Phase 3 adds deterministic prompt-only Stitch prompt artifact generation for UI-
 - Convert initiative intake, PRD, backlog, and `slice-plan.json` data into a stable Markdown prompt.
 - Preserve a metadata chain from sources to prompt artifact before any Stitch generation occurs.
 - Give operators a reviewable prompt boundary before mocked or live screen generation in later phases.
+- Phase 4 mock screen artifact generation is documented separately in `.pi/agent/docs/stitch_artifacts.md` and consumes this metadata after human prompt review.
 
 ## Runtime boundary
 
@@ -48,11 +49,14 @@ Use `--allow-non-ui` only when an operator intentionally wants a prompt artifact
 Metadata records:
 
 - source paths for intake, PRD, backlog, and slice plan
+- SHA-256 prompt hash
 - SHA-256 source hashes
 - target screens
 - required prompt sections
 - `nextAllowedPhase: stitch_generation`
 - `nextBlockedUntil: human_prompt_review`
+
+Phase 4 consumes this metadata, validates the recorded prompt hash and source hashes, and writes mock screen artifacts under `docs/initiatives/<slug>/screen-artifacts/` only through `harness:stitch-artifact --apply`.
 
 ## Required prompt sections
 

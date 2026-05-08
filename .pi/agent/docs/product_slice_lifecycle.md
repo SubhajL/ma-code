@@ -22,6 +22,7 @@ This surface is planning/DAG only:
 - It does not call Stitch.
 - It does not dispatch frontend, backend, quality, or validator workers.
 - Phase 3 prompt-only Stitch prompt generation is documented separately in `.pi/agent/docs/stitch_prompt_generation.md` and consumes this lifecycle plan without changing the phase order.
+- Phase 4 mock Stitch artifact generation is documented separately in `.pi/agent/docs/stitch_artifacts.md` and produces mock-only `stitch_generation` evidence before `screen_approval`.
 
 ## Files
 

@@ -64,6 +64,7 @@ for needle in [
     "REQUIRED_STITCH_PROMPT_SECTIONS",
     "human_prompt_review",
     "sourceHashes",
+    "promptHash",
 ]:
     assert needle in helper, needle
 for needle in ["--dry-run", "--apply", "--allow-non-ui", "runHarnessStitchPrompt"]:
@@ -74,6 +75,7 @@ for needle in [
     "does not create queue jobs",
     "does not implement frontend or backend code",
     "human_prompt_review",
+    "prompt hash",
 ]:
     assert needle in doc, needle
 assert "Phase 3 Stitch prompt generation" in workflow

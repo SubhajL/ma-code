@@ -85,8 +85,13 @@ After PRD/backlog slicing and product slice lifecycle planning, generate a promp
 
 Phase 3 Stitch prompt generation is prompt-only: it does not call Stitch, does not create task packets, does not create queue jobs, does not dispatch workers, and does not implement frontend or backend code. Non-UI slices are blocked unless an operator explicitly passes `--allow-non-ui`. See `.pi/agent/docs/stitch_prompt_generation.md`.
 
-### 6. Task-packet handoff
-Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, and Phase 3 Stitch prompt generation. Do not generate FE/BE worker packets from `harness:product-intake` or `harness:stitch-prompt`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, and human prompt review.
+### 6. Phase 4 mock Stitch artifact generation
+After human prompt review, generate a mock-only screen artifact for each UI-facing slice before screen approval. Use `npm run harness:stitch-artifact -- --initiative <feature-slug> --slice <slice-id> --dry-run` to inspect deterministic mock artifact output without writing, and `--apply` to write only `docs/initiatives/<feature-slug>/screen-artifacts/<slice-id>.mock-screen.json` plus a Markdown summary.
+
+Phase 4 mock Stitch artifact generation is mock-only: it consumes Phase 3 prompt metadata, validates source hashes, does not call Stitch, does not create task packets, does not create queue jobs, does not dispatch workers, and does not implement frontend or backend code. It records `nextAllowedPhase: screen_approval` and `nextBlockedUntil: human_artifact_review`. See `.pi/agent/docs/stitch_artifacts.md`.
+
+### 7. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, Phase 3 Stitch prompt generation, and Phase 4 mock Stitch artifact generation. Do not generate FE/BE worker packets from `harness:product-intake`, `harness:stitch-prompt`, or `harness:stitch-artifact`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, human prompt review, mock artifact generation, and human artifact review.
 
 Map approved slices into current harness task packets or queue jobs.
 Preserve:
