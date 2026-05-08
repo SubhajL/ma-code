@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/frontend-validation-evidence.schema.json",
+  "title": "Frontend Validation Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "initiativeId",
+    "sliceId",
+    "phase",
+    "status",
+    "frontendPacketPath",
+    "contractHash",
+    "validatedBehaviors",
+    "commandsRun",
+    "knownGaps",
+    "completedAt"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "initiativeId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "sliceId": { "type": "string", "minLength": 1 },
+    "phase": { "const": "fe_validation" },
+    "status": { "enum": ["passed", "failed", "blocked"] },
+    "frontendPacketPath": {
+      "type": "string",
+      "pattern": "^docs/initiatives/[a-z0-9]+(?:-[a-z0-9]+)*/packets/[^/]+\\.frontend\\.packet\\.json$"
+    },
+    "contractHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "validatedBehaviors": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "commandsRun": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "knownGaps": { "type": "array", "items": { "type": "string" } },
+    "completedAt": { "type": "string", "format": "date-time" }
+  }
+}

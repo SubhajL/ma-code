@@ -323,6 +323,29 @@ if (!String((frontendPhasePacket.packet.routing as any).phaseRoutingSource).incl
 }
 if (!frontendPhasePacket.renderedPacket.includes("phase lane: frontend_implementation")) throw new Error("expected rendered phase lane evidence");
 
+const backendPhasePacket = generateTaskPacket(policy, teams, routingConfig, {
+  sourceGoalId: "phase-9:backend",
+  assignedTeam: "build",
+  assignedRole: "backend_worker",
+  title: "Implement backend packet lane",
+  scope: "Backend implementation packet should consume Phase 7 routing lane after FE validation.",
+  workType: "implementation",
+  domains: ["backend"],
+  allowedPaths: ["api/backend"],
+  acceptanceCriteria: ["backend phase lane is visible in routing summary"],
+  tddSlice: {
+    ...tddSlice,
+    boundaryDependencies: ["docs/initiatives/example/evidence/slice-001.frontend.validation.json", "docs/initiatives/example/contracts/slice-001.contract.json"],
+  },
+  phaseLane: "backend_implementation",
+});
+validateTaskPacketShape(backendPhasePacket.packet);
+if ((backendPhasePacket.packet.routing as any).phaseLane !== "backend_implementation") throw new Error("expected backend phase lane in packet routing");
+if (!String((backendPhasePacket.packet.routing as any).phaseRoutingSource).includes("fallback") && (backendPhasePacket.packet.routing as any).phaseRoutingSource !== "verified_model") {
+  throw new Error(`expected verified or fallback backend phase routing source, got ${(backendPhasePacket.packet.routing as any).phaseRoutingSource}`);
+}
+if (!backendPhasePacket.renderedPacket.includes("phase lane: backend_implementation")) throw new Error("expected rendered backend phase lane evidence");
+
 let missingImplementationTddSliceError = "";
 try {
   generateTaskPacket(policy, teams, routingConfig, {

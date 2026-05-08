@@ -24,6 +24,7 @@ required_files=(
   ".pi/agent/state/schemas/stitch-screen-artifact.schema.json"
   ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
   ".pi/agent/state/schemas/slice-contract.schema.json"
+  ".pi/agent/state/schemas/frontend-validation-evidence.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
@@ -32,6 +33,7 @@ required_files=(
   ".pi/agent/extensions/screen-artifact-approval.ts"
   ".pi/agent/extensions/slice-contracts.ts"
   ".pi/agent/extensions/frontend-packet-generator.ts"
+  ".pi/agent/extensions/backend-packet-generator.ts"
   "tests/extension-units/execution-leases.test.ts"
   "tests/extension-units/product-slice-lifecycle.test.ts"
   "tests/extension-units/stitch-prompt-generator.test.ts"
@@ -39,6 +41,7 @@ required_files=(
   "tests/extension-units/screen-artifact-approval.test.ts"
   "tests/extension-units/slice-contracts.test.ts"
   "tests/extension-units/frontend-packet-generator.test.ts"
+  "tests/extension-units/backend-packet-generator.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -58,7 +61,9 @@ required_files=(
   "scripts/validate-screen-artifact-approval.sh"
   "scripts/validate-slice-contracts.sh"
   "scripts/validate-frontend-packets.sh"
+  "scripts/validate-backend-packets.sh"
   "scripts/harness-fe-packet.ts"
+  "scripts/harness-be-packet.ts"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
@@ -74,6 +79,7 @@ required_files=(
   "tests/integration/screen-artifact-approval.test.ts"
   "tests/integration/slice-contracts.test.ts"
   "tests/integration/frontend-packet-generator.test.ts"
+  "tests/integration/backend-packet-generator.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -89,6 +95,7 @@ required_files=(
   ".pi/agent/docs/screen_artifact_approval.md"
   ".pi/agent/docs/slice_contracts.md"
   ".pi/agent/docs/frontend_packet_generation.md"
+  ".pi/agent/docs/backend_packet_generation.md"
   ".pi/agent/docs/phase_model_routing.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
@@ -197,6 +204,7 @@ product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/pro
 stitch_screen_artifact_schema = json.loads((root / ".pi/agent/state/schemas/stitch-screen-artifact.schema.json").read_text(encoding="utf-8"))
 screen_artifact_approval_schema = json.loads((root / ".pi/agent/state/schemas/screen-artifact-approval.schema.json").read_text(encoding="utf-8"))
 slice_contract_schema = json.loads((root / ".pi/agent/state/schemas/slice-contract.schema.json").read_text(encoding="utf-8"))
+frontend_validation_evidence_schema = json.loads((root / ".pi/agent/state/schemas/frontend-validation-evidence.schema.json").read_text(encoding="utf-8"))
 product_slice_template = json.loads((root / "docs/initiatives/TEMPLATE/slice-plan.json").read_text(encoding="utf-8"))
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
@@ -237,14 +245,17 @@ stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifac
 screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifact-approval.ts").read_text(encoding="utf-8")
 slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
 frontend_packet_extension = (root / ".pi/agent/extensions/frontend-packet-generator.ts").read_text(encoding="utf-8")
+backend_packet_extension = (root / ".pi/agent/extensions/backend-packet-generator.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
 screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-approval.sh").read_text(encoding="utf-8")
 slice_contract_validator = (root / "scripts/validate-slice-contracts.sh").read_text(encoding="utf-8")
 frontend_packet_validator = (root / "scripts/validate-frontend-packets.sh").read_text(encoding="utf-8")
+backend_packet_validator = (root / "scripts/validate-backend-packets.sh").read_text(encoding="utf-8")
 slice_contract_doc = (root / ".pi/agent/docs/slice_contracts.md").read_text(encoding="utf-8")
 frontend_packet_doc = (root / ".pi/agent/docs/frontend_packet_generation.md").read_text(encoding="utf-8")
+backend_packet_doc = (root / ".pi/agent/docs/backend_packet_generation.md").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -1061,6 +1072,56 @@ assert "frontend packet generation" in team_orchestration_doc.lower()
 assert "frontend packet generation" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
 assert "frontend packet generation" in frontend_worker_prompt.lower()
 assert "Frontend packet generation" in readme_doc
+
+assert frontend_validation_evidence_schema["properties"]["phase"]["const"] == "fe_validation"
+assert "passed" in frontend_validation_evidence_schema["properties"]["status"]["enum"]
+for key in ["frontendPacketPath", "contractHash", "validatedBehaviors", "commandsRun", "knownGaps", "completedAt"]:
+    assert key in frontend_validation_evidence_schema["required"], key
+for needle in [
+    "generateBackendImplementationPacket",
+    "writeBackendPacketPreview",
+    "backend_implementation",
+    "FE validation evidence status is not passed",
+    "backend allowedPaths must include",
+    "apiContract must include",
+]:
+    assert needle in backend_packet_extension, needle
+for needle in [
+    "follows frontend validation",
+    "preview-only",
+    "no queue jobs",
+    "no runtime tasks",
+    "no worker sessions",
+    "backend_implementation",
+]:
+    assert needle in backend_packet_doc, needle
+for needle in [
+    "backend-packet-validator: unit tests",
+    "backend-packet-validator: integration tests",
+    "backend-packet-validator: compile helper and cli",
+]:
+    assert needle in backend_packet_validator, needle
+for needle in [
+    "Phase 9 backend packet generation",
+    "harness:be-packet",
+    "follows FE validation",
+    "no runtime tasks",
+    "no queue jobs",
+    "no worker sessions",
+    "no FE packet changes",
+]:
+    assert needle in product_planning_doc, needle
+assert "backend-packet-generator.ts" in foundation_compile_validator
+assert "frontend-validation-evidence.schema.json" in validation_doc
+assert "scripts/validate-backend-packets.sh" in validation_doc
+assert "harness:be-packet" in package_json.get("scripts", {})
+assert "harness:be-packet" in package_template_json.get("scripts", {})
+assert "test:backend-packet" in package_json.get("scripts", {})
+assert "validate:backend-packet" in package_json.get("scripts", {})
+assert "backend packet generation" in team_orchestration_doc.lower()
+assert "backend packet generation" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
+assert "backend packet generation" in backend_worker_prompt.lower()
+assert "Backend packet generation" in readme_doc
 phase_profiles = models_json.get("phase_routing_profiles", {})
 assert set(phase_profiles) == {"screen_design", "frontend_implementation", "backend_implementation"}
 for lane, expected_target, expected_fallback in [
