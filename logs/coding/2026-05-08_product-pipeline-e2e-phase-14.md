@@ -67,3 +67,11 @@ LOW
 - Branch: `split/task-1778232997531-phase14-product-pipeline-e2e`
 - Commit: `a08484ea4ae78e7fabce35e367e08728b3f87900`
 - Commit message: `test(product): add product pipeline E2E pilot`
+
+## Submission (g-submit) — 2026-05-08T09:35:00Z
+
+- Branch/base: `split/task-1778232997531-phase14-product-pipeline-e2e` -> `main`.
+- PR: https://github.com/SubhajL/ma-code/pull/114
+- Initial PR state: OPEN, draft false, mergeStateStatus BLOCKED while checks were pending.
+- Submission path: GitHub fallback; `gt status` passed through to git status, so Graphite stack submission was out of scope.
+- Compact initial checks: Repo Static Checks passed; CodeQL, Dependency Review, Foundation Extension Compile, and Routing Validators pending.
