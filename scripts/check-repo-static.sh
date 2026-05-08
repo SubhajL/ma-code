@@ -112,6 +112,13 @@ required_files=(
   ".pi/agent/docs/backend_packet_generation.md"
   ".pi/agent/docs/slice_dependency_decision.md"
   ".pi/agent/docs/product_pipeline_runtime.md"
+  ".pi/agent/docs/parallel_worker_lanes.md"
+  ".pi/agent/extensions/parallel-worker-lanes.ts"
+  ".pi/agent/state/schemas/parallel-worker-lanes.schema.json"
+  "scripts/harness-parallel-worker-lanes.ts"
+  "scripts/validate-parallel-worker-lanes.sh"
+  "tests/extension-units/parallel-worker-lanes.test.ts"
+  "tests/integration/parallel-worker-lanes.test.ts"
   ".pi/agent/docs/phase_model_routing.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
@@ -185,6 +192,7 @@ for rel in [
     ".pi/agent/state/schemas/slice-contract.schema.json",
     ".pi/agent/state/schemas/frontend-validation-evidence.schema.json",
     ".pi/agent/state/schemas/slice-dependency-decision.schema.json",
+    ".pi/agent/state/schemas/parallel-worker-lanes.schema.json",
     ".pi/agent/package/templates/runtime/leases.json",
     "docs/initiatives/TEMPLATE/slice-plan.json",
     "package.json",
@@ -271,6 +279,10 @@ slice_dependency_decision_extension = (root / ".pi/agent/extensions/slice-depend
 slice_dependency_decision_schema = json.loads((root / ".pi/agent/state/schemas/slice-dependency-decision.schema.json").read_text(encoding="utf-8"))
 slice_dependency_decision_doc = (root / ".pi/agent/docs/slice_dependency_decision.md").read_text(encoding="utf-8")
 product_pipeline_extension = (root / ".pi/agent/extensions/product-pipeline.ts").read_text(encoding="utf-8")
+parallel_worker_lanes_extension = (root / ".pi/agent/extensions/parallel-worker-lanes.ts").read_text(encoding="utf-8")
+parallel_worker_lanes_schema = json.loads((root / ".pi/agent/state/schemas/parallel-worker-lanes.schema.json").read_text(encoding="utf-8"))
+parallel_worker_lanes_doc = (root / ".pi/agent/docs/parallel_worker_lanes.md").read_text(encoding="utf-8")
+parallel_worker_lanes_validator = (root / "scripts/validate-parallel-worker-lanes.sh").read_text(encoding="utf-8")
 product_pipeline_schema = json.loads((root / ".pi/agent/state/schemas/product-pipeline.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
 slice_lifecycle_validator = (root / "scripts/validate-slice-lifecycle.sh").read_text(encoding="utf-8")
@@ -1252,6 +1264,39 @@ for needle in [
     assert needle in product_pipeline_validator, needle
 assert product_pipeline_schema["title"] == "Product Pipeline Run"
 assert "product-pipeline.ts" in foundation_compile_validator
+for needle in [
+    "planParallelWorkerLanes",
+    "buildParallelWorkerLaneManifest",
+    "parallelWorkerLaneManifestPath",
+    "activeLeaseScopesFromRecords",
+    "Missing Phase 10 parallelAllowed proof",
+    "Same-slice phase parallelism is forbidden",
+]:
+    assert needle in parallel_worker_lanes_extension, needle
+for needle in [
+    "No daemon",
+    "Same-slice phases are sequential",
+    "Cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof",
+    "Operators must not edit `.pi/agent/state/runtime/*.json` directly",
+    "Failed lane worktrees are preserved",
+]:
+    assert needle in parallel_worker_lanes_doc, needle
+for needle in [
+    "parallel-worker-lanes.test.ts",
+    "check-foundation-extension-compile.sh",
+    "check-repo-static.sh",
+]:
+    assert needle in parallel_worker_lanes_validator, needle
+assert parallel_worker_lanes_schema["title"] == "Parallel Worker Lanes Manifest"
+assert "parallel-worker-lanes.ts" in foundation_compile_validator
+assert "harness:parallel-worker-lanes" in package_json.get("scripts", {})
+assert "harness:parallel-worker-lanes" in package_template_json.get("scripts", {})
+assert "test:parallel-worker-lanes" in package_json.get("scripts", {})
+assert "validate:parallel-worker-lanes" in package_json.get("scripts", {})
+assert "parallel-worker-lanes" in (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
+assert "parallel worker lanes" in team_orchestration_doc.lower()
+assert "parallel-worker-lanes" in product_pipeline_doc
+assert "parallel-worker-lanes" in operator_workflow_doc
 assert "harness:product-pipeline" in package_json.get("scripts", {})
 assert "harness:product-pipeline" in package_template_json.get("scripts", {})
 assert "test:product-pipeline" in package_json.get("scripts", {})

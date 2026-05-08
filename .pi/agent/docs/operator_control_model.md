@@ -151,3 +151,15 @@ npm run harness:operator -- product-pipeline status --initiative <slug>
 ```
 
 This surface remains additive and foreground-only. It has no daemon, does not dispatch queue workers, does not directly edit runtime JSON, and keeps HITL gates visible before apply can materialize preview work. Intra-slice phases remain sequential, while cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof.
+
+Phase 12 adds a bounded `parallel-worker-lanes` operator subcommand:
+
+```bash
+npm run harness:operator -- parallel-worker-lanes dry-run --initiative <slug> --max-parallel 2
+npm run harness:operator -- parallel-worker-lanes apply --initiative <slug> --max-parallel 2
+npm run harness:operator -- parallel-worker-lanes run --initiative <slug> --max-parallel 2 --max-runtime-seconds 300 --worker-command '<explicit command>'
+npm run harness:operator -- parallel-worker-lanes status --initiative <slug>
+npm run harness:operator -- parallel-worker-lanes cleanup --initiative <slug> --lane-id <lane-id>
+```
+
+This surface is also additive and foreground-only. It creates worker-session/worktree lanes only after Phase 10 proof and packet artifacts exist. It never allows same-slice parallelism, never introduces a daemon, preserves failed worktrees, and leaves cleanup as an explicit dirty-worktree-refusing action. Operators must use the helper surfaces instead of raw `.pi/agent/state/runtime/*.json` edits.
