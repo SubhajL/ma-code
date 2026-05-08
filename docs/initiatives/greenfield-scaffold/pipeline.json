@@ -1,0 +1,431 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "maxParallelSlices": 2,
+  "slices": [
+    {
+      "sliceId": "issue-001",
+      "title": "Approve greenfield scaffold foundation contract",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-001.summary.json"
+      },
+      "hitlGate": {
+        "type": "issue_materialization_review",
+        "status": "waiting_for_human",
+        "summary": "Human approval required before Phase B queue-ready conversion.",
+        "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-001.summary.json",
+        "approvalRef": null
+      },
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-002",
+      "title": "Scaffold repository app shell",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-003",
+      "title": "Scaffold backend service shell",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-003.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-004",
+      "title": "Wire frontend/backend health handshake",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-005",
+      "title": "Approve product navigation and information architecture",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-005.summary.json"
+      },
+      "hitlGate": {
+        "type": "issue_materialization_review",
+        "status": "waiting_for_human",
+        "summary": "Human approval required before Phase B queue-ready conversion.",
+        "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-005.summary.json",
+        "approvalRef": null
+      },
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-006",
+      "title": "Create design token scaffold",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-006.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-007",
+      "title": "Create shared component primitives",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-007.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-008",
+      "title": "Scaffold authentication placeholder boundary",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-009",
+      "title": "Define persistence schema placeholder",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-009.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-010",
+      "title": "Add first migration scaffold",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-010.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-011",
+      "title": "Add API contract artifacts",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-011.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-012",
+      "title": "Generate frontend API client scaffold",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-012.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-013",
+      "title": "Create fixture and seed data scaffold",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-013.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-014",
+      "title": "Add end-to-end smoke scaffold",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-015",
+      "title": "Add observability/logging scaffold",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-015.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-016",
+      "title": "Add developer validation commands",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-017",
+      "title": "Approve release/readiness checklist",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-017.summary.json"
+      },
+      "hitlGate": {
+        "type": "issue_materialization_review",
+        "status": "waiting_for_human",
+        "summary": "Human approval required before Phase B queue-ready conversion.",
+        "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-017.summary.json",
+        "approvalRef": null
+      },
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-018",
+      "title": "Finalize scaffold documentation package",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/greenfield-scaffold/slices/issue-018.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    }
+  ],
+  "parallelDecisions": [],
+  "phaseABoundary": {
+    "queueReadiness": "not_ready",
+    "queueReadyConversion": "Phase B only",
+    "materializedWork": {
+      "queueJobIds": [],
+      "workerSessionIds": [],
+      "worktreePaths": []
+    }
+  }
+}

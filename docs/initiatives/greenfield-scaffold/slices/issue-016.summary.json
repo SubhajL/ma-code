@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "issueId": "issue-016",
+  "type": "AFK",
+  "queueReadiness": "not_ready",
+  "dependencies": [
+    "issue-014",
+    "issue-015"
+  ],
+  "summary": {
+    "sliceId": "issue-016",
+    "filesToModify": [
+      "package.json",
+      "scripts/validate-greenfield-scaffold.sh",
+      "docs/initiatives/greenfield-scaffold/validation.md"
+    ],
+    "allowedPaths": [
+      "package.json",
+      "scripts",
+      "docs/initiatives/greenfield-scaffold"
+    ],
+    "contracts": [],
+    "schemaPaths": [],
+    "migrationPaths": [],
+    "configPaths": [
+      "package.json"
+    ],
+    "testPaths": [],
+    "fixturePaths": [],
+    "notes": [
+      "Phase A source hash: bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416",
+      "Issue type: AFK",
+      "Allowed path roots: package.json, scripts, docs/initiatives/greenfield-scaffold"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Validation command runs unit, integration, and smoke scaffold checks in a bounded order.",
+    "Phase A materialization keeps queueReadiness as not_ready."
+  ],
+  "validationProof": [
+    "./scripts/validate-greenfield-scaffold.sh --dry-run"
+  ],
+  "hitlGates": []
+}

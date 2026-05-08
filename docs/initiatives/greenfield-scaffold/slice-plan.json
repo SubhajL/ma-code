@@ -1,0 +1,895 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "status": "planned",
+  "slices": [
+    {
+      "sliceId": "issue-001",
+      "issueId": "issue-001",
+      "title": "Approve greenfield scaffold foundation contract",
+      "type": "HITL",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-001.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "docs/initiatives/greenfield-scaffold/foundation-contract.md"
+      ],
+      "allowedPaths": [
+        "docs/initiatives/greenfield-scaffold"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": null
+    },
+    {
+      "sliceId": "issue-002",
+      "issueId": "issue-002",
+      "title": "Scaffold repository app shell",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-001"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "apps/web/package.json",
+        "apps/web/src/App.tsx",
+        "apps/web/src/main.tsx"
+      ],
+      "allowedPaths": [
+        "apps/web"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [
+        "apps/web/package.json"
+      ],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-001"
+    },
+    {
+      "sliceId": "issue-003",
+      "issueId": "issue-003",
+      "title": "Scaffold backend service shell",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-003.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-001"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "services/api/package.json",
+        "services/api/src/server.ts",
+        "services/api/src/health.ts"
+      ],
+      "allowedPaths": [
+        "services/api"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [
+        "services/api/package.json"
+      ],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-001"
+    },
+    {
+      "sliceId": "issue-004",
+      "issueId": "issue-004",
+      "title": "Wire frontend/backend health handshake",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-002",
+        "issue-003"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "apps/web/src/lib/health-client.ts",
+        "services/api/src/routes/health.ts",
+        "tests/integration/health-handshake.test.ts"
+      ],
+      "allowedPaths": [
+        "apps/web/src/lib",
+        "services/api/src/routes",
+        "tests/integration"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/integration/health-handshake.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-002, issue-003"
+    },
+    {
+      "sliceId": "issue-005",
+      "issueId": "issue-005",
+      "title": "Approve product navigation and information architecture",
+      "type": "HITL",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-005.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-002"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "docs/initiatives/greenfield-scaffold/navigation.md"
+      ],
+      "allowedPaths": [
+        "docs/initiatives/greenfield-scaffold"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-002"
+    },
+    {
+      "sliceId": "issue-006",
+      "issueId": "issue-006",
+      "title": "Create design token scaffold",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-006.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-005"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "apps/web/src/styles/tokens.css",
+        "apps/web/src/styles/theme.ts",
+        "tests/web/design-tokens.test.ts"
+      ],
+      "allowedPaths": [
+        "apps/web/src/styles",
+        "tests/web"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/web/design-tokens.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-005"
+    },
+    {
+      "sliceId": "issue-007",
+      "issueId": "issue-007",
+      "title": "Create shared component primitives",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-007.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-006"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "apps/web/src/components/Button.tsx",
+        "apps/web/src/components/Card.tsx",
+        "apps/web/src/components/FormField.tsx",
+        "tests/web/components.test.tsx"
+      ],
+      "allowedPaths": [
+        "apps/web/src/components",
+        "tests/web"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/web/components.test.tsx"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-006"
+    },
+    {
+      "sliceId": "issue-008",
+      "issueId": "issue-008",
+      "title": "Scaffold authentication placeholder boundary",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-003"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "services/api/src/auth/session.ts",
+        "apps/web/src/auth/session.ts",
+        "tests/integration/auth-boundary.test.ts"
+      ],
+      "allowedPaths": [
+        "services/api/src/auth",
+        "apps/web/src/auth",
+        "tests/integration"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/integration/auth-boundary.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-003"
+    },
+    {
+      "sliceId": "issue-009",
+      "issueId": "issue-009",
+      "title": "Define persistence schema placeholder",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-009.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-003"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "schemas/greenfield/user.schema.json",
+        "services/api/src/db/schema.ts",
+        "tests/api/schema.test.ts"
+      ],
+      "allowedPaths": [
+        "schemas/greenfield",
+        "services/api/src/db",
+        "tests/api"
+      ],
+      "schemaPaths": [
+        "schemas/greenfield/user.schema.json"
+      ],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/api/schema.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-003"
+    },
+    {
+      "sliceId": "issue-010",
+      "issueId": "issue-010",
+      "title": "Add first migration scaffold",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-010.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-009"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "migrations/0001_greenfield_init.sql",
+        "services/api/src/db/migrations.ts",
+        "tests/api/migrations.test.ts"
+      ],
+      "allowedPaths": [
+        "migrations",
+        "services/api/src/db",
+        "tests/api"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [
+        "migrations/0001_greenfield_init.sql"
+      ],
+      "configPaths": [],
+      "testPaths": [
+        "tests/api/migrations.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-009"
+    },
+    {
+      "sliceId": "issue-011",
+      "issueId": "issue-011",
+      "title": "Add API contract artifacts",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-011.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-004",
+        "issue-009"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "docs/initiatives/greenfield-scaffold/contracts/api.contract.json",
+        "services/api/src/contracts/openapi.ts",
+        "tests/api/contracts.test.ts"
+      ],
+      "allowedPaths": [
+        "docs/initiatives/greenfield-scaffold/contracts",
+        "services/api/src/contracts",
+        "tests/api"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/api/contracts.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-004, issue-009"
+    },
+    {
+      "sliceId": "issue-012",
+      "issueId": "issue-012",
+      "title": "Generate frontend API client scaffold",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-012.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-011"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "apps/web/src/api/client.ts",
+        "apps/web/src/api/types.ts",
+        "tests/web/api-client.test.ts"
+      ],
+      "allowedPaths": [
+        "apps/web/src/api",
+        "tests/web"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/web/api-client.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-011"
+    },
+    {
+      "sliceId": "issue-013",
+      "issueId": "issue-013",
+      "title": "Create fixture and seed data scaffold",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-013.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-009"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "tests/fixtures/greenfield/users.json",
+        "tests/fixtures/greenfield/projects.json",
+        "services/api/src/db/seeds.ts"
+      ],
+      "allowedPaths": [
+        "tests/fixtures/greenfield",
+        "services/api/src/db"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/fixtures/greenfield/users.json",
+        "tests/fixtures/greenfield/projects.json"
+      ],
+      "fixturePaths": [
+        "tests/fixtures/greenfield/users.json",
+        "tests/fixtures/greenfield/projects.json"
+      ],
+      "blockedReason": "Waiting for dependencies: issue-009"
+    },
+    {
+      "sliceId": "issue-014",
+      "issueId": "issue-014",
+      "title": "Add end-to-end smoke scaffold",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-007",
+        "issue-012",
+        "issue-013"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "tests/e2e/greenfield-smoke.test.ts",
+        "tests/e2e/helpers/greenfield.ts"
+      ],
+      "allowedPaths": [
+        "tests/e2e"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/e2e/greenfield-smoke.test.ts",
+        "tests/e2e/helpers/greenfield.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-007, issue-012, issue-013"
+    },
+    {
+      "sliceId": "issue-015",
+      "issueId": "issue-015",
+      "title": "Add observability/logging scaffold",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-015.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-003"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "services/api/src/observability/logger.ts",
+        "apps/web/src/observability/client-logger.ts",
+        "tests/integration/observability.test.ts"
+      ],
+      "allowedPaths": [
+        "services/api/src/observability",
+        "apps/web/src/observability",
+        "tests/integration"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/integration/observability.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-003"
+    },
+    {
+      "sliceId": "issue-016",
+      "issueId": "issue-016",
+      "title": "Add developer validation commands",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-014",
+        "issue-015"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "package.json",
+        "scripts/validate-greenfield-scaffold.sh",
+        "docs/initiatives/greenfield-scaffold/validation.md"
+      ],
+      "allowedPaths": [
+        "package.json",
+        "scripts",
+        "docs/initiatives/greenfield-scaffold"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [
+        "package.json"
+      ],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-014, issue-015"
+    },
+    {
+      "sliceId": "issue-017",
+      "issueId": "issue-017",
+      "title": "Approve release/readiness checklist",
+      "type": "HITL",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-017.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-016"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "docs/initiatives/greenfield-scaffold/readiness-checklist.md"
+      ],
+      "allowedPaths": [
+        "docs/initiatives/greenfield-scaffold"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-016"
+    },
+    {
+      "sliceId": "issue-018",
+      "issueId": "issue-018",
+      "title": "Finalize scaffold documentation package",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/greenfield-scaffold/slices/issue-018.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-017"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "README.md",
+        "docs/initiatives/greenfield-scaffold/README.md",
+        "docs/initiatives/greenfield-scaffold/backout.md"
+      ],
+      "allowedPaths": [
+        "README.md",
+        "docs/initiatives/greenfield-scaffold"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-017"
+    }
+  ],
+  "policy": {
+    "phase": "A_issue_materialization_only",
+    "queueReadyConversion": "deferred_to_phase_b",
+    "queueReadiness": "not_ready",
+    "noWorkerExecution": true,
+    "noRuntimeStateMutation": true
+  }
+}
