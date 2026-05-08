@@ -21,6 +21,7 @@ This surface is planning/DAG only:
 - It does not create tasks.
 - It does not call Stitch.
 - It does not dispatch frontend, backend, quality, or validator workers.
+- Phase 3 prompt-only Stitch prompt generation is documented separately in `.pi/agent/docs/stitch_prompt_generation.md` and consumes this lifecycle plan without changing the phase order.
 
 ## Files
 
