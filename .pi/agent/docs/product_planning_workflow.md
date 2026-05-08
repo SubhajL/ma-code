@@ -80,8 +80,13 @@ Use the pure helper in `.pi/agent/extensions/product-slice-lifecycle.ts` to vali
 
 This is a product planning/DAG gate only. It must not write queue state, create runtime tasks, call Stitch, dispatch workers, or generate FE/BE packets.
 
-### 5. Task-packet handoff
-Task-packet generation is explicitly out of scope for Phase 1 product intake and Phase 2 product-slice lifecycle. Do not generate FE/BE worker packets from `harness:product-intake`; first complete PRD synthesis, backlog slicing, and product slice lifecycle planning.
+### 5. Phase 3 Stitch prompt generation
+After PRD/backlog slicing and product slice lifecycle planning, generate a prompt-only Stitch prompt artifact for each UI-facing slice before any screen generation. Use `npm run harness:stitch-prompt -- --initiative <feature-slug> --slice <slice-id> --dry-run` to inspect deterministic prompt output without writing, and `--apply` to write only `docs/initiatives/<feature-slug>/stitch-prompts/<slice-id>.prompt.md` plus stable metadata.
+
+Phase 3 Stitch prompt generation is prompt-only: it does not call Stitch, does not create task packets, does not create queue jobs, does not dispatch workers, and does not implement frontend or backend code. Non-UI slices are blocked unless an operator explicitly passes `--allow-non-ui`. See `.pi/agent/docs/stitch_prompt_generation.md`.
+
+### 6. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake, Phase 2 product-slice lifecycle, and Phase 3 Stitch prompt generation. Do not generate FE/BE worker packets from `harness:product-intake` or `harness:stitch-prompt`; first complete PRD synthesis, backlog slicing, product slice lifecycle planning, and human prompt review.
 
 Map approved slices into current harness task packets or queue jobs.
 Preserve:

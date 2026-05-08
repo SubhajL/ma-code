@@ -24,8 +24,10 @@ required_files=(
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
+  ".pi/agent/extensions/stitch-prompt-generator.ts"
   "tests/extension-units/execution-leases.test.ts"
   "tests/extension-units/product-slice-lifecycle.test.ts"
+  "tests/extension-units/stitch-prompt-generator.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -40,12 +42,15 @@ required_files=(
   "scripts/validate-core-workflows.sh"
   "scripts/validate-graphify-discovery.sh"
   "scripts/validate-product-slice-lifecycle.sh"
+  "scripts/validate-stitch-prompts.sh"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
   "tests/integration/harness-init-feature.test.ts"
   "scripts/harness-product-intake.ts"
   "tests/integration/harness-product-intake.test.ts"
+  "scripts/harness-stitch-prompt.ts"
+  "tests/integration/stitch-prompt.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -56,6 +61,7 @@ required_files=(
   "tests/extension-units/discovery-policy.test.ts"
   ".pi/agent/docs/product_planning_workflow.md"
   ".pi/agent/docs/product_slice_lifecycle.md"
+  ".pi/agent/docs/stitch_prompt_generation.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
   "packages/pi-g-skills/README.md"
@@ -151,6 +157,7 @@ harness_package_install_doc = (root / ".pi/agent/docs/harness_package_install.md
 operator_install_guide_doc = (root / ".pi/agent/docs/operator_install_guide.md").read_text(encoding="utf-8")
 product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
 product_slice_lifecycle_doc = (root / ".pi/agent/docs/product_slice_lifecycle.md").read_text(encoding="utf-8")
+stitch_prompt_generation_doc = (root / ".pi/agent/docs/stitch_prompt_generation.md").read_text(encoding="utf-8")
 slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(encoding="utf-8")
 product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
 product_slice_template = json.loads((root / "docs/initiatives/TEMPLATE/slice-plan.json").read_text(encoding="utf-8"))
@@ -188,7 +195,9 @@ graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphi
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
 execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
+stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
+stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -762,6 +771,10 @@ assert product_slice_template["policy"]["requiredPhaseOrder"] == required_produc
 assert product_slice_template["policy"]["intraSliceParallelism"] == "forbidden"
 assert "test:product-slice-lifecycle" in package_json.get("scripts", {})
 assert "validate:product-slice-lifecycle" in package_json.get("scripts", {})
+assert "harness:stitch-prompt" in package_json.get("scripts", {})
+assert "harness:stitch-prompt" in package_template_json.get("scripts", {})
+assert "test:stitch-prompt" in package_json.get("scripts", {})
+assert "validate:stitch-prompt" in package_json.get("scripts", {})
 for needle in [
     "PRODUCT_SLICE_PHASE_ORDER",
     "decideProductSlicePhaseTransition",
@@ -802,6 +815,36 @@ for needle in [
     "product-slice-lifecycle-validator: schema/docs wiring",
 ]:
     assert needle in product_slice_lifecycle_validator
+for needle in [
+    "generateStitchPrompt",
+    "writeStitchPromptArtifacts",
+    "REQUIRED_STITCH_PROMPT_SECTIONS",
+    "sourceHashes",
+    "human_prompt_review",
+]:
+    assert needle in stitch_prompt_generator_extension
+for needle in [
+    "does not call Stitch",
+    "does not create task packets",
+    "does not create queue jobs",
+    "does not implement frontend or backend code",
+    "human_prompt_review",
+]:
+    assert needle in stitch_prompt_generation_doc
+for needle in [
+    "Phase 3 Stitch prompt generation",
+    "prompt-only",
+    "harness:stitch-prompt",
+    "does not create queue jobs",
+]:
+    assert needle in product_planning_doc
+assert "stitch_prompt_generation.md" in product_slice_lifecycle_doc
+for needle in [
+    "stitch-prompt-validator: unit tests",
+    "stitch-prompt-validator: integration tests",
+    "stitch-prompt-validator: compile helper and CLI",
+]:
+    assert needle in stitch_prompt_validator
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",

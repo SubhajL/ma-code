@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_product-slice-lifecycle-phase-2.md`
+- `logs/coding/2026-05-08_stitch-prompt-generation-phase-3.md`
 
 ## Current planning log
-- `reports/planning/2026-05-08_product-slice-lifecycle-phase-2-plan.md`
+- `reports/planning/2026-05-08_stitch-prompt-generation-phase-3-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,4 +16,4 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture the bounded Phase 2 product-slice lifecycle planning/DAG helper work.
+- These files capture the bounded Phase 3 Stitch prompt-generation prompt-only implementation.
