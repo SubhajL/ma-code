@@ -762,3 +762,7 @@ Phase 10 slice dependency validation is covered by:
 - schema: `.pi/agent/state/schemas/slice-dependency-decision.schema.json`
 
 It validates the pure `decideSliceParallelism(input)` helper, the read-only `harness:slice-dependencies --check` CLI, schema/docs/package wiring, and the Phase 10 boundary that no queue jobs, runtime tasks, worker sessions, leases, queue-runner behavior, or cross-slice parallel scheduling are created. It should be used when changes affect cross-slice parallelism proof, slice artifact dependency summaries, or future scheduler-readiness gating.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.

@@ -681,3 +681,7 @@ Phase 11 adds an additive product pipeline runtime:
 The product pipeline reads `docs/initiatives/<slug>/pipeline.json`, computes the slice DAG, shows HITL gates, and consumes Phase 10 parallel decisions. Dry-run writes no files. Apply performs one bounded foreground materialization step and writes only a pipeline run artifact under `docs/initiatives/<slug>/pipeline-runs/`. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, and no product code.
 
 Intra-slice phases remain sequential. Cross-slice parallelism requires explicit Phase 10 `parallelAllowed: true` proof; missing proof is blocked rather than inferred as safe.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.

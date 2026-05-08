@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_lifecycle-evidence-merge-readiness.md`
+- `logs/coding/2026-05-08_product-pipeline-e2e-phase-14.md`
 
 ## Current planning log
-- `reports/planning/2026-05-08_lifecycle-evidence-merge-readiness-plan.md`
+- `reports/planning/2026-05-08_product-pipeline-e2e-phase-14-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -14,6 +14,3 @@
   - `logs/coding/TEMPLATE.md`
   - `reports/planning/TEMPLATE.md`
 - Convention details: `logs/README.md`
-
-## Notes
-- Current pointer updated for the repo-root Pi extension factory repair task.
