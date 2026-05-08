@@ -91,3 +91,11 @@ LOW
 - `harness:product-intake` is additive and package-template exposed for fresh target repos.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-08T00:40:00Z — PR submission and gate evidence
+- Commit: `ac68634 feat(intake): add product intake wrapper` on branch `split/task-1778199916936-product-intake-phase-1`.
+- PR: https://github.com/SubhajL/ma-code/pull/98 targeting `main`.
+- Initial PR state: OPEN, not draft, `mergeStateStatus: BLOCKED` while checks were pending.
+- PR gate command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-pr-gate.ts --pr 98 --max-attempts 3`.
+- PR gate result: final status `pass`, 6/6 checks passing, no blocking comments or reviews, recommended next action `merge_or_sync`.
+- Merge-helper check note: `scripts/harness-merge.ts check --pr 98 --json` reported CI/PR state clean but blocked on lifecycle task-state evidence in the linked worktree. This task is still active in the root runtime state; merge will proceed through the existing GitHub PR after PR-gate pass rather than forcing local main mutation.
