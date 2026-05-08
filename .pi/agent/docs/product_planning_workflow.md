@@ -135,3 +135,17 @@ Use them when you want bounded clarification, PRD synthesis, or vertical-slice b
 ## Phase boundary
 Issue-tracker publishing integrations remain future work.
 The current slice adds global skills and workflow guidance only; it does not add issue-tracker APIs or runtime queue automation here.
+
+### 11. Phase 11 product pipeline runtime
+
+After FE/BE packet preview surfaces exist, use the product pipeline runtime to inspect and advance a bounded initiative plan:
+
+```bash
+npm run harness:product-pipeline -- dry-run --initiative <feature-slug> --json
+npm run harness:product-pipeline -- apply --initiative <feature-slug> --max-parallel 1
+npm run harness:product-pipeline -- status --initiative <feature-slug>
+```
+
+The product pipeline loads `docs/initiatives/<feature-slug>/pipeline.json`, prints the slice DAG, shows HITL gates, preserves sequential phase order inside each slice, and consumes Phase 10 parallel decisions. Dry-run writes no files. Apply stops at unresolved HITL gates and performs one bounded foreground materialization step, writing only `docs/initiatives/<feature-slug>/pipeline-runs/<run-id>.json`.
+
+Phase 11 does not introduce a daemon and does not create runtime tasks, queue jobs, worker sessions, handoffs, or product code. Intra-slice phases remain sequential. Cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof for every active pair.

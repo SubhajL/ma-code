@@ -34,6 +34,8 @@ required_files=(
   ".pi/agent/extensions/slice-contracts.ts"
   ".pi/agent/extensions/frontend-packet-generator.ts"
   ".pi/agent/extensions/backend-packet-generator.ts"
+  ".pi/agent/extensions/product-pipeline.ts"
+  ".pi/agent/state/schemas/product-pipeline.schema.json"
   "tests/extension-units/execution-leases.test.ts"
   "tests/extension-units/product-slice-lifecycle.test.ts"
   "tests/extension-units/stitch-prompt-generator.test.ts"
@@ -42,6 +44,7 @@ required_files=(
   "tests/extension-units/slice-contracts.test.ts"
   "tests/extension-units/frontend-packet-generator.test.ts"
   "tests/extension-units/backend-packet-generator.test.ts"
+  "tests/extension-units/product-pipeline.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -62,8 +65,10 @@ required_files=(
   "scripts/validate-slice-contracts.sh"
   "scripts/validate-frontend-packets.sh"
   "scripts/validate-backend-packets.sh"
+  "scripts/validate-product-pipeline.sh"
   "scripts/harness-fe-packet.ts"
   "scripts/harness-be-packet.ts"
+  "scripts/harness-product-pipeline.ts"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
@@ -80,6 +85,7 @@ required_files=(
   "tests/integration/slice-contracts.test.ts"
   "tests/integration/frontend-packet-generator.test.ts"
   "tests/integration/backend-packet-generator.test.ts"
+  "tests/integration/product-pipeline.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -96,6 +102,7 @@ required_files=(
   ".pi/agent/docs/slice_contracts.md"
   ".pi/agent/docs/frontend_packet_generation.md"
   ".pi/agent/docs/backend_packet_generation.md"
+  ".pi/agent/docs/product_pipeline_runtime.md"
   ".pi/agent/docs/phase_model_routing.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
@@ -246,6 +253,8 @@ screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifa
 slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
 frontend_packet_extension = (root / ".pi/agent/extensions/frontend-packet-generator.ts").read_text(encoding="utf-8")
 backend_packet_extension = (root / ".pi/agent/extensions/backend-packet-generator.ts").read_text(encoding="utf-8")
+product_pipeline_extension = (root / ".pi/agent/extensions/product-pipeline.ts").read_text(encoding="utf-8")
+product_pipeline_schema = json.loads((root / ".pi/agent/state/schemas/product-pipeline.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
@@ -253,9 +262,11 @@ screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-a
 slice_contract_validator = (root / "scripts/validate-slice-contracts.sh").read_text(encoding="utf-8")
 frontend_packet_validator = (root / "scripts/validate-frontend-packets.sh").read_text(encoding="utf-8")
 backend_packet_validator = (root / "scripts/validate-backend-packets.sh").read_text(encoding="utf-8")
+product_pipeline_validator = (root / "scripts/validate-product-pipeline.sh").read_text(encoding="utf-8")
 slice_contract_doc = (root / ".pi/agent/docs/slice_contracts.md").read_text(encoding="utf-8")
 frontend_packet_doc = (root / ".pi/agent/docs/frontend_packet_generation.md").read_text(encoding="utf-8")
 backend_packet_doc = (root / ".pi/agent/docs/backend_packet_generation.md").read_text(encoding="utf-8")
+product_pipeline_doc = (root / ".pi/agent/docs/product_pipeline_runtime.md").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -1122,6 +1133,39 @@ assert "backend packet generation" in team_orchestration_doc.lower()
 assert "backend packet generation" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8").lower()
 assert "backend packet generation" in backend_worker_prompt.lower()
 assert "Backend packet generation" in readme_doc
+for needle in [
+    "buildProductPipelineRun",
+    "computeNextReadySlices",
+    "detectHitlGate",
+    "Missing Phase 10 parallelAllowed proof",
+    "assertApplyRepoPreflight",
+]:
+    assert needle in product_pipeline_extension, needle
+for needle in [
+    "no daemon",
+    "Intra-slice phases remain sequential",
+    "Cross-slice parallelism requires Phase 10",
+    "dry-run writes no files",
+    "apply performs one bounded",
+    "HITL gates block apply",
+]:
+    assert needle in product_pipeline_doc, needle
+for needle in [
+    "product-pipeline-validator: unit tests",
+    "product-pipeline-validator: integration tests",
+    "product-pipeline-validator: compile helper and cli",
+]:
+    assert needle in product_pipeline_validator, needle
+assert product_pipeline_schema["title"] == "Product Pipeline Run"
+assert "product-pipeline.ts" in foundation_compile_validator
+assert "harness:product-pipeline" in package_json.get("scripts", {})
+assert "harness:product-pipeline" in package_template_json.get("scripts", {})
+assert "test:product-pipeline" in package_json.get("scripts", {})
+assert "validate:product-pipeline" in package_json.get("scripts", {})
+assert "product-pipeline" in (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
+assert "product pipeline runtime" in team_orchestration_doc.lower()
+assert "Phase 11 product pipeline runtime" in product_planning_doc
+assert "Phase 11 product pipeline runtime" in readme_doc
 phase_profiles = models_json.get("phase_routing_profiles", {})
 assert set(phase_profiles) == {"screen_design", "frontend_implementation", "backend_implementation"}
 for lane, expected_target, expected_fallback in [

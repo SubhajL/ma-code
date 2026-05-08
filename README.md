@@ -428,3 +428,17 @@ Current GitHub workflow surfaces:
   - dependency review on PRs
   - CodeQL analysis for JavaScript/TypeScript
 - Dependency updates: `.github/dependabot.yml`
+
+### Phase 11 product pipeline runtime
+
+Phase 11 adds `harness:product-pipeline`, an additive operator-visible flow from initiative artifacts to a bounded slice execution plan.
+
+```bash
+npm run harness:product-pipeline -- dry-run --initiative checkout-ui --json
+npm run harness:product-pipeline -- apply --initiative checkout-ui --max-parallel 1
+npm run harness:product-pipeline -- status --initiative checkout-ui
+npm run harness:operator -- product-pipeline dry-run --initiative checkout-ui
+npm run validate:product-pipeline
+```
+
+Dry-run writes no files and shows the slice DAG, HITL gates, sequential phase order, and Phase 10 parallel decisions. Apply performs one bounded foreground materialization step, stops at HITL gates, and writes only a durable pipeline run artifact under `docs/initiatives/<slug>/pipeline-runs/`. It creates no runtime tasks, queue jobs, worker sessions, handoffs, daemon, or product code. Intra-slice phases remain sequential; cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof.

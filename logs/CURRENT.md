@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_backend-packet-generation-phase-9.md`
+- `logs/coding/2026-05-08_product-pipeline-runtime-phase-11.md`
 
 ## Current planning log
-- `reports/planning/2026-05-08_backend-packet-generation-phase-9-plan.md`
+- `reports/planning/2026-05-07_product-pipeline-runtime-phase-11-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
@@ -16,4 +16,4 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture bounded Phase 9 backend packet generation work.
+- These files capture bounded Phase 11 product pipeline runtime work.

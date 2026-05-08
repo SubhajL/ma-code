@@ -638,3 +638,17 @@ Those should preserve the core principles here:
 - bounded packets
 - structured handoffs
 - evidence-gated completion
+
+## Current product pipeline runtime surface
+
+Phase 11 adds an additive product pipeline runtime:
+- `.pi/agent/extensions/product-pipeline.ts`
+- CLI: `scripts/harness-product-pipeline.ts`
+- package alias: `harness:product-pipeline`
+- operator front door: `npm run harness:operator -- product-pipeline ...`
+- schema: `.pi/agent/state/schemas/product-pipeline.schema.json`
+- validator: `scripts/validate-product-pipeline.sh`
+
+The product pipeline reads `docs/initiatives/<slug>/pipeline.json`, computes the slice DAG, shows HITL gates, and consumes Phase 10 parallel decisions. Dry-run writes no files. Apply performs one bounded foreground materialization step and writes only a pipeline run artifact under `docs/initiatives/<slug>/pipeline-runs/`. It creates no runtime tasks, no queue jobs, no worker sessions, no handoffs, and no product code.
+
+Intra-slice phases remain sequential. Cross-slice parallelism requires explicit Phase 10 `parallelAllowed: true` proof; missing proof is blocked rather than inferred as safe.
