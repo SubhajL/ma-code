@@ -176,8 +176,10 @@ setup_temp_runtime() {
 JSON
   cp "$REPO_ROOT/scripts/harness-package.ts" "$workdir/scripts/harness-package.ts"
   cp "$REPO_ROOT/scripts/harness-init-feature.ts" "$workdir/scripts/harness-init-feature.ts"
+  cp "$REPO_ROOT/scripts/harness-product-intake.ts" "$workdir/scripts/harness-product-intake.ts"
   cp "$REPO_ROOT/tests/integration/harness-package.test.ts" "$workdir/tests/integration/harness-package.test.ts"
   cp "$REPO_ROOT/tests/integration/harness-init-feature.test.ts" "$workdir/tests/integration/harness-init-feature.test.ts"
+  cp "$REPO_ROOT/tests/integration/harness-product-intake.test.ts" "$workdir/tests/integration/harness-product-intake.test.ts"
   (
     cd "$workdir"
     "$NPM_BIN" install --silent >/dev/null 2>&1
@@ -188,17 +190,19 @@ check_1_compile_package_helper() {
   local name="1. harness package helper compiles"
   local out="$TMP_ROOT/check_1_compile_package_helper.txt"
   local runtime_dir="$TMP_ROOT/package-runtime"
-  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node scripts/harness-package.ts scripts/harness-init-feature.ts tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts"
+  local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node scripts/harness-package.ts scripts/harness-init-feature.ts scripts/harness-product-intake.ts tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts tests/integration/harness-product-intake.test.ts"
 
   if (
     cd "$runtime_dir" &&
     npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
       scripts/harness-package.ts \
       scripts/harness-init-feature.ts \
+      scripts/harness-product-intake.ts \
       tests/integration/harness-package.test.ts \
-      tests/integration/harness-init-feature.test.ts >"$out" 2>&1
+      tests/integration/harness-init-feature.test.ts \
+      tests/integration/harness-product-intake.test.ts >"$out" 2>&1
   ); then
-    local detail="harness-package helper, harness-init-feature helper, and their integration tests compile in an isolated runtime package."
+    local detail="harness-package helper, harness-init-feature helper, product-intake helper, and their integration tests compile in an isolated runtime package."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -214,13 +218,13 @@ check_2_bootstrap_integration() {
   local name="2. harness package bootstrap integration"
   local out="$TMP_ROOT/check_2_bootstrap_integration.txt"
   local runtime_dir="$TMP_ROOT/package-runtime"
-  local cmd="cd $runtime_dir && HARNESS_SOURCE_ROOT=$REPO_ROOT $NODE_BIN --import tsx --test tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts"
+  local cmd="cd $runtime_dir && HARNESS_SOURCE_ROOT=$REPO_ROOT $NODE_BIN --import tsx --test tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts tests/integration/harness-product-intake.test.ts"
 
   if (
     cd "$runtime_dir" &&
-    HARNESS_SOURCE_ROOT="$REPO_ROOT" "$NODE_BIN" --import tsx --test tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts >"$out" 2>&1
+    HARNESS_SOURCE_ROOT="$REPO_ROOT" "$NODE_BIN" --import tsx --test tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts tests/integration/harness-product-intake.test.ts >"$out" 2>&1
   ); then
-    local detail="bootstrap integration tests passed for reusable asset copy, fresh runtime placeholder generation, package.json merge behavior, explicit initiative helper wiring, initiative scaffold creation, and preservation of existing repo-local files."
+    local detail="bootstrap integration tests passed for reusable asset copy, fresh runtime placeholder generation, package.json merge behavior, explicit initiative helper wiring, product-intake wiring, initiative scaffold creation, and preservation of existing repo-local files."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
     append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
@@ -249,16 +253,16 @@ checks = {
     'manifest version': manifest.get('version') == 1,
     'manifest packageVersion': isinstance(manifest.get('packageVersion'), str) and len(manifest['packageVersion']) > 0,
     'manifest reusable assets': isinstance(manifest.get('reusableAssets'), list) and len(manifest['reusableAssets']) > 0,
-    'README.md': 'harness:package' in (root / 'README.md').read_text(encoding='utf-8') and 'harness:init-feature' in (root / 'README.md').read_text(encoding='utf-8') and 'operator_manual.md' in (root / 'README.md').read_text(encoding='utf-8'),
+    'README.md': 'harness:package' in (root / 'README.md').read_text(encoding='utf-8') and 'harness:init-feature' in (root / 'README.md').read_text(encoding='utf-8') and 'harness:product-intake' in (root / 'README.md').read_text(encoding='utf-8') and 'operator_manual.md' in (root / 'README.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/harness_packaging_strategy.md': 'bootstrap' in (root / '.pi/agent/docs/harness_packaging_strategy.md').read_text(encoding='utf-8').lower(),
-    '.pi/agent/docs/harness_package_install.md': 'harness-package.ts bootstrap' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8') and 'harness:init-feature' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8') and 'operator_manual.md' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8'),
-    '.pi/agent/docs/operator_install_guide.md': 'harness:init-feature' in (root / '.pi/agent/docs/operator_install_guide.md').read_text(encoding='utf-8') and '/skill:g-grill' in (root / '.pi/agent/docs/operator_install_guide.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/harness_package_install.md': 'harness-package.ts bootstrap' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8') and 'harness:init-feature' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8') and 'harness:product-intake' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8') and 'operator_manual.md' in (root / '.pi/agent/docs/harness_package_install.md').read_text(encoding='utf-8'),
+    '.pi/agent/docs/operator_install_guide.md': 'harness:init-feature' in (root / '.pi/agent/docs/operator_install_guide.md').read_text(encoding='utf-8') and 'harness:product-intake' in (root / '.pi/agent/docs/operator_install_guide.md').read_text(encoding='utf-8') and '/skill:g-grill' in (root / '.pi/agent/docs/operator_install_guide.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/operator_manual.md': 'operator_install_guide.md' in (root / '.pi/agent/docs/operator_manual.md').read_text(encoding='utf-8') and 'operator_troubleshooting_guide.md' in (root / '.pi/agent/docs/operator_manual.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/operator_quickstart.md': 'operator_manual.md' in (root / '.pi/agent/docs/operator_quickstart.md').read_text(encoding='utf-8'),
     '.pi/agent/docs/operator_workflow.md': 'operator_manual.md' in (root / '.pi/agent/docs/operator_workflow.md').read_text(encoding='utf-8'),
-    '.pi/agent/docs/product_planning_workflow.md': 'harness:init-feature' in (root / '.pi/agent/docs/product_planning_workflow.md').read_text(encoding='utf-8') and '/skill:g-issues' in (root / '.pi/agent/docs/product_planning_workflow.md').read_text(encoding='utf-8'),
-    'package.json': 'validate:harness-package' in package_json.get('scripts', {}) and 'harness:init-feature' in package_json.get('scripts', {}),
-    'package.template.json': 'harness:init-feature' in package_template.get('scripts', {}),
+    '.pi/agent/docs/product_planning_workflow.md': 'harness:init-feature' in (root / '.pi/agent/docs/product_planning_workflow.md').read_text(encoding='utf-8') and 'harness:product-intake' in (root / '.pi/agent/docs/product_planning_workflow.md').read_text(encoding='utf-8') and '/skill:g-issues' in (root / '.pi/agent/docs/product_planning_workflow.md').read_text(encoding='utf-8'),
+    'package.json': 'validate:harness-package' in package_json.get('scripts', {}) and 'harness:init-feature' in package_json.get('scripts', {}) and 'harness:product-intake' in package_json.get('scripts', {}),
+    'package.template.json': 'harness:init-feature' in package_template.get('scripts', {}) and 'harness:product-intake' in package_template.get('scripts', {}),
 }
 missing = [name for name, ok in checks.items() if not ok]
 assert not missing, f'missing package/install/operator-doc wiring in: {missing}'

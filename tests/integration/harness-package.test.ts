@@ -53,6 +53,7 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.ok(result.copiedAssets.includes(".pi/agent/skills/frontend-safety/SKILL.md"));
   assert.ok(result.copiedAssets.includes("scripts/harness-operator-status.ts"));
   assert.ok(result.copiedAssets.includes("scripts/harness-init-feature.ts"));
+  assert.ok(result.copiedAssets.includes("scripts/harness-product-intake.ts"));
   assert.ok(result.copiedAssets.includes("tests/integration/core-workflows.test.ts"));
   assert.ok(result.generatedFiles.includes("AGENTS.md"));
   assert.ok(result.generatedFiles.includes("SYSTEM.md"));
@@ -85,6 +86,7 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(packageJson.scripts["harness:package"], "node --import tsx scripts/harness-package.ts manifest");
   assert.equal(packageJson.scripts["validate:domain-governance"], "./scripts/validate-domain-governance.sh");
   assert.equal(packageJson.scripts["harness:init-feature"], "node --import tsx scripts/harness-init-feature.ts");
+  assert.equal(packageJson.scripts["harness:product-intake"], "node --import tsx scripts/harness-product-intake.ts");
   assert.equal(packageJson.devDependencies.tsx, "^4.20.5");
 
   const initFeatureResult = await execFile(
@@ -110,6 +112,28 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(initFeatureJson.slug, "payments-redesign");
   assert.deepEqual(initFeatureJson.recommendedSkills, ["g-grill", "g-prd", "g-issues"]);
   assert.ok(initFeatureJson.createdFiles.includes("docs/initiatives/payments-redesign/prd.md"));
+
+  const productIntakeResult = await execFile(
+    process.execPath,
+    [
+      "--import",
+      tsxImportPath,
+      join(destinationRoot, "scripts", "harness-product-intake.ts"),
+      "--slug",
+      "returns-redesign",
+      "--description",
+      "Redesign returns so customers can choose items in the UI, call the orders API, and track refund status before submitting requests.",
+      "--apply",
+      "--json",
+    ],
+    {
+      cwd: destinationRoot,
+      encoding: "utf8",
+    },
+  );
+  const productIntakeJson = JSON.parse(productIntakeResult.stdout) as { status: string; createdFiles: string[] };
+  assert.equal(productIntakeJson.status, "ready_for_prd");
+  assert.ok(productIntakeJson.createdFiles.includes("docs/initiatives/returns-redesign/intake.json"));
 
   const taskState = JSON.parse(
     await readFile(join(destinationRoot, ".pi", "agent", "state", "runtime", "tasks.json"), "utf8"),

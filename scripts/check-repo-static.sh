@@ -40,6 +40,8 @@ required_files=(
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
   "tests/integration/harness-init-feature.test.ts"
+  "scripts/harness-product-intake.ts"
+  "tests/integration/harness-product-intake.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -474,6 +476,10 @@ for needle in [
     "Vertical slices must be independently demonstrable or verifiable.",
     "global skill ports `g-grill`, `g-prd`, and `g-issues`",
     "harness:init-feature",
+    "harness:product-intake",
+    "PRD/backlog happen before Stitch",
+    "Phase 1 product intake never calls Stitch, never creates task packets, and never dispatches queue jobs.",
+    "Do not generate FE/BE worker packets from `harness:product-intake`",
     "/skill:g-grill",
     "/skill:g-prd",
     "/skill:g-issues",
@@ -660,6 +666,8 @@ assert "harness:sync-main" in package_json.get("scripts", {})
 assert "test:sync-main" in package_json.get("scripts", {})
 assert "harness:init-feature" in package_json.get("scripts", {})
 assert "harness:init-feature" in package_template_json.get("scripts", {})
+assert "harness:product-intake" in package_json.get("scripts", {})
+assert "harness:product-intake" in package_template_json.get("scripts", {})
 for needle in [
     "gh pr checks",
     "--watch",
@@ -691,6 +699,7 @@ for needle in [
     assert needle in operator_workflow_doc
 for needle in [
     "harness:init-feature",
+    "harness:product-intake",
     "docs/initiatives/<feature-slug>/",
     "/skill:g-grill",
     "/skill:g-prd",
@@ -703,9 +712,26 @@ for needle in [
     "scripts/harness-pr-gate.ts",
     "scripts/harness-sync-main.ts",
     "scripts/harness-init-feature.ts",
+    "scripts/harness-product-intake.ts",
 ]:
     assert needle in file_map_doc
     assert needle in validation_doc
+for needle in [
+    "intake.json",
+    "stitch_generation",
+    "task_packet_generation",
+    "queue_dispatch",
+    "ready_for_prd",
+    "blocked",
+]:
+    assert needle in (root / "scripts/harness-product-intake.ts").read_text(encoding="utf-8")
+    assert needle in (root / "tests/integration/harness-product-intake.test.ts").read_text(encoding="utf-8")
+for needle in [
+    "PRD/backlog happen before Stitch",
+    "Phase 1 product intake does not call Stitch",
+    "Phase 1 product intake does not create task packets, queue jobs, frontend packets, or backend packets",
+]:
+    assert needle in (root / ".pi/agent/docs/intake_policy.md").read_text(encoding="utf-8")
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",

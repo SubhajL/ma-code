@@ -57,7 +57,8 @@ A successful bootstrap should leave the target repo with:
 - no copied `logs/` or `reports/`
 - no copied runtime task/queue history
 - `.pi/agent/package/installed-package.json` recording the installed harness version
-- a bounded `harness:init-feature` helper for scaffolding `docs/initiatives/<feature-slug>/`
+- a bounded `harness:product-intake` helper for safe major-product intake and durable `intake.json` capture
+- a bounded `harness:init-feature` helper for lower-level scaffolding of `docs/initiatives/<feature-slug>/`
 
 ## What not to assume after install
 Install/bootstrap does **not** mean:
@@ -67,7 +68,13 @@ Install/bootstrap does **not** mean:
 - the harness is ready for unattended operation
 
 ## Major-feature bootstrap after install
-When a new major feature starts, scaffold its durable initiative folder with:
+When a new major feature starts, run the safe product intake wrapper first:
+```bash
+npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --dry-run
+npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --apply
+```
+
+Use the lower-level scaffold only when you intentionally want initiative files without intake metadata:
 ```bash
 npm run harness:init-feature -- --slug example-major-feature
 ```
