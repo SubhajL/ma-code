@@ -118,3 +118,12 @@ Review Verdict: no_required_fixes
 
 ## 2026-05-08T00:00:00Z — Planning log backfill
 - Added `reports/planning/2026-05-07_slice-dependency-decision-phase-10-plan.md` so `logs/CURRENT.md` points at a real Phase 10 planning artifact.
+
+## 2026-05-08T00:00:00Z — PR submission
+- Branch/head: `split/task-1778214873317-phase10-slice-dependencies` at `6564729`.
+- Base: `main`.
+- Submission path: GitHub fallback; Graphite was available but branch was not tracked in Graphite (`gt ls` reported untracked branch).
+- Commands: `git push -u origin split/task-1778214873317-phase10-slice-dependencies`; `gh pr create --base main --head split/task-1778214873317-phase10-slice-dependencies --title "feat(product): add slice dependency decision helper" --body-file /tmp/phase10-pr-body.md`.
+- PR: https://github.com/SubhajL/ma-code/pull/108
+- Initial PR state: open, not draft, mergeStateStatus `BLOCKED` while required checks were pending.
+- Initial checks: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, Routing Validators pending.
