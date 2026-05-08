@@ -126,3 +126,23 @@ LOW
 - Preview-only apply mode writes JSON/Markdown packet artifacts under `docs/initiatives/<slug>/packets/`.
 - No runtime tasks, queue jobs, worker sessions, backend packets, or product code are created by the helper/CLI.
 - Review Verdict: no_required_fixes
+
+## Submission (2026-05-08) - PR #106
+
+### Submitted
+- Branch: `split/task-1778211635128-phase8-fe-packets`
+- Base: `main`
+- Commit: `149e363 feat(frontend): add phase 8 packet generator`
+- PR: https://github.com/SubhajL/ma-code/pull/106
+- State after create: OPEN
+- Initial mergeStateStatus: BLOCKED while checks were pending
+
+### Commands Run
+- `git push -u origin split/task-1778211635128-phase8-fe-packets`
+- `gh pr create --base main --head split/task-1778211635128-phase8-fe-packets --title "feat(frontend): add phase 8 packet generator" --body-file /tmp/phase8-pr-body.md`
+- `gh pr view 106 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,reviewDecision`
+- `gh pr checks 106`
+
+### Notes
+- Lifecycle preflight in the isolated worktree reported `planning_ready`/blocked because worktree-local runtime task state is absent; implementation evidence is preserved in this coding log and task state through `task_update`.
+- Awaiting CI/check completion before merge consideration.
