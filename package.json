@@ -73,7 +73,10 @@
     "validate:stitch-artifact": "./scripts/validate-stitch-artifacts.sh",
     "harness:screen-approval": "node --import tsx scripts/harness-screen-approval.ts",
     "test:screen-approval": "node --import tsx --test tests/extension-units/screen-artifact-approval.test.ts tests/integration/screen-artifact-approval.test.ts",
-    "validate:screen-approval": "./scripts/validate-screen-artifact-approval.sh"
+    "validate:screen-approval": "./scripts/validate-screen-artifact-approval.sh",
+    "harness:slice-contract": "node --import tsx scripts/harness-slice-contract.ts",
+    "test:slice-contract": "node --import tsx --test tests/extension-units/slice-contracts.test.ts tests/integration/slice-contracts.test.ts",
+    "validate:slice-contract": "./scripts/validate-slice-contracts.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

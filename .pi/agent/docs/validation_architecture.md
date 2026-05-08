@@ -492,6 +492,21 @@ This script is responsible for the bounded regression path for:
 
 It should be used when changes affect reusable-vs-repo-local package boundaries, bootstrap/install behavior, or packaging templates.
 
+### Dedicated slice contract validator
+Current dedicated slice contract script:
+- `scripts/validate-slice-contracts.sh`
+- package alias: `validate:slice-contract`
+
+This script is responsible for the bounded regression path for:
+- `.pi/agent/extensions/slice-contracts.ts`
+- `.pi/agent/state/schemas/slice-contract.schema.json`
+- `scripts/harness-slice-contract.ts`
+- `tests/extension-units/slice-contracts.test.ts`
+- `tests/integration/slice-contracts.test.ts`
+- docs/package/static/compile wiring that keeps Phase 6 before FE implementation
+
+It should be used when changes affect approved-screen-to-contract generation, contract schema shape, dry-run/apply behavior, or FE/BE contract gating documentation.
+
 ### Dedicated same-runtime bridge validator
 Current dedicated same-runtime bridge script:
 - `scripts/validate-same-runtime-bridge.sh`

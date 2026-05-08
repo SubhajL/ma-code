@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/slice-contract.schema.json",
+  "title": "Slice Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "initiativeId",
+    "sliceId",
+    "status",
+    "sourceScreenArtifact",
+    "uiStateContract",
+    "apiContract",
+    "errors",
+    "mockPlan",
+    "tddSeeds",
+    "outOfScope",
+    "nextAllowedPhase",
+    "blockedReason"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "initiativeId": { "type": "string", "minLength": 1 },
+    "sliceId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "ready_for_review", "approved", "blocked"] },
+    "sourceScreenArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactPath", "approvalPath", "artifactHash"],
+      "properties": {
+        "artifactPath": { "type": "string", "pattern": "^docs/initiatives/[a-z0-9]+(?:-[a-z0-9]+)*/screen-artifacts/[^/]+\\.mock-screen\\.json$" },
+        "approvalPath": { "type": "string", "pattern": "^docs/initiatives/[a-z0-9]+(?:-[a-z0-9]+)*/screen-artifacts/[^/]+\\.approval\\.json$" },
+        "artifactHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "uiStateContract": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["screenId", "states", "requiredData", "userActions"],
+        "properties": {
+          "screenId": { "type": "string", "minLength": 1 },
+          "states": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "requiredData": { "type": "array", "items": { "type": "string" } },
+          "userActions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "apiContract": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "method", "path", "request", "response", "auth"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+          "path": { "type": "string", "minLength": 1 },
+          "request": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["params", "bodyShape"],
+            "properties": {
+              "params": { "type": "array", "items": { "type": "string" } },
+              "bodyShape": { "type": "object" }
+            }
+          },
+          "response": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["successShape", "errorShape"],
+            "properties": {
+              "successShape": { "type": "object" },
+              "errorShape": { "type": "object" }
+            }
+          },
+          "auth": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["required", "assumptions"],
+            "properties": {
+              "required": { "type": "boolean" },
+              "assumptions": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "userMessage", "httpStatus", "uiState"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "userMessage": { "type": "string", "minLength": 1 },
+          "httpStatus": { "type": "integer", "minimum": 100, "maximum": 599 },
+          "uiState": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "mockPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["frontendMockSource", "backendFakePlan", "seedData"],
+      "properties": {
+        "frontendMockSource": { "const": "contract_fixture" },
+        "backendFakePlan": { "const": "handler_or_service_fake" },
+        "seedData": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tddSeeds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["scenario", "frontendExpectation", "backendExpectation"],
+        "properties": {
+          "scenario": { "type": "string", "minLength": 1 },
+          "frontendExpectation": { "type": "string", "minLength": 1 },
+          "backendExpectation": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "outOfScope": { "type": "array", "items": { "type": "string" } },
+    "nextAllowedPhase": { "const": "fe_implementation" },
+    "blockedReason": { "type": ["string", "null"] }
+  }
+}

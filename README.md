@@ -103,6 +103,19 @@ Related docs:
 
 
 
+## Slice contracts
+
+Phase 6 adds `harness:slice-contract`, a deterministic helper that reads the approved mock screen artifact plus hash-bound approval sidecar and writes shared FE/BE contract artifacts only under `docs/initiatives/<slug>/contracts/`.
+
+Useful commands:
+```bash
+npm run harness:slice-contract -- --initiative checkout-ui --slice slice-001 --dry-run
+npm run harness:slice-contract -- --initiative checkout-ui --slice slice-001 --apply
+npm run validate:slice-contract
+```
+
+The helper does not create task packets, handoffs, queue jobs, worker sessions, or runtime state. It gates FE implementation on a current approved screen artifact and a current slice contract.
+
 ## Domain governance
 
 Phase 7 adds advisory-first domain governance for task packets and feature bootstrap docs. Use it to keep frontend/backend/infra ownership explicit without splitting shared intake too early.

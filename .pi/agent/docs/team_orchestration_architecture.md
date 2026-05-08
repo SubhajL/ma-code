@@ -91,6 +91,7 @@ Use when:
 Should usually produce:
 - worker assignments
 - scoped changes
+- for product UI slices, evidence that FE/BE packets consume the Phase 6 slice contract path and hash before FE implementation
 - implementation evidence
 - escalation when blocked or overlapping
 
