@@ -69,3 +69,13 @@ LOW
 
 Review Verdict: no_required_fixes
 
+## 2026-05-08T00:55:00Z - PR submission
+
+- Branch: `split/task-1778225840154-phase-13-live-stitch-adapter`
+- Base: `main`
+- PR: https://github.com/SubhajL/ma-code/pull/112
+- PR state after creation: open, not draft, mergeStateStatus `BLOCKED` while checks were pending.
+- Submission path: Graphite command passed through to git status; used standard GitHub fallback (`git push`, `gh pr create`).
+- Lifecycle preflight: attempted with repo `npm run harness:slice-lifecycle -- check --stage created` but worktree lacks local `node_modules`; direct absolute-tsx retry ran and reported `intake_required`, so it was recorded as blocked/non-authoritative for this product-pipeline implementation task.
+- Compact checks immediately after creation: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, and Routing Validators pending.
+
