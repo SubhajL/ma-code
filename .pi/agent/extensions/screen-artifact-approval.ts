@@ -289,6 +289,9 @@ export async function approveScreenArtifact(options: ScreenArtifactApprovalWrite
   return { repoRoot, initiativeId, sliceId, artifactPath: loaded.artifactPath, approvalPath, artifactHash: loaded.artifactHash, approval, createdFiles };
 }
 
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function screenArtifactApprovalExtension(): void {}
+
 export async function rejectScreenArtifact(options: ScreenArtifactApprovalWriteOptions): Promise<ScreenArtifactApprovalResult> {
   const repoRoot = resolve(options.repoRoot ?? process.cwd());
   const initiativeId = assertInitiativeSlug(options.initiative);

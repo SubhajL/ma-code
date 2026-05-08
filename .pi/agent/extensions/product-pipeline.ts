@@ -501,3 +501,6 @@ export function renderProductPipelineRun(run: ProductPipelineRun): string {
 export function repoRelativePath(repoRoot: string, absPath: string): string {
   return relative(resolve(repoRoot), resolve(absPath)).replace(/\\/g, "/");
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function productPipelineExtension(): void {}

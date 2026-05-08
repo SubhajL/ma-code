@@ -299,3 +299,6 @@ export async function writeStitchPromptArtifacts(result: StitchPromptResult): Pr
   await writeFile(metadataAbs, `${JSON.stringify(result.metadata, null, 2)}\n`, "utf8");
   return [result.promptPath, result.metadataPath];
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function stitchPromptGeneratorExtension(): void {}

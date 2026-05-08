@@ -1,7 +1,7 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_product-pipeline-runtime-phase-11.md`
+- `logs/coding/2026-05-08_pi-extension-factory-fix.md`
 
 ## Current planning log
 - `reports/planning/2026-05-07_product-pipeline-runtime-phase-11-plan.md`
@@ -16,4 +16,4 @@
 - Convention details: `logs/README.md`
 
 ## Notes
-- These files capture bounded Phase 11 product pipeline runtime work.
+- Current pointer updated for the repo-root Pi extension factory repair task.

@@ -348,3 +348,6 @@ export function decideProductSlicePhaseTransition(input: ProductSlicePhaseTransi
     requiredPreviousPhase: slice.currentPhase,
   });
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function productSliceLifecycleExtension(): void {}

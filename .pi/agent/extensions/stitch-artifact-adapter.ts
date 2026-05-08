@@ -290,3 +290,6 @@ export async function writeMockStitchArtifactArtifacts(result: MockStitchArtifac
   await writeFile(markdownAbs, result.markdown, "utf8");
   return [result.jsonPath, result.markdownPath];
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function stitchArtifactAdapterExtension(): void {}

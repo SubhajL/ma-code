@@ -370,3 +370,6 @@ export async function writeFrontendPacketPreview(result: GeneratedFrontendImplem
     createdFiles: [result.previewPaths.jsonPath, result.previewPaths.markdownPath],
   };
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function frontendPacketGeneratorExtension(): void {}

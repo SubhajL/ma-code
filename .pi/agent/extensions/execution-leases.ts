@@ -336,3 +336,6 @@ export function summarizeExecutionLeases(state: ExecutionLeaseState): ExecutionL
     })),
   };
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function executionLeasesExtension(): void {}
