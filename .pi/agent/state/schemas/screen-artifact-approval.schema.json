@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/screen-artifact-approval.schema.json",
+  "title": "Screen Artifact Approval",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "initiativeId",
+    "sliceId",
+    "artifactPath",
+    "artifactHash",
+    "decision",
+    "decidedBy",
+    "decidedAt",
+    "approvalRef",
+    "notes",
+    "requiredBefore",
+    "nextAllowedPhase",
+    "blockedReason"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "initiativeId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "sliceId": { "type": "string", "minLength": 1 },
+    "artifactPath": { "type": "string", "pattern": "^docs/initiatives/[a-z0-9]+(?:-[a-z0-9]+)*/screen-artifacts/[^/]+\\.mock-screen\\.json$" },
+    "artifactHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "decision": { "enum": ["pending", "approved", "rejected"] },
+    "decidedBy": { "type": ["string", "null"] },
+    "decidedAt": { "type": ["string", "null"], "format": "date-time" },
+    "approvalRef": { "type": "string", "pattern": "^screen-approval:[a-z0-9]+(?:-[a-z0-9]+)*:[^:]+:[a-f0-9]{64}$" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "requiredBefore": { "const": "fe_implementation" },
+    "nextAllowedPhase": { "enum": ["fe_implementation", null] },
+    "blockedReason": { "type": ["string", "null"] },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["decision", "decidedBy", "decidedAt", "artifactHash", "blockedReason", "note"],
+        "properties": {
+          "decision": { "enum": ["pending", "approved", "rejected"] },
+          "decidedBy": { "type": ["string", "null"] },
+          "decidedAt": { "type": ["string", "null"] },
+          "artifactHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "blockedReason": { "type": ["string", "null"] },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "decision": { "const": "approved" } }, "required": ["decision"] },
+      "then": {
+        "properties": {
+          "nextAllowedPhase": { "const": "fe_implementation" },
+          "blockedReason": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "decision": { "const": "rejected" } }, "required": ["decision"] },
+      "then": {
+        "properties": {
+          "nextAllowedPhase": { "type": "null" },
+          "blockedReason": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  ]
+}

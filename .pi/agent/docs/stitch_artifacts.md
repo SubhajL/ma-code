@@ -16,6 +16,7 @@ This surface is mock-only:
 - It reads `docs/initiatives/<slug>/stitch-prompts/<slice-id>.prompt.json`.
 - It validates the Phase 3 prompt hash and source hashes against prompt, intake, PRD, backlog, and slice-plan files.
 - It writes screen artifact files only when `--apply` is used.
+- It hands off to Phase 5 screen artifact approval before FE implementation.
 - It does not call Stitch.
 - It does not call live services, provider APIs, or network APIs.
 - It does not create task packets.
@@ -58,6 +59,8 @@ The JSON artifact records:
 - `nextAllowedPhase: screen_approval`
 - `nextBlockedUntil: human_artifact_review`
 
+Phase 5 consumes this mock artifact and writes only a hash-bound approval sidecar at `docs/initiatives/<slug>/screen-artifacts/<slice-id>.approval.json` through `harness:screen-approval`.
+
 ## Schema
 
 Schema path:
@@ -75,3 +78,5 @@ Run:
 ```
 
 The validator checks unit tests, integration tests, TypeScript compile coverage for the helper and CLI, package script wiring, schema shape, documentation boundary wording, and static references.
+
+Screen approval validation is covered separately by `./scripts/validate-screen-artifact-approval.sh` and `.pi/agent/docs/screen_artifact_approval.md`.

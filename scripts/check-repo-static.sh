@@ -22,15 +22,18 @@ required_files=(
   ".pi/agent/state/schemas/leases.schema.json"
   ".pi/agent/state/schemas/product-slice-plan.schema.json"
   ".pi/agent/state/schemas/stitch-screen-artifact.schema.json"
+  ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
   ".pi/agent/extensions/stitch-prompt-generator.ts"
   ".pi/agent/extensions/stitch-artifact-adapter.ts"
+  ".pi/agent/extensions/screen-artifact-approval.ts"
   "tests/extension-units/execution-leases.test.ts"
   "tests/extension-units/product-slice-lifecycle.test.ts"
   "tests/extension-units/stitch-prompt-generator.test.ts"
   "tests/extension-units/stitch-artifact-adapter.test.ts"
+  "tests/extension-units/screen-artifact-approval.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -47,6 +50,7 @@ required_files=(
   "scripts/validate-product-slice-lifecycle.sh"
   "scripts/validate-stitch-prompts.sh"
   "scripts/validate-stitch-artifacts.sh"
+  "scripts/validate-screen-artifact-approval.sh"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
@@ -57,6 +61,8 @@ required_files=(
   "tests/integration/stitch-prompt.test.ts"
   "scripts/harness-stitch-artifact.ts"
   "tests/integration/stitch-artifact.test.ts"
+  "scripts/harness-screen-approval.ts"
+  "tests/integration/screen-artifact-approval.test.ts"
   "scripts/validate-prompt-contracts.sh"
   "scripts/validate-prompt-semantics.sh"
   "scripts/validate-prompt-semantics-live.sh"
@@ -69,6 +75,7 @@ required_files=(
   ".pi/agent/docs/product_slice_lifecycle.md"
   ".pi/agent/docs/stitch_prompt_generation.md"
   ".pi/agent/docs/stitch_artifacts.md"
+  ".pi/agent/docs/screen_artifact_approval.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
   "packages/pi-g-skills/README.md"
@@ -136,6 +143,7 @@ for rel in [
     ".pi/agent/state/schemas/leases.schema.json",
     ".pi/agent/state/schemas/product-slice-plan.schema.json",
     ".pi/agent/state/schemas/stitch-screen-artifact.schema.json",
+    ".pi/agent/state/schemas/screen-artifact-approval.schema.json",
     ".pi/agent/package/templates/runtime/leases.json",
     "docs/initiatives/TEMPLATE/slice-plan.json",
     "package.json",
@@ -170,6 +178,7 @@ stitch_artifacts_doc = (root / ".pi/agent/docs/stitch_artifacts.md").read_text(e
 slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(encoding="utf-8")
 product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
 stitch_screen_artifact_schema = json.loads((root / ".pi/agent/state/schemas/stitch-screen-artifact.schema.json").read_text(encoding="utf-8"))
+screen_artifact_approval_schema = json.loads((root / ".pi/agent/state/schemas/screen-artifact-approval.schema.json").read_text(encoding="utf-8"))
 product_slice_template = json.loads((root / "docs/initiatives/TEMPLATE/slice-plan.json").read_text(encoding="utf-8"))
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
@@ -207,9 +216,11 @@ execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts")
 product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
 stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifact-adapter.ts").read_text(encoding="utf-8")
+screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifact-approval.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
+screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-approval.sh").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -791,6 +802,10 @@ assert "harness:stitch-artifact" in package_json.get("scripts", {})
 assert "harness:stitch-artifact" in package_template_json.get("scripts", {})
 assert "test:stitch-artifact" in package_json.get("scripts", {})
 assert "validate:stitch-artifact" in package_json.get("scripts", {})
+assert "harness:screen-approval" in package_json.get("scripts", {})
+assert "harness:screen-approval" in package_template_json.get("scripts", {})
+assert "test:screen-approval" in package_json.get("scripts", {})
+assert "validate:screen-approval" in package_json.get("scripts", {})
 for needle in [
     "PRODUCT_SLICE_PHASE_ORDER",
     "decideProductSlicePhaseTransition",
@@ -899,6 +914,42 @@ for needle in [
     "stitch-artifact-validator: compile helper and CLI",
 ]:
     assert needle in stitch_artifact_validator
+assert screen_artifact_approval_schema["properties"]["decision"]["enum"] == ["pending", "approved", "rejected"]
+assert screen_artifact_approval_schema["properties"]["requiredBefore"]["const"] == "fe_implementation"
+assert "artifactHash" in screen_artifact_approval_schema["required"]
+for needle in [
+    "getScreenArtifactApprovalStatus",
+    "approveScreenArtifact",
+    "rejectScreenArtifact",
+    "Stale screen artifact approval",
+    "Re-approval after rejection requires explicit --reapprove",
+]:
+    assert needle in screen_artifact_approval_extension, needle
+screen_artifact_approval_doc = (root / ".pi/agent/docs/screen_artifact_approval.md").read_text(encoding="utf-8")
+for needle in [
+    "approval-only",
+    "does not create task packets",
+    "does not create queue jobs",
+    "does not write `.pi/agent/state/runtime/*.json`",
+    "artifactHash` matches the current mock screen artifact hash",
+]:
+    assert needle in screen_artifact_approval_doc, needle
+for needle in [
+    "Phase 5 screen artifact approval",
+    "harness:screen-approval",
+    "does not write protected runtime JSON",
+    "hash-bound screen artifact approval",
+]:
+    assert needle in product_planning_doc, needle
+for needle in [
+    "screen-artifact-approval-validator: unit tests",
+    "screen-artifact-approval-validator: integration tests",
+    "screen-artifact-approval-validator: compile helper and CLI",
+]:
+    assert needle in screen_artifact_approval_validator
+assert "screen-artifact-approval.ts" in foundation_compile_validator
+assert "scripts/validate-screen-artifact-approval.sh" in validation_doc
+assert "harness:screen-approval" in stitch_artifacts_doc
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",
