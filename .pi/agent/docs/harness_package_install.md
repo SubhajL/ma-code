@@ -95,7 +95,13 @@ npm run validate:harness-package
 npm run validate:core-workflows
 ```
 
-When a new major feature starts in the target repo, scaffold its durable initiative folder `docs/initiatives/<feature-slug>/` with:
+When a new major feature starts in the target repo, use product intake first:
+```bash
+npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --dry-run
+npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --apply
+```
+
+`harness:product-intake` captures `docs/initiatives/<feature-slug>/intake.json`, blocks vague descriptions with focused clarification questions, and creates PRD/backlog/decisions scaffolds only when the intake is ready for PRD. The lower-level scaffold remains available when explicitly needed:
 ```bash
 npm run harness:init-feature -- --slug example-major-feature
 ```
@@ -110,6 +116,7 @@ A successful bootstrap should leave the target repo with:
 - reusable harness assets copied into place
 - empty runtime placeholders instead of copied task/queue history
 - durable intake and initiative docs scaffold under `docs/`
+- the `harness:product-intake` package alias for safe major-product intake
 - the `harness:init-feature` package alias for explicit initiative-folder bootstrap
 - visible package version metadata in `.pi/agent/package/installed-package.json`
 - a package.json that contains the harness scripts/devDependencies without overwriting unrelated existing settings blindly

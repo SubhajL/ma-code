@@ -86,6 +86,7 @@
 - `scripts/harness-queue-session.ts`
 - `scripts/harness-package.ts`
 - `scripts/harness-init-feature.ts` — Bounded helper that scaffolds `docs/initiatives/<feature-slug>/` from repo-local templates and suggests next planning skills without auto-running them.
+- `scripts/harness-product-intake.ts` — Safe Phase 1 product-intake wrapper that validates descriptions, captures `intake.json`, reuses `harness:init-feature` for ready scaffolds, and avoids Stitch/task/queue generation.
 - `scripts/harness-scheduled-workflows.ts`
 - `scripts/harness-worktree.ts`
 - `scripts/harness-pr-gate.ts`

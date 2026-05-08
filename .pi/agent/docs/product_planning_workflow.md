@@ -10,7 +10,10 @@ It adapts useful grill/PRD/issues patterns into the existing Pi harness without 
 - Use current harness task packets and queue jobs as the execution surface; do not introduce a separate issue tracker dependency in Phase 1.
 - Intake trigger details live in `.pi/agent/docs/intake_policy.md` and the machine-readable trigger matrix `.pi/agent/intake/intake-trigger-policy.json`.
 - Every major feature should keep durable planning artifacts under `docs/initiatives/<feature-slug>/`.
-- Use `npm run harness:init-feature -- --slug <feature-slug>` to scaffold that initiative folder before filling in the PRD/backlog/decisions docs. Add `--domains frontend` or `--domains backend` only when the feature actually needs domain docs.
+- Use `npm run harness:product-intake -- --slug <feature-slug> --description "..." --dry-run` to validate product-intake inputs and planned files without writing.
+- Use `npm run harness:product-intake -- --slug <feature-slug> --description "..." --apply` as the safe Phase 1 entry point for major product work; it captures `intake.json`, blocks vague descriptions with focused clarification questions, and creates PRD/backlog/decisions scaffolds only when intake is ready for PRD.
+- `harness:product-intake` reuses `harness:init-feature` for ready apply-mode scaffolds without changing the existing `harness:init-feature` command. Use `npm run harness:init-feature -- --slug <feature-slug>` only when you intentionally want the lower-level initiative-folder scaffold.
+- Add `--domains frontend` or `--domains backend` to the lower-level scaffold only when the feature actually needs domain docs.
 
 ## Workflow stages
 ### 1. Grill-style clarification
@@ -31,6 +34,8 @@ Clarify:
 - top failure modes
 
 ### 2. PRD synthesis
+PRD/backlog happen before Stitch. Phase 1 product intake never calls Stitch, never creates task packets, and never dispatches queue jobs.
+
 Convert clarified context into a PRD-style planning artifact.
 A useful PRD should include:
 - problem statement from the user's perspective
@@ -65,6 +70,8 @@ Mark HITL when a slice needs human judgment, architecture approval, design appro
 Mark AFK only when scope, validation, and safety boundaries are clear.
 
 ### 4. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake. Do not generate FE/BE worker packets from `harness:product-intake`; first complete PRD synthesis and backlog slicing.
+
 Map approved slices into current harness task packets or queue jobs.
 Preserve:
 - goal and non-goals

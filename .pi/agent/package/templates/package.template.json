@@ -12,6 +12,7 @@
     "harness:package": "node --import tsx scripts/harness-package.ts manifest",
     "harness:package:json": "node --import tsx scripts/harness-package.ts manifest --json",
     "harness:init-feature": "node --import tsx scripts/harness-init-feature.ts",
+    "harness:product-intake": "node --import tsx scripts/harness-product-intake.ts",
     "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
     "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
     "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",

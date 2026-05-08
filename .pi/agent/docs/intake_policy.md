@@ -34,17 +34,27 @@ This document defines when work may start directly and when it must first pass t
   - new product behavior
   - new major feature
   - cross-domain auth/schema/infra change
+- safe entry point:
+  - `npm run harness:product-intake -- --slug <feature-slug> --description "..." --dry-run`
+  - `npm run harness:product-intake -- --slug <feature-slug> --description "..." --apply`
 - required next steps:
-  - `g-grill`
-  - `g-prd`
-  - `g-issues`
+  - `g-grill` when the intake is blocked or clarification questions remain
+  - `g-prd` once intake is ready for PRD
+  - `g-issues` after PRD approval
 
 ## Major feature rule
 - every major feature should get a folder under `docs/initiatives/<feature-slug>/`
-- minimum expected files:
+- `harness:product-intake --apply` writes `docs/initiatives/<feature-slug>/intake.json` to durably capture the source description and readiness status
+- clear intake creates the minimum expected planning files:
   - `prd.md`
   - `backlog.md`
   - `decisions.md`
+- blocked intake records focused clarification questions and does not create PRD/backlog/decisions scaffolds until the description is clear enough for PRD
+
+## Phase 1 automation boundary
+- PRD/backlog happen before Stitch
+- Phase 1 product intake does not call Stitch
+- Phase 1 product intake does not create task packets, queue jobs, frontend packets, or backend packets
 
 ## Domain docs bootstrap rule
 - create domain-neutral docs everywhere

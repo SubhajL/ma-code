@@ -283,10 +283,14 @@ Harness package/bootstrap examples:
 npm run harness:package
 npm run harness:package:json
 node --import tsx scripts/harness-package.ts bootstrap --dest /path/to/target-repo
+npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --dry-run
+npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --apply
 npm run harness:init-feature -- --slug example-major-feature
 ```
 
-The bounded `harness:init-feature` helper scaffolds `docs/initiatives/<feature-slug>/` from the repo-local initiative templates and prints optional next-step suggestions for `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues`.
+The bounded `harness:product-intake` helper is the safe Phase 1 entry point for major product work. Dry-run validates inputs and planned files without writing; apply captures `docs/initiatives/<feature-slug>/intake.json` and, only for clear intake, reuses `harness:init-feature` to scaffold PRD/backlog/decisions. PRD/backlog happen before Stitch; Phase 1 product intake never creates Stitch artifacts, task packets, queue jobs, frontend packets, or backend packets.
+
+The lower-level `harness:init-feature` helper scaffolds `docs/initiatives/<feature-slug>/` from the repo-local initiative templates and prints optional next-step suggestions for `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues`.
 
 See also:
 - `.pi/agent/docs/harness_packaging_strategy.md`
