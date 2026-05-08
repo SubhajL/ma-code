@@ -75,3 +75,11 @@ LOW
 - Initial PR state: OPEN, draft false, mergeStateStatus BLOCKED while checks were pending.
 - Submission path: GitHub fallback; `gt status` passed through to git status, so Graphite stack submission was out of scope.
 - Compact initial checks: Repo Static Checks passed; CodeQL, Dependency Review, Foundation Extension Compile, and Routing Validators pending.
+
+## PR Gate (2026-05-08T09:45:00Z)
+
+- Command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-pr-gate.ts --pr 114 --max-attempts 3`
+- Result: final status pass; checks pass=6 fail=0 pending=0 total=6.
+- Checks: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, Routing Validators all passed.
+- Review/comment blockers: none; benign bot comments only.
+- Recommended next action: merge_or_sync.

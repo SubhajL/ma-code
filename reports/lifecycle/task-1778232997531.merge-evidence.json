@@ -37,5 +37,9 @@
   "pr": {
     "url": "https://github.com/SubhajL/ma-code/pull/114",
     "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
   }
 }
