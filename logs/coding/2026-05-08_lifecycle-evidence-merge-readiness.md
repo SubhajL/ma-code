@@ -84,8 +84,18 @@ Review Verdict: no_required_fixes
 
 ## Creation (2026-05-08T01:05:00Z)
 
-- Branch: 
-- Commit: 
-- Lifecycle evidence file created: 
-- Purpose: allow worktree-safe lifecycle assessment through /later PR stages without protected runtime task JSON in the worktree.
+- Branch: `split/task-1778227621984-lifecycle-evidence-merge-readiness`
+- Commit: `830d0f921e1aa2b7ca7e4be670a237dd122b5127`
+- Lifecycle evidence file created: `reports/lifecycle/task-1778227621984.merge-evidence.json`
+- Purpose: allow worktree-safe lifecycle assessment through `created`/later PR stages without protected runtime task JSON in the worktree.
+
+
+## 2026-05-08T01:10:00Z - PR submission
+
+- Branch: `split/task-1778227621984-lifecycle-evidence-merge-readiness`
+- Base: `main`
+- PR: https://github.com/SubhajL/ma-code/pull/113
+- PR state after creation: open, not draft.
+- Lifecycle preflight: `harness:slice-lifecycle check --stage created --evidence-file reports/lifecycle/task-1778227621984.merge-evidence.json --json` => ready.
+- Submission path: standard GitHub fallback (`git push`, `gh pr create`).
 

@@ -31,5 +31,9 @@
   "creation": {
     "branch": "split/task-1778227621984-lifecycle-evidence-merge-readiness",
     "commit": "830d0f921e1aa2b7ca7e4be670a237dd122b5127"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/113",
+    "state": "OPEN"
   }
 }
