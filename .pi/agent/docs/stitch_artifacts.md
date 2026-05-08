@@ -67,7 +67,18 @@ Schema path:
 
 - `.pi/agent/state/schemas/stitch-screen-artifact.schema.json`
 
-The schema is intentionally mock-only in Phase 4. Later live Stitch integration should add a separate migration path rather than weakening the Phase 4 mock artifact guarantees.
+The schema is intentionally mock-only in Phase 4. Phase 13 live Stitch integration uses a separate additive adapter, CLI, and schema rather than weakening the Phase 4 mock artifact guarantees.
+
+## Live Stitch migration path
+
+Mock mode remains default through `npm run harness:stitch-artifact`. Explicit live generation uses:
+
+```bash
+npm run harness:live-stitch-artifact -- --initiative <slug> --slice <slice-id> --dry-run
+npm run harness:live-stitch-artifact -- --initiative <slug> --slice <slice-id> --apply --approval-ref operator-approved-live-stitch:<ref>
+```
+
+Live generation writes managed payloads under `.pi/agent/artifacts/stitch/` and durable summaries under `docs/initiatives/<slug>/screen-artifacts/<slice-id>.live-screen.json`. Live output still requires human approval via the screen approval phase; generated live output is not approval. The live adapter does not create task packets, does not create queue jobs, does not dispatch workers, does not run as a daemon, and does not implement frontend or backend code. See `.pi/agent/docs/live_stitch_adapter.md`.
 
 ## Validation
 

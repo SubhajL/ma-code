@@ -13,9 +13,10 @@ Phase 5 adds durable human approval sidecars for Phase 4 mock screen artifacts b
 
 This surface is approval-only:
 
-- It reads `docs/initiatives/<slug>/screen-artifacts/<slice-id>.mock-screen.json`.
+- It reads `docs/initiatives/<slug>/screen-artifacts/<slice-id>.mock-screen.json` by default, or a reviewed live summary at `docs/initiatives/<slug>/screen-artifacts/<slice-id>.live-screen.json` when later phases explicitly select live artifact review.
 - It validates the artifact belongs to the requested initiative and slice.
-- It validates the artifact is mock-only and records no live Stitch, task packet, or queue job creation.
+- It distinguishes artifact mode: `mock` or `live`; live summaries still require human approval before downstream implementation.
+- It validates the artifact records no task packet or queue job creation.
 - `status` is read-only and writes no files.
 - `approve` and `reject` write only `docs/initiatives/<slug>/screen-artifacts/<slice-id>.approval.json`; Phase 5 writes only `docs/initiatives/<slug>/screen-artifacts/<slice-id>.approval.json`.
 - It does not call Stitch.
@@ -88,7 +89,8 @@ When an existing rejected decision is explicitly reapproved, the new sidecar rec
 Approval is valid for future FE implementation only when:
 
 - `decision` is `approved`
-- `artifactHash` matches the current mock screen artifact hash
+- `artifactHash` matches the current mock screen artifact hash, or the selected live artifact summary hash when live artifact review is explicitly enabled
+- mode: `mock` or `live` is the operator-reviewed artifact source for the sidecar
 - `requiredBefore` is `fe_implementation`
 - `nextAllowedPhase` is `fe_implementation`
 

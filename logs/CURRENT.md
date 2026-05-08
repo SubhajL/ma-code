@@ -1,7 +1,7 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_pi-extension-factory-fix.md`
+- `logs/coding/2026-05-08_live-stitch-adapter-phase-13.md`
 
 ## Current planning log
 - `reports/planning/2026-05-07_product-pipeline-runtime-phase-11-plan.md`

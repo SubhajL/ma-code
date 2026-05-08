@@ -239,6 +239,14 @@ These patterns should now guide planning, implementation, and review even before
 - split PRDs into thin tracer-bullet slices that cut through required layers end-to-end instead of horizontal layer-only batches
 - mark slices HITL when human product, architecture, design, auth, secrets, or deployment judgment is required; mark AFK only when scope and validation are clear
 
+### Live Stitch artifact operation
+- Mock mode remains default for Stitch screen artifacts; use `harness:stitch-artifact` unless an operator explicitly approves live generation.
+- Use `npm run harness:live-stitch-artifact -- --initiative <slug> --slice <slice-id> --dry-run` first to validate prompt metadata, source hashes, managed paths, required auth/config, and planned live call shape without writing files.
+- Use `npm run harness:live-stitch-artifact -- --initiative <slug> --slice <slice-id> --apply --approval-ref operator-approved-live-stitch:<ref>` only with environment/runtime auth and one bounded provider call.
+- Do not print token values; live credentials must come from environment/runtime configuration only.
+- Managed live payloads stay under `.pi/agent/artifacts/stitch/`; durable initiative docs store summaries, hashes, and references only.
+- Generated live output still requires human approval and does not create task packets, queue jobs, worker sessions, or frontend/backend code.
+
 ### Planning discipline
 For medium- or high-risk work, planning should make these explicit:
 - goal and non-goals
