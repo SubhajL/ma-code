@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "taskId": "task-1778232997531",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Use a dedicated git worktree/branch and do not mutate tracked files on root main.",
+      "Add a fixture-backed product pipeline E2E validator script and Node test runner coverage for checkout-mini.",
+      "Prove success and blocked paths, HITL visibility, stale artifacts, failed validation, missing Phase 10 proof, idempotency, no runtime JSON tracking, and no live calls by default.",
+      "Write Markdown and JSON reports with phase statuses, artifacts, blockers, next actions, idempotency, observability, and go/no-go readiness.",
+      "Wire package/static/docs/core workflow surfaces without daemon/watch mode or product code outside temp fixtures."
+    ],
+    "tddSlice": "E2E validator runs a fixture-backed checkout-mini dry-run and reports unresolved screen approval as a HITL gate, not a failure."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "E2E validator exists and is test-covered.",
+      "Success and blocked paths are both proven.",
+      "HITL gates are visible and respected.",
+      "Reports include phase status, artifacts, blockers, next actions, idempotency, observability, and go/no-go decision.",
+      "No daemon/watch mode, live provider/Stitch calls, runtime JSON tracking, or product implementation code outside temp fixtures."
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778232997531-phase14-product-pipeline-e2e"
+  }
+}

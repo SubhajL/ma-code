@@ -153,3 +153,7 @@ npm run harness:product-pipeline -- status --initiative <feature-slug>
 The product pipeline loads `docs/initiatives/<feature-slug>/pipeline.json`, prints the slice DAG, shows HITL gates, preserves sequential phase order inside each slice, and consumes Phase 10 parallel decisions. Dry-run writes no files. Apply stops at unresolved HITL gates and performs one bounded foreground materialization step, writing only `docs/initiatives/<feature-slug>/pipeline-runs/<run-id>.json`.
 
 Phase 11 does not introduce a daemon and does not create runtime tasks, queue jobs, worker sessions, handoffs, or product code. Intra-slice phases remain sequential. Cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof for every active pair.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.

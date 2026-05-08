@@ -73,6 +73,11 @@ required_files=(
   "scripts/validate-slice-dependencies.sh"
   "scripts/harness-slice-dependencies.ts"
   "scripts/validate-product-pipeline.sh"
+  "scripts/validate-product-pipeline-e2e.sh"
+  "tests/integration/product-pipeline-e2e.test.ts"
+  "tests/fixtures/product-pipeline-e2e/checkout-mini/README.md"
+  "tests/fixtures/product-pipeline-e2e/checkout-mini/expected-artifacts.json"
+  ".pi/agent/docs/product_pipeline_e2e_pilot.md"
   "scripts/harness-fe-packet.ts"
   "scripts/harness-be-packet.ts"
   "scripts/harness-product-pipeline.ts"
@@ -296,6 +301,9 @@ frontend_packet_validator = (root / "scripts/validate-frontend-packets.sh").read
 backend_packet_validator = (root / "scripts/validate-backend-packets.sh").read_text(encoding="utf-8")
 slice_dependency_validator = (root / "scripts/validate-slice-dependencies.sh").read_text(encoding="utf-8")
 product_pipeline_validator = (root / "scripts/validate-product-pipeline.sh").read_text(encoding="utf-8")
+product_pipeline_e2e_validator = (root / "scripts/validate-product-pipeline-e2e.sh").read_text(encoding="utf-8")
+product_pipeline_e2e_test = (root / "tests/integration/product-pipeline-e2e.test.ts").read_text(encoding="utf-8")
+product_pipeline_e2e_doc = (root / ".pi/agent/docs/product_pipeline_e2e_pilot.md").read_text(encoding="utf-8")
 slice_contract_doc = (root / ".pi/agent/docs/slice_contracts.md").read_text(encoding="utf-8")
 frontend_packet_doc = (root / ".pi/agent/docs/frontend_packet_generation.md").read_text(encoding="utf-8")
 backend_packet_doc = (root / ".pi/agent/docs/backend_packet_generation.md").read_text(encoding="utf-8")
@@ -1262,6 +1270,35 @@ for needle in [
     "product-pipeline-validator: compile helper and cli",
 ]:
     assert needle in product_pipeline_validator, needle
+for needle in [
+    "boundedFullAutoReadiness",
+    "blockedPathsProven",
+    "hitlGatesProven",
+    "goNoGo",
+    "liveProviderCalls",
+    "liveStitchCalls",
+    "trackedRuntimeJsonFiles",
+    "waiting_for_human",
+]:
+    assert needle in product_pipeline_e2e_validator, needle
+for needle in [
+    "validate-product-pipeline-e2e.sh",
+    "checkout-mini",
+    "boundedFullAutoReadiness",
+    "blockedPathsProven",
+    "live boundaries",
+]:
+    assert needle in product_pipeline_e2e_test, needle
+for needle in [
+    "Phase 14",
+    "checkout-mini",
+    "No daemon/watch mode is introduced",
+    "No live provider or live Stitch call is required by default",
+    "boundedFullAutoReadiness",
+]:
+    assert needle in product_pipeline_e2e_doc, needle
+assert "validate:product-pipeline-e2e" in package_json.get("scripts", {})
+assert "product_pipeline_e2e" in core_workflows_validator or "product pipeline E2E pilot" in core_workflows_validator
 assert product_pipeline_schema["title"] == "Product Pipeline Run"
 assert "product-pipeline.ts" in foundation_compile_validator
 for needle in [

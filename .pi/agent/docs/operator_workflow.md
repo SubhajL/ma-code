@@ -509,3 +509,7 @@ npm run harness:operator -- product-pipeline dry-run --initiative <feature-slug>
 Use dry-run first: it writes no files, shows the complete slice DAG, reports HITL gates, and reports Phase 10 parallel decisions. Use apply only for one bounded foreground materialization step. Apply stops at HITL gates, writes only `docs/initiatives/<slug>/pipeline-runs/<run-id>.json`, and does not create runtime tasks, queue jobs, worker sessions, handoffs, or product code.
 
 Parallelism remains conservative: intra-slice phases remain sequential, and cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof for every active pair. Missing proof blocks parallel materialization.
+
+## Phase 14 product pipeline E2E pilot
+
+Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.
