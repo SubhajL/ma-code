@@ -10,6 +10,8 @@ It adapts useful grill/PRD/issues patterns into the existing Pi harness without 
 - Use current harness task packets and queue jobs as the execution surface; do not introduce a separate issue tracker dependency in Phase 1.
 - Intake trigger details live in `.pi/agent/docs/intake_policy.md` and the machine-readable trigger matrix `.pi/agent/intake/intake-trigger-policy.json`.
 - Every major feature should keep durable planning artifacts under `docs/initiatives/<feature-slug>/`.
+- Product-slice phase order is captured in `docs/initiatives/<feature-slug>/slice-plan.json` using `.pi/agent/state/schemas/product-slice-plan.schema.json`; see `.pi/agent/docs/product_slice_lifecycle.md`.
+- Product slice lifecycle is Phase 2 planning/DAG only: it does not call Stitch, write queue state, create tasks, dispatch workers, or generate FE/BE packets.
 - Use `npm run harness:product-intake -- --slug <feature-slug> --description "..." --dry-run` to validate product-intake inputs and planned files without writing.
 - Use `npm run harness:product-intake -- --slug <feature-slug> --description "..." --apply` as the safe Phase 1 entry point for major product work; it captures `intake.json`, blocks vague descriptions with focused clarification questions, and creates PRD/backlog/decisions scaffolds only when intake is ready for PRD.
 - `harness:product-intake` reuses `harness:init-feature` for ready apply-mode scaffolds without changing the existing `harness:init-feature` command. Use `npm run harness:init-feature -- --slug <feature-slug>` only when you intentionally want the lower-level initiative-folder scaffold.
@@ -69,8 +71,17 @@ Prefer many thin slices over a few thick slices.
 Mark HITL when a slice needs human judgment, architecture approval, design approval, auth/secrets/deploy decisions, or ambiguous product behavior.
 Mark AFK only when scope, validation, and safety boundaries are clear.
 
-### 4. Task-packet handoff
-Task-packet generation is explicitly out of scope for Phase 1 product intake. Do not generate FE/BE worker packets from `harness:product-intake`; first complete PRD synthesis and backlog slicing.
+### 4. Product slice lifecycle plan
+After PRD/backlog slicing and before Stitch/FE/BE work, create or update `docs/initiatives/<feature-slug>/slice-plan.json` from `docs/initiatives/TEMPLATE/slice-plan.json`.
+
+The Phase 2 product-slice lifecycle enforces this required phase order for each slice: `stitch_prompt`, `stitch_generation`, `screen_approval`, `slice_contract`, `fe_implementation`, `fe_validation`, `be_implementation`, `be_validation`, `quality`.
+
+Use the pure helper in `.pi/agent/extensions/product-slice-lifecycle.ts` to validate a slice plan and decide whether a requested phase transition is legal. Same-slice parallel phase requests are forbidden, skipped phases are blocked, and `be_implementation` is blocked until `fe_validation` is complete.
+
+This is a product planning/DAG gate only. It must not write queue state, create runtime tasks, call Stitch, dispatch workers, or generate FE/BE packets.
+
+### 5. Task-packet handoff
+Task-packet generation is explicitly out of scope for Phase 1 product intake and Phase 2 product-slice lifecycle. Do not generate FE/BE worker packets from `harness:product-intake`; first complete PRD synthesis, backlog slicing, and product slice lifecycle planning.
 
 Map approved slices into current harness task packets or queue jobs.
 Preserve:

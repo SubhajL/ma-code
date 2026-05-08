@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "initiativeId": "TEMPLATE",
+  "status": "draft",
+  "slices": [
+    {
+      "sliceId": "slice-001",
+      "title": "Example product slice",
+      "type": "HITL",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "missing",
+          "artifactPath": null,
+          "evidence": []
+        }
+      },
+      "dependencies": [],
+      "blockedReason": null
+    }
+  ],
+  "policy": {
+    "intraSliceParallelism": "forbidden",
+    "unknownTransition": "blocked",
+    "requiredPhaseOrder": [
+      "stitch_prompt",
+      "stitch_generation",
+      "screen_approval",
+      "slice_contract",
+      "fe_implementation",
+      "fe_validation",
+      "be_implementation",
+      "be_validation",
+      "quality"
+    ]
+  }
+}

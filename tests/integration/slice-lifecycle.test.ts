@@ -9,7 +9,7 @@ import { copyFixtureRepoFile, makeTempRepo } from "../extension-units/test-utils
 
 const execFileAsync = promisify(execFile);
 const CLI = join(process.cwd(), "scripts", "harness-slice-lifecycle.ts");
-const TSX_IMPORT = join(process.cwd(), "node_modules", "tsx", "dist", "loader.mjs");
+const TSX_IMPORT = process.env.TSX_IMPORT_PATH ?? join(process.cwd(), "node_modules", "tsx", "dist", "loader.mjs");
 
 async function seedRepo(codingLog: string, planningLog = `# Plan\n\n## Acceptance Criteria\n- Lifecycle assessment works.\n\n## TDD Slice\n- first tracer behavior.\n`, tasks: unknown = {
   activeTaskId: "task-1",

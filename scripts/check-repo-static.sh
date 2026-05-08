@@ -20,9 +20,12 @@ required_files=(
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
   ".pi/agent/state/schemas/leases.schema.json"
+  ".pi/agent/state/schemas/product-slice-plan.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
+  ".pi/agent/extensions/product-slice-lifecycle.ts"
   "tests/extension-units/execution-leases.test.ts"
+  "tests/extension-units/product-slice-lifecycle.test.ts"
   "scripts/validate-phase-a-b.sh"
   "scripts/validate-queue-semantics.sh"
   "scripts/validate-skill-routing.sh"
@@ -36,6 +39,7 @@ required_files=(
   "scripts/validate-queue-runner.sh"
   "scripts/validate-core-workflows.sh"
   "scripts/validate-graphify-discovery.sh"
+  "scripts/validate-product-slice-lifecycle.sh"
   "scripts/harness-pr-gate.ts"
   "scripts/harness-sync-main.ts"
   "scripts/harness-init-feature.ts"
@@ -51,6 +55,7 @@ required_files=(
   ".pi/agent/extensions/discovery-policy.ts"
   "tests/extension-units/discovery-policy.test.ts"
   ".pi/agent/docs/product_planning_workflow.md"
+  ".pi/agent/docs/product_slice_lifecycle.md"
   ".pi/agent/docs/deep_module_refactoring_workflow.md"
   ".pi/agent/docs/tdd_behavior_first_workflow.md"
   "packages/pi-g-skills/README.md"
@@ -71,6 +76,7 @@ required_files=(
   ".github/dependabot.yml"
   ".github/CODEOWNERS"
   ".github/pull_request_template.md"
+  "docs/initiatives/TEMPLATE/slice-plan.json"
 )
 
 for path in "${required_files[@]}"; do
@@ -115,7 +121,9 @@ for rel in [
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
     ".pi/agent/state/schemas/leases.schema.json",
+    ".pi/agent/state/schemas/product-slice-plan.schema.json",
     ".pi/agent/package/templates/runtime/leases.json",
+    "docs/initiatives/TEMPLATE/slice-plan.json",
     "package.json",
     "packages/pi-g-skills/package.json",
 ]:
@@ -142,6 +150,10 @@ architecture_roadmap_alignment_doc = (root / ".pi/agent/docs/architecture_roadma
 harness_package_install_doc = (root / ".pi/agent/docs/harness_package_install.md").read_text(encoding="utf-8")
 operator_install_guide_doc = (root / ".pi/agent/docs/operator_install_guide.md").read_text(encoding="utf-8")
 product_planning_doc = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
+product_slice_lifecycle_doc = (root / ".pi/agent/docs/product_slice_lifecycle.md").read_text(encoding="utf-8")
+slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(encoding="utf-8")
+product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
+product_slice_template = json.loads((root / "docs/initiatives/TEMPLATE/slice-plan.json").read_text(encoding="utf-8"))
 deep_module_doc = (root / ".pi/agent/docs/deep_module_refactoring_workflow.md").read_text(encoding="utf-8")
 tdd_behavior_doc = (root / ".pi/agent/docs/tdd_behavior_first_workflow.md").read_text(encoding="utf-8")
 g_coding_skill = (root / "packages/pi-g-skills/skills/g-coding/SKILL.md").read_text(encoding="utf-8")
@@ -175,6 +187,8 @@ graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
 execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts").read_text(encoding="utf-8")
+product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
+product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
@@ -732,6 +746,62 @@ for needle in [
     "Phase 1 product intake does not create task packets, queue jobs, frontend packets, or backend packets",
 ]:
     assert needle in (root / ".pi/agent/docs/intake_policy.md").read_text(encoding="utf-8")
+required_product_phases = [
+    "stitch_prompt",
+    "stitch_generation",
+    "screen_approval",
+    "slice_contract",
+    "fe_implementation",
+    "fe_validation",
+    "be_implementation",
+    "be_validation",
+    "quality",
+]
+assert [entry["const"] for entry in product_slice_lifecycle_schema["$defs"]["requiredPhaseOrder"]["prefixItems"]] == required_product_phases
+assert product_slice_template["policy"]["requiredPhaseOrder"] == required_product_phases
+assert product_slice_template["policy"]["intraSliceParallelism"] == "forbidden"
+assert "test:product-slice-lifecycle" in package_json.get("scripts", {})
+assert "validate:product-slice-lifecycle" in package_json.get("scripts", {})
+for needle in [
+    "PRODUCT_SLICE_PHASE_ORDER",
+    "decideProductSlicePhaseTransition",
+    "validateProductSlicePlan",
+    "loadProductSlicePlan",
+    "blocked_same_slice_parallel",
+    "blocked_out_of_order",
+]:
+    assert needle in product_slice_lifecycle_extension
+assert "product-slice-lifecycle.ts" in foundation_compile_validator
+for needle in [
+    "product-slice-lifecycle.ts",
+    "product-slice-lifecycle.test.ts",
+    "product-slice-plan.schema.json",
+]:
+    assert needle in extension_unit_validator
+for needle in [
+    "planning/DAG only",
+    "does not write queue state",
+    "does not create tasks",
+    "does not call Stitch",
+    "does not dispatch",
+    "fe_validation",
+    "be_implementation",
+]:
+    assert needle in product_slice_lifecycle_doc
+for needle in [
+    "docs/initiatives/<feature-slug>/slice-plan.json",
+    "Product slice lifecycle is Phase 2 planning/DAG only",
+    "Same-slice parallel phase requests are forbidden",
+    "be_implementation` is blocked until `fe_validation` is complete",
+]:
+    assert needle in product_planning_doc
+assert "intentionally separate from the product-slice planning/DAG lifecycle" in slice_lifecycle_doc
+for needle in [
+    "product-slice-lifecycle-validator: unit tests",
+    "product-slice-lifecycle-validator: compile helper",
+    "product-slice-lifecycle-validator: schema/docs wiring",
+]:
+    assert needle in product_slice_lifecycle_validator
 assert "validate:graphify-discovery" in package_json.get("scripts", {})
 for needle in [
     "scripts/validate-graphify-discovery.sh",
