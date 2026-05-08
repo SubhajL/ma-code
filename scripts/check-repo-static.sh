@@ -20,6 +20,7 @@ required_files=(
   ".pi/agent/state/schemas/task-packet.schema.json"
   ".pi/agent/state/schemas/handoff.schema.json"
   ".pi/agent/state/schemas/leases.schema.json"
+  ".pi/agent/state/schemas/lifecycle-evidence.schema.json"
   ".pi/agent/state/schemas/product-slice-plan.schema.json"
   ".pi/agent/state/schemas/stitch-screen-artifact.schema.json"
   ".pi/agent/state/schemas/screen-artifact-approval.schema.json"
@@ -27,6 +28,7 @@ required_files=(
   ".pi/agent/state/schemas/frontend-validation-evidence.schema.json"
   ".pi/agent/package/templates/runtime/leases.json"
   ".pi/agent/extensions/execution-leases.ts"
+  ".pi/agent/extensions/slice-lifecycle.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
   ".pi/agent/extensions/stitch-prompt-generator.ts"
   ".pi/agent/extensions/stitch-artifact-adapter.ts"
@@ -169,6 +171,7 @@ for rel in [
     ".pi/agent/state/schemas/task-packet.schema.json",
     ".pi/agent/state/schemas/handoff.schema.json",
     ".pi/agent/state/schemas/leases.schema.json",
+    ".pi/agent/state/schemas/lifecycle-evidence.schema.json",
     ".pi/agent/state/schemas/product-slice-plan.schema.json",
     ".pi/agent/state/schemas/stitch-screen-artifact.schema.json",
     ".pi/agent/state/schemas/screen-artifact-approval.schema.json",
@@ -207,6 +210,7 @@ product_slice_lifecycle_doc = (root / ".pi/agent/docs/product_slice_lifecycle.md
 stitch_prompt_generation_doc = (root / ".pi/agent/docs/stitch_prompt_generation.md").read_text(encoding="utf-8")
 stitch_artifacts_doc = (root / ".pi/agent/docs/stitch_artifacts.md").read_text(encoding="utf-8")
 slice_lifecycle_doc = (root / ".pi/agent/docs/slice_lifecycle.md").read_text(encoding="utf-8")
+lifecycle_evidence_schema = json.loads((root / ".pi/agent/state/schemas/lifecycle-evidence.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_schema = json.loads((root / ".pi/agent/state/schemas/product-slice-plan.schema.json").read_text(encoding="utf-8"))
 stitch_screen_artifact_schema = json.loads((root / ".pi/agent/state/schemas/stitch-screen-artifact.schema.json").read_text(encoding="utf-8"))
 screen_artifact_approval_schema = json.loads((root / ".pi/agent/state/schemas/screen-artifact-approval.schema.json").read_text(encoding="utf-8"))
@@ -246,6 +250,7 @@ graphify_validation_decision_extension = (root / ".pi/agent/extensions/graphify-
 graphify_orchestration_decision_extension = (root / ".pi/agent/extensions/graphify-orchestration-decision.ts").read_text(encoding="utf-8")
 graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchestrator.ts").read_text(encoding="utf-8")
 execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts").read_text(encoding="utf-8")
+slice_lifecycle_extension = (root / ".pi/agent/extensions/slice-lifecycle.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
 stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifact-adapter.ts").read_text(encoding="utf-8")
@@ -256,6 +261,9 @@ backend_packet_extension = (root / ".pi/agent/extensions/backend-packet-generato
 product_pipeline_extension = (root / ".pi/agent/extensions/product-pipeline.ts").read_text(encoding="utf-8")
 product_pipeline_schema = json.loads((root / ".pi/agent/state/schemas/product-pipeline.schema.json").read_text(encoding="utf-8"))
 product_slice_lifecycle_validator = (root / "scripts/validate-product-slice-lifecycle.sh").read_text(encoding="utf-8")
+slice_lifecycle_validator = (root / "scripts/validate-slice-lifecycle.sh").read_text(encoding="utf-8")
+harness_slice_lifecycle_cli = (root / "scripts/harness-slice-lifecycle.ts").read_text(encoding="utf-8")
+harness_merge_cli = (root / "scripts/harness-merge.ts").read_text(encoding="utf-8")
 stitch_prompt_validator = (root / "scripts/validate-stitch-prompts.sh").read_text(encoding="utf-8")
 stitch_artifact_validator = (root / "scripts/validate-stitch-artifacts.sh").read_text(encoding="utf-8")
 screen_artifact_approval_validator = (root / "scripts/validate-screen-artifact-approval.sh").read_text(encoding="utf-8")
@@ -887,6 +895,30 @@ for needle in [
 ]:
     assert needle in product_planning_doc
 assert "intentionally separate from the product-slice planning/DAG lifecycle" in slice_lifecycle_doc
+assert lifecycle_evidence_schema["title"] == "Lifecycle Evidence Bundle"
+assert lifecycle_evidence_schema["properties"]["version"]["const"] == 1
+assert "directImplementationExemption" in lifecycle_evidence_schema["properties"]
+for needle in [
+    "SliceLifecycleEvidenceBundle",
+    "evidenceFile",
+    "directImplementationExemption",
+    "lifecycleEvidencePath",
+]:
+    assert needle in slice_lifecycle_extension, needle
+for needle in [
+    "--evidence-file",
+    "reports/lifecycle/<task-id>.merge-evidence.json",
+]:
+    assert needle in slice_lifecycle_doc, needle
+assert "--evidence-file" in harness_slice_lifecycle_cli
+assert "--lifecycle-evidence" in harness_merge_cli
+assert "--lifecycle-evidence" in operator_workflow_doc
+for needle in [
+    "slice-lifecycle-validator: unit tests",
+    "slice-lifecycle-validator: integration tests",
+    "slice-lifecycle-validator: compile helper and CLI",
+]:
+    assert needle in slice_lifecycle_validator
 for needle in [
     "product-slice-lifecycle-validator: unit tests",
     "product-slice-lifecycle-validator: compile helper",

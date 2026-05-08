@@ -471,12 +471,13 @@ Phase 8 adds `harness:merge`, a bounded merge-readiness and apply helper. It com
 Useful commands:
 ```bash
 npm run harness:merge -- check --pr <number>
+npm run harness:merge -- check --pr <number> --lifecycle-evidence reports/lifecycle/<task-id>.merge-evidence.json
 npm run harness:merge -- apply --pr <number> --method squash
 npm run harness:merge -- apply --pr <number> --method squash --sync-main
 npm run validate:merge-helper
 ```
 
-`harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied.
+`harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied. For isolated worktree runs where protected runtime task state is unavailable, pass a reviewed lifecycle evidence bundle with `--lifecycle-evidence`; missing RED/GREEN, g-check, PR URL, or PR-gate pass evidence still blocks merge readiness.
 
 ### Product pipeline runtime
 

@@ -36,6 +36,7 @@ This implementation slice lifecycle is intentionally separate from the product-s
 - Coding evidence: `logs/coding/*.md`
 - Planning evidence: `reports/planning/*.md`
 - Task evidence: `.pi/agent/state/runtime/tasks.json` when present in the current runtime
+- Worktree-safe lifecycle evidence bundle: `reports/lifecycle/<task-id>.merge-evidence.json`, validated by `.pi/agent/state/schemas/lifecycle-evidence.schema.json`
 - Git evidence: current branch and cleanliness from local git commands
 - PR-gate/sync-main evidence: explicit log sections from existing helpers or operator summaries
 
@@ -45,7 +46,7 @@ Phase 6 is additive and assessment-first:
 
 - The helper reports `currentStage`, missing prerequisites, blocking gaps, and next allowed actions.
 - `g-create` and `g-submit` should consult lifecycle readiness when evidence is expected.
-- Merge execution itself remains outside hard lifecycle enforcement in this phase.
+- Merge execution is enforced by `harness:merge`, which may consume an explicit lifecycle evidence bundle for isolated worktree runs.
 - `merged` and `local_main_synced` are recognized only from explicit evidence, not live GitHub polling.
 
 ## Operator examples
@@ -54,6 +55,10 @@ Phase 6 is additive and assessment-first:
 npm run harness:slice-lifecycle -- status
 npm run harness:slice-lifecycle -- check --stage create_ready
 npm run harness:slice-lifecycle -- check --stage merge_ready --json
+npm run harness:slice-lifecycle -- check --stage merge_ready --evidence-file reports/lifecycle/<task-id>.merge-evidence.json --json
+npm run harness:merge -- check --pr <number> --lifecycle-evidence reports/lifecycle/<task-id>.merge-evidence.json
 ```
+
+Lifecycle evidence bundles are additive, not a bypass. A bundle may satisfy worktree-safe lifecycle stages only when it records acceptance/TDD or direct-implementation exemption, task acceptance, passing validation, RED/GREEN evidence, `Review Verdict: no_required_fixes`, branch/commit evidence, PR URL/state, and PR-gate clean/pass evidence. Missing or failing evidence still blocks `merge_ready`.
 
 Use the lifecycle helper before claiming create-ready, submit-ready, or merge-ready states. If the helper reports blockers, collect the missing evidence rather than inventing a bypass.

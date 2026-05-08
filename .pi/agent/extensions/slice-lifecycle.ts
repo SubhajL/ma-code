@@ -39,10 +39,34 @@ export interface SliceLifecyclePolicy {
   checkpoints: SliceLifecycleCheckpoint[];
 }
 
+export interface SliceLifecycleEvidenceBundle {
+  version: 1;
+  taskId?: string;
+  directImplementationExemption?: boolean;
+  planning?: {
+    acceptanceCriteria?: string[];
+    tddSlice?: string;
+  };
+  task?: {
+    acceptanceCriteria?: string[];
+    status?: string;
+    validationDecision?: string;
+  };
+  redGreenEvidence?: { red?: boolean; green?: boolean };
+  review?: { verdict?: "no_required_fixes" | "changes_required" };
+  creation?: { branch?: string; commit?: string };
+  pr?: { url?: string; state?: string };
+  prGate?: { status?: string; mergeStateStatus?: string };
+  merged?: { merged?: boolean; mergeCommit?: string };
+  localMainSynced?: { synced?: boolean; aheadBehind?: string };
+}
+
 export interface SliceLifecycleAssessmentInput {
   cwd?: string;
   targetStage?: SliceLifecycleStage;
   explicitEvidence?: string[];
+  evidenceFile?: string;
+  evidenceBundle?: SliceLifecycleEvidenceBundle;
 }
 
 export interface SliceLifecycleEvidence {
@@ -61,6 +85,7 @@ export interface SliceLifecycleEvidence {
   prGateClean: boolean;
   merged: boolean;
   localMainSynced: boolean;
+  lifecycleEvidencePath?: string;
 }
 
 export interface SliceLifecycleAssessment {
@@ -124,6 +149,63 @@ function parsePrUrl(text: string): string | undefined {
 
 function parsePrState(text: string): string | undefined {
   return text.match(/(?:PR #\d+:|State:)\s*(MERGED|OPEN|CLOSED)/i)?.[1]?.toUpperCase();
+}
+
+function parseStringArrayValue(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0).map((entry) => entry.trim()) : [];
+}
+
+function normalizeLifecycleEvidenceBundle(raw: unknown): SliceLifecycleEvidenceBundle {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("Lifecycle evidence bundle must be an object.");
+  const record = raw as Record<string, unknown>;
+  if (record.version !== 1) throw new Error("Lifecycle evidence bundle version must be 1.");
+  const planning = record.planning && typeof record.planning === "object" && !Array.isArray(record.planning) ? record.planning as Record<string, unknown> : undefined;
+  const task = record.task && typeof record.task === "object" && !Array.isArray(record.task) ? record.task as Record<string, unknown> : undefined;
+  const redGreenEvidence = record.redGreenEvidence && typeof record.redGreenEvidence === "object" && !Array.isArray(record.redGreenEvidence) ? record.redGreenEvidence as Record<string, unknown> : undefined;
+  const review = record.review && typeof record.review === "object" && !Array.isArray(record.review) ? record.review as Record<string, unknown> : undefined;
+  const creation = record.creation && typeof record.creation === "object" && !Array.isArray(record.creation) ? record.creation as Record<string, unknown> : undefined;
+  const pr = record.pr && typeof record.pr === "object" && !Array.isArray(record.pr) ? record.pr as Record<string, unknown> : undefined;
+  const prGate = record.prGate && typeof record.prGate === "object" && !Array.isArray(record.prGate) ? record.prGate as Record<string, unknown> : undefined;
+  const merged = record.merged && typeof record.merged === "object" && !Array.isArray(record.merged) ? record.merged as Record<string, unknown> : undefined;
+  const localMainSynced = record.localMainSynced && typeof record.localMainSynced === "object" && !Array.isArray(record.localMainSynced) ? record.localMainSynced as Record<string, unknown> : undefined;
+  const verdict = review?.verdict;
+  if (verdict !== undefined && verdict !== "no_required_fixes" && verdict !== "changes_required") throw new Error("Lifecycle evidence review.verdict must be no_required_fixes or changes_required.");
+  return {
+    version: 1,
+    taskId: typeof record.taskId === "string" ? record.taskId : undefined,
+    directImplementationExemption: record.directImplementationExemption === true,
+    planning: planning ? {
+      acceptanceCriteria: parseStringArrayValue(planning.acceptanceCriteria),
+      tddSlice: typeof planning.tddSlice === "string" ? planning.tddSlice : undefined,
+    } : undefined,
+    task: task ? {
+      acceptanceCriteria: parseStringArrayValue(task.acceptanceCriteria),
+      status: typeof task.status === "string" ? task.status : undefined,
+      validationDecision: typeof task.validationDecision === "string" ? task.validationDecision : undefined,
+    } : undefined,
+    redGreenEvidence: redGreenEvidence ? { red: redGreenEvidence.red === true, green: redGreenEvidence.green === true } : undefined,
+    review: review ? { verdict: verdict as SliceLifecycleEvidence["reviewVerdict"] } : undefined,
+    creation: creation ? { branch: typeof creation.branch === "string" ? creation.branch : undefined, commit: typeof creation.commit === "string" ? creation.commit : undefined } : undefined,
+    pr: pr ? { url: typeof pr.url === "string" ? pr.url : undefined, state: typeof pr.state === "string" ? pr.state : undefined } : undefined,
+    prGate: prGate ? { status: typeof prGate.status === "string" ? prGate.status : undefined, mergeStateStatus: typeof prGate.mergeStateStatus === "string" ? prGate.mergeStateStatus : undefined } : undefined,
+    merged: merged ? { merged: merged.merged === true, mergeCommit: typeof merged.mergeCommit === "string" ? merged.mergeCommit : undefined } : undefined,
+    localMainSynced: localMainSynced ? { synced: localMainSynced.synced === true, aheadBehind: typeof localMainSynced.aheadBehind === "string" ? localMainSynced.aheadBehind : undefined } : undefined,
+  };
+}
+
+function resolveLifecycleEvidencePath(cwd: string, evidenceFile: string): string {
+  const normalized = evidenceFile.replace(/\\/g, "/").replace(/^\.\//, "");
+  if (normalized.startsWith("/") || normalized.includes("..") || !normalized.startsWith("reports/lifecycle/") || !normalized.endsWith(".json")) {
+    throw new Error("Lifecycle evidence file must be a repo-local JSON file under reports/lifecycle/.");
+  }
+  return resolve(cwd, normalized);
+}
+
+async function loadLifecycleEvidenceBundle(cwd: string, evidenceFile?: string, evidenceBundle?: SliceLifecycleEvidenceBundle): Promise<{ bundle?: SliceLifecycleEvidenceBundle; path?: string }> {
+  if (evidenceBundle) return { bundle: normalizeLifecycleEvidenceBundle(evidenceBundle), path: undefined };
+  if (!evidenceFile) return {};
+  const path = resolveLifecycleEvidencePath(cwd, evidenceFile);
+  return { bundle: normalizeLifecycleEvidenceBundle(JSON.parse(await readFile(path, "utf8"))), path };
 }
 
 async function loadTaskEvidence(cwd: string): Promise<{ taskReady: boolean; taskValidated: boolean }> {
@@ -204,26 +286,39 @@ export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput 
   const combinedText = [currentLog, planningText, codingText, explicitText].join("\n");
   const taskEvidence = await loadTaskEvidence(cwd);
   const git = readGitState(cwd);
+  const lifecycleEvidence = await loadLifecycleEvidenceBundle(cwd, input.evidenceFile, input.evidenceBundle);
+  const bundle = lifecycleEvidence.bundle;
+  const bundlePlanningReady = Boolean(
+    bundle?.directImplementationExemption === true ||
+    (bundle?.planning?.acceptanceCriteria && bundle.planning.acceptanceCriteria.length > 0) ||
+    (bundle?.planning?.tddSlice && bundle.planning.tddSlice.trim().length > 0),
+  );
+  const bundleTaskReady = Boolean(bundle?.task?.acceptanceCriteria && bundle.task.acceptanceCriteria.length > 0);
+  const bundleTaskValidated = bundle?.task?.validationDecision === "pass" || bundle?.task?.status === "review" || bundle?.task?.status === "done";
+  const bundlePrGateClean = Boolean(
+    bundle?.prGate?.status && /^(pass|passing|success)$/i.test(bundle.prGate.status) &&
+    (!bundle.prGate.mergeStateStatus || /^(CLEAN|pass|passing|success)$/i.test(bundle.prGate.mergeStateStatus)),
+  );
 
-  const hasPlanningArtifact = Boolean(planningRel && planningText.trim() && /(acceptance criteria|tdd|implementation plan|planning)/i.test(planningText));
-  const red = /RED Evidence|\bRED\b/i.test(codingText);
-  const green = /GREEN Evidence|\bGREEN\b/i.test(codingText);
-  const reviewVerdict = parseReviewVerdict(codingText);
-  const prUrl = parsePrUrl(combinedText);
-  const prState = parsePrState(combinedText);
-  const created = /(## Creation|Creation \(g-create\)|branch\/commit artifact|Commit:)/i.test(combinedText);
+  const hasPlanningArtifact = Boolean(planningRel && planningText.trim() && /(acceptance criteria|tdd|implementation plan|planning)/i.test(planningText)) || bundlePlanningReady;
+  const red = /RED Evidence|\bRED\b/i.test(codingText) || bundle?.redGreenEvidence?.red === true;
+  const green = /GREEN Evidence|\bGREEN\b/i.test(codingText) || bundle?.redGreenEvidence?.green === true;
+  const reviewVerdict = parseReviewVerdict(codingText) ?? bundle?.review?.verdict;
+  const prUrl = parsePrUrl(combinedText) ?? bundle?.pr?.url;
+  const prState = parsePrState(combinedText) ?? bundle?.pr?.state?.toUpperCase();
+  const created = /(## Creation|Creation \(g-create\)|branch\/commit artifact|Commit:)/i.test(combinedText) || Boolean(bundle?.creation?.commit);
   const submitted = Boolean(prUrl) || /(## Submission|Submission \(g-submit\)|submitted)/i.test(combinedText);
-  const prGateClean = /(pr[- ]?gate|mergeStateStatus|merge state|Checks:).*?(CLEAN|pass|passing|success)/is.test(combinedText);
-  const merged = /\bMERGED\b|mergedAt|merge commit/i.test(combinedText);
-  const localMainSynced = /(local main equals origin\/main|local_main_synced|ahead\/behind:\s*0\s+0|0\s+0)/i.test(combinedText);
+  const prGateClean = /(pr[- ]?gate|mergeStateStatus|merge state|Checks:).*?(CLEAN|pass|passing|success)/is.test(combinedText) || bundlePrGateClean;
+  const merged = /\bMERGED\b|mergedAt|merge commit/i.test(combinedText) || bundle?.merged?.merged === true || Boolean(bundle?.merged?.mergeCommit);
+  const localMainSynced = /(local main equals origin\/main|local_main_synced|ahead\/behind:\s*0\s+0|0\s+0)/i.test(combinedText) || bundle?.localMainSynced?.synced === true || bundle?.localMainSynced?.aheadBehind === "0 0";
 
   const evidence: SliceLifecycleEvidence = {
     currentLogPath: (await fileExists(currentLogPath)) ? currentLogPath : undefined,
     planningLogPath,
     codingLogPath,
     hasPlanningArtifact,
-    taskReady: taskEvidence.taskReady,
-    taskValidated: taskEvidence.taskValidated,
+    taskReady: taskEvidence.taskReady || bundleTaskReady,
+    taskValidated: taskEvidence.taskValidated || bundleTaskValidated,
     redGreenEvidence: { red, green },
     reviewVerdict,
     branch: git.branch,
@@ -233,6 +328,7 @@ export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput 
     prGateClean,
     merged,
     localMainSynced,
+    lifecycleEvidencePath: lifecycleEvidence.path,
   };
 
   const achieved = new Set<SliceLifecycleStage>();
@@ -240,10 +336,10 @@ export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput 
     achieved.add("intake_required");
     achieved.add("planning_ready");
   }
-  if (hasPlanningArtifact && taskEvidence.taskReady) achieved.add("task_ready");
+  if (hasPlanningArtifact && (taskEvidence.taskReady || bundleTaskReady)) achieved.add("task_ready");
   if (achieved.has("task_ready") && red) achieved.add("coding_red");
   if (achieved.has("coding_red") && green) achieved.add("coding_green");
-  if (achieved.has("coding_green") && taskEvidence.taskValidated) achieved.add("review_ready");
+  if (achieved.has("coding_green") && (taskEvidence.taskValidated || bundleTaskValidated)) achieved.add("review_ready");
   if (achieved.has("review_ready") && reviewVerdict === "no_required_fixes") achieved.add("checked");
   if (achieved.has("checked")) achieved.add("create_ready");
   if (achieved.has("create_ready") && created) achieved.add("created");
