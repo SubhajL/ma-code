@@ -102,3 +102,15 @@ Review Verdict: no_required_fixes
 - Command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-merge.ts check --pr 103`
 - Result: blocked because lifecycle helper reported `planning_ready` despite RED/GREEN/review/PR evidence in this isolated worktree.
 - Next action: use repository PR gate evidence plus explicit user request if merge remains clean.
+
+## Follow-up Fix (2026-05-08) - validator TSX import path
+
+### Issue
+- Post-merge root `npm run validate:slice-contract` failed because the validator defaulted `TSX_IMPORT=tsx` and integration tests run the CLI from temp repo cwd, where package import resolution cannot find `tsx`.
+
+### Fix
+- Updated `scripts/validate-slice-contracts.sh` to resolve `tsx` to an absolute loader path with `require.resolve("tsx")` when `TSX_IMPORT` is not explicitly supplied.
+
+### Validation
+- `TSX_IMPORT=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs npm run validate:slice-contract` — PASS in the implementation worktree.
+- `git diff --check` — PASS.

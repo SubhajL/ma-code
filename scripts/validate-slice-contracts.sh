@@ -6,7 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 NODE_BIN="${NODE_BIN:-node}"
 NPM_BIN="${NPM_BIN:-npm}"
-TSX_IMPORT="${TSX_IMPORT:-tsx}"
+if [[ -z "${TSX_IMPORT:-}" ]]; then
+  TSX_IMPORT="$($NODE_BIN -e 'console.log(require.resolve("tsx"))')"
+fi
 TMP_ROOT="$(mktemp -d)"
 cleanup() {
   python3 -c 'import shutil, sys; shutil.rmtree(sys.argv[1], ignore_errors=True)' "$TMP_ROOT"
