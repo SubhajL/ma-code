@@ -92,3 +92,29 @@ test("explicit merge and sync evidence can satisfy local_main_synced", async () 
   assert.equal(parsed.ok, true);
   assert.equal(parsed.assessment.currentStage, "local_main_synced");
 });
+
+test("CLI check can consume lifecycle evidence bundle for merge_ready", async () => {
+  const cwd = await makeTempRepo("slice-lifecycle-cli-evidence-");
+  await mkdir(join(cwd, ".pi", "agent", "lifecycle"), { recursive: true });
+  await mkdir(join(cwd, "reports", "lifecycle"), { recursive: true });
+  await copyFixtureRepoFile(cwd, ".pi/agent/lifecycle/slice-lifecycle-policy.json");
+  await writeFile(join(cwd, "reports", "lifecycle", "task-123.merge-evidence.json"), `${JSON.stringify({
+    version: 1,
+    taskId: "task-123",
+    directImplementationExemption: true,
+    planning: { acceptanceCriteria: ["CLI consumes lifecycle evidence"], tddSlice: "CLI evidence tracer" },
+    task: { acceptanceCriteria: ["CLI consumes lifecycle evidence"], validationDecision: "pass" },
+    redGreenEvidence: { red: true, green: true },
+    review: { verdict: "no_required_fixes" },
+    creation: { branch: "split/task-123", commit: "abc123" },
+    pr: { url: "https://github.com/example/repo/pull/123", state: "OPEN" },
+    prGate: { status: "pass", mergeStateStatus: "CLEAN" },
+  }, null, 2)}\n`, "utf8");
+
+  const { stdout } = await execFileAsync(process.execPath, ["--import", TSX_IMPORT, CLI, "check", "--stage", "merge_ready", "--evidence-file", "reports/lifecycle/task-123.merge-evidence.json", "--json"], { cwd });
+  const parsed = JSON.parse(stdout);
+
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.assessment.currentStage, "merge_ready");
+  assert.match(parsed.assessment.evidence.lifecycleEvidencePath, /task-123\.merge-evidence\.json$/);
+});

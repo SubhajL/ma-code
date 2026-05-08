@@ -125,3 +125,78 @@ test("explicit PR and sync evidence can recognize later lightweight stages", asy
   assert.equal(assessment.target?.ready, true);
   assert.equal(assessment.evidence.pr.url, "https://github.com/example/repo/pull/1");
 });
+
+test("lifecycle evidence bundle can satisfy merge_ready without runtime task JSON", async () => {
+  const cwd = await makeTempRepo("slice-lifecycle-evidence-bundle-");
+  await mkdir(join(cwd, ".pi", "agent", "lifecycle"), { recursive: true });
+  await mkdir(join(cwd, "reports", "lifecycle"), { recursive: true });
+  await copyFixtureRepoFile(cwd, ".pi/agent/lifecycle/slice-lifecycle-policy.json");
+  await writeFile(join(cwd, "reports", "lifecycle", "task-123.merge-evidence.json"), `${JSON.stringify({
+    version: 1,
+    taskId: "task-123",
+    directImplementationExemption: true,
+    planning: {
+      acceptanceCriteria: ["Valid worktree evidence reaches merge_ready"],
+      tddSlice: "assessSliceLifecycle evidenceFile tracer",
+    },
+    task: {
+      acceptanceCriteria: ["Valid worktree evidence reaches merge_ready"],
+      validationDecision: "pass",
+    },
+    redGreenEvidence: { red: true, green: true },
+    review: { verdict: "no_required_fixes" },
+    creation: { branch: "split/task-123", commit: "abc123" },
+    pr: { url: "https://github.com/example/repo/pull/123", state: "OPEN" },
+    prGate: { status: "pass", mergeStateStatus: "CLEAN" },
+  }, null, 2)}\n`, "utf8");
+
+  const assessment = await assessSliceLifecycle({
+    cwd,
+    targetStage: "merge_ready",
+    evidenceFile: "reports/lifecycle/task-123.merge-evidence.json",
+  });
+
+  assert.equal(assessment.currentStage, "merge_ready");
+  assert.equal(assessment.target?.ready, true);
+  assert.equal(assessment.evidence.lifecycleEvidencePath?.endsWith("reports/lifecycle/task-123.merge-evidence.json"), true);
+  assert.equal(assessment.evidence.pr.url, "https://github.com/example/repo/pull/123");
+});
+
+test("invalid lifecycle evidence bundle still blocks merge_ready", async () => {
+  const cwd = await makeTempRepo("slice-lifecycle-evidence-invalid-");
+  await mkdir(join(cwd, ".pi", "agent", "lifecycle"), { recursive: true });
+  await mkdir(join(cwd, "reports", "lifecycle"), { recursive: true });
+  await copyFixtureRepoFile(cwd, ".pi/agent/lifecycle/slice-lifecycle-policy.json");
+  await writeFile(join(cwd, "reports", "lifecycle", "task-123.merge-evidence.json"), `${JSON.stringify({
+    version: 1,
+    taskId: "task-123",
+    directImplementationExemption: true,
+    planning: { acceptanceCriteria: ["Valid worktree evidence reaches merge_ready"] },
+    task: { acceptanceCriteria: ["Valid worktree evidence reaches merge_ready"], validationDecision: "pass" },
+    redGreenEvidence: { red: true, green: true },
+    review: { verdict: "changes_required" },
+    creation: { branch: "split/task-123", commit: "abc123" },
+    pr: { url: "https://github.com/example/repo/pull/123", state: "OPEN" },
+    prGate: { status: "pass", mergeStateStatus: "CLEAN" },
+  }, null, 2)}\n`, "utf8");
+
+  const assessment = await assessSliceLifecycle({
+    cwd,
+    targetStage: "merge_ready",
+    evidenceFile: "reports/lifecycle/task-123.merge-evidence.json",
+  });
+
+  assert.equal(assessment.target?.ready, false);
+  assert.ok(assessment.missingPrerequisites.includes("checked"));
+});
+
+test("lifecycle evidence file must stay under reports/lifecycle", async () => {
+  const cwd = await makeTempRepo("slice-lifecycle-evidence-contained-");
+  await mkdir(join(cwd, ".pi", "agent", "lifecycle"), { recursive: true });
+  await copyFixtureRepoFile(cwd, ".pi/agent/lifecycle/slice-lifecycle-policy.json");
+
+  await assert.rejects(
+    assessSliceLifecycle({ cwd, targetStage: "merge_ready", evidenceFile: "../outside.json" }),
+    /repo-local JSON file under reports\/lifecycle/,
+  );
+});

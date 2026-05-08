@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
@@ -156,4 +156,35 @@ test("apply without --sync-main does not run sync-main", async () => {
   assert.equal(result.status, "merged");
   assert.equal(syncCalls, 0);
   assert.equal(result.syncMain, undefined);
+});
+
+test("check can reach ready from lifecycle evidence file without runtime task state", async () => {
+  const cwd = await setupMergeRepo("merge-helper-evidence-file-", false);
+  await rm(join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"));
+  await mkdir(join(cwd, "reports", "lifecycle"), { recursive: true });
+  await writeFile(join(cwd, "reports", "lifecycle", "task-merge.merge-evidence.json"), `${JSON.stringify({
+    version: 1,
+    taskId: "task-merge",
+    directImplementationExemption: true,
+    planning: { acceptanceCriteria: ["merge helper consumes lifecycle evidence"], tddSlice: "merge helper evidence tracer" },
+    task: { acceptanceCriteria: ["merge helper consumes lifecycle evidence"], validationDecision: "pass" },
+    redGreenEvidence: { red: true, green: true },
+    review: { verdict: "no_required_fixes" },
+    creation: { branch: "split/task-merge", commit: "abc123" },
+    pr: { url: "https://github.com/example/repo/pull/101", state: "OPEN" },
+    prGate: { status: "pass", mergeStateStatus: "CLEAN" },
+  }, null, 2)}\n`, "utf8");
+  await runGit(cwd, ["add", "."]);
+  await runGit(cwd, ["commit", "-m", "add lifecycle evidence"]);
+  const { runner } = fakeRunner();
+
+  const result = await buildMergeReadiness({
+    pr: "101",
+    repoRoot: cwd,
+    mode: "check",
+    lifecycleEvidenceFile: "reports/lifecycle/task-merge.merge-evidence.json",
+  }, { runner });
+
+  assert.equal(result.readiness.ready, true);
+  assert.equal(result.readiness.recommendedNextAction, "ready_for_manual_merge");
 });

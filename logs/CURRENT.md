@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-08_pi-extension-factory-fix.md`
+- `logs/coding/2026-05-08_lifecycle-evidence-merge-readiness.md`
 
 ## Current planning log
-- `reports/planning/2026-05-07_product-pipeline-runtime-phase-11-plan.md`
+- `reports/planning/2026-05-08_lifecycle-evidence-merge-readiness-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

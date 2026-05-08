@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pi.local/schemas/lifecycle-evidence.schema.json",
+  "title": "Lifecycle Evidence Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": { "const": 1 },
+    "taskId": { "type": "string", "minLength": 1 },
+    "directImplementationExemption": { "type": "boolean" },
+    "planning": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "acceptanceCriteria": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "tddSlice": { "type": "string", "minLength": 1 }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "acceptanceCriteria": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "status": { "type": "string" },
+        "validationDecision": { "enum": ["pass", "fail", "blocked", "pending"] }
+      }
+    },
+    "redGreenEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "red": { "type": "boolean" },
+        "green": { "type": "boolean" }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "verdict": { "enum": ["no_required_fixes", "changes_required"] }
+      }
+    },
+    "creation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "branch": { "type": "string" },
+        "commit": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pr": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": { "type": "string", "pattern": "^https://github\\.com/.+/pull/[0-9]+$" },
+        "state": { "enum": ["OPEN", "MERGED", "CLOSED"] }
+      }
+    },
+    "prGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": { "enum": ["pass", "passing", "success", "fail", "pending"] },
+        "mergeStateStatus": { "type": "string" }
+      }
+    },
+    "merged": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "merged": { "type": "boolean" },
+        "mergeCommit": { "type": "string" }
+      }
+    },
+    "localMainSynced": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "synced": { "type": "boolean" },
+        "aheadBehind": { "type": "string" }
+      }
+    }
+  }
+}
