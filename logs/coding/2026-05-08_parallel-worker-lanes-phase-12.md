@@ -144,3 +144,27 @@ Review Verdict: no_required_fixes
 - Command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-slice-lifecycle.ts check --stage create_ready`
 - Result: blocked with `intake_required` / missing lifecycle checkpoints.
 - Interpretation: lifecycle helper does not recognize this ad hoc Phase 12 implementation slice as create-ready even though task-tool state and coding-log evidence exist; preserving this blocker as known lifecycle evidence instead of hiding it.
+
+## Submission (2026-05-08T00:00:00Z) - PR #110
+
+### Submitted
+- PR: https://github.com/SubhajL/ma-code/pull/110
+- Base: `main`
+- Head: `split/phase-12-parallel-worker-lanes`
+- State: OPEN
+- Draft: no
+- Merge state after CI: CLEAN
+
+### Submission Commands
+- `git push -u origin split/phase-12-parallel-worker-lanes`
+- `gh pr create --base main --head split/phase-12-parallel-worker-lanes --title "feat(harness): add parallel worker lanes" --body-file /tmp/phase12-pr-body.md`
+- `gh pr view 110 --json number,url,state,mergeStateStatus,headRefName,baseRefName,isDraft`
+- `gh pr checks 110`
+- `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-merge.ts check --pr 110`
+
+### PR Gate Evidence
+- CI checks passed before this submission-log follow-up: Dependency Review, CodeQL, Foundation Extension Compile, Repo Static Checks, Routing Validators.
+- Merge helper check blocked despite clean PR gate because lifecycle readiness was not `merge_ready`; current stage reported `intake_required`.
+
+### Next Action
+- Keep PR #110 open until lifecycle readiness evidence/policy is resolved, then rerun merge helper.
