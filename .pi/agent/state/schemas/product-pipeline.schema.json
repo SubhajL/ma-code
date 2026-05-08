@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Product Pipeline Run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "runId",
+    "initiativeId",
+    "mode",
+    "status",
+    "maxParallelSlices",
+    "slices",
+    "parallelDecisions",
+    "materializedWork",
+    "lastAction"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "runId": { "type": "string", "pattern": "^run-[A-Za-z0-9TZ_-]+$" },
+    "initiativeId": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "mode": { "enum": ["dry_run", "apply"] },
+    "status": { "enum": ["planned", "blocked", "waiting_for_human", "materialized", "in_progress", "done", "failed"] },
+    "maxParallelSlices": { "type": "integer", "minimum": 1 },
+    "slices": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/slice" }
+    },
+    "parallelDecisions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/parallelDecision" }
+    },
+    "materializedWork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["queueJobIds", "workerSessionIds", "worktreePaths"],
+      "properties": {
+        "queueJobIds": { "type": "array", "items": { "type": "string" } },
+        "workerSessionIds": { "type": "array", "items": { "type": "string" } },
+        "worktreePaths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "lastAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "at", "summary"],
+      "properties": {
+        "action": { "enum": ["dry_run", "apply", "status", "approve", "reject"] },
+        "at": { "type": "string", "format": "date-time" },
+        "summary": { "type": "string" }
+      }
+    },
+    "sliceDag": { "type": "array" },
+    "blockedSlices": { "type": "array" },
+    "activeLanes": { "type": "array", "items": { "type": "string" } },
+    "nextOperatorAction": { "type": "string" }
+  },
+  "$defs": {
+    "phaseOrder": {
+      "type": "array",
+      "prefixItems": [
+        { "const": "stitch_prompt" },
+        { "const": "stitch_generation" },
+        { "const": "screen_approval" },
+        { "const": "slice_contract" },
+        { "const": "fe_implementation" },
+        { "const": "fe_validation" },
+        { "const": "be_implementation" },
+        { "const": "be_validation" },
+        { "const": "quality" }
+      ],
+      "minItems": 9,
+      "maxItems": 9
+    },
+    "hitlGate": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["type", "status", "summary"],
+      "properties": {
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "summary": { "type": "string" },
+        "artifactPath": { "type": "string" },
+        "approvalRef": { "type": ["string", "null"] }
+      }
+    },
+    "slice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sliceId", "status", "currentPhase", "phaseOrder", "artifacts", "hitlGate", "blockers"],
+      "properties": {
+        "sliceId": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "enum": ["planned", "blocked", "ready", "materialized", "in_progress", "done", "failed"] },
+        "currentPhase": { "enum": ["stitch_prompt", "stitch_generation", "screen_approval", "slice_contract", "fe_implementation", "fe_validation", "be_implementation", "be_validation", "quality"] },
+        "phaseOrder": { "$ref": "#/$defs/phaseOrder" },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "hitlGate": { "$ref": "#/$defs/hitlGate" },
+        "blockers": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "parallelDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sliceIds", "parallelAllowed", "blockers"],
+      "properties": {
+        "sliceIds": { "type": "array", "minItems": 2, "items": { "type": "string" } },
+        "parallelAllowed": { "type": "boolean" },
+        "blockers": { "type": "array", "items": { "type": "string" } },
+        "source": { "type": "string" }
+      }
+    }
+  }
+}

@@ -12,11 +12,12 @@ const SUBCOMMANDS: Record<string, string> = {
   leases: "harness-operator-leases.ts",
   worktree: "harness-worktree.ts",
   "worker-session": "harness-worker-session.ts",
+  "product-pipeline": "harness-product-pipeline.ts",
 };
 
 function printUsage(): void {
   process.stdout.write(
-    `Usage: node --import tsx scripts/harness-operator.ts <subcommand> [args...]\n\nSubcommands:\n  status          Delegate to the operator status surface\n  queue-session   Delegate to the bounded queue-session surface\n  leases          Delegate to the lease inspection surface\n  worktree        Delegate to the bounded worktree helper\n  worker-session  Delegate to the worker-lane lifecycle surface\n  help            Show this help text\n\nNotes:\n  - harness:operator is the preferred front door\n  - legacy operator commands remain supported\n`,
+    `Usage: node --import tsx scripts/harness-operator.ts <subcommand> [args...]\n\nSubcommands:\n  status          Delegate to the operator status surface\n  queue-session   Delegate to the bounded queue-session surface\n  leases          Delegate to the lease inspection surface\n  worktree        Delegate to the bounded worktree helper\n  worker-session  Delegate to the worker-lane lifecycle surface\n  product-pipeline Delegate to the bounded product pipeline surface\n  help            Show this help text\n\nNotes:\n  - harness:operator is the preferred front door\n  - legacy operator commands remain supported\n`,
   );
 }
 

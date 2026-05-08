@@ -477,3 +477,18 @@ npm run validate:merge-helper
 ```
 
 `harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied.
+
+### Product pipeline runtime
+
+Phase 11 provides the bounded product pipeline surface for chaining initiative artifacts into a visible slice execution plan:
+
+```bash
+npm run harness:product-pipeline -- dry-run --initiative <feature-slug> --json
+npm run harness:product-pipeline -- apply --initiative <feature-slug> --max-parallel 1
+npm run harness:product-pipeline -- status --initiative <feature-slug>
+npm run harness:operator -- product-pipeline dry-run --initiative <feature-slug>
+```
+
+Use dry-run first: it writes no files, shows the complete slice DAG, reports HITL gates, and reports Phase 10 parallel decisions. Use apply only for one bounded foreground materialization step. Apply stops at HITL gates, writes only `docs/initiatives/<slug>/pipeline-runs/<run-id>.json`, and does not create runtime tasks, queue jobs, worker sessions, handoffs, or product code.
+
+Parallelism remains conservative: intra-slice phases remain sequential, and cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof for every active pair. Missing proof blocks parallel materialization.

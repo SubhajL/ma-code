@@ -139,3 +139,15 @@ npm run validate:merge-helper
 ```
 
 `harness:merge` is not deployment automation. It does not tag releases, publish changelogs, resolve merge conflicts, or sync local main unless `--sync-main` is explicitly supplied.
+
+## Product pipeline operator surface
+
+Phase 11 adds a bounded `product-pipeline` operator subcommand:
+
+```bash
+npm run harness:operator -- product-pipeline dry-run --initiative <slug>
+npm run harness:operator -- product-pipeline apply --initiative <slug> --max-parallel 1
+npm run harness:operator -- product-pipeline status --initiative <slug>
+```
+
+This surface remains additive and foreground-only. It has no daemon, does not dispatch queue workers, does not directly edit runtime JSON, and keeps HITL gates visible before apply can materialize preview work. Intra-slice phases remain sequential, while cross-slice parallelism requires Phase 10 `parallelAllowed: true` proof.
