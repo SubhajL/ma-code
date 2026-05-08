@@ -255,6 +255,21 @@ const cases = [
     input: { role: "backend_worker", reason: "human_override", modelOverride: "anthropic/claude-opus-4-5" },
     expected: { selectedModelId: "anthropic/claude-opus-4-5", source: "explicit_override" },
   },
+  {
+    name: "screen phase fallback",
+    input: { role: "planning_lead", phaseLane: "screen_design" },
+    expected: { selectedModelId: "anthropic/claude-opus-4-5", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+  },
+  {
+    name: "frontend phase fallback",
+    input: { role: "frontend_worker", phaseLane: "frontend_implementation" },
+    expected: { selectedModelId: "anthropic/claude-opus-4-5", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+  },
+  {
+    name: "backend phase fallback",
+    input: { role: "backend_worker", phaseLane: "backend_implementation" },
+    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+  },
 ];
 
 const results = cases.map((testCase) => {
@@ -268,6 +283,12 @@ const results = cases.map((testCase) => {
   if (testCase.expected.thinking && actual.thinking !== testCase.expected.thinking) {
     throw new Error(`${testCase.name}: expected thinking=${testCase.expected.thinking} got ${actual.thinking}`);
   }
+  if (testCase.expected.phaseRoutingSource && actual.phaseRoutingSource !== testCase.expected.phaseRoutingSource) {
+    throw new Error(`${testCase.name}: expected phaseRoutingSource=${testCase.expected.phaseRoutingSource} got ${actual.phaseRoutingSource}`);
+  }
+  if (testCase.expected.verificationStatus && actual.requestedModelVerificationStatus !== testCase.expected.verificationStatus) {
+    throw new Error(`${testCase.name}: expected requestedModelVerificationStatus=${testCase.expected.verificationStatus} got ${actual.requestedModelVerificationStatus}`);
+  }
   if (testCase.expected.blockedContains) {
     const joined = actual.blockedAdjustments.join("\n");
     if (!joined.includes(testCase.expected.blockedContains)) {
@@ -279,6 +300,9 @@ const results = cases.map((testCase) => {
     selectedModelId: actual.selectedModelId,
     source: actual.source,
     thinking: actual.thinking,
+    phaseLane: actual.phaseLane,
+    phaseRoutingSource: actual.phaseRoutingSource,
+    requestedModelVerificationStatus: actual.requestedModelVerificationStatus,
     blockedAdjustments: actual.blockedAdjustments,
   };
 });
@@ -287,10 +311,10 @@ console.log(JSON.stringify(results, null, 2));
 EOF
 
   if (cd "$REPO_ROOT" && bash -lc "$cmd") >"$out" 2>&1; then
-    local detail="Deterministic helper-level route checks passed."
+    local detail="Deterministic helper-level route checks passed, including Phase 7 screen/frontend/backend phase lanes."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for default, do-not-downgrade, budget override, stronger override, fallback, and explicit override\n- sample output:\n\n\`\`\`json\n$(sed -n '1,120p' "$out")\n\`\`\`"
+    append_check_section "$name" "PASS" "$cmd" "- helper checks passed for default, do-not-downgrade, budget override, stronger override, fallback, explicit override, and Phase 7 screen/frontend/backend phase lanes\n- sample output:\n\n\`\`\`json\n$(sed -n '1,120p' "$out")\n\`\`\`"
   else
     local detail="Helper-level route checks failed."
     record_result "$name" "FAIL" "$detail"
@@ -318,8 +342,36 @@ check_2_compile() {
   fi
 }
 
+check_3_phase_lane_unit_tests() {
+  local name="3. phase-lane harness-routing unit tests"
+  local runtime_dir="$TMP_ROOT/route-runtime"
+  local out="$TMP_ROOT/check_3_phase_lane_unit_tests.txt"
+  local cmd="cd $runtime_dir && npx tsx --test tests/extension-units/harness-routing.test.ts"
+
+  mkdir -p "$runtime_dir/.pi/agent/extensions" "$runtime_dir/tests/extension-units"
+  cp "$REPO_ROOT/.pi/agent/extensions/harness-routing.ts" "$runtime_dir/.pi/agent/extensions/harness-routing.ts"
+  cp "$REPO_ROOT/.pi/agent/models.json" "$runtime_dir/.pi/agent/models.json"
+  cp "$REPO_ROOT/tests/extension-units/harness-routing.test.ts" "$runtime_dir/tests/extension-units/harness-routing.test.ts"
+
+  if (cd "$REPO_ROOT" && bash -lc "$cmd") >"$out" 2>&1; then
+    local detail="Phase-lane harness-routing unit tests passed."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- unit tests covered unverified fallback, verified activation, unavailable fallback, unknown lane rejection, and role-only compatibility"
+  else
+    local detail="Phase-lane harness-routing unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:
+
+\`\`\`
+$(sed -n '1,180p' "$out")
+\`\`\`"
+  fi
+}
+
 check_3_live_probe() {
-  local name="3. live resolve_harness_route tool probe"
+  local name="4. live resolve_harness_route tool probe"
   if [[ $INCLUDE_LIVE -eq 0 ]]; then
     local detail="Live probe skipped by default to avoid unnecessary provider-backed validation spend."
     record_result "$name" "SKIP" "$detail"
@@ -359,6 +411,7 @@ setup_temp_runtime
 write_header
 check_1_helper_resolution
 check_2_compile
+check_3_phase_lane_unit_tests
 check_3_live_probe
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"

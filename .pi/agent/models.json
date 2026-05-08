@@ -3,7 +3,8 @@
     "Internal harness routing map for this repo.",
     "This file is not Pi's provider registry models.json.",
     "Exact provider and model IDs below were verified against `pi --list-models`.",
-    "HARNESS-017 executable routing reads this file as the machine-readable routing policy source."
+    "HARNESS-017 executable routing reads this file as the machine-readable routing policy source.",
+    "Phase 7 adds phase_routing_profiles for product pipeline phases; requested unverified models remain desired targets only and use verified fallbackModelId until verified."
   ],
   "routing_policy": {
     "critical_roles": [
@@ -386,5 +387,45 @@
       "Normal task mutation should happen through a task tool such as task_update.",
       "Direct raw JSON edits are a fallback or maintenance path, not the normal operating path."
     ]
+  },
+  "phase_routing_profiles": {
+    "screen_design": {
+      "intendedUse": "Stitch prompts and screen/design reasoning",
+      "targetModelRequest": "opus-4.7",
+      "verificationStatus": "unverified",
+      "verifiedModelId": null,
+      "fallbackModelId": "anthropic/claude-opus-4-5",
+      "thinking": "high",
+      "allowedThinking": [
+        "medium",
+        "high"
+      ],
+      "activation": "fallback_until_verified"
+    },
+    "frontend_implementation": {
+      "intendedUse": "Frontend implementation planning and UI coding for approved product slices",
+      "targetModelRequest": "opus-4.7",
+      "verificationStatus": "unverified",
+      "verifiedModelId": null,
+      "fallbackModelId": "anthropic/claude-opus-4-5",
+      "thinking": "high",
+      "allowedThinking": [
+        "medium",
+        "high"
+      ],
+      "activation": "fallback_until_verified"
+    },
+    "backend_implementation": {
+      "intendedUse": "Backend implementation for product slices with API/data contract expectations",
+      "targetModelRequest": "gpt-5.5",
+      "verificationStatus": "unverified",
+      "verifiedModelId": null,
+      "fallbackModelId": "openai-codex/gpt-5.4",
+      "thinking": "high",
+      "allowedThinking": [
+        "high"
+      ],
+      "activation": "fallback_until_verified"
+    }
   }
 }
