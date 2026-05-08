@@ -7,11 +7,14 @@ import {
   BUDGET_MODES,
   ROLE_IDS,
   ROUTE_REASONS,
+  PHASE_LANES,
   defaultModelId,
   loadHarnessRoutingConfig,
   resolveHarnessRoute,
   type BudgetMode,
   type HarnessRole,
+  type PhaseLane,
+  type PhaseModelVerificationStatus,
   type RouteReason,
 } from "./harness-routing.ts";
 import { assessDomainGovernance, DEFAULT_DOMAIN_GOVERNANCE_POLICY } from "./domain-governance.ts";
@@ -83,6 +86,10 @@ export interface PacketRoutingSummary {
   selectedProvider: string;
   selectedModel: string;
   source: string;
+  phaseLane?: PhaseLane | null;
+  phaseRoutingSource?: string;
+  requestedModelVerificationStatus?: PhaseModelVerificationStatus | null;
+  requestedModelTarget?: string | null;
 }
 
 export interface TaskPacket {
@@ -149,6 +156,7 @@ export interface TaskPacketInput {
   budgetMode?: BudgetMode;
   failedModels?: string[];
   modelOverride?: string;
+  phaseLane?: PhaseLane;
 }
 
 export interface GeneratedTaskPacket {
@@ -216,6 +224,7 @@ const GenerateTaskPacketSchema = Type.Object({
   budgetMode: Type.Optional(StringEnum(BUDGET_MODES)),
   failedModels: Type.Optional(Type.Array(Type.String())),
   modelOverride: Type.Optional(Type.String()),
+  phaseLane: Type.Optional(StringEnum(PHASE_LANES)),
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -541,6 +550,10 @@ export function renderTaskPacket(packet: TaskPacket): string {
     `- budget mode: ${packet.routing.budgetMode}`,
     `- selected model: ${packet.routing.selectedModelId}`,
     `- route source: ${packet.routing.source}`,
+    `- phase lane: ${packet.routing.phaseLane ?? "none"}`,
+    `- phase routing source: ${packet.routing.phaseRoutingSource ?? "none"}`,
+    `- requested model verification: ${packet.routing.requestedModelVerificationStatus ?? "none"}`,
+    `- requested model target: ${packet.routing.requestedModelTarget ?? "none"}`,
   ].join("\n");
 }
 
@@ -604,6 +617,7 @@ export function generateTaskPacket(
     budgetMode: input.budgetMode ?? "default",
     failedModels: input.failedModels,
     modelOverride: input.modelOverride,
+    phaseLane: input.phaseLane,
   });
   const defaultRoute = defaultModelId(routingConfig.routing_defaults[input.assignedRole]);
   const modelOverride = route.selectedModelId !== defaultRoute ? route.selectedModelId : null;
@@ -654,6 +668,10 @@ export function generateTaskPacket(
       selectedProvider: route.selectedProvider,
       selectedModel: route.selectedModel,
       source: route.source,
+      phaseLane: route.phaseLane,
+      phaseRoutingSource: route.phaseRoutingSource,
+      requestedModelVerificationStatus: route.requestedModelVerificationStatus,
+      requestedModelTarget: route.requestedModelTarget,
     },
   };
 

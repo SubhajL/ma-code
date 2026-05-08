@@ -300,6 +300,29 @@ if (planning.packet.modelOverride !== null) throw new Error("expected planning p
 if (!planning.packet.migrationPathNote.includes("Not applicable")) throw new Error("expected explicit migration path note");
 if ((planning.packet as any).tddSlice != null) throw new Error("expected non-implementation packet to omit tddSlice by default");
 
+const frontendPhasePacket = generateTaskPacket(policy, teams, routingConfig, {
+  sourceGoalId: "phase-8:frontend",
+  assignedTeam: "build",
+  assignedRole: "frontend_worker",
+  title: "Implement frontend packet lane",
+  scope: "Frontend implementation packet should consume Phase 7 routing lane.",
+  workType: "implementation",
+  domains: ["frontend"],
+  allowedPaths: ["src/frontend"],
+  acceptanceCriteria: ["frontend phase lane is visible in routing summary"],
+  tddSlice: {
+    ...tddSlice,
+    boundaryDependencies: ["docs/initiatives/example/contracts/slice-001.contract.json"],
+  },
+  phaseLane: "frontend_implementation",
+});
+validateTaskPacketShape(frontendPhasePacket.packet);
+if ((frontendPhasePacket.packet.routing as any).phaseLane !== "frontend_implementation") throw new Error("expected frontend phase lane in packet routing");
+if (!String((frontendPhasePacket.packet.routing as any).phaseRoutingSource).includes("fallback") && (frontendPhasePacket.packet.routing as any).phaseRoutingSource !== "verified_model") {
+  throw new Error(`expected verified or fallback phase routing source, got ${(frontendPhasePacket.packet.routing as any).phaseRoutingSource}`);
+}
+if (!frontendPhasePacket.renderedPacket.includes("phase lane: frontend_implementation")) throw new Error("expected rendered phase lane evidence");
+
 let missingImplementationTddSliceError = "";
 try {
   generateTaskPacket(policy, teams, routingConfig, {
