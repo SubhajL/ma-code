@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "issueId": "issue-014",
+  "type": "AFK",
+  "queueReadiness": "not_ready",
+  "dependencies": [
+    "issue-007",
+    "issue-012",
+    "issue-013"
+  ],
+  "summary": {
+    "sliceId": "issue-014",
+    "filesToModify": [
+      "tests/e2e/greenfield-smoke.test.ts",
+      "tests/e2e/helpers/greenfield.ts"
+    ],
+    "allowedPaths": [
+      "tests/e2e"
+    ],
+    "contracts": [],
+    "schemaPaths": [],
+    "migrationPaths": [],
+    "configPaths": [],
+    "testPaths": [
+      "tests/e2e/greenfield-smoke.test.ts",
+      "tests/e2e/helpers/greenfield.ts"
+    ],
+    "fixturePaths": [],
+    "notes": [
+      "Phase A source hash: bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416",
+      "Issue type: AFK",
+      "Allowed path roots: tests/e2e"
+    ]
+  },
+  "acceptanceCriteria": [
+    "E2E smoke test covers app load, health display, and fixture-backed placeholder flow.",
+    "Phase A materialization keeps queueReadiness as not_ready."
+  ],
+  "validationProof": [
+    "npm run test:e2e -- greenfield-smoke"
+  ],
+  "hitlGates": []
+}

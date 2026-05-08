@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "issueId": "issue-013",
+  "type": "AFK",
+  "queueReadiness": "not_ready",
+  "dependencies": [
+    "issue-009"
+  ],
+  "summary": {
+    "sliceId": "issue-013",
+    "filesToModify": [
+      "tests/fixtures/greenfield/users.json",
+      "tests/fixtures/greenfield/projects.json",
+      "services/api/src/db/seeds.ts"
+    ],
+    "allowedPaths": [
+      "tests/fixtures/greenfield",
+      "services/api/src/db"
+    ],
+    "contracts": [],
+    "schemaPaths": [],
+    "migrationPaths": [],
+    "configPaths": [],
+    "testPaths": [
+      "tests/fixtures/greenfield/users.json",
+      "tests/fixtures/greenfield/projects.json"
+    ],
+    "fixturePaths": [
+      "tests/fixtures/greenfield/users.json",
+      "tests/fixtures/greenfield/projects.json"
+    ],
+    "notes": [
+      "Phase A source hash: bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416",
+      "Issue type: AFK",
+      "Allowed path roots: tests/fixtures/greenfield, services/api/src/db"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Fixture data is deterministic and safe for local/test use only.",
+    "Phase A materialization keeps queueReadiness as not_ready."
+  ],
+  "validationProof": [
+    "npm run test:api -- seeds"
+  ],
+  "hitlGates": []
+}

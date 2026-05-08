@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "issueId": "issue-018",
+  "type": "AFK",
+  "queueReadiness": "not_ready",
+  "dependencies": [
+    "issue-017"
+  ],
+  "summary": {
+    "sliceId": "issue-018",
+    "filesToModify": [
+      "README.md",
+      "docs/initiatives/greenfield-scaffold/README.md",
+      "docs/initiatives/greenfield-scaffold/backout.md"
+    ],
+    "allowedPaths": [
+      "README.md",
+      "docs/initiatives/greenfield-scaffold"
+    ],
+    "contracts": [],
+    "schemaPaths": [],
+    "migrationPaths": [],
+    "configPaths": [],
+    "testPaths": [],
+    "fixturePaths": [],
+    "notes": [
+      "Phase A source hash: bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416",
+      "Issue type: AFK",
+      "Allowed path roots: README.md, docs/initiatives/greenfield-scaffold"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Documentation explains scaffold purpose, validation, rollout, and backout boundaries.",
+    "Phase A materialization keeps queueReadiness as not_ready."
+  ],
+  "validationProof": [
+    "npm run validate:greenfield-docs"
+  ],
+  "hitlGates": []
+}

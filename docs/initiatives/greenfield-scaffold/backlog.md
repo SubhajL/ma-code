@@ -1,0 +1,465 @@
+# Issue Materialization Backlog — greenfield-scaffold
+
+## Source
+- kind: g-issues
+- capturedAt: 2026-05-09T00:00:00.000Z
+- approvedBy: human:subhajlimanond
+- approvalRef: user-prompt-2026-05-09-phase-a-implementation
+- sourceHash: bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416
+
+## Phase A Boundary
+- Queue readiness remains `not_ready` for every issue.
+- Queue-ready conversion belongs to Phase B.
+- No queue jobs, task packets, worker sessions, or runtime state are materialized by this helper.
+
+## Issue List
+
+### issue-001: Approve greenfield scaffold foundation contract
+- type: HITL
+- status: planned
+- queueReadiness: not_ready
+- dependencies: none
+- userStoriesCovered:
+  - greenfield-scaffold-story-001
+- whatToBuild:
+  - Approve greenfield scaffold foundation contract as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Human confirms the greenfield scaffold initiative scope, path boundaries, and Phase A no-execution boundary.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - none
+- filesToModify:
+  - docs/initiatives/greenfield-scaffold/foundation-contract.md
+- allowedPaths:
+  - docs/initiatives/greenfield-scaffold
+- hitlGates:
+  - Human approval required before Phase B queue-ready conversion.
+
+### issue-002: Scaffold repository app shell
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-001
+- userStoriesCovered:
+  - greenfield-scaffold-story-002
+- whatToBuild:
+  - Scaffold repository app shell as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - App shell can render a placeholder route without backend dependencies.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:web -- app-shell
+  - npm run build:web
+- filesToModify:
+  - apps/web/package.json
+  - apps/web/src/App.tsx
+  - apps/web/src/main.tsx
+- allowedPaths:
+  - apps/web
+- hitlGates:
+  - none
+
+### issue-003: Scaffold backend service shell
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-001
+- userStoriesCovered:
+  - greenfield-scaffold-story-003
+- whatToBuild:
+  - Scaffold backend service shell as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Backend service exposes a health check through a bounded server entrypoint.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:api -- health
+  - npm run build:api
+- filesToModify:
+  - services/api/package.json
+  - services/api/src/server.ts
+  - services/api/src/health.ts
+- allowedPaths:
+  - services/api
+- hitlGates:
+  - none
+
+### issue-004: Wire frontend/backend health handshake
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-002, issue-003
+- userStoriesCovered:
+  - greenfield-scaffold-story-004
+- whatToBuild:
+  - Wire frontend/backend health handshake as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Frontend health client can call the backend health endpoint in integration tests.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:integration -- health-handshake
+- filesToModify:
+  - apps/web/src/lib/health-client.ts
+  - services/api/src/routes/health.ts
+  - tests/integration/health-handshake.test.ts
+- allowedPaths:
+  - apps/web/src/lib
+  - services/api/src/routes
+  - tests/integration
+- hitlGates:
+  - none
+
+### issue-005: Approve product navigation and information architecture
+- type: HITL
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-002
+- userStoriesCovered:
+  - greenfield-scaffold-story-005
+- whatToBuild:
+  - Approve product navigation and information architecture as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Human approves the first navigation map before AFK UI slices proceed.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - none
+- filesToModify:
+  - docs/initiatives/greenfield-scaffold/navigation.md
+- allowedPaths:
+  - docs/initiatives/greenfield-scaffold
+- hitlGates:
+  - Human approval required before Phase B queue-ready conversion.
+
+### issue-006: Create design token scaffold
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-005
+- userStoriesCovered:
+  - greenfield-scaffold-story-006
+- whatToBuild:
+  - Create design token scaffold as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Design tokens expose color, spacing, and typography primitives with tests.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:web -- design-tokens
+- filesToModify:
+  - apps/web/src/styles/tokens.css
+  - apps/web/src/styles/theme.ts
+  - tests/web/design-tokens.test.ts
+- allowedPaths:
+  - apps/web/src/styles
+  - tests/web
+- hitlGates:
+  - none
+
+### issue-007: Create shared component primitives
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-006
+- userStoriesCovered:
+  - greenfield-scaffold-story-007
+- whatToBuild:
+  - Create shared component primitives as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Button, Card, and FormField primitives render accessible labels/states.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:web -- components
+- filesToModify:
+  - apps/web/src/components/Button.tsx
+  - apps/web/src/components/Card.tsx
+  - apps/web/src/components/FormField.tsx
+  - tests/web/components.test.tsx
+- allowedPaths:
+  - apps/web/src/components
+  - tests/web
+- hitlGates:
+  - none
+
+### issue-008: Scaffold authentication placeholder boundary
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-003
+- userStoriesCovered:
+  - greenfield-scaffold-story-008
+- whatToBuild:
+  - Scaffold authentication placeholder boundary as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Auth placeholder keeps secrets/config out of source and returns deterministic unauthenticated state.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:integration -- auth-boundary
+- filesToModify:
+  - services/api/src/auth/session.ts
+  - apps/web/src/auth/session.ts
+  - tests/integration/auth-boundary.test.ts
+- allowedPaths:
+  - services/api/src/auth
+  - apps/web/src/auth
+  - tests/integration
+- hitlGates:
+  - none
+
+### issue-009: Define persistence schema placeholder
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-003
+- userStoriesCovered:
+  - greenfield-scaffold-story-009
+- whatToBuild:
+  - Define persistence schema placeholder as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Persistence schema placeholder validates user/project records without migrations.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:api -- schema
+- filesToModify:
+  - schemas/greenfield/user.schema.json
+  - services/api/src/db/schema.ts
+  - tests/api/schema.test.ts
+- allowedPaths:
+  - schemas/greenfield
+  - services/api/src/db
+  - tests/api
+- hitlGates:
+  - none
+
+### issue-010: Add first migration scaffold
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-009
+- userStoriesCovered:
+  - greenfield-scaffold-story-010
+- whatToBuild:
+  - Add first migration scaffold as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Migration scaffold can be listed and validated without applying to production data.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:api -- migrations
+- filesToModify:
+  - migrations/0001_greenfield_init.sql
+  - services/api/src/db/migrations.ts
+  - tests/api/migrations.test.ts
+- allowedPaths:
+  - migrations
+  - services/api/src/db
+  - tests/api
+- hitlGates:
+  - none
+
+### issue-011: Add API contract artifacts
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-004, issue-009
+- userStoriesCovered:
+  - greenfield-scaffold-story-011
+- whatToBuild:
+  - Add API contract artifacts as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - API contract artifact documents health, auth placeholder, and scaffold resources.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:api -- contracts
+- filesToModify:
+  - docs/initiatives/greenfield-scaffold/contracts/api.contract.json
+  - services/api/src/contracts/openapi.ts
+  - tests/api/contracts.test.ts
+- allowedPaths:
+  - docs/initiatives/greenfield-scaffold/contracts
+  - services/api/src/contracts
+  - tests/api
+- hitlGates:
+  - none
+
+### issue-012: Generate frontend API client scaffold
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-011
+- userStoriesCovered:
+  - greenfield-scaffold-story-012
+- whatToBuild:
+  - Generate frontend API client scaffold as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Frontend API client uses the contract types and handles scaffold errors deterministically.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:web -- api-client
+- filesToModify:
+  - apps/web/src/api/client.ts
+  - apps/web/src/api/types.ts
+  - tests/web/api-client.test.ts
+- allowedPaths:
+  - apps/web/src/api
+  - tests/web
+- hitlGates:
+  - none
+
+### issue-013: Create fixture and seed data scaffold
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-009
+- userStoriesCovered:
+  - greenfield-scaffold-story-013
+- whatToBuild:
+  - Create fixture and seed data scaffold as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Fixture data is deterministic and safe for local/test use only.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:api -- seeds
+- filesToModify:
+  - tests/fixtures/greenfield/users.json
+  - tests/fixtures/greenfield/projects.json
+  - services/api/src/db/seeds.ts
+- allowedPaths:
+  - tests/fixtures/greenfield
+  - services/api/src/db
+- hitlGates:
+  - none
+
+### issue-014: Add end-to-end smoke scaffold
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-007, issue-012, issue-013
+- userStoriesCovered:
+  - greenfield-scaffold-story-014
+- whatToBuild:
+  - Add end-to-end smoke scaffold as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - E2E smoke test covers app load, health display, and fixture-backed placeholder flow.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:e2e -- greenfield-smoke
+- filesToModify:
+  - tests/e2e/greenfield-smoke.test.ts
+  - tests/e2e/helpers/greenfield.ts
+- allowedPaths:
+  - tests/e2e
+- hitlGates:
+  - none
+
+### issue-015: Add observability/logging scaffold
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-003
+- userStoriesCovered:
+  - greenfield-scaffold-story-015
+- whatToBuild:
+  - Add observability/logging scaffold as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Logging scaffold emits structured local/test logs without secrets.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run test:integration -- observability
+- filesToModify:
+  - services/api/src/observability/logger.ts
+  - apps/web/src/observability/client-logger.ts
+  - tests/integration/observability.test.ts
+- allowedPaths:
+  - services/api/src/observability
+  - apps/web/src/observability
+  - tests/integration
+- hitlGates:
+  - none
+
+### issue-016: Add developer validation commands
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-014, issue-015
+- userStoriesCovered:
+  - greenfield-scaffold-story-016
+- whatToBuild:
+  - Add developer validation commands as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Validation command runs unit, integration, and smoke scaffold checks in a bounded order.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - ./scripts/validate-greenfield-scaffold.sh --dry-run
+- filesToModify:
+  - package.json
+  - scripts/validate-greenfield-scaffold.sh
+  - docs/initiatives/greenfield-scaffold/validation.md
+- allowedPaths:
+  - package.json
+  - scripts
+  - docs/initiatives/greenfield-scaffold
+- hitlGates:
+  - none
+
+### issue-017: Approve release/readiness checklist
+- type: HITL
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-016
+- userStoriesCovered:
+  - greenfield-scaffold-story-017
+- whatToBuild:
+  - Approve release/readiness checklist as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Human signs off on readiness gates before queue-ready conversion or worker execution.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - none
+- filesToModify:
+  - docs/initiatives/greenfield-scaffold/readiness-checklist.md
+- allowedPaths:
+  - docs/initiatives/greenfield-scaffold
+- hitlGates:
+  - Human approval required before Phase B queue-ready conversion.
+
+### issue-018: Finalize scaffold documentation package
+- type: AFK
+- status: planned
+- queueReadiness: not_ready
+- dependencies: issue-017
+- userStoriesCovered:
+  - greenfield-scaffold-story-018
+- whatToBuild:
+  - Finalize scaffold documentation package as a bounded greenfield scaffold slice.
+- acceptanceCriteria:
+  - Documentation explains scaffold purpose, validation, rollout, and backout boundaries.
+  - Phase A materialization keeps queueReadiness as not_ready.
+- validationProof:
+  - npm run validate:greenfield-docs
+- filesToModify:
+  - README.md
+  - docs/initiatives/greenfield-scaffold/README.md
+  - docs/initiatives/greenfield-scaffold/backout.md
+- allowedPaths:
+  - README.md
+  - docs/initiatives/greenfield-scaffold
+- hitlGates:
+  - none
+
+## Dependencies
+
+- issue-001: none
+- issue-002: issue-001
+- issue-003: issue-001
+- issue-004: issue-002, issue-003
+- issue-005: issue-002
+- issue-006: issue-005
+- issue-007: issue-006
+- issue-008: issue-003
+- issue-009: issue-003
+- issue-010: issue-009
+- issue-011: issue-004, issue-009
+- issue-012: issue-011
+- issue-013: issue-009
+- issue-014: issue-007, issue-012, issue-013
+- issue-015: issue-003
+- issue-016: issue-014, issue-015
+- issue-017: issue-016
+- issue-018: issue-017

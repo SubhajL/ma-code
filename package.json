@@ -95,7 +95,10 @@
     "validate:backend-packet": "./scripts/validate-backend-packets.sh",
     "harness:slice-dependencies": "node --import tsx scripts/harness-slice-dependencies.ts",
     "test:slice-dependencies": "node --import tsx --test tests/extension-units/slice-dependency-decision.test.ts tests/integration/slice-dependency-decision.test.ts",
-    "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh"
+    "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh",
+    "harness:issue-materialize": "node --import tsx scripts/harness-issue-materialize.ts",
+    "test:issue-materialize": "node --import tsx --test tests/extension-units/issue-materialization.test.ts tests/integration/issue-materialization.test.ts",
+    "validate:issue-materialization": "./scripts/validate-issue-materialization.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

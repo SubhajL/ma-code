@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "runId": "run-20260508T233133Z",
+  "initiativeId": "greenfield-scaffold",
+  "generatedAt": "20260508T233133Z",
+  "source": {
+    "kind": "g-issues",
+    "capturedAt": "2026-05-09T00:00:00.000Z",
+    "approvedBy": "human:subhajlimanond",
+    "approvalRef": "user-prompt-2026-05-09-phase-a-implementation",
+    "sourcePath": "docs/initiatives/greenfield-scaffold/source/approved-g-issues.json",
+    "sourceHash": "bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416"
+  },
+  "issueCount": 18,
+  "hitlCount": 3,
+  "afkCount": 15,
+  "plannedArtifacts": [
+    "docs/initiatives/greenfield-scaffold/backlog.md",
+    "docs/initiatives/greenfield-scaffold/issues.json",
+    "docs/initiatives/greenfield-scaffold/materialization-runs/run-20260508T233133Z.json",
+    "docs/initiatives/greenfield-scaffold/materialization-runs/run-20260508T233133Z.md",
+    "docs/initiatives/greenfield-scaffold/pipeline.json",
+    "docs/initiatives/greenfield-scaffold/slice-plan.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-001.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-003.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-005.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-006.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-007.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-009.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-010.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-011.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-012.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-013.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-015.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-017.summary.json",
+    "docs/initiatives/greenfield-scaffold/slices/issue-018.summary.json"
+  ],
+  "phaseABoundary": {
+    "writesOnlyUnder": "docs/initiatives/greenfield-scaffold",
+    "queueReadiness": "not_ready",
+    "noQueueJobs": true,
+    "noWorkerSessions": true
+  }
+}
