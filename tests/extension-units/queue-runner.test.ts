@@ -466,6 +466,97 @@ test("operator inspect queue state summarizes queue and task status", async func
   assert.deepEqual(details.summary.recentJobIds, ["job-inspect"]);
 });
 
+test("runtime inspection and task show compact large task history by default", async function () {
+  const { cwd, inspectQueueStateForOperator, taskUpdate } = await setupQueueRunnerRepo();
+  const hugeEvidence = `huge-evidence-${"x".repeat(1200)}`;
+  const manyArtifacts = Array.from({ length: 24 }, (_, index) => `docs/initiatives/greenfield-scaffold/slices/issue-${String(index).padStart(3, "0")}.summary.json`);
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: "job-large-8",
+    jobs: Array.from({ length: 9 }, (_, index) => ({
+      id: `job-large-${index}`,
+      goal: `Large queue job ${index} ${"goal-detail-".repeat(40)}`,
+      priority: "medium",
+      status: index === 8 ? "running" : index % 3 === 0 ? "blocked" : "queued",
+      team: "build",
+      assignedRole: "backend_worker",
+      workType: "implementation",
+      domains: ["backend"],
+      allowedPaths: ["services/api", "docs/initiatives/greenfield-scaffold"],
+      notes: [`job-note-${index}-${"n".repeat(500)}`],
+      queueJobSource: {
+        kind: "issue-materialization",
+        initiativeId: "greenfield-scaffold",
+        issueId: `issue-${index}`,
+        runId: "afk-large-run",
+        sourceArtifactPaths: manyArtifacts,
+      },
+      updatedAt: `2026-05-09T13:${String(index).padStart(2, "0")}:00.000Z`,
+    })),
+  } as any);
+
+  await writeTaskState(cwd, {
+    activeTaskId: "task-large-8",
+    tasks: Array.from({ length: 9 }, (_, index) => ({
+      id: `task-large-${index}`,
+      title: `Large runtime task ${index}`,
+      owner: "assistant",
+      status: index === 8 ? "in_progress" : index % 4 === 0 ? "blocked" : "done",
+      taskClass: "implementation",
+      acceptance: Array.from({ length: 8 }, (_, item) => `acceptance-${index}-${item}-${"a".repeat(220)}`),
+      evidence: [hugeEvidence, ...Array.from({ length: 8 }, (_, item) => `evidence-${index}-${item}-${"e".repeat(220)}`)],
+      notes: Array.from({ length: 6 }, (_, item) => `note-${index}-${item}-${"n".repeat(220)}`),
+      dependencies: [],
+      retryCount: 0,
+      validation: {
+        tier: "standard",
+        decision: index === 8 ? "pending" : "pass",
+        source: index === 8 ? null : "validator",
+        checklist: null,
+        approvalRef: null,
+        updatedAt: null,
+      },
+      timestamps: {
+        createdAt: "2026-05-09T13:00:00.000Z",
+        updatedAt: `2026-05-09T13:${String(index).padStart(2, "0")}:00.000Z`,
+      },
+    })) as TaskRecord[],
+  });
+
+  const compactInspect = await inspectQueueStateForOperator({ recentLimit: 2 });
+  const compactInspectText = compactInspect.content[0]?.text ?? "";
+  const inspectDetails = compactInspect.details as any;
+
+  assert.equal(inspectDetails.compaction.compact, true);
+  assert.equal(inspectDetails.tasks.totalTasks, 9);
+  assert.equal(inspectDetails.queue.totalJobs, 9);
+  assert.equal(inspectDetails.tasks.recentTasks.length, 2);
+  assert.equal(inspectDetails.queue.recentJobs.length, 2);
+  assert.equal(inspectDetails.summary.activeTask.evidence.total, 9);
+  assert.equal(inspectDetails.summary.activeTask.evidence.omitted, 8);
+  assert.equal(inspectDetails.summary.activeJob.sourceArtifactPaths.total, 24);
+  assert.ok(compactInspectText.length < 12000, `compact inspect text was ${compactInspectText.length} chars`);
+  assert.doesNotMatch(compactInspectText, new RegExp(hugeEvidence));
+
+  const fullInspect = await inspectQueueStateForOperator({ recentLimit: 2, includeHistory: true });
+  const fullInspectText = fullInspect.content[0]?.text ?? "";
+  assert.match(fullInspectText, new RegExp(hugeEvidence));
+
+  const compactShow = await taskUpdate({ action: "show" });
+  const compactShowText = compactShow.content[0]?.text ?? "";
+  const compactShowPayload = JSON.parse(compactShowText);
+  assert.equal(compactShowPayload.compaction.compact, true);
+  assert.equal(compactShowPayload.totalTasks, 9);
+  assert.equal(compactShowPayload.activeTask.evidence.total, 9);
+  assert.ok(compactShowText.length < 10000, `compact show text was ${compactShowText.length} chars`);
+  assert.doesNotMatch(compactShowText, new RegExp(hugeEvidence));
+
+  const fullShow = await taskUpdate({ action: "show", includeHistory: true });
+  assert.match(fullShow.content[0]?.text ?? "", new RegExp(hugeEvidence));
+});
+
 test("operator pause and resume controls gate queue pickup", async function () {
   const { cwd, runNextQueueJob, pauseQueueForOperator, resumeQueueForOperator } = await setupQueueRunnerRepo();
 

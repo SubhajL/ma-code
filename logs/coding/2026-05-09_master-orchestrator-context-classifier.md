@@ -68,3 +68,26 @@
 - Files changed: `reports/lifecycle/task-1778325710561-mo-context-classifier.json` only.
 - RED command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-slice-lifecycle.ts check --stage merge_ready --evidence-file reports/lifecycle/task-1778325710561-mo-context-classifier.json --json` failed with currentStage `planning_ready` before this evidence-bundle shape fix.
 - GREEN command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-slice-lifecycle.ts check --stage merge_ready --evidence-file reports/lifecycle/task-1778325710561-mo-context-classifier.json --json` now passes after adding the exact lifecycle evidence fields.
+
+## 2026-05-09T13:40:38Z — Runtime output compaction follow-up
+
+- Goal: compact runtime/task/queue/context outputs by default so large task-state evidence/history cannot be pasted into chat unless explicitly requested.
+- Discovery path: loaded `g-coding`; Auggie discovery was unavailable due credits, so local `rg`/file inspection was used.
+- RED evidence: `./scripts/validate-queue-runner.sh --skip-live --report /tmp/runtime-output-queue-green1.md --summary-json /tmp/runtime-output-queue-green1.json` initially failed with missing compact helper wiring; subsequent regression showed compact inspect was still too large until evidence/artifact list caps and duplicate sections were tightened.
+- GREEN implementation: added compact queue inspection envelopes, compact task-state `show`, bounded queue-session final inspection, compact operator status data, and compact skill-route original-prompt summaries.
+- Review Verdict: no_required_fixes
+- Validation:
+  - `./scripts/check-foundation-extension-compile.sh` → PASS
+  - `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs ./scripts/validate-core-workflows.sh --report /tmp/runtime-output-core6.md --summary-json /tmp/runtime-output-core6.json` → PASS
+  - `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs ./scripts/validate-queue-runner.sh --skip-live --report /tmp/runtime-output-queue-green-final.md --summary-json /tmp/runtime-output-queue-green-final.json` → PASS
+  - `./scripts/validate-skill-routing.sh --skip-live --report /tmp/runtime-output-skill-routing-final.md --summary-json /tmp/runtime-output-skill-routing-final.json` → PASS
+  - `./scripts/check-repo-static.sh` → PASS
+  - `git diff --check` → PASS
+- Known gaps: live provider-backed skill probes were skipped intentionally; regression coverage is local/static plus queue/core integration.
+
+## 2026-05-09T21:45:00Z — Runtime output compaction live probe and landing correction
+
+- Goal: close the skipped live skill-routing validation gap and prepare the Issue 2 compaction branch for PR landing.
+- Live validation: `./scripts/validate-skill-routing.sh --report /tmp/runtime-output-skill-routing-live.md --summary-json /tmp/runtime-output-skill-routing-live.json` → PASS.
+- Root checkout investigation: root had drifted to `task/task-1778330759691-run-mo-afk-issue-orchestration-until-hitl` at `0f0cebc` with no dirty files; main/origin were still `d13efc4`. Switched root back to `main` safely; root now matches origin/main.
+- Risk note: until this branch lands, active root runtime can still leak raw `task_update show` output. Do not use task/queue show/status tools for backlog/status until the PR is merged and root synced.

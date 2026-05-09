@@ -237,6 +237,19 @@ export interface QueueInspectionResult {
   summary: QueueInspectionSummary;
 }
 
+export interface CompactQueueInspectionSummary extends Omit<QueueInspectionSummary, "activeJob" | "activeTask"> {
+  activeJob: Record<string, unknown> | null;
+  activeTask: Record<string, unknown> | null;
+}
+
+export interface CompactQueueInspectionResult {
+  version: 1;
+  queue: Record<string, unknown>;
+  tasks: Record<string, unknown>;
+  summary: CompactQueueInspectionSummary;
+  compaction: Record<string, unknown>;
+}
+
 export interface QueueControlResult {
   version: 1;
   ok: boolean;
@@ -303,7 +316,7 @@ export interface BoundedQueueSessionResult {
   startedAt: string;
   finishedAt: string;
   steps: BoundedQueueSessionStep[];
-  finalInspection: QueueInspectionResult;
+  finalInspection: QueueInspectionResult | CompactQueueInspectionResult;
   triage: BoundedQueueSessionTriageSummary;
 }
 
@@ -331,6 +344,7 @@ const RunQueueOnceSchema = Type.Object({
 
 const InspectQueueStateSchema = Type.Object({
   recentLimit: Type.Optional(Type.Integer({ minimum: 1, maximum: 20 })),
+  includeHistory: Type.Optional(Type.Boolean()),
 });
 
 const QueueControlSchema = Type.Object({
@@ -598,6 +612,110 @@ function buildQueueSessionLeaseInspectionSummary(lease: ExecutionLeaseRecord | n
   };
 }
 
+function compactText(value: string | null | undefined, maxChars = 240): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, maxChars - 32))}… [truncated ${value.length - Math.max(0, maxChars - 32)} chars]`;
+}
+
+function compactStringList(values: string[] | undefined, limit = 3, maxChars = 200): { items: string[]; total: number; omitted: number } {
+  const source = Array.isArray(values) ? values : [];
+  return {
+    items: source.slice(0, limit).map((item) => compactText(item, maxChars) ?? ""),
+    total: source.length,
+    omitted: Math.max(0, source.length - limit),
+  };
+}
+
+function compactTaskRecord(task: TaskRecord | null | undefined): Record<string, unknown> | null {
+  if (!task) {
+    return null;
+  }
+  return {
+    id: task.id,
+    title: compactText(task.title, 160),
+    owner: task.owner ?? null,
+    status: task.status,
+    taskClass: task.taskClass,
+    acceptance: compactStringList(task.acceptance, 2, 120),
+    evidence: compactStringList(task.evidence, 1, 120),
+    notes: compactStringList(task.notes, 1, 120),
+    dependencies: task.dependencies ?? [],
+    retryCount: task.retryCount ?? 0,
+    validationDecision: task.validation?.decision ?? null,
+    validationSource: task.validation?.source ?? null,
+    updatedAt: task.timestamps?.updatedAt ?? null,
+  };
+}
+
+function compactQueueJob(job: QueueJob | null | undefined): Record<string, unknown> | null {
+  if (!job) {
+    return null;
+  }
+  return {
+    id: job.id,
+    goal: compactText(job.goal, 180),
+    status: job.status,
+    priority: job.priority,
+    team: job.team,
+    assignedRole: job.assignedRole ?? null,
+    taskClass: job.taskClass ?? null,
+    workType: job.workType ?? null,
+    domains: job.domains ?? [],
+    allowedPaths: compactStringList(job.allowedPaths, 4, 100),
+    notes: compactStringList(job.notes, 1, 120),
+    sourceArtifactPaths: compactStringList(job.queueJobSource?.sourceArtifactPaths, 3, 120),
+    linkedTaskId: job.linkedTaskId ?? null,
+    updatedAt: job.updatedAt ?? null,
+  };
+}
+
+export function compactQueueInspectionResult(
+  result: QueueInspectionResult,
+  input: { recentLimit?: number } = {},
+): CompactQueueInspectionResult {
+  const recentLimit = Math.max(1, Math.min(input.recentLimit ?? 5, 20));
+  const recentJobs = result.queue.jobs.slice(-recentLimit).map(compactQueueJob);
+  const recentTasks = result.tasks.tasks.slice(-recentLimit).map(compactTaskRecord);
+  const activeJob = result.summary.activeJob ?? result.queue.jobs.find((job) => job.id === result.summary.activeJobId) ?? null;
+  const activeTask = result.summary.activeTask ?? result.tasks.tasks.find((task) => task.id === result.summary.activeTaskId) ?? null;
+  return {
+    version: 1,
+    queue: {
+      version: result.queue.version,
+      paused: result.queue.paused,
+      activeJobId: result.queue.activeJobId,
+      totalJobs: result.queue.jobs.length,
+      recentJobs,
+    },
+    tasks: {
+      activeTaskId: result.tasks.activeTaskId,
+      totalTasks: result.tasks.tasks.length,
+      recentTasks,
+    },
+    summary: {
+      ...result.summary,
+      activeJob: compactQueueJob(activeJob),
+      activeTask: compactTaskRecord(activeTask),
+    },
+    compaction: {
+      compact: true,
+      reason: "runtime queue/task history is summarized by default to avoid large context dumps",
+      includeHistoryAvailable: true,
+      recentLimit,
+      omitted: {
+        jobs: Math.max(0, result.queue.jobs.length - recentJobs.length),
+        tasks: Math.max(0, result.tasks.tasks.length - recentTasks.length),
+      },
+      fullOutputOptIn: "inspect_queue_state includeHistory=true",
+    },
+  };
+}
+
 function buildQueueInspectionSummary(
   queueState: QueueState,
   taskState: TaskState,
@@ -648,7 +766,7 @@ function buildQueueInspectionSummary(
   };
 }
 
-export async function inspectQueueState(cwd: string, input: { recentLimit?: number } = {}): Promise<QueueInspectionResult> {
+export async function inspectQueueState(cwd: string, input: { recentLimit?: number; includeHistory?: boolean } = {}): Promise<QueueInspectionResult> {
   const recentLimit = Math.max(1, Math.min(input.recentLimit ?? 5, 20));
   const [queueState, taskState, leaseState] = await Promise.all([readQueueState(cwd), readTaskState(cwd), readExecutionLeaseState(cwd)]);
   return {
@@ -2502,6 +2620,7 @@ export async function runBoundedQueueSession(
     reason: string,
   ): Promise<BoundedQueueSessionResult> => {
     const finalInspection = await inspectQueueState(cwd, { recentLimit });
+    const compactFinalInspection = compactQueueInspectionResult(finalInspection, { recentLimit });
     return {
       version: 1,
       ok: true,
@@ -2516,7 +2635,7 @@ export async function runBoundedQueueSession(
       startedAt,
       finishedAt: nowIso(),
       steps,
-      finalInspection,
+      finalInspection: compactFinalInspection,
       triage: buildBoundedQueueSessionTriage(steps, finalInspection, startedTime),
     };
   };
@@ -2692,7 +2811,8 @@ export default function queueRunner(pi: ExtensionAPI) {
     ],
     parameters: InspectQueueStateSchema,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      const result = await inspectQueueState(ctx.cwd, params);
+      const fullResult = await inspectQueueState(ctx.cwd, params);
+      const result = params.includeHistory === true ? fullResult : compactQueueInspectionResult(fullResult, params);
       const branch = await getCurrentBranch(pi, ctx.cwd);
       const modelId = modelIdFromContext(ctx);
       await appendAudit(ctx.cwd, {

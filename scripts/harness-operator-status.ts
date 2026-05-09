@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { inspectQueueState, type QueueInspectionResult } from "../.pi/agent/extensions/queue-runner.ts";
+import { compactQueueInspectionResult, inspectQueueState, type CompactQueueInspectionResult, type QueueInspectionResult } from "../.pi/agent/extensions/queue-runner.ts";
 
 export interface HarnessStatusOptions {
   cwd?: string;
@@ -11,7 +11,7 @@ export interface HarnessStatusOptions {
 export interface HarnessStatusView {
   cwd: string;
   recentLimit: number;
-  inspection: QueueInspectionResult;
+  inspection: CompactQueueInspectionResult;
 }
 
 function clampRecentLimit(input: number | undefined): number {
@@ -41,7 +41,7 @@ function formatIdList(ids: string[], emptyLabel: string): string {
   return ids.length > 0 ? ids.join(", ") : emptyLabel;
 }
 
-function formatQueueLease(summary: QueueInspectionResult["summary"]): string {
+function formatQueueLease(summary: CompactQueueInspectionResult["summary"]): string {
   const lease = summary.queueSessionLease;
   if (!lease) return "none";
   if (lease.stale) return `stale lease from ${lease.owner ?? "unknown"} expired at ${lease.expiresAt ?? "unknown"}`;
@@ -52,7 +52,8 @@ function formatQueueLease(summary: QueueInspectionResult["summary"]): string {
 export async function buildHarnessOperatorStatus(options: HarnessStatusOptions = {}): Promise<HarnessStatusView> {
   const cwd = resolve(options.cwd ?? process.cwd());
   const recentLimit = clampRecentLimit(options.recentLimit);
-  const inspection = await inspectQueueState(cwd, { recentLimit });
+  const fullInspection = await inspectQueueState(cwd, { recentLimit });
+  const inspection = compactQueueInspectionResult(fullInspection, { recentLimit });
   return { cwd, recentLimit, inspection };
 }
 
