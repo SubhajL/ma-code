@@ -358,6 +358,12 @@ npm run harness:afk-orchestrate -- apply --queue-only --initiative greenfield-sc
 npm run harness:afk-orchestrate -- run --run --initiative greenfield-scaffold --max-steps 1 --max-runtime-seconds 30 --max-parallel 1
 npm run harness:worker-execute -- dry-run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-002
 npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-002 --max-steps 4 --max-runtime-seconds 300 --stop-before-pr
+npm run harness:pr-lifecycle -- dry-run --initiative greenfield-scaffold --worker-run-id worker-green
+npm run harness:pr-lifecycle -- create --initiative greenfield-scaffold --worker-run-id worker-green --run-id pr-worker-green
+npm run harness:pr-lifecycle -- gate --initiative greenfield-scaffold --run-id pr-worker-green
+npm run harness:pr-lifecycle -- merge-ready --initiative greenfield-scaffold --run-id pr-worker-green
+npm run harness:pr-lifecycle -- merge --initiative greenfield-scaffold --run-id pr-worker-green --allow-merge --approval-ref APPROVED --method squash
+npm run harness:pr-lifecycle -- sync-main --initiative greenfield-scaffold --run-id pr-worker-green
 npm run harness:screen-approval -- status --initiative example-major-feature --slice slice-001
 npm run harness:screen-approval -- approve --initiative example-major-feature --slice slice-001 --by reviewer --note "Approved for FE implementation."
 ```
@@ -371,6 +377,8 @@ The lower-level `harness:init-feature` helper scaffolds `docs/initiatives/<featu
 Phase A issue materialization creates durable initiative issue artifacts only. Phase B AFK queue orchestration (`harness:afk-orchestrate`) reads those artifacts, applies dependency/HITL/validation/parallel-safety eligibility, and can create queue-ready jobs through the queue-runner helper path with `queueJobSource: issue-materialization` provenance. Phase B has no daemon, hidden scheduler, free-roaming pickup, product-code implementation, or direct raw `.pi/agent/state/runtime/*.json` edit path; run mode requires explicit `--run`, `--max-steps`, `--max-runtime-seconds`, and `--max-parallel`.
 
 Phase C bounded worker execution (`harness:worker-execute`) is the first foreground path that can execute one selected AFK queue job in an isolated git worktree. It refuses HITL/approval-required/missing-evidence jobs, records durable `docs/initiatives/<slug>/worker-runs/<run-id>.json` artifacts, preserves RED/GREEN/validation/review evidence, links queue jobs through `workerExecution`, and defaults to the `--stop-before-pr` boundary. `--allow-pr-create` requires an explicit approval reference, and the executor never auto-merges.
+
+Phase D PR lifecycle automation (`harness:pr-lifecycle`) turns validated Phase C worker-run evidence into bounded PR lifecycle artifacts under `docs/initiatives/<slug>/pr-runs/`. It supports dry-run, create, gate, merge-ready, explicit merge, sync-main, and status. The default boundary is `--stop-before-merge`; merge requires `--allow-merge --approval-ref`, methods are constrained to `squash|merge|rebase`, and superseded PR closure requires `--close-approval-ref`. Failed or blocked lifecycle states remain visible in JSON and human-readable Markdown summaries.
 
 See also:
 - `.pi/agent/docs/harness_packaging_strategy.md`

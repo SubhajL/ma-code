@@ -104,7 +104,10 @@
     "validate:afk-orchestration": "./scripts/validate-afk-orchestration.sh",
     "harness:worker-execute": "node --import tsx scripts/harness-worker-execute.ts",
     "test:worker-execution": "node --import tsx --test tests/extension-units/worker-execution.test.ts tests/integration/worker-execution.test.ts",
-    "validate:worker-execution": "./scripts/validate-worker-execution.sh"
+    "validate:worker-execution": "./scripts/validate-worker-execution.sh",
+    "harness:pr-lifecycle": "node --import tsx scripts/harness-pr-lifecycle.ts",
+    "test:pr-lifecycle": "node --import tsx --test tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-lifecycle.test.ts",
+    "validate:pr-lifecycle": "./scripts/validate-pr-lifecycle.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",
