@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PrLifecycleRun",
+  "type": "object",
+  "required": ["version", "runId", "initiativeId", "sourceIssueId", "queueJobId", "linkedTaskId", "workerRunId", "worktree", "mode", "status", "lifecycle", "pr", "merge", "blockers", "commandsRun", "evidence", "nextOperatorAction", "createdAt", "updatedAt"],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "runId": { "type": "string" },
+    "initiativeId": { "type": "string" },
+    "sourceIssueId": { "type": "string" },
+    "queueJobId": { "type": "string" },
+    "linkedTaskId": { "type": ["string", "null"] },
+    "workerRunId": { "type": "string" },
+    "worktree": {
+      "type": "object",
+      "required": ["path", "branch", "baseRef", "headSha"],
+      "properties": {
+        "path": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "baseRef": { "type": "string" },
+        "headSha": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "mode": { "type": "string", "enum": ["dry_run", "create", "gate", "merge_ready", "merge", "sync_main", "status"] },
+    "status": { "type": "string", "enum": ["planned", "pr_created", "gate_pending", "gate_passed", "blocked", "merged", "synced", "failed"] },
+    "lifecycle": {
+      "type": "object",
+      "required": ["planningReady", "taskReady", "redGreenEvidence", "reviewVerdict", "validationDecision", "createReady", "mergeReady"],
+      "properties": {
+        "planningReady": { "type": "boolean" },
+        "taskReady": { "type": "boolean" },
+        "redGreenEvidence": { "type": "boolean" },
+        "reviewVerdict": { "type": ["string", "null"], "enum": ["no_required_fixes", "changes_required", null] },
+        "validationDecision": { "type": "string", "enum": ["pass", "fail", "pending"] },
+        "createReady": { "type": "boolean" },
+        "mergeReady": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "pr": {
+      "type": "object",
+      "required": ["number", "url", "headRef", "baseRef", "reviewDecision", "mergeStateStatus", "checks"],
+      "properties": {
+        "number": { "type": ["integer", "null"] },
+        "url": { "type": ["string", "null"] },
+        "headRef": { "type": ["string", "null"] },
+        "baseRef": { "type": ["string", "null"] },
+        "reviewDecision": { "type": ["string", "null"] },
+        "mergeStateStatus": { "type": ["string", "null"] },
+        "checks": { "type": "array", "items": { "type": "object", "required": ["name", "state"], "properties": { "name": { "type": "string" }, "state": { "type": "string" }, "workflow": { "type": "string" } }, "additionalProperties": false } }
+      },
+      "additionalProperties": false
+    },
+    "merge": {
+      "type": "object",
+      "required": ["method", "approvalRef", "mergeCommit", "syncedMainSha"],
+      "properties": {
+        "method": { "type": ["string", "null"], "enum": ["squash", "merge", "rebase", null] },
+        "approvalRef": { "type": ["string", "null"] },
+        "mergeCommit": { "type": ["string", "null"] },
+        "syncedMainSha": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "commandsRun": { "type": "array", "items": { "type": "string" } },
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "nextOperatorAction": { "type": "string" },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" }
+  },
+  "additionalProperties": false
+}
