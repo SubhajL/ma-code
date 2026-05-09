@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "taskId": "task-1778320412934",
+  "planning": {
+    "acceptanceCriteria": [
+      "Add orchestrator evidence and merge-check/merge-apply modes that consume existing evidence first",
+      "Default evidence/merge-check behavior stops before merge",
+      "Approved merge mode requires approval ref and delegates only to harness:merge",
+      "Optional reports/orchestration JSON/Markdown are schema-shaped and human-readable",
+      "Raw git merge is never used"
+    ],
+    "tddSlice": "orchestrate evidence aggregates existing artifacts and merge-apply checks readiness before delegating to harness:merge"
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Phase 5 evidence helper, CLI, docs, schema, and validators are implemented",
+      "Targeted and regression validation passed",
+      "PR gate is clean before merge"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778320412934-orchestrator-evidence",
+    "commit": "17e5e5a"
+  },
+  "pr": {
+    "url": "pending",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
