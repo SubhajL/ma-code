@@ -1,9 +1,12 @@
 import { execFile as execFileCallback } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
 
 export type OrchestratorRunLane = "queue_level" | "worker_job" | "parallel_lanes";
+export type OrchestratorMergeMethod = "squash" | "merge" | "rebase";
 export type OrchestratorRunStatus = "completed" | "blocked" | "failed" | "stopped";
 export type OrchestratorRunStopReason =
   | "approval_boundary"
@@ -46,9 +49,19 @@ export interface OrchestratorRunRequest {
   workerCommand?: string;
   allowPrCreate?: boolean;
   autoLand?: boolean;
+  disableAutoLand?: boolean;
   syncMain?: boolean;
-  mergeMethod?: "squash" | "merge" | "rebase";
+  mergeMethod?: OrchestratorMergeMethod;
   approvalRef?: string;
+}
+
+export interface OrchestratorAutoLandPolicy {
+  version: 1;
+  enabled: boolean;
+  lanes?: OrchestratorRunLane[];
+  approvalRef?: string;
+  syncMain?: boolean;
+  mergeMethod?: OrchestratorMergeMethod;
 }
 
 export interface OrchestratorRunSessionResult {
@@ -92,6 +105,7 @@ const ALLOWED_SCRIPTS: Record<OrchestratorRunLane, string> = {
   worker_job: "harness:worker-execute",
   parallel_lanes: "harness:parallel-worker-lanes",
 };
+const DEFAULT_AUTO_LAND_POLICY_PATH = join(".pi", "agent", "routing", "orchestrator-auto-land-policy.json");
 const FORBIDDEN_COMMAND_TOKENS = ["harness:merge", " pr-lifecycle ", "sync-main", ".pi/agent/state/runtime"];
 const UNSAFE_WORKER_COMMAND = /(^|\s)(git|gh\s+pr\s+merge|rm\s+-rf|merge|apply|sync-main|--force|force-with-lease)(\s|$)/i;
 
@@ -125,6 +139,55 @@ function optionalPositiveInteger(value: number | undefined, label: string, fallb
   if (value === undefined) return fallback;
   if (!Number.isInteger(value) || value < 1) throw new Error(`${label} must be a positive integer.`);
   return value;
+}
+
+function isMergeMethod(value: unknown): value is OrchestratorMergeMethod {
+  return value === "squash" || value === "merge" || value === "rebase";
+}
+
+function normalizeAutoLandPolicy(raw: unknown): OrchestratorAutoLandPolicy | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const record = raw as Record<string, unknown>;
+  if (record.version !== 1) throw new Error("orchestrator auto-land policy version must be 1.");
+  const lanes = Array.isArray(record.lanes) ? record.lanes.filter((lane): lane is OrchestratorRunLane => lane === "worker_job" || lane === "queue_level" || lane === "parallel_lanes") : undefined;
+  return {
+    version: 1,
+    enabled: record.enabled === true,
+    lanes,
+    approvalRef: typeof record.approvalRef === "string" && record.approvalRef.trim().length > 0 ? record.approvalRef.trim() : undefined,
+    syncMain: typeof record.syncMain === "boolean" ? record.syncMain : undefined,
+    mergeMethod: isMergeMethod(record.mergeMethod) ? record.mergeMethod : undefined,
+  };
+}
+
+async function loadDefaultAutoLandPolicy(repoRoot: string): Promise<OrchestratorAutoLandPolicy | null> {
+  try {
+    return normalizeAutoLandPolicy(JSON.parse(await readFile(join(repoRoot, DEFAULT_AUTO_LAND_POLICY_PATH), "utf8")));
+  } catch (error) {
+    const typed = error as NodeJS.ErrnoException;
+    if (typed.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+function applyDefaultAutoLandPolicy(input: OrchestratorRunRequest, policy: OrchestratorAutoLandPolicy | null): OrchestratorRunRequest {
+  if (!policy?.enabled || input.autoLand || input.disableAutoLand) return input;
+  let lane: OrchestratorRunLane;
+  try {
+    lane = selectLane(input);
+  } catch {
+    return input;
+  }
+  const lanes = policy.lanes && policy.lanes.length > 0 ? policy.lanes : ["worker_job"];
+  if (lane !== "worker_job" || !lanes.includes("worker_job")) return input;
+  return {
+    ...input,
+    autoLand: true,
+    allowPrCreate: true,
+    approvalRef: input.approvalRef ?? policy.approvalRef,
+    syncMain: input.syncMain ?? policy.syncMain ?? true,
+    mergeMethod: input.mergeMethod ?? policy.mergeMethod,
+  };
 }
 
 function assertSlug(value: string | undefined, label: string): string {
@@ -386,27 +449,29 @@ async function runJsonCommand(call: DelegatedRunCall, runner: DelegatedRunRunner
   }
 }
 
-function mergeMethodFor(input: OrchestratorRunRequest): "squash" | "merge" | "rebase" {
+function mergeMethodFor(input: OrchestratorRunRequest): OrchestratorMergeMethod {
   return input.mergeMethod ?? "squash";
 }
 
 export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: DelegatedRunRunner = defaultRunner, preflight: OrchestratorRunPreflight = defaultOrchestratorRunPreflight): Promise<OrchestratorRunSessionResult> {
+  const repoRoot = input.repoRoot ?? process.cwd();
+  let effectiveInput = input;
   let lane: OrchestratorRunLane | null = null;
   let call: DelegatedRunCall | null = null;
   try {
-    const built = buildDelegatedRunCall(input);
+    effectiveInput = applyDefaultAutoLandPolicy(input, await loadDefaultAutoLandPolicy(repoRoot));
+    const built = buildDelegatedRunCall(effectiveInput);
     lane = built.lane;
     call = assertSafeDelegatedRunCommand(lane, built.call.command);
   } catch (error) {
-    return blocked(input, lane, [(error as Error).message]);
+    return blocked(effectiveInput, lane, [(error as Error).message]);
   }
 
-  const repoRoot = input.repoRoot ?? process.cwd();
   const safety = await preflight(repoRoot);
   if (!safety.safe) return blocked(input, lane, safety.blockers, "dirty_repo");
 
   const result = await runner(call);
-  const base = baseResult(input, lane, call.command);
+  const base = baseResult(effectiveInput, lane, call.command);
   if (result.exitCode !== 0) {
     return {
       ...base,
@@ -434,7 +499,7 @@ export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: 
   const startedWork = workStarted(lane, parsed);
   const completedWork = workCompleted(lane, parsed);
 
-  if (input.autoLand) {
+  if (effectiveInput.autoLand) {
     const workerRunId = typeof parsed.runId === "string" ? parsed.runId : null;
     if (!workerRunId) {
       return {
@@ -448,7 +513,7 @@ export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: 
       };
     }
 
-    const approvalRef = input.approvalRef?.trim();
+    const approvalRef = effectiveInput.approvalRef?.trim();
     if (!approvalRef) {
       return {
         ...base,
@@ -476,30 +541,30 @@ export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: 
       return { ok: true, parsed: step.parsed, result: step.result, blockers: [] as string[] };
     };
 
-    const create = await runStep(prLifecycleCall(["create", "--initiative", assertSlug(input.initiative, "--initiative"), "--worker-run-id", workerRunId, "--run-id", prRunId, "--json"]), "pr_created");
+    const create = await runStep(prLifecycleCall(["create", "--initiative", assertSlug(effectiveInput.initiative, "--initiative"), "--worker-run-id", workerRunId, "--run-id", prRunId, "--json"]), "pr_created");
     if (!create.ok || !create.parsed) {
       return { ...base, status: "blocked", blockers: create.blockers, stopReason: "approval_boundary", startedWork, completedWork, rawOutputExcerpt: excerpt(create.result.stdout, create.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, nextSafeActions: ["Resolve PR creation blockers before rerunning auto-land."] };
     }
 
-    const gate = await runStep(prLifecycleCall(["gate", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--json"]), "gate_passed");
+    const gate = await runStep(prLifecycleCall(["gate", "--initiative", assertSlug(effectiveInput.initiative, "--initiative"), "--run-id", prRunId, "--json"]), "gate_passed");
     if (!gate.ok || !gate.parsed) {
       return { ...base, status: "blocked", blockers: gate.blockers, stopReason: "validation_failure", startedWork, completedWork, rawOutputExcerpt: excerpt(gate.result.stdout, gate.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, nextSafeActions: ["Wait for or fix PR gate checks, then rerun auto-land from PR lifecycle evidence."] };
     }
 
-    const mergeReady = await runStep(prLifecycleCall(["merge-ready", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--json"]), (record) => String(record.status) === "gate_passed" && isRecord(record.lifecycle) && record.lifecycle.mergeReady === true);
+    const mergeReady = await runStep(prLifecycleCall(["merge-ready", "--initiative", assertSlug(effectiveInput.initiative, "--initiative"), "--run-id", prRunId, "--json"]), (record) => String(record.status) === "gate_passed" && isRecord(record.lifecycle) && record.lifecycle.mergeReady === true);
     if (!mergeReady.ok || !mergeReady.parsed) {
       return { ...base, status: "blocked", blockers: mergeReady.blockers, stopReason: "validation_failure", startedWork, completedWork, rawOutputExcerpt: excerpt(mergeReady.result.stdout, mergeReady.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, nextSafeActions: ["Resolve merge-ready blockers before applying merge."] };
     }
 
-    const merge = await runStep(prLifecycleCall(["merge", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--allow-merge", "--approval-ref", approvalRef, "--method", mergeMethodFor(input), "--json"]), "merged");
+    const merge = await runStep(prLifecycleCall(["merge", "--initiative", assertSlug(effectiveInput.initiative, "--initiative"), "--run-id", prRunId, "--allow-merge", "--approval-ref", approvalRef, "--method", mergeMethodFor(effectiveInput), "--json"]), "merged");
     if (!merge.ok || !merge.parsed) {
       return { ...base, status: "blocked", blockers: merge.blockers, stopReason: "approval_boundary", startedWork, completedWork, rawOutputExcerpt: excerpt(merge.result.stdout, merge.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, merge: { attempted: true, allowed: true, reason: "bounded merge helper blocked merge" }, nextSafeActions: ["Inspect bounded merge helper blockers before rerunning."] };
     }
 
     let finalRecord = merge.parsed;
     let syncedMain = false;
-    if (input.syncMain) {
-      const sync = await runStep(prLifecycleCall(["sync-main", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--json"]), "synced");
+    if (effectiveInput.syncMain) {
+      const sync = await runStep(prLifecycleCall(["sync-main", "--initiative", assertSlug(effectiveInput.initiative, "--initiative"), "--run-id", prRunId, "--json"]), "synced");
       if (!sync.ok || !sync.parsed) {
         return { ...base, status: "blocked", blockers: sync.blockers, stopReason: "dirty_repo", startedWork, completedWork, rawOutputExcerpt: excerpt(sync.result.stdout, sync.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, merge: { attempted: true, allowed: true, reason: "merge completed; sync-main blocked" }, nextSafeActions: ["Resolve sync-main blockers before starting downstream AFK work."] };
       }
