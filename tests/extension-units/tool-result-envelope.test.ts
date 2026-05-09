@@ -8,6 +8,8 @@ function parseEnvelope(result: { content?: Array<{ type: string; text?: string }
   return JSON.parse(textContent(result)) as CompactToolResultEnvelope;
 }
 
+const HARD_RESULT_BUDGET_BYTES = 20_000;
+
 test("write success compacts to path, byte/line counts, and hash without file content", () => {
   const originalContent = "alpha\nbeta\ngamma\n";
   const result = compactToolResultEvent({
@@ -140,7 +142,71 @@ test("read compacts large text content to metadata and bounded excerpt", () => {
   assert.equal(textContent(result).includes("file-line-20"), false);
 });
 
-test("extension registers tool_result hook for read/write/edit/bash only", async () => {
+test("read compaction caps one giant line under the hard result budget", () => {
+  const result = compactToolResultEvent(
+    {
+      type: "tool_result",
+      toolCallId: "read-one-line",
+      toolName: "read",
+      input: { path: "src/giant.txt" },
+      content: [{ type: "text", text: "x".repeat(50_000) }],
+      details: undefined,
+      isError: false,
+    },
+    {},
+  );
+
+  assert.ok(result);
+  assert.ok(JSON.stringify(result).length < HARD_RESULT_BUDGET_BYTES);
+  const envelope = parseEnvelope(result);
+  assert.equal(envelope.tool, "read");
+  assert.equal(envelope.truncated, true);
+  assert.ok(envelope.excerpts?.stdout?.[0]?.includes("truncated"));
+  assert.equal(textContent(result).includes("x".repeat(10_000)), false);
+});
+
+test("unsupported oversized tool result gets generic compact envelope", () => {
+  const result = compactToolResultEvent(
+    {
+      type: "tool_result",
+      toolCallId: "custom-1",
+      toolName: "custom_probe",
+      input: { probe: true },
+      content: [{ type: "text", text: "y".repeat(50_000) }],
+      details: { debug: "z".repeat(50_000) },
+      isError: false,
+    },
+    {},
+  );
+
+  assert.ok(result);
+  assert.ok(JSON.stringify(result).length < HARD_RESULT_BUDGET_BYTES);
+  const envelope = parseEnvelope(result);
+  assert.equal(envelope.tool, "custom_probe");
+  assert.equal(envelope.truncated, true);
+  assert.match(envelope.summary, /global result-size guard/);
+  assert.equal(textContent(result).includes("y".repeat(10_000)), false);
+  assert.equal(JSON.stringify(result).includes("z".repeat(10_000)), false);
+});
+
+test("small unsupported tool result is not replaced by the global fallback", () => {
+  const result = compactToolResultEvent(
+    {
+      type: "tool_result",
+      toolCallId: "custom-small",
+      toolName: "custom_probe",
+      input: {},
+      content: [{ type: "text", text: "small result" }],
+      details: undefined,
+      isError: false,
+    },
+    {},
+  );
+
+  assert.equal(result, undefined);
+});
+
+test("extension registers global tool_result hook and preserves specialized timing", async () => {
   const pi = new FakePi("feat/tool-result-envelope");
   toolResultEnvelope(pi as any);
 

@@ -91,3 +91,76 @@
 - Live validation: `./scripts/validate-skill-routing.sh --report /tmp/runtime-output-skill-routing-live.md --summary-json /tmp/runtime-output-skill-routing-live.json` → PASS.
 - Root checkout investigation: root had drifted to `task/task-1778330759691-run-mo-afk-issue-orchestration-until-hitl` at `0f0cebc` with no dirty files; main/origin were still `d13efc4`. Switched root back to `main` safely; root now matches origin/main.
 - Risk note: until this branch lands, active root runtime can still leak raw `task_update show` output. Do not use task/queue show/status tools for backlog/status until the PR is merged and root synced.
+
+## 2026-05-09 — Issue 3 global result-size guard
+
+### Goal
+- Add a repo-local global/default tool-result guard for oversized outputs.
+- Preserve specialized envelopes for read/write/edit/bash while bounding one-line output leaks.
+
+### RED / Baseline Evidence
+- Probe before implementation:
+  - `read` with one 50KB line compacted to ~100.7KB.
+  - unsupported `custom_probe` direct compaction returned no useful generic envelope and runtime hook did not cover unsupported tools.
+
+### Changes
+- `.pi/agent/extensions/tool-result-envelope.ts`
+  - Added 20KB default serialized result budget.
+  - Added per-excerpt-line character cap.
+  - Added generic fallback envelope for oversized unsupported tool results.
+  - Removed raw `originalDetails` echo from replacement details; records omission instead.
+  - Added emergency compaction pass if a normal compact envelope still exceeds budget.
+  - Registered the tool_result hook for all tools; small unsupported results still return `undefined` so they are not replaced.
+- `tests/extension-units/tool-result-envelope.test.ts`
+  - Added one-giant-line read regression.
+  - Added oversized unsupported/custom tool regression.
+  - Added small unsupported pass-through regression.
+
+### GREEN Evidence
+- `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs --test tests/extension-units/tool-result-envelope.test.ts`
+  - 9 tests passing.
+- Post-change bounded probe:
+  - one-line `read`: ~1.7KB compacted replacement.
+  - oversized `custom_probe`: ~2.1KB compacted replacement.
+- `git diff --check` passed.
+
+### Wiring Verification
+- Existing default extension still registers `tool_result`.
+- Specialized built-ins still use existing structured envelopes.
+- Unsupported tools are only replaced when their content/details payload exceeds the default serialized budget.
+
+### Known Gap
+- Failed tool results may still require Pi core/runtime support if `agent-session` ignores hook replacements for `isError` results; this issue records the limitation and leaves core patching as follow-up unless required.
+
+## Review (2026-05-10T00:17:00-07:00) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778365166835-issue-3-global-result-size-guard
+- Branch: task/task-1778365166835-issue-3-global-result-size-guard
+- Scope: working-tree
+- Commands Run: `git status --short --branch`; `git diff --stat`; `git diff --name-only`; targeted source/test inspection of `.pi/agent/extensions/tool-result-envelope.ts` and `tests/extension-units/tool-result-envelope.test.ts`; `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs --test tests/extension-units/tool-result-envelope.test.ts`; `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Known upstream/runtime limitation remains as documented by the worker: if Pi agent-session ignores `tool_result` hook replacements for `isError` results, failed tool outputs may still need runtime-core support beyond this repo-local extension.
+
+### Recommended Tests / Validation
+- Keep targeted `tool-result-envelope.test.ts` and `git diff --check` as required Issue 3 gates.
+- Before landing, also run foundation extension compile/static checks or rely on PR gate equivalents because `.pi/agent/extensions/tool-result-envelope.ts` is a loaded extension.
+
+### Rollout Notes
+- Generic fallback now applies to oversized unsupported success outputs; monitor for any custom extension relying on large raw success details in model context.
+
+Review Verdict: no_required_fixes

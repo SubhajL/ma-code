@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "taskId": "task-1778365166835",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Oversized supported built-in read/bash-style outputs are bounded by per-line and total serialized byte caps, including one-giant-line fixtures.",
+      "Oversized unsupported/custom extension tool success outputs get a generic compact envelope instead of returning raw large content/details.",
+      "Default compacted tool_result replacement serializes below a 20KB hard budget, with tests that would fail on the existing one-line leak.",
+      "Preserve small/normal tool outputs and existing specialized envelopes where appropriate."
+    ],
+    "tddSlice": "One-giant-line read output and oversized unsupported custom tool output are compacted under a 20KB hard serialized budget."
+  },
+  "task": {
+    "id": "task-1778365166835",
+    "status": "review",
+    "validationDecision": "pass",
+    "acceptanceCriteria": [
+      "Oversized supported built-in read/bash-style outputs are bounded by per-line and total serialized byte caps, including one-giant-line fixtures.",
+      "Oversized unsupported/custom extension tool success outputs get a generic compact envelope instead of returning raw large content/details.",
+      "Default compacted tool_result replacement serializes below a 20KB hard budget, with tests that would fail on the existing one-line leak."
+    ]
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "validation": {
+    "commands": [
+      "node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs --test tests/extension-units/tool-result-envelope.test.ts",
+      "bash scripts/check-foundation-extension-compile.sh",
+      "bash scripts/check-repo-static.sh",
+      "git diff --check"
+    ],
+    "status": "pass"
+  },
+  "review": {
+    "verdict": "no_required_fixes",
+    "logPath": "logs/coding/2026-05-09_master-orchestrator-context-classifier.md"
+  },
+  "creation": {
+    "branch": "task/task-1778365166835-issue-3-global-result-size-guard-current",
+    "commit": "f091dd8"
+  },
+  "prGate": {
+    "status": "pending",
+    "mergeStateStatus": "UNKNOWN"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/131",
+    "state": "OPEN"
+  }
+}
