@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "taskId": "task-1778317227251",
+  "planning": {
+    "acceptanceCriteria": [
+      "npm run harness:orchestrate -- run ... --json exists and delegates exactly one bounded lane per invocation",
+      "--max-steps and --max-runtime-seconds are required before delegation",
+      "Queue-level, worker-job, and parallel-lanes requests map to existing bounded helper commands",
+      "Unsafe verbs and merge/default PR creation are rejected; merge is never attempted by Phase 4 run",
+      "Optional PR creation boundary requires --allow-pr-create --approval-ref <ref> and still stops before merge"
+    ],
+    "tddSlice": "orchestrate run delegates exactly one bounded lane and reports merge.attempted false."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Phase 4 run CLI is implemented",
+      "Policy/helper/static/docs are wired",
+      "PR gate is clean"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task-1778317227251-orchestrator-run",
+    "commit": "35e29d2"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/123",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}

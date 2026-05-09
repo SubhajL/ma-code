@@ -522,9 +522,9 @@ Parallelism remains conservative: intra-slice phases remain sequential, and cros
 
 Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.
 
-## Phase 3 master orchestrator apply/materialize router
+## Phase 4 master orchestrator bounded run session
 
-Use the classifier or delegated dry-run planner when the next safe harness path is unclear. Use `apply` only when the target path and required arguments are explicit:
+Use the classifier or delegated dry-run planner when the next safe harness path is unclear. Use `apply` only when the target path and required arguments are explicit. Use `run` only to advance exactly one bounded execution lane with explicit max limits:
 
 ```bash
 npm run harness:orchestrate -- classify --goal "Build checkout mini flow" --json
@@ -532,7 +532,9 @@ npm run harness:operator -- orchestrate classify --goal "Build checkout mini flo
 npm run harness:orchestrate -- dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
 npm run harness:operator -- orchestrate dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
 npm run harness:orchestrate -- apply --path stitch_prompt --initiative checkout --slice slice-001 --json
+npm run harness:orchestrate -- run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
 npm run harness:operator -- orchestrate apply --path screen_approval --action approve --initiative checkout --slice slice-001 --approval-ref human-123 --by reviewer --note "Approved" --json
+npm run harness:operator -- orchestrate run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
 ```
 
 Rules:
@@ -543,6 +545,8 @@ Rules:
 - `apply` rejects generic command strings, worker execution, PR creation, merge, sync-main, raw git, and direct `.pi/agent/state/runtime/*.json` edits.
 - Screen approval requires `--approval-ref`, reviewer identity, and approval note or rejection reason.
 - AFK queue materialization is apply-only with mandatory `--queue-only`; it does not start queue sessions or workers.
+- `run` requires `--max-steps` and `--max-runtime-seconds`, chooses exactly one of `queue_level`, `worker_job`, or `parallel_lanes`, blocks dirty/protected repo state before delegation, and records `merge.attempted: false`.
+- Optional PR creation boundary requires `--allow-pr-create --approval-ref <ref>` and still stops before merge.
 - Ambiguous requests return `status: "needs_input"` during dry-run and no delegated command.
 
-See `.pi/agent/docs/master_orchestrator.md` for the selected-path and apply-path contract.
+See `.pi/agent/docs/master_orchestrator.md` for the selected-path, apply-path, and Phase 4 run-lane contract.

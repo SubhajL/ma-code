@@ -63,7 +63,8 @@
     "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh",
     "validate:orchestrator-classifier": "./scripts/validate-orchestrator-classifier.sh",
     "validate:orchestrator-dry-run": "./scripts/validate-orchestrator-dry-run.sh",
-    "validate:orchestrator-apply": "./scripts/validate-orchestrator-apply.sh"
+    "validate:orchestrator-apply": "./scripts/validate-orchestrator-apply.sh",
+    "validate:orchestrator-run": "./scripts/validate-orchestrator-run.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

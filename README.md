@@ -474,15 +474,17 @@ Dry-run writes no files and shows the slice DAG, HITL gates, sequential phase or
 
 Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.
 
-## Phase 3 master orchestrator apply/materialize router
+## Phase 4 master orchestrator bounded run session
 
-Phase 1 added a read-only classifier. Phase 2 added a delegated dry-run planner. Phase 3 adds a bounded apply/materialize router that delegates exactly one allowlisted helper command and verifies reported `createdFiles` against explicit write-path allowlists:
+Phase 1 added a read-only classifier. Phase 2 added a delegated dry-run planner. Phase 3 added a bounded apply/materialize router that delegates exactly one allowlisted helper command and verifies reported `createdFiles` against explicit write-path allowlists. Phase 4 adds a bounded foreground `run` session for exactly one lane: `queue_level`, `worker_job`, or `parallel_lanes`.
 
 ```bash
 npm run harness:orchestrate -- classify --goal "Build checkout mini flow" --json
 npm run harness:orchestrate -- dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
 npm run harness:orchestrate -- apply --path stitch_prompt --initiative checkout --slice slice-001 --json
+npm run harness:orchestrate -- run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
 npm run harness:operator -- orchestrate apply --path screen_approval --action approve --initiative checkout --slice slice-001 --approval-ref human-123 --by reviewer --note "Approved" --json
+npm run harness:operator -- orchestrate run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
 ```
 
-The dry-run planner writes no orchestrator files, returns `writesFiles: false`, creates no tasks or queue jobs, creates no PRs, and performs no merge. The apply router is materialization-only: it rejects generic command strings, worker execution, PR creation, merge, sync-main, raw git, and direct `.pi/agent/state/runtime/*.json` edits. Allowlisted apply paths include product intake, issue materialization, product pipeline, Stitch prompt/artifact, screen approval, slice contract, FE/BE packets, and AFK queue materialization with mandatory `--queue-only`. See `.pi/agent/docs/master_orchestrator.md`.
+The dry-run planner writes no orchestrator files, returns `writesFiles: false`, creates no tasks or queue jobs, creates no PRs, and performs no merge. The apply router is materialization-only: it rejects generic command strings, worker execution, PR creation, merge, sync-main, raw git, and direct `.pi/agent/state/runtime/*.json` edits. Allowlisted apply paths include product intake, issue materialization, product pipeline, Stitch prompt/artifact, screen approval, slice contract, FE/BE packets, and AFK queue materialization with mandatory `--queue-only`. The Phase 4 run session requires `--max-steps` and `--max-runtime-seconds`, blocks dirty/protected repo state before delegation, records `merge.attempted: false`, and never merges by default. See `.pi/agent/docs/master_orchestrator.md`.
