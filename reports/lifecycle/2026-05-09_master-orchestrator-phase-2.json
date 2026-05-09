@@ -33,9 +33,11 @@
     "commit": "f6fdcc2"
   },
   "pr": {
-    "state": "PENDING"
+    "url": "https://github.com/SubhajL/ma-code/pull/120",
+    "state": "OPEN"
   },
   "prGate": {
-    "status": "pending"
+    "status": "pending",
+    "mergeStateStatus": "BLOCKED"
   }
 }
