@@ -81,3 +81,9 @@ LOW
 - The change affects model-visible tool-result content for read/write/edit/bash once the extension autoloads.
 - It does not reduce model-generated write input token cost; it only reduces returned tool-result context.
 - Review Verdict: no_required_fixes
+
+## Submission (2026-05-09T10:56:00Z)
+
+- Branch pushed: `worker/task-1778322697003-issue-1-compact-tool-result-envelope`.
+- PR created: https://github.com/SubhajL/ma-code/pull/125
+- Lifecycle evidence file added: `reports/lifecycle/task-1778322697003-compact-tool-result-envelope.json`.
