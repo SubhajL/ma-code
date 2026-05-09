@@ -1,7 +1,7 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-09_afk-queue-orchestration-phase-b.md`
+- `logs/coding/2026-05-09_worker-execution-phase-c.md`
 
 ## Current planning log
 - `reports/planning/2026-05-08_product-pipeline-e2e-phase-14-plan.md`

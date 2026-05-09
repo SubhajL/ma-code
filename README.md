@@ -356,6 +356,8 @@ npm run harness:issue-materialize -- dry-run --source docs/initiatives/greenfiel
 npm run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 1
 npm run harness:afk-orchestrate -- apply --queue-only --initiative greenfield-scaffold
 npm run harness:afk-orchestrate -- run --run --initiative greenfield-scaffold --max-steps 1 --max-runtime-seconds 30 --max-parallel 1
+npm run harness:worker-execute -- dry-run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-002
+npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-002 --max-steps 4 --max-runtime-seconds 300 --stop-before-pr
 npm run harness:screen-approval -- status --initiative example-major-feature --slice slice-001
 npm run harness:screen-approval -- approve --initiative example-major-feature --slice slice-001 --by reviewer --note "Approved for FE implementation."
 ```
@@ -367,6 +369,8 @@ The `harness:screen-approval` helper is the safe Phase 5 gate after mock screen 
 The lower-level `harness:init-feature` helper scaffolds `docs/initiatives/<feature-slug>/` from the repo-local initiative templates and prints optional next-step suggestions for `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues`.
 
 Phase A issue materialization creates durable initiative issue artifacts only. Phase B AFK queue orchestration (`harness:afk-orchestrate`) reads those artifacts, applies dependency/HITL/validation/parallel-safety eligibility, and can create queue-ready jobs through the queue-runner helper path with `queueJobSource: issue-materialization` provenance. Phase B has no daemon, hidden scheduler, free-roaming pickup, product-code implementation, or direct raw `.pi/agent/state/runtime/*.json` edit path; run mode requires explicit `--run`, `--max-steps`, `--max-runtime-seconds`, and `--max-parallel`.
+
+Phase C bounded worker execution (`harness:worker-execute`) is the first foreground path that can execute one selected AFK queue job in an isolated git worktree. It refuses HITL/approval-required/missing-evidence jobs, records durable `docs/initiatives/<slug>/worker-runs/<run-id>.json` artifacts, preserves RED/GREEN/validation/review evidence, links queue jobs through `workerExecution`, and defaults to the `--stop-before-pr` boundary. `--allow-pr-create` requires an explicit approval reference, and the executor never auto-merges.
 
 See also:
 - `.pi/agent/docs/harness_packaging_strategy.md`

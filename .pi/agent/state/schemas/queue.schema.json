@@ -233,6 +233,59 @@
             },
             "additionalProperties": false
           },
+          "workerExecution": {
+            "description": "Phase C bounded worker execution linkage. The executor records review-ready/blocked state here while preserving normal queue status semantics.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "runArtifactPath",
+              "worktreePath",
+              "status",
+              "lastReason",
+              "linkedTaskId",
+              "updatedAt"
+            ],
+            "properties": {
+              "runArtifactPath": {
+                "type": "string"
+              },
+              "worktreePath": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "planned",
+                  "running",
+                  "blocked",
+                  "failed",
+                  "review_ready",
+                  "done"
+                ]
+              },
+              "lastReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "linkedTaskId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
           "tddSlice": {
             "description": "Optional explicit TDD slice metadata for queued implementation work. Queue-runner preserves this into generated implementation packets when provided.",
             "type": [

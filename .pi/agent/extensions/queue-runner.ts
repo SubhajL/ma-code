@@ -119,6 +119,15 @@ export interface QueueJobSource {
   sourceArtifactPaths?: string[];
 }
 
+export interface QueueJobWorkerExecutionLinkage {
+  runArtifactPath: string;
+  worktreePath: string | null;
+  status: "planned" | "running" | "blocked" | "failed" | "review_ready" | "done";
+  lastReason: string | null;
+  linkedTaskId: string | null;
+  updatedAt: string;
+}
+
 export interface QueueJob {
   id: string;
   goal: string;
@@ -152,6 +161,7 @@ export interface QueueJob {
   scheduledWorkflowId?: string | null;
   scheduledRunKey?: string | null;
   queueJobSource?: QueueJobSource | null;
+  workerExecution?: QueueJobWorkerExecutionLinkage | null;
   linkedTaskId?: string | null;
   packetId?: string | null;
   selectedModelId?: string | null;
@@ -502,6 +512,26 @@ async function mutateQueueState<T>(cwd: string, fn: (state: QueueState) => T | P
     const result = await fn(state);
     await writeQueueState(cwd, state);
     return result;
+  });
+}
+
+export async function updateQueueJobWorkerExecution(
+  cwd: string,
+  jobId: string,
+  linkage: Omit<QueueJobWorkerExecutionLinkage, "updatedAt">,
+  terminalStatus?: "blocked" | "failed",
+): Promise<QueueJob> {
+  return mutateQueueState(cwd, (state) => {
+    const job = getJob(state, jobId);
+    if (!job) throw new Error(`Queue job not found: ${jobId}`);
+    job.workerExecution = {
+      ...linkage,
+      updatedAt: new Date().toISOString(),
+    };
+    if (linkage.linkedTaskId && !job.linkedTaskId) job.linkedTaskId = linkage.linkedTaskId;
+    if (terminalStatus) job.status = terminalStatus;
+    job.updatedAt = job.workerExecution.updatedAt;
+    return job;
   });
 }
 
