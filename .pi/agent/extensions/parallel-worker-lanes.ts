@@ -407,3 +407,6 @@ export function renderParallelWorkerLaneManifest(manifest: ParallelWorkerLaneMan
   lines.push(`written manifest path: ${writtenPath ?? "none"}`);
   return lines.join("\n");
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function parallelWorkerLanesExtension(): void {}

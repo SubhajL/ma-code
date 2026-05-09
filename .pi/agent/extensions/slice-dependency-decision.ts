@@ -341,3 +341,6 @@ export function decideSliceParallelism(input: SliceParallelismInput): SliceParal
     notes: unique([...notes, ...slices.flatMap((slice) => slice.notes)]),
   };
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function sliceDependencyDecisionExtension(): void {}
