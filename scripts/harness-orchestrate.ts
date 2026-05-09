@@ -55,7 +55,7 @@ function usage(): string {
     "  harness-orchestrate dry-run --goal <human-goal> [--json]",
     "  harness-orchestrate apply --path <apply-path> [target args] [--json]",
     "  harness-orchestrate run --initiative <slug> --max-steps <n> --max-runtime-seconds <n> [--json]",
-    "  harness-orchestrate run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> [--allow-pr-create --approval-ref <ref>] [--json]",
+    "  harness-orchestrate run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> [--allow-pr-create --approval-ref <ref>] [--auto-land --approval-ref <ref> [--sync-main] [--merge-method squash|merge|rebase]] [--json]",
     "  harness-orchestrate run --lane parallel_lanes --initiative <slug> --max-steps <n> --max-runtime-seconds <n> --max-parallel <n> --worker-command <cmd> [--json]",
     "  harness-orchestrate evidence --initiative <slug> [--run-id <id>] [--lifecycle-evidence <path>] [--write-report] [--json]",
     "  harness-orchestrate merge-check --pr <number> [--method squash|merge|rebase] [--lifecycle-evidence <path>] [--json]",
@@ -79,7 +79,7 @@ function usage(): string {
     "  - dry-run classifies, invokes at most one allowlisted dry-run/status/check helper, and writes no orchestrator files",
     "  - apply delegates exactly one allowlisted materialization helper and verifies reported createdFiles against explicit write-path allowlists",
     "  - apply does not run workers, create PRs, merge, sync main, or accept generic command strings",
-    "  - run delegates exactly one bounded execution lane, requires max limits, defaults to stop-before-merge, and never merges",
+    "  - run delegates exactly one bounded execution lane and requires max limits; auto-land requires --auto-land --approval-ref and uses PR lifecycle/merge gates",
     "  - evidence consumes existing run/lifecycle/log artifacts first; optional reports are explicit",
     "  - merge-check and merge-apply delegate only to harness:merge; merge-apply requires --approval-ref",
   ].join("\n");
@@ -247,6 +247,9 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
     let maxParallel: number | undefined;
     let workerCommand: string | undefined;
     let allowPrCreate = false;
+    let autoLand = false;
+    let syncMain = false;
+    let mergeMethod: "squash" | "merge" | "rebase" | undefined;
     let approvalRef: string | undefined;
 
     for (let index = 0; index < rest.length; index += 1) {
@@ -269,18 +272,26 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
         workerCommand = requireValue(rest[++index], "--worker-command");
       } else if (arg === "--allow-pr-create") {
         allowPrCreate = true;
+      } else if (arg === "--auto-land") {
+        autoLand = true;
+      } else if (arg === "--sync-main") {
+        syncMain = true;
+      } else if (arg === "--merge-method") {
+        const rawMethod = requireValue(rest[++index], "--merge-method");
+        if (rawMethod !== "squash" && rawMethod !== "merge" && rawMethod !== "rebase") throw new Error("--merge-method must be squash, merge, or rebase.");
+        mergeMethod = rawMethod;
       } else if (arg === "--approval-ref") {
         approvalRef = requireValue(rest[++index], "--approval-ref");
       } else if (arg === "--json") {
         json = true;
-      } else if (["--apply", "--create", "--merge", "--sync-main", "--allow-merge"].includes(arg)) {
+      } else if (["--apply", "--create", "--merge", "--allow-merge"].includes(arg)) {
         throw new Error(`${arg} is not supported by harness-orchestrate run.`);
       } else {
         throw new Error(`Unknown argument: ${arg}\n${usage()}`);
       }
     }
 
-    return { command: "run", lane, initiative, jobId, maxSteps, maxRuntimeSeconds, maxParallel, workerCommand, allowPrCreate, approvalRef, json };
+    return { command: "run", lane, initiative, jobId, maxSteps, maxRuntimeSeconds, maxParallel, workerCommand, allowPrCreate, autoLand, syncMain, mergeMethod, approvalRef, json };
   }
 
   for (let index = 0; index < rest.length; index += 1) {

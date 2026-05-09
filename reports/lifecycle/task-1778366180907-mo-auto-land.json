@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "taskId": "task-1778366180907",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Define and document explicit auto-land policy for Master Orchestrator.",
+      "Implement runtime changes for approved PR create/merge/sync without bypassing gates.",
+      "Preserve conservative behavior without approval reference.",
+      "Add tests for no-approval and approved auto-land behavior."
+    ],
+    "tddSlice": "Approved worker_job auto-land delegates worker execution, PR lifecycle create/gate/merge-ready/merge, and sync-main."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Auto-land requires approvalRef and worker_job lane.",
+      "Default run behavior remains stop-before-PR.",
+      "Approved auto-land uses PR lifecycle and merge helper gates."
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task/task-1778366180907-mo-auto-land",
+    "commit": "dc3353e"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/128",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
