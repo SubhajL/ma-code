@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "taskId": "task-1778322697003",
+  "planning": {
+    "acceptanceCriteria": [
+      "Successful write returns path, bytes/lines, hash, and does not return file content by default.",
+      "Successful edit returns path, number of replacements, and only an optional tiny bounded summary.",
+      "Successful bash returns command, exit code, duration, and bounded last-N-lines output by default.",
+      "Failed commands return exit code plus bounded stderr/stdout excerpts sufficient for diagnosis.",
+      "Standard compact result shape includes status, summary, paths, counts, truncated, artifactPath, and nextAction where applicable.",
+      "Unit tests cover result-size caps and failure excerpts; golden/snapshot tests cover compact success outputs."
+    ],
+    "tddSlice": "tool_result hook compacts built-in read/write/edit/bash results into a standard envelope without changing tool execution"
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Compact read/write/edit/bash result envelope implemented",
+      "Targeted and regression validation passed",
+      "g-check review found no required fixes"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "worker/task-1778322697003-issue-1-compact-tool-result-envelope",
+    "commit": "e2ba31c"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/125",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
