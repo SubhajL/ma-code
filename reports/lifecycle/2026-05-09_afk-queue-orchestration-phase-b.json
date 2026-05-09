@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "taskId": "task-1778284117848",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Dry-run writes no files and reports deterministic queue plans from Phase A artifacts",
+      "HITL issues are never queued automatically",
+      "AFK issue dependency, validation, acceptance, domain, allowedPaths, and parallel-safety gates are enforced",
+      "Apply creates queue jobs only through supported queue helper path",
+      "Run mode delegates to bounded queue session with explicit limits"
+    ],
+    "tddSlice": "Behavior-first Phase B helper: dry-run eligibility first, apply queue materialization second, bounded run delegation third."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Dry-run writes no files",
+      "HITL issues are never queued automatically",
+      "Dependencies and safety proofs gate queue materialization",
+      "Apply uses queue-runner helper provenance",
+      "Run mode requires explicit bounds and delegates to bounded session"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778284117848-phase-b-afk-queue",
+    "commit": "3664483ca8363a908c4d808dffe87878546ce2d9"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/116",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
