@@ -206,6 +206,7 @@ JSON
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestrator.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/execution-leases.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/product-slice-lifecycle.ts" "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/tool-result-envelope.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -449,11 +450,31 @@ check_11_product_slice_lifecycle_unit_tests() {
   fi
 }
 
+check_12_tool_result_envelope_unit_tests() {
+  local name="12. compact tool-result envelope unit tests"
+  local out="$TMP_ROOT/check_12_tool_result_envelope_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/unit-runtime"
+  local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/tool-result-envelope.test.ts"
+
+  if run_test_file "$runtime_dir" "tests/extension-units/tool-result-envelope.test.ts" "$out"; then
+    local detail="tool-result envelope tests passed for compact read/write/edit/bash success and failure outputs."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="tool-result envelope unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
 check_7_graphify_validation_decision_unit_tests
 check_8_graphify_orchestration_decision_unit_tests
 check_9_graphify_orchestrator_unit_tests
 check_10_execution_leases_unit_tests
 check_11_product_slice_lifecycle_unit_tests
+check_12_tool_result_envelope_unit_tests
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"
