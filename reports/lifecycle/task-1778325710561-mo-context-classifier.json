@@ -1,33 +1,49 @@
 {
+  "version": 1,
   "taskId": "task-1778325710561",
-  "title": "Add MO repo and initiative context classifier",
   "directImplementationExemption": true,
   "planning": {
-    "path": "reports/planning/2026-05-09_master-orchestrator-context-classifier-plan.md"
+    "acceptanceCriteria": [
+      "Add deterministic repo/initiative context classifier for Master Orchestrator that distinguishes greenfield-eligible from existing harness/brownfield/active initiative contexts.",
+      "Expose the classifier through harness:orchestrate and operator surfaces without running workers, queues, PRs, or merge operations.",
+      "Add tests/validators/docs/static wiring proving repo context, initiative maturity, greenfield eligibility, safe next modes, blocked modes, and no-write behavior.",
+      "Use a dedicated branch/worktree, create PR, merge through bounded helper if gates pass, and sync local root main with evidence recorded."
+    ],
+    "tddSlice": "harness-orchestrate context reports current harness as non-greenfield and active existing initiative for greenfield-scaffold."
   },
-  "coding": {
-    "path": "logs/coding/2026-05-09_master-orchestrator-context-classifier.md",
-    "red": true,
-    "green": true,
-    "reviewVerdict": "no_required_fixes"
+  "implementation": {
+    "changedFiles": [
+      ".pi/agent/extensions/orchestrator-context.ts",
+      "scripts/harness-orchestrate.ts",
+      "scripts/validate-orchestrator-context.sh",
+      "tests/extension-units/orchestrator-context.test.ts",
+      "tests/integration/orchestrator-context.test.ts"
+    ],
+    "commit": "384f576"
   },
   "validation": {
-    "orchestratorContext": "pass",
-    "orchestratorRegressions": "pass",
-    "foundationCompile": "pass",
-    "repoStatic": "pass",
-    "coreWorkflows": "pass",
-    "harnessPackage": "pass",
-    "extensionUnits": "pass",
-    "diffCheck": "pass"
+    "red": "integration context test failed before CLI context wiring",
+    "green": "validate-orchestrator-context.sh passed with 8 tests and context JSON assertions",
+    "commands": [
+      "validate-orchestrator-context.sh x3",
+      "check-foundation-extension-compile.sh",
+      "check-repo-static.sh",
+      "orchestrator classifier/dry-run/apply/run/evidence validators",
+      "validate-core-workflows.sh",
+      "validate-harness-package.sh",
+      "validate-extension-unit-tests.sh",
+      "git diff --check"
+    ]
   },
-  "commit": "0cfb654",
-  "prGate": {
-    "status": "pass",
-    "mergeStateStatus": "CLEAN"
+  "review": {
+    "verdict": "no_required_fixes"
   },
   "pr": {
     "url": "https://github.com/SubhajL/ma-code/pull/126",
     "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
   }
 }
