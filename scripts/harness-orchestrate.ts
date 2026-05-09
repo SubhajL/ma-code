@@ -11,26 +11,45 @@ import {
   type OrchestratorInitiativeCandidate,
 } from "../.pi/agent/extensions/orchestrator-classifier.ts";
 import { planOrchestratorDryRun, type OrchestratorDryRunPlan } from "../.pi/agent/extensions/orchestrator-dry-run.ts";
+import {
+  rejectUnsafeApplyVerb,
+  runOrchestratorApply,
+  type OrchestratorApplyMaterializationResult,
+  type OrchestratorApplyPath,
+  type OrchestratorApplyRequest,
+} from "../.pi/agent/extensions/orchestrator-apply-policy.ts";
 
 const execFile = promisify(execFileCallback);
 
-export interface HarnessOrchestrateOptions {
-  command: "classify" | "dry-run";
-  goal: string;
-  json?: boolean;
-  repoRoot?: string;
-}
+export type HarnessOrchestrateOptions =
+  | { command: "classify" | "dry-run"; goal: string; json?: boolean; repoRoot?: string }
+  | ({ command: "apply"; json?: boolean; repoRoot?: string } & OrchestratorApplyRequest);
 
 function usage(): string {
   return [
     "Usage:",
     "  harness-orchestrate classify --goal <human-goal> [--json]",
     "  harness-orchestrate dry-run --goal <human-goal> [--json]",
+    "  harness-orchestrate apply --path <apply-path> [target args] [--json]",
+    "",
+    "Apply paths:",
+    "  product_intake --initiative <slug> --description <text>",
+    "  issue_materialization --source <approved-g-issues.json>",
+    "  product_pipeline --initiative <slug>",
+    "  stitch_prompt --initiative <slug> --slice <slice-id>",
+    "  stitch_artifact --initiative <slug> --slice <slice-id>",
+    "  screen_approval --action approve --initiative <slug> --slice <slice-id> --approval-ref <ref> --by <name> --note <text>",
+    "  screen_approval --action reject --initiative <slug> --slice <slice-id> --approval-ref <ref> --by <name> --reason <text>",
+    "  slice_contract --initiative <slug> --slice <slice-id>",
+    "  frontend_packet --initiative <slug> --slice <slice-id>",
+    "  backend_packet --initiative <slug> --slice <slice-id>",
+    "  afk_queue_materialization --initiative <slug>",
     "",
     "Rules:",
     "  - classify is read-only and writes no files",
     "  - dry-run classifies, invokes at most one allowlisted dry-run/status/check helper, and writes no orchestrator files",
-    "  - apply/run/create/merge execution is out of scope",
+    "  - apply delegates exactly one allowlisted materialization helper and verifies reported createdFiles against explicit write-path allowlists",
+    "  - apply does not run workers, create PRs, merge, sync main, or accept generic command strings",
   ].join("\n");
 }
 
@@ -39,13 +58,88 @@ function requireValue(value: string | undefined, flag: string): string {
   return value;
 }
 
+function isApplyPath(value: string): value is OrchestratorApplyPath {
+  return [
+    "product_intake",
+    "issue_materialization",
+    "product_pipeline",
+    "stitch_prompt",
+    "stitch_artifact",
+    "screen_approval",
+    "slice_contract",
+    "frontend_packet",
+    "backend_packet",
+    "afk_queue_materialization",
+  ].includes(value);
+}
+
+function normalizeSliceArg(arg: string): "sliceId" | null {
+  return arg === "--slice" ? "sliceId" : null;
+}
+
 export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateOptions {
   const [commandValue, ...rest] = argv;
   if (!commandValue || commandValue === "help" || commandValue === "--help" || commandValue === "-h") throw new Error(usage());
-  if (commandValue !== "classify" && commandValue !== "dry-run") throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
+  if (["run", "create", "merge", "sync-main", "git"].includes(commandValue)) rejectUnsafeApplyVerb(commandValue);
+  if (commandValue !== "classify" && commandValue !== "dry-run" && commandValue !== "apply") throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
 
   let goal: string | undefined;
   let json = false;
+
+  if (commandValue === "apply") {
+    let path: OrchestratorApplyPath | undefined;
+    let initiative: string | undefined;
+    let sliceId: string | undefined;
+    let source: string | undefined;
+    let description: string | undefined;
+    let action: "approve" | "reject" | undefined;
+    let approvalRef: string | undefined;
+    let by: string | undefined;
+    let note: string | undefined;
+    let reason: string | undefined;
+    let command: string | undefined;
+
+    for (let index = 0; index < rest.length; index += 1) {
+      const arg = rest[index];
+      const sliceKey = normalizeSliceArg(arg);
+      if (arg === "--path") {
+        const rawPath = requireValue(rest[++index], "--path");
+        if (!isApplyPath(rawPath)) throw new Error(`Unknown apply path: ${rawPath}`);
+        path = rawPath;
+      } else if (arg === "--initiative" || arg === "--slug") {
+        initiative = requireValue(rest[++index], arg);
+      } else if (sliceKey) {
+        sliceId = requireValue(rest[++index], arg);
+      } else if (arg === "--source") {
+        source = requireValue(rest[++index], "--source");
+      } else if (arg === "--description") {
+        description = requireValue(rest[++index], "--description");
+      } else if (arg === "--action") {
+        const rawAction = requireValue(rest[++index], "--action");
+        if (rawAction !== "approve" && rawAction !== "reject") throw new Error("--action must be approve or reject.");
+        action = rawAction;
+      } else if (arg === "--approval-ref") {
+        approvalRef = requireValue(rest[++index], "--approval-ref");
+      } else if (arg === "--by") {
+        by = requireValue(rest[++index], "--by");
+      } else if (arg === "--note") {
+        note = requireValue(rest[++index], "--note");
+      } else if (arg === "--reason") {
+        reason = requireValue(rest[++index], "--reason");
+      } else if (arg === "--command") {
+        command = requireValue(rest[++index], "--command");
+      } else if (arg === "--json") {
+        json = true;
+      } else if (["--run", "--create", "--merge", "--sync-main", "--allow-merge"].includes(arg)) {
+        throw new Error(`${arg} is not supported by harness-orchestrate apply.`);
+      } else {
+        throw new Error(`Unknown argument: ${arg}\n${usage()}`);
+      }
+    }
+
+    if (!path) throw new Error("--path is required for apply.");
+    return { command: "apply", path, initiative, sliceId, source, description, action, approvalRef, by, note, reason, command, json };
+  }
 
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
@@ -109,7 +203,7 @@ async function readGitState(repoRoot: string): Promise<OrchestratorGitState> {
   }
 }
 
-export async function runHarnessOrchestrate(options: HarnessOrchestrateOptions): Promise<OrchestratorClassification> {
+export async function runHarnessOrchestrate(options: Extract<HarnessOrchestrateOptions, { command: "classify" | "dry-run" }>): Promise<OrchestratorClassification> {
   const repoRoot = resolve(options.repoRoot ?? process.cwd());
   return classifyOrchestratorGoal({
     goal: options.goal,
@@ -119,9 +213,13 @@ export async function runHarnessOrchestrate(options: HarnessOrchestrateOptions):
   });
 }
 
-export async function runHarnessOrchestrateDryRun(options: HarnessOrchestrateOptions): Promise<OrchestratorDryRunPlan> {
+export async function runHarnessOrchestrateDryRun(options: Extract<HarnessOrchestrateOptions, { command: "classify" | "dry-run" }>): Promise<OrchestratorDryRunPlan> {
   const classification = await runHarnessOrchestrate(options);
   return planOrchestratorDryRun({ classification });
+}
+
+export async function runHarnessOrchestrateApply(options: Extract<HarnessOrchestrateOptions, { command: "apply" }>): Promise<OrchestratorApplyMaterializationResult> {
+  return runOrchestratorApply(options);
 }
 
 function renderClassificationText(result: OrchestratorClassification): string {
@@ -150,6 +248,24 @@ function renderDryRunText(result: OrchestratorDryRunPlan): string {
   ].join("\n");
 }
 
+function renderApplyText(result: OrchestratorApplyMaterializationResult): string {
+  return [
+    "Harness Orchestrate Phase 3 Apply",
+    `selectedPath: ${result.selectedPath}`,
+    `status: ${result.status}`,
+    `delegatedCommand: ${result.delegatedCommand}`,
+    `approvalRef: ${result.approvalRef ?? "none"}`,
+    "createdFiles:",
+    ...(result.createdFiles.length > 0 ? result.createdFiles.map((entry) => `- ${entry}`) : ["- none"]),
+    "allowedWritePaths:",
+    ...(result.allowedWritePaths.length > 0 ? result.allowedWritePaths.map((entry) => `- ${entry}`) : ["- none"]),
+    "blockers:",
+    ...(result.blockers.length > 0 ? result.blockers.map((entry) => `- ${entry}`) : ["- none"]),
+    "nextSafeActions:",
+    ...(result.nextSafeActions.length > 0 ? result.nextSafeActions.map((entry) => `- ${entry}`) : ["- none"]),
+  ].join("\n");
+}
+
 async function main(argv: string[]): Promise<void> {
   const options = parseHarnessOrchestrateArgs(argv);
   if (options.command === "classify") {
@@ -157,8 +273,14 @@ async function main(argv: string[]): Promise<void> {
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderClassificationText(result)}\n`);
     return;
   }
-  const result = await runHarnessOrchestrateDryRun(options);
-  process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderDryRunText(result)}\n`);
+  if (options.command === "dry-run") {
+    const result = await runHarnessOrchestrateDryRun(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderDryRunText(result)}\n`);
+    return;
+  }
+  const result = await runHarnessOrchestrateApply(options);
+  process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderApplyText(result)}\n`);
+  if (result.status !== "materialized") process.exitCode = 1;
 }
 
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;

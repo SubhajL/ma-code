@@ -62,7 +62,8 @@
     "test:slice-dependencies": "node --import tsx --test tests/extension-units/slice-dependency-decision.test.ts tests/integration/slice-dependency-decision.test.ts",
     "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh",
     "validate:orchestrator-classifier": "./scripts/validate-orchestrator-classifier.sh",
-    "validate:orchestrator-dry-run": "./scripts/validate-orchestrator-dry-run.sh"
+    "validate:orchestrator-dry-run": "./scripts/validate-orchestrator-dry-run.sh",
+    "validate:orchestrator-apply": "./scripts/validate-orchestrator-apply.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

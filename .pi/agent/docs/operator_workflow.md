@@ -522,22 +522,27 @@ Parallelism remains conservative: intra-slice phases remain sequential, and cros
 
 Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.
 
-## Phase 2 master orchestrator dry-run planner
+## Phase 3 master orchestrator apply/materialize router
 
-Use the classifier or delegated dry-run planner when the next safe harness path is unclear:
+Use the classifier or delegated dry-run planner when the next safe harness path is unclear. Use `apply` only when the target path and required arguments are explicit:
 
 ```bash
 npm run harness:orchestrate -- classify --goal "Build checkout mini flow" --json
 npm run harness:operator -- orchestrate classify --goal "Build checkout mini flow" --json
 npm run harness:orchestrate -- dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
 npm run harness:operator -- orchestrate dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
+npm run harness:orchestrate -- apply --path stitch_prompt --initiative checkout --slice slice-001 --json
+npm run harness:operator -- orchestrate apply --path screen_approval --action approve --initiative checkout --slice slice-001 --approval-ref human-123 --by reviewer --note "Approved" --json
 ```
 
 Rules:
 - `classify` writes no files and emits JSON/stdout only.
 - `dry-run` invokes exactly one allowlisted helper only when the classification is concrete and placeholder-free.
-- The normalized plan returns `writesFiles: false`, `selectedPath`, `delegatedCommand`, `status`, `blockers`, `missingArtifacts`, `hitlGates`, and `nextSafeActions`.
-- Phase 2 does not apply artifacts, mutate queue/task runtime state, create PRs, or merge.
-- Ambiguous requests return `status: "needs_input"` and no delegated command.
+- The normalized dry-run plan returns `writesFiles: false`, `selectedPath`, `delegatedCommand`, `status`, `blockers`, `missingArtifacts`, `hitlGates`, and `nextSafeActions`.
+- `apply` invokes exactly one allowlisted helper command and then verifies helper-reported `createdFiles` against `.pi/agent/extensions/orchestrator-apply-policy.ts` write allowlists.
+- `apply` rejects generic command strings, worker execution, PR creation, merge, sync-main, raw git, and direct `.pi/agent/state/runtime/*.json` edits.
+- Screen approval requires `--approval-ref`, reviewer identity, and approval note or rejection reason.
+- AFK queue materialization is apply-only with mandatory `--queue-only`; it does not start queue sessions or workers.
+- Ambiguous requests return `status: "needs_input"` during dry-run and no delegated command.
 
-See `.pi/agent/docs/master_orchestrator.md` for the selected-path contract.
+See `.pi/agent/docs/master_orchestrator.md` for the selected-path and apply-path contract.
