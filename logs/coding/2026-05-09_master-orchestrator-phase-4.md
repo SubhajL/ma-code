@@ -117,3 +117,20 @@ LOW
 - Default output records `merge.attempted: false`; merge remains a separate helper/lifecycle step.
 
 Review Verdict: no_required_fixes
+
+## Submission (2026-05-09T09:42:00Z) - PR creation
+
+### Reviewed
+- Branch: `task-1778317227251-orchestrator-run`
+- Commit: `35e29d2 feat(orchestrator): add bounded run mode`
+- Base: `main`
+- PR: https://github.com/SubhajL/ma-code/pull/123
+
+### Commands Run
+- `git push -u origin task-1778317227251-orchestrator-run`
+- `gh pr create --base main --head task-1778317227251-orchestrator-run --title "feat(orchestrator): add bounded run mode" --body ...`
+
+### State
+- PR created and open.
+- Lifecycle evidence file added at `reports/lifecycle/task-1778317227251-phase4-merge-evidence.json` for bounded merge helper checks.
+- Awaiting PR checks/merge readiness.
