@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "task": {
+    "id": "task-1778332801467",
+    "title": "Issue 2 — Compact runtime, queue, task, and skill-route context outputs",
+    "status": "review",
+    "validationDecision": "pass",
+    "acceptanceCriteria": [
+      "Runtime task/queue/state inspection surfaces return compact summaries by default and do not dump full completed task history or full queue job payloads unless explicitly requested.",
+      "Full runtime dumps require an explicit includeHistory-style option.",
+      "Skill auto-route and related prompt/context echo surfaces summarize and truncate original prompts by default.",
+      "Regression tests reproduce large task/evidence history and prove compact bounded output."
+    ]
+  },
+  "planning": {
+    "path": "reports/planning/2026-05-09_master-orchestrator-context-classifier-plan.md",
+    "directImplementationExemption": true,
+    "reason": "Emergency runtime-output safety fix requested after raw task/context dumps entered chat."
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true,
+    "redSummary": "Initial queue-runner validation failed on missing compact helper wiring; regression then failed because compact inspect output remained too large.",
+    "greenSummary": "Queue-runner/core/skill-routing/static/compile validations passed; live skill-routing validation also passed."
+  },
+  "validation": {
+    "commands": [
+      "TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs ./scripts/validate-queue-runner.sh --skip-live --report /tmp/issue2-queue-final.md --summary-json /tmp/issue2-queue-final.json",
+      "./scripts/validate-skill-routing.sh --skip-live --report /tmp/issue2-skill-final.md --summary-json /tmp/issue2-skill-final.json",
+      "./scripts/validate-skill-routing.sh --report /tmp/runtime-output-skill-routing-live.md --summary-json /tmp/runtime-output-skill-routing-live.json",
+      "TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs ./scripts/validate-core-workflows.sh --report /tmp/issue2-core-final.md --summary-json /tmp/issue2-core-final.json",
+      "./scripts/check-foundation-extension-compile.sh",
+      "./scripts/check-repo-static.sh",
+      "git diff --check"
+    ]
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778332801467-runtime-output-compaction",
+    "commit": "d839aa8"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/127",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
