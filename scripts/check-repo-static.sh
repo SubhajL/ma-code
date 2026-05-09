@@ -47,11 +47,15 @@ required_files=(
   ".pi/agent/docs/afk_queue_orchestration.md"
   "scripts/harness-afk-orchestrate.ts"
   ".pi/agent/extensions/orchestrator-classifier.ts"
+  ".pi/agent/extensions/orchestrator-dry-run.ts"
   ".pi/agent/docs/master_orchestrator.md"
   "scripts/harness-orchestrate.ts"
   "scripts/validate-orchestrator-classifier.sh"
+  "scripts/validate-orchestrator-dry-run.sh"
   "tests/extension-units/orchestrator-classifier.test.ts"
+  "tests/extension-units/orchestrator-dry-run.test.ts"
   "tests/integration/orchestrator-classifier.test.ts"
+  "tests/integration/orchestrator-dry-run.test.ts"
   "scripts/validate-afk-orchestration.sh"
   "tests/extension-units/afk-orchestration.test.ts"
   "tests/integration/afk-orchestration.test.ts"
@@ -1407,19 +1411,30 @@ assert "harness:orchestrate" in package_json.get("scripts", {})
 assert "harness:orchestrate" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-classifier" in package_json.get("scripts", {})
 assert "validate:orchestrator-classifier" in package_template_json.get("scripts", {})
+assert "validate:orchestrator-dry-run" in package_json.get("scripts", {})
+assert "validate:orchestrator-dry-run" in package_template_json.get("scripts", {})
 orchestrator_cli = (root / "scripts/harness-orchestrate.ts").read_text(encoding="utf-8")
 orchestrator_helper = (root / ".pi/agent/extensions/orchestrator-classifier.ts").read_text(encoding="utf-8")
+orchestrator_dry_run_helper = (root / ".pi/agent/extensions/orchestrator-dry-run.ts").read_text(encoding="utf-8")
 orchestrator_doc = (root / ".pi/agent/docs/master_orchestrator.md").read_text(encoding="utf-8")
 operator_cli = (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
 assert "orchestrate" in operator_cli
-assert "Delegate to Phase 1 read-only master orchestrator classifier" in operator_cli
+assert "Delegate to Phase 2 master orchestrator classify/dry-run planner" in operator_cli
 assert "classify" in orchestrator_cli
+assert "dry-run" in orchestrator_cli
+assert "planOrchestratorDryRun" in orchestrator_cli
 assert "orchestrator-classifier.ts" in foundation_compile_validator
+assert "orchestrator-dry-run.ts" in foundation_compile_validator
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "--allow-merge", "harness:merge -- apply"]:
     assert forbidden not in orchestrator_helper
-for required in ["read-only", "selectedPath", "clarification", "npm run harness:operator -- orchestrate classify"]:
+for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "gh pr merge", "git merge"]:
+    assert forbidden not in orchestrator_dry_run_helper
+for required in ["ALLOWED_SCRIPTS", "assertSafeDelegatedDryRunCommand", "MUTATING_VERBS", "writesFiles: false", "Delegated helper emitted invalid JSON"]:
+    assert required in orchestrator_dry_run_helper
+for required in ["read-only", "selectedPath", "clarification", "npm run harness:operator -- orchestrate classify", "npm run harness:orchestrate -- dry-run", "writesFiles: false", "exactly one allowlisted helper"]:
     assert required in orchestrator_doc
 assert "npm run harness:operator -- orchestrate classify" in operator_workflow_doc
+assert "npm run harness:operator -- orchestrate dry-run" in operator_workflow_doc
 assert "harness:product-pipeline" in package_json.get("scripts", {})
 assert "harness:product-pipeline" in package_template_json.get("scripts", {})
 assert "test:product-pipeline" in package_json.get("scripts", {})
