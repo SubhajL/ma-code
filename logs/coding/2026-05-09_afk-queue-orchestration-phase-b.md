@@ -109,3 +109,17 @@ LOW
 - Do not use Phase B as an automatic coding engine; worker execution remains bounded by queue/session controls.
 
 Review Verdict: no_required_fixes
+
+## Submission (2026-05-09T07:11:00+0700)
+
+### Reviewed
+- Branch: `split/task-1778284117848-phase-b-afk-queue`
+- Commit: `3664483ca8363a908c4d808dffe87878546ce2d9`
+- PR: https://github.com/SubhajL/ma-code/pull/116
+
+### PR Gate
+- Command: `npm run --silent harness:pr-gate -- --pr 116 --max-attempts 3`
+- Result: final status `pass`; checks pass=6 fail=0 pending=0 total=6; no blocking comments/reviews; mergeStateStatus clean.
+
+### Lifecycle Evidence
+- Evidence file: `reports/lifecycle/2026-05-09_afk-queue-orchestration-phase-b.json`
