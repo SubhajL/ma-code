@@ -46,6 +46,12 @@ required_files=(
   ".pi/agent/state/schemas/afk-orchestration-run.schema.json"
   ".pi/agent/docs/afk_queue_orchestration.md"
   "scripts/harness-afk-orchestrate.ts"
+  ".pi/agent/extensions/orchestrator-classifier.ts"
+  ".pi/agent/docs/master_orchestrator.md"
+  "scripts/harness-orchestrate.ts"
+  "scripts/validate-orchestrator-classifier.sh"
+  "tests/extension-units/orchestrator-classifier.test.ts"
+  "tests/integration/orchestrator-classifier.test.ts"
   "scripts/validate-afk-orchestration.sh"
   "tests/extension-units/afk-orchestration.test.ts"
   "tests/integration/afk-orchestration.test.ts"
@@ -1397,6 +1403,23 @@ assert "parallel-worker-lanes" in (root / "scripts/harness-operator.ts").read_te
 assert "parallel worker lanes" in team_orchestration_doc.lower()
 assert "parallel-worker-lanes" in product_pipeline_doc
 assert "parallel-worker-lanes" in operator_workflow_doc
+assert "harness:orchestrate" in package_json.get("scripts", {})
+assert "harness:orchestrate" in package_template_json.get("scripts", {})
+assert "validate:orchestrator-classifier" in package_json.get("scripts", {})
+assert "validate:orchestrator-classifier" in package_template_json.get("scripts", {})
+orchestrator_cli = (root / "scripts/harness-orchestrate.ts").read_text(encoding="utf-8")
+orchestrator_helper = (root / ".pi/agent/extensions/orchestrator-classifier.ts").read_text(encoding="utf-8")
+orchestrator_doc = (root / ".pi/agent/docs/master_orchestrator.md").read_text(encoding="utf-8")
+operator_cli = (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
+assert "orchestrate" in operator_cli
+assert "Delegate to Phase 1 read-only master orchestrator classifier" in operator_cli
+assert "classify" in orchestrator_cli
+assert "orchestrator-classifier.ts" in foundation_compile_validator
+for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "--allow-merge", "harness:merge -- apply"]:
+    assert forbidden not in orchestrator_helper
+for required in ["read-only", "selectedPath", "clarification", "npm run harness:operator -- orchestrate classify"]:
+    assert required in orchestrator_doc
+assert "npm run harness:operator -- orchestrate classify" in operator_workflow_doc
 assert "harness:product-pipeline" in package_json.get("scripts", {})
 assert "harness:product-pipeline" in package_template_json.get("scripts", {})
 assert "test:product-pipeline" in package_json.get("scripts", {})

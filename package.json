@@ -16,6 +16,7 @@
     "harness:worker-session": "node --import tsx scripts/harness-worker-session.ts",
     "harness:worker-session:json": "node --import tsx scripts/harness-worker-session.ts --json",
     "harness:operator": "node --import tsx scripts/harness-operator.ts",
+    "harness:orchestrate": "node --import tsx scripts/harness-orchestrate.ts",
     "harness:pr-gate": "node --import tsx scripts/harness-pr-gate.ts",
     "harness:pr-gate:json": "node --import tsx scripts/harness-pr-gate.ts --json",
     "harness:sync-main": "node --import tsx scripts/harness-sync-main.ts",
@@ -107,7 +108,8 @@
     "validate:worker-execution": "./scripts/validate-worker-execution.sh",
     "harness:pr-lifecycle": "node --import tsx scripts/harness-pr-lifecycle.ts",
     "test:pr-lifecycle": "node --import tsx --test tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-lifecycle.test.ts",
-    "validate:pr-lifecycle": "./scripts/validate-pr-lifecycle.sh"
+    "validate:pr-lifecycle": "./scripts/validate-pr-lifecycle.sh",
+    "validate:orchestrator-classifier": "bash scripts/validate-orchestrator-classifier.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

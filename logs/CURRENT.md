@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-09_pr-lifecycle-phase-d.md`
+- `logs/coding/2026-05-09_master-orchestrator-phase-1.md`
 
 ## Current planning log
-- `reports/planning/2026-05-08_product-pipeline-e2e-phase-14-plan.md`
+- `reports/planning/2026-05-09_master-orchestrator-phase-1-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
