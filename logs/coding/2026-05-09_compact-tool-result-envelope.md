@@ -87,3 +87,12 @@ LOW
 - Branch pushed: `worker/task-1778322697003-issue-1-compact-tool-result-envelope`.
 - PR created: https://github.com/SubhajL/ma-code/pull/125
 - Lifecycle evidence file added: `reports/lifecycle/task-1778322697003-compact-tool-result-envelope.json`.
+
+
+## PR Gate (2026-05-09T11:00:00Z)
+
+- PR gate command from root: `npm --silent run harness:pr-gate -- --pr 125 --max-attempts 3 --json`.
+- Final status: `pass`.
+- Checks: 6 passing, 0 failing, 0 pending.
+- Blocking comments/reviews: 0.
+- Merge state: `CLEAN`.

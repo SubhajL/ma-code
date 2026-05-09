@@ -30,14 +30,14 @@
   },
   "creation": {
     "branch": "worker/task-1778322697003-issue-1-compact-tool-result-envelope",
-    "commit": "a3caa24"
+    "commit": "e2ba31c"
   },
   "pr": {
     "url": "https://github.com/SubhajL/ma-code/pull/125",
     "state": "OPEN"
   },
   "prGate": {
-    "status": "pending",
-    "mergeStateStatus": "UNKNOWN"
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
   }
 }
