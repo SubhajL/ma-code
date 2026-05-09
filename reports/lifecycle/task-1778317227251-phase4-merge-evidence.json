@@ -36,7 +36,7 @@
     "state": "OPEN"
   },
   "prGate": {
-    "status": "pending",
-    "mergeStateStatus": "UNKNOWN"
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
   }
 }

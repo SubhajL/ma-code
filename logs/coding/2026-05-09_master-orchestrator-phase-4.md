@@ -134,3 +134,14 @@ Review Verdict: no_required_fixes
 - PR created and open.
 - Lifecycle evidence file added at `reports/lifecycle/task-1778317227251-phase4-merge-evidence.json` for bounded merge helper checks.
 - Awaiting PR checks/merge readiness.
+
+## Submission (2026-05-09T09:46:00Z) - PR gate evidence
+
+### Commands Run
+- `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-pr-gate.ts --pr 123 --max-attempts 3 --json`
+- `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-merge.ts check --pr 123 --method squash --lifecycle-evidence reports/lifecycle/task-1778317227251-phase4-merge-evidence.json --json`
+
+### Evidence
+- PR gate passed with 6/6 checks: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, Routing Validators.
+- No blocking comments or reviews were reported.
+- Initial merge readiness was blocked only because the lifecycle evidence file still recorded PR gate as pending; updated `reports/lifecycle/task-1778317227251-phase4-merge-evidence.json` to `status: pass`, `mergeStateStatus: CLEAN`.
