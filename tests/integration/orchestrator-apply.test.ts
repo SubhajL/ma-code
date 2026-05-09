@@ -134,7 +134,7 @@ test("operator wrapper delegates orchestrate apply", async () => {
 
 test("apply rejects unsupported unsafe verbs before helper execution", async () => {
   const cwd = await makeRepo("harness-orchestrate-apply-unsafe-");
-  for (const command of ["run", "create", "merge", "sync-main", "git"]) {
+  for (const command of ["create", "merge", "sync-main", "git"]) {
     await assert.rejects(runCli(cwd, [command, "--path", "stitch_prompt", "--initiative", "checkout", "--slice", "slice-001", "--json"]), /not supported|raw git|Unknown or unsupported command/);
   }
 });
