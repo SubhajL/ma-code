@@ -55,7 +55,7 @@ function usage(): string {
     "  harness-orchestrate dry-run --goal <human-goal> [--json]",
     "  harness-orchestrate apply --path <apply-path> [target args] [--json]",
     "  harness-orchestrate run --initiative <slug> --max-steps <n> --max-runtime-seconds <n> [--json]",
-    "  harness-orchestrate run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> [--allow-pr-create --approval-ref <ref>] [--auto-land --approval-ref <ref> [--sync-main] [--merge-method squash|merge|rebase]] [--json]",
+    "  harness-orchestrate run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> [--allow-pr-create --approval-ref <ref>] [--auto-land --approval-ref <ref> [--sync-main] [--merge-method squash|merge|rebase]] [--no-auto-land] [--json]",
     "  harness-orchestrate run --lane parallel_lanes --initiative <slug> --max-steps <n> --max-runtime-seconds <n> --max-parallel <n> --worker-command <cmd> [--json]",
     "  harness-orchestrate evidence --initiative <slug> [--run-id <id>] [--lifecycle-evidence <path>] [--write-report] [--json]",
     "  harness-orchestrate merge-check --pr <number> [--method squash|merge|rebase] [--lifecycle-evidence <path>] [--json]",
@@ -248,7 +248,8 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
     let workerCommand: string | undefined;
     let allowPrCreate = false;
     let autoLand = false;
-    let syncMain = false;
+    let disableAutoLand = false;
+    let syncMain: boolean | undefined;
     let mergeMethod: "squash" | "merge" | "rebase" | undefined;
     let approvalRef: string | undefined;
 
@@ -274,6 +275,8 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
         allowPrCreate = true;
       } else if (arg === "--auto-land") {
         autoLand = true;
+      } else if (arg === "--no-auto-land") {
+        disableAutoLand = true;
       } else if (arg === "--sync-main") {
         syncMain = true;
       } else if (arg === "--merge-method") {
@@ -291,7 +294,8 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
       }
     }
 
-    return { command: "run", lane, initiative, jobId, maxSteps, maxRuntimeSeconds, maxParallel, workerCommand, allowPrCreate, autoLand, syncMain, mergeMethod, approvalRef, json };
+    if (autoLand && disableAutoLand) throw new Error("--auto-land and --no-auto-land cannot be combined.");
+    return { command: "run", lane, initiative, jobId, maxSteps, maxRuntimeSeconds, maxParallel, workerCommand, allowPrCreate, autoLand, disableAutoLand, syncMain, mergeMethod, approvalRef, json };
   }
 
   for (let index = 0; index < rest.length; index += 1) {

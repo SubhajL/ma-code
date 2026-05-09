@@ -58,6 +58,19 @@ else { console.error('unexpected pr command: ' + command); process.exit(1); }
   return repoPath;
 }
 
+async function writeAutoLandPolicy(repoPath: string): Promise<void> {
+  const policyDir = join(repoPath, ".pi", "agent", "routing");
+  await mkdir(policyDir, { recursive: true });
+  await writeFile(join(policyDir, "orchestrator-auto-land-policy.json"), `${JSON.stringify({
+    version: 1,
+    enabled: true,
+    lanes: ["worker_job"],
+    approvalRef: "policy-approval-123",
+    syncMain: true,
+    mergeMethod: "squash",
+  }, null, 2)}\n`, "utf8");
+}
+
 async function snapshotFiles(root: string): Promise<string[]> {
   const result: string[] = [];
   async function walk(relativeDir: string): Promise<void> {
@@ -137,6 +150,35 @@ test("CLI run auto-land chains worker PR lifecycle merge and sync with approval"
   assert.equal(json.merge.allowed, true);
   assert.equal(json.autoLand?.syncedMain, true);
   assert.equal(json.autoLand?.commands.length, 5);
+});
+
+
+
+test("CLI run uses default auto-land policy for eligible worker jobs", async () => {
+  const cwd = await makeRepo("orch-run-policy-auto-land-");
+  await writeAutoLandPolicy(cwd);
+
+  const result = await runCli(cwd, ["run", "--initiative", "greenfield-scaffold", "--job-id", "afk-greenfield-scaffold-issue-001", "--max-steps", "3", "--max-runtime-seconds", "300", "--json"]);
+  const json = JSON.parse(result.stdout) as { status: string; autoLand?: { enabled: boolean; syncedMain: boolean; commands: string[] }; delegatedCommand: string };
+
+  assert.equal(json.status, "completed");
+  assert.equal(json.autoLand?.enabled, true);
+  assert.equal(json.autoLand?.syncedMain, true);
+  assert.match(json.delegatedCommand, /--no-stop-before-pr --allow-pr-create --approval-ref policy-approval-123/);
+  assert.equal(json.autoLand?.commands.length, 5);
+});
+
+test("CLI run --no-auto-land disables default policy", async () => {
+  const cwd = await makeRepo("orch-run-policy-disabled-");
+  await writeAutoLandPolicy(cwd);
+
+  const result = await runCli(cwd, ["run", "--initiative", "greenfield-scaffold", "--job-id", "afk-greenfield-scaffold-issue-001", "--max-steps", "3", "--max-runtime-seconds", "300", "--no-auto-land", "--json"]);
+  const json = JSON.parse(result.stdout) as { status: string; autoLand?: unknown; delegatedCommand: string; stopReason: string };
+
+  assert.equal(json.status, "stopped");
+  assert.equal(json.autoLand, undefined);
+  assert.match(json.delegatedCommand, /--stop-before-pr/);
+  assert.equal(json.stopReason, "approval_boundary");
 });
 
 test("operator wrapper delegates orchestrate run", async () => {

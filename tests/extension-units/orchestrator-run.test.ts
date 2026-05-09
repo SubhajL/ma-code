@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   assertSafeDelegatedRunCommand,
@@ -20,6 +23,15 @@ function makeRunner(result: DelegatedRunResult, calls: DelegatedRunCall[] = []) 
 }
 
 const cleanPreflight: OrchestratorRunPreflight = async () => ({ safe: true, blockers: [] });
+
+
+async function makeRepoWithAutoLandPolicy(policy: Record<string, unknown>): Promise<string> {
+  const repoRoot = await mkdtemp(join(tmpdir(), "orch-auto-land-policy-"));
+  const policyDir = join(repoRoot, ".pi", "agent", "routing");
+  await mkdir(policyDir, { recursive: true });
+  await writeFile(join(policyDir, "orchestrator-auto-land-policy.json"), `${JSON.stringify(policy, null, 2)}\n`, "utf8");
+  return repoRoot;
+}
 
 
 function makeSequenceRunner(results: DelegatedRunResult[], calls: DelegatedRunCall[] = []) {
@@ -65,12 +77,12 @@ test("worker-job run maps to worker-execute and optional PR boundary requires ap
     stderr: "",
   });
 
-  const blocked = await runOrchestratorRun({ initiative: "greenfield-scaffold", jobId: "afk-greenfield-scaffold-issue-001", maxSteps: 3, maxRuntimeSeconds: 300, allowPrCreate: true }, runner, cleanPreflight);
+  const blocked = await runOrchestratorRun({ initiative: "greenfield-scaffold", jobId: "afk-greenfield-scaffold-issue-001", maxSteps: 3, maxRuntimeSeconds: 300, allowPrCreate: true, disableAutoLand: true }, runner, cleanPreflight);
   assert.equal(blocked.status, "blocked");
   assert.match(blocked.blockers.join("\n"), /approval-ref/);
   assert.equal(calls.length, 0);
 
-  const result = await runOrchestratorRun({ initiative: "greenfield-scaffold", jobId: "afk-greenfield-scaffold-issue-001", maxSteps: 3, maxRuntimeSeconds: 300, allowPrCreate: true, approvalRef: "human-123" }, runner, cleanPreflight);
+  const result = await runOrchestratorRun({ initiative: "greenfield-scaffold", jobId: "afk-greenfield-scaffold-issue-001", maxSteps: 3, maxRuntimeSeconds: 300, allowPrCreate: true, approvalRef: "human-123", disableAutoLand: true }, runner, cleanPreflight);
   assert.equal(calls.length, 1);
   assert.equal(calls[0].command, "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-001 --max-steps 3 --max-runtime-seconds 300 --stop-before-pr --allow-pr-create --approval-ref human-123 --json");
   assert.equal(result.selectedLane, "worker_job");
@@ -147,4 +159,82 @@ test("auto-land requires approval and worker-job lane", async () => {
 
   assert.match((await runOrchestratorRun({ lane: "worker_job", initiative: "greenfield-scaffold", jobId: "job-1", maxSteps: 3, maxRuntimeSeconds: 300, autoLand: true }, runner, cleanPreflight)).blockers.join("\n"), /approval-ref/);
   assert.match((await runOrchestratorRun({ lane: "parallel_lanes", initiative: "greenfield-scaffold", maxSteps: 3, maxRuntimeSeconds: 300, maxParallel: 2, workerCommand: "npm test", autoLand: true, approvalRef: "approval-123" }, runner, cleanPreflight)).blockers.join("\n"), /worker_job/);
+});
+
+
+test("enabled default auto-land policy injects approved worker-job PR merge sync", async () => {
+  const repoRoot = await makeRepoWithAutoLandPolicy({
+    version: 1,
+    enabled: true,
+    lanes: ["worker_job"],
+    approvalRef: "policy-approval-123",
+    syncMain: true,
+    mergeMethod: "squash",
+  });
+  const { runner, calls } = makeSequenceRunner([
+    jsonResult({ runId: "worker-policy", status: "review_ready", queueJobId: "job-1" }),
+    jsonResult({ runId: "pr-worker-policy", status: "pr_created", pr: { url: "https://github.com/acme/repo/pull/2", number: 2 } }),
+    jsonResult({ runId: "pr-worker-policy", status: "gate_passed", pr: { url: "https://github.com/acme/repo/pull/2", number: 2, gateStatus: "passed" } }),
+    jsonResult({ runId: "pr-worker-policy", status: "gate_passed", lifecycle: { mergeReady: true }, pr: { url: "https://github.com/acme/repo/pull/2", number: 2 } }),
+    jsonResult({ runId: "pr-worker-policy", status: "merged", pr: { url: "https://github.com/acme/repo/pull/2", number: 2 }, merge: { mergeCommit: "abc123" } }),
+    jsonResult({ runId: "pr-worker-policy", status: "synced", pr: { url: "https://github.com/acme/repo/pull/2", number: 2 }, merge: { syncedMainSha: "def456" } }),
+  ]);
+
+  const result = await runOrchestratorRun({
+    repoRoot,
+    lane: "worker_job",
+    initiative: "greenfield-scaffold",
+    jobId: "job-1",
+    maxSteps: 3,
+    maxRuntimeSeconds: 300,
+  }, runner, cleanPreflight);
+
+  assert.equal(result.status, "completed");
+  assert.equal(result.autoLand?.enabled, true);
+  assert.equal(result.autoLand?.syncedMain, true);
+  assert.equal(calls[0].command, "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id job-1 --max-steps 3 --max-runtime-seconds 300 --no-stop-before-pr --allow-pr-create --approval-ref policy-approval-123 --json");
+  assert.equal(calls[4].command, "npm run harness:pr-lifecycle -- merge --initiative greenfield-scaffold --run-id pr-worker-policy --allow-merge --approval-ref policy-approval-123 --method squash --json");
+});
+
+test("default auto-land policy can be disabled for conservative worker job runs", async () => {
+  const repoRoot = await makeRepoWithAutoLandPolicy({
+    version: 1,
+    enabled: true,
+    lanes: ["worker_job"],
+    approvalRef: "policy-approval-123",
+    syncMain: true,
+  });
+  const { runner, calls } = makeRunner(jsonResult({ runId: "worker-disabled", status: "review_ready", queueJobId: "job-1" }));
+
+  const result = await runOrchestratorRun({
+    repoRoot,
+    lane: "worker_job",
+    initiative: "greenfield-scaffold",
+    jobId: "job-1",
+    maxSteps: 3,
+    maxRuntimeSeconds: 300,
+    disableAutoLand: true,
+  }, runner, cleanPreflight);
+
+  assert.equal(result.status, "stopped");
+  assert.equal(result.autoLand, undefined);
+  assert.equal(calls[0].command, "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id job-1 --max-steps 3 --max-runtime-seconds 300 --stop-before-pr --json");
+});
+
+test("enabled default auto-land policy without approval ref blocks before delegation", async () => {
+  const repoRoot = await makeRepoWithAutoLandPolicy({ version: 1, enabled: true, lanes: ["worker_job"], syncMain: true });
+  const { runner, calls } = makeRunner(jsonResult({}));
+
+  const result = await runOrchestratorRun({
+    repoRoot,
+    lane: "worker_job",
+    initiative: "greenfield-scaffold",
+    jobId: "job-1",
+    maxSteps: 3,
+    maxRuntimeSeconds: 300,
+  }, runner, cleanPreflight);
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.blockers.join("\n"), /approval-ref/);
+  assert.equal(calls.length, 0);
 });

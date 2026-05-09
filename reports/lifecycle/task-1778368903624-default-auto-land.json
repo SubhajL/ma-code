@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "taskId": "task-1778368903624",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Add explicit global MO auto-land approval policy for eligible worker_job runs.",
+      "Preserve safety: approval reference required, worker_job-only, PR lifecycle/merge gates remain mandatory.",
+      "Allow explicit CLI disable without enabling unsupported lanes.",
+      "Add tests proving policy injection, disable behavior, and approval-ref enforcement."
+    ],
+    "tddSlice": "Worker-job run with no explicit --auto-land reads repo policy and auto-lands through PR lifecycle and sync-main."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Default policy injects auto-land for eligible worker_job runs.",
+      "--no-auto-land disables the policy for conservative runs.",
+      "Missing approvalRef blocks before delegation."
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task/task-1778368903624-default-auto-land"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
