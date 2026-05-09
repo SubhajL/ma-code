@@ -13,6 +13,7 @@
     "harness:package:json": "node --import tsx scripts/harness-package.ts manifest --json",
     "harness:init-feature": "node --import tsx scripts/harness-init-feature.ts",
     "harness:product-intake": "node --import tsx scripts/harness-product-intake.ts",
+    "harness:orchestrate": "node --import tsx scripts/harness-orchestrate.ts",
     "harness:stitch-prompt": "node --import tsx scripts/harness-stitch-prompt.ts",
     "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
     "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
@@ -59,7 +60,8 @@
     "validate:backend-packet": "./scripts/validate-backend-packets.sh",
     "harness:slice-dependencies": "node --import tsx scripts/harness-slice-dependencies.ts",
     "test:slice-dependencies": "node --import tsx --test tests/extension-units/slice-dependency-decision.test.ts tests/integration/slice-dependency-decision.test.ts",
-    "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh"
+    "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh",
+    "validate:orchestrator-classifier": "./scripts/validate-orchestrator-classifier.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

@@ -473,3 +473,14 @@ Dry-run writes no files and shows the slice DAG, HITL gates, sequential phase or
 ## Phase 14 product pipeline E2E pilot
 
 Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.
+
+## Phase 1 master orchestrator classifier
+
+Phase 1 adds a read-only classifier that recommends the next safe harness path without executing it:
+
+```bash
+npm run harness:orchestrate -- classify --goal "Build checkout mini flow" --json
+npm run harness:operator -- orchestrate classify --goal "Build checkout mini flow" --json
+```
+
+The command writes no files, creates no tasks or queue jobs, creates no PRs, and performs no merge. Ambiguous goals return `selectedPath: "clarification"` with no `nextDryRunCommand`. See `.pi/agent/docs/master_orchestrator.md`.
