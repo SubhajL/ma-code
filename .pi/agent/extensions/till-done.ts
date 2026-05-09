@@ -94,6 +94,7 @@ export interface TaskUpdateParams {
   graphifyValidation?: GraphifyValidationDecisionInput;
   graphifyEvidence?: GraphifyEvidenceInput;
   approvalRef?: string;
+  includeHistory?: boolean;
 }
 
 export interface GraphifyEvidenceInput {
@@ -189,6 +190,7 @@ const TaskUpdateSchema = Type.Object({
   graphifyValidation: Type.Optional(GraphifyValidationInputSchema),
   graphifyEvidence: Type.Optional(GraphifyEvidenceInputSchema),
   approvalRef: Type.Optional(Type.String()),
+  includeHistory: Type.Optional(Type.Boolean()),
 });
 
 function nowIso(): string {
@@ -197,6 +199,73 @@ function nowIso(): string {
 
 function makeTaskId(): string {
   return `task-${Date.now()}`;
+}
+
+function compactTaskText(value: string | null | undefined, maxChars = 220): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  if (value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, Math.max(0, maxChars - 32))}… [truncated ${value.length - Math.max(0, maxChars - 32)} chars]`;
+}
+
+function compactTaskStringList(values: string[] | undefined, limit = 3, maxChars = 200): { items: string[]; total: number; omitted: number } {
+  const source = Array.isArray(values) ? values : [];
+  return {
+    items: source.slice(0, limit).map((item) => compactTaskText(item, maxChars) ?? ""),
+    total: source.length,
+    omitted: Math.max(0, source.length - limit),
+  };
+}
+
+function compactTaskForShow(task: TaskRecord | null | undefined): Record<string, unknown> | null {
+  if (!task) {
+    return null;
+  }
+  return {
+    id: task.id,
+    title: compactTaskText(task.title, 160),
+    owner: task.owner ?? null,
+    status: task.status,
+    taskClass: task.taskClass,
+    acceptance: compactTaskStringList(task.acceptance, 2, 120),
+    evidence: compactTaskStringList(task.evidence, 1, 120),
+    notes: compactTaskStringList(task.notes, 1, 120),
+    dependencies: task.dependencies ?? [],
+    retryCount: task.retryCount ?? 0,
+    validationDecision: task.validation?.decision ?? null,
+    validationSource: task.validation?.source ?? null,
+    updatedAt: task.timestamps?.updatedAt ?? null,
+  };
+}
+
+function compactTaskStateForShow(state: TaskState, recentLimit = 5): Record<string, unknown> {
+  const active = getActiveTask(state);
+  const taskCounts = state.tasks.reduce<Record<string, number>>((counts, task) => {
+    counts[task.status] = (counts[task.status] ?? 0) + 1;
+    return counts;
+  }, {});
+  const recentTasks = state.tasks.slice(-recentLimit).map(compactTaskForShow);
+  return {
+    activeTaskId: state.activeTaskId,
+    activeTask: compactTaskForShow(active),
+    totalTasks: state.tasks.length,
+    taskCounts,
+    blockedTaskIds: state.tasks.filter((task) => task.status === "blocked").map((task) => task.id),
+    failedTaskIds: state.tasks.filter((task) => task.status === "failed").map((task) => task.id),
+    recentTaskIds: recentTasks.map((task) => (task as { id?: string } | null)?.id).filter(Boolean),
+    recentTasks,
+    compaction: {
+      compact: true,
+      reason: "task history is summarized by default to avoid large context dumps",
+      includeHistoryAvailable: true,
+      recentLimit,
+      omittedTasks: Math.max(0, state.tasks.length - recentTasks.length),
+      fullOutputOptIn: "task_update action=show includeHistory=true",
+    },
+  };
 }
 
 function defaultValidationChecklist(): ValidationChecklist {
@@ -465,22 +534,21 @@ export function applyTaskUpdateAction(state: TaskState, params: TaskUpdateParams
 
   if (action === "show") {
     const active = getActiveTask(state);
+    const payload = params.includeHistory === true
+      ? { activeTaskId: state.activeTaskId, activeTask: active ?? null, tasks: state.tasks }
+      : compactTaskStateForShow(state);
     return {
       content: [
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              activeTaskId: state.activeTaskId,
-              activeTask: active ?? null,
-              tasks: state.tasks,
-            },
-            null,
-            2,
-          ),
+          text: JSON.stringify(payload, null, 2),
         },
       ],
-      details: { activeTaskId: state.activeTaskId, taskCount: state.tasks.length },
+      details: {
+        activeTaskId: state.activeTaskId,
+        taskCount: state.tasks.length,
+        compact: params.includeHistory === true ? false : true,
+      },
     };
   }
 

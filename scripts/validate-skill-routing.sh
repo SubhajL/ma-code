@@ -308,10 +308,22 @@ check_2_compile_extension() {
   local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/g-skill-auto-route.ts"
 
   if (cd "$runtime_dir" && npx tsc --noEmit --skipLibCheck --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/g-skill-auto-route.ts > "$out" 2>&1); then
-    local detail="g-skill-auto-route.ts compiled successfully."
-    record_result "$name" "PASS" "$detail"
-    append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- no TypeScript errors emitted"
+    if grep -q 'Original prompt: ${route.originalText}' "$REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts"; then
+      local detail="g-skill-auto-route.ts still echoes the full original prompt."
+      record_result "$name" "FAIL" "$detail"
+      append_summary_row "$name" "FAIL" "$detail"
+      append_check_section "$name" "FAIL" "$cmd" "- source still contains full original prompt interpolation"
+    elif ! grep -q 'Original prompt summary:' "$REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts" || ! grep -q 'summarizeOriginalPromptForSkillRoute' "$REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts"; then
+      local detail="g-skill-auto-route.ts missing compact original-prompt summary guard."
+      record_result "$name" "FAIL" "$detail"
+      append_summary_row "$name" "FAIL" "$detail"
+      append_check_section "$name" "FAIL" "$cmd" "- source missing compact prompt summary guard"
+    else
+      local detail="g-skill-auto-route.ts compiled successfully and full original-prompt echo is guarded."
+      record_result "$name" "PASS" "$detail"
+      append_summary_row "$name" "PASS" "$detail"
+      append_check_section "$name" "PASS" "$cmd" "- no TypeScript errors emitted\n- source uses compact Original prompt summary instead of full original prompt echo"
+    fi
   else
     local detail="TypeScript compile check failed for g-skill-auto-route.ts."
     record_result "$name" "FAIL" "$detail"

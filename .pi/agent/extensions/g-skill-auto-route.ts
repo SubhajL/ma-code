@@ -13,6 +13,18 @@ const pendingRoutes: Array<SkillRoute | null> = [];
 
 const EXPLICIT_SKILL_COMMAND = /^\/skill:(g-planning|g-coding|g-check|g-review|g-create|g-submit|g-grill|g-prd|g-issues|g-refactor)\b/i;
 
+const ORIGINAL_PROMPT_SUMMARY_MAX_CHARS = 360;
+
+export function summarizeOriginalPromptForSkillRoute(text: string, maxChars = ORIGINAL_PROMPT_SUMMARY_MAX_CHARS): string {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+  const headLength = Math.max(0, maxChars - 96);
+  const tailLength = 48;
+  return `${normalized.slice(0, headLength)} … ${normalized.slice(-tailLength)} [truncated ${normalized.length - headLength - tailLength} chars; full prompt omitted]`;
+}
+
 export const SKILL_PATTERNS: Array<{ skill: SkillName; reason: string; patterns: RegExp[] }> = [
   {
     skill: "g-review",
@@ -219,7 +231,7 @@ export default function gSkillAutoRoute(pi: ExtensionAPI) {
           `[G-SKILL AUTO-ROUTE]\n` +
           `Selected skill: ${route.skill}\n` +
           `Reason: ${route.reason}\n` +
-          `Original prompt: ${route.originalText}`,
+          `Original prompt summary: ${summarizeOriginalPromptForSkillRoute(route.originalText)}`,
         display: false,
       },
       systemPrompt:
