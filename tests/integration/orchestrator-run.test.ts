@@ -28,12 +28,26 @@ async function makeRepo(prefix: string): Promise<string> {
     "utf8",
   );
   await writeFile(
+    join(repoPath, "scripts", "fake-pr.mjs"),
+    `const command = process.argv[2];
+const base = { runId: 'pr-worker-test', pr: { url: 'https://github.com/acme/repo/pull/7', number: 7 } };
+if (command === 'create') console.log(JSON.stringify({ ...base, status: 'pr_created' }));
+else if (command === 'gate') console.log(JSON.stringify({ ...base, status: 'gate_passed', pr: { ...base.pr, gateStatus: 'passed' } }));
+else if (command === 'merge-ready') console.log(JSON.stringify({ ...base, status: 'gate_passed', lifecycle: { mergeReady: true } }));
+else if (command === 'merge') console.log(JSON.stringify({ ...base, status: 'merged', merge: { mergeCommit: 'abc123' } }));
+else if (command === 'sync-main') console.log(JSON.stringify({ ...base, status: 'synced', merge: { syncedMainSha: 'def456' } }));
+else { console.error('unexpected pr command: ' + command); process.exit(1); }
+`,
+    "utf8",
+  );
+  await writeFile(
     join(repoPath, "package.json"),
     `${JSON.stringify(
       {
         scripts: {
           "harness:afk-orchestrate": "node scripts/fake-afk.mjs",
           "harness:worker-execute": "node scripts/fake-worker.mjs",
+          "harness:pr-lifecycle": "node scripts/fake-pr.mjs",
         },
       },
       null,
@@ -106,6 +120,23 @@ test("worker run approval boundary blocks before delegation without approval ref
   assert.match(json.delegatedCommand, /harness:worker-execute/);
   assert.equal(json.stopReason, "approval_boundary");
   assert.equal(json.merge.attempted, false);
+});
+
+
+
+test("CLI run auto-land chains worker PR lifecycle merge and sync with approval", async () => {
+  const cwd = await makeRepo("orch-run-auto-land-");
+
+  const result = await runCli(cwd, ["run", "--initiative", "greenfield-scaffold", "--job-id", "afk-greenfield-scaffold-issue-001", "--max-steps", "3", "--max-runtime-seconds", "300", "--auto-land", "--approval-ref", "human-123", "--sync-main", "--json"]);
+  const json = JSON.parse(result.stdout) as { status: string; pr: { created: boolean; url: string | null }; merge: { attempted: boolean; allowed: boolean }; autoLand?: { syncedMain: boolean; commands: string[] } };
+
+  assert.equal(json.status, "completed");
+  assert.equal(json.pr.created, true);
+  assert.equal(json.pr.url, "https://github.com/acme/repo/pull/7");
+  assert.equal(json.merge.attempted, true);
+  assert.equal(json.merge.allowed, true);
+  assert.equal(json.autoLand?.syncedMain, true);
+  assert.equal(json.autoLand?.commands.length, 5);
 });
 
 test("operator wrapper delegates orchestrate run", async () => {

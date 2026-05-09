@@ -21,6 +21,23 @@ function makeRunner(result: DelegatedRunResult, calls: DelegatedRunCall[] = []) 
 
 const cleanPreflight: OrchestratorRunPreflight = async () => ({ safe: true, blockers: [] });
 
+
+function makeSequenceRunner(results: DelegatedRunResult[], calls: DelegatedRunCall[] = []) {
+  return {
+    calls,
+    runner: async (call: DelegatedRunCall) => {
+      calls.push(call);
+      const result = results.shift();
+      assert.ok(result, `unexpected delegated call: ${call.command}`);
+      return result;
+    },
+  };
+}
+
+function jsonResult(record: unknown): DelegatedRunResult {
+  return { exitCode: 0, stdout: `${JSON.stringify(record)}\n`, stderr: "" };
+}
+
 test("queue-level run delegates exactly one bounded AFK orchestration command", async () => {
   const { runner, calls } = makeRunner({
     exitCode: 0,
@@ -88,4 +105,46 @@ test("run blocks before delegation for missing bounds, missing initiative, lane 
   assert.throws(() => assertSafeDelegatedRunCommand("queue_level", "npm run harness:merge -- apply --pr 1 --json"), /not allowlisted|unsafe/i);
   assert.throws(() => assertSafeDelegatedRunCommand("parallel_lanes", "npm run harness:parallel-worker-lanes -- run --initiative greenfield-scaffold --max-parallel 2 --max-runtime-seconds 300 --worker-command 'git merge main' --json"), /unsafe/i);
   assert.equal(calls.length, 0);
+});
+
+
+test("approved auto-land worker job creates PR, gates, merges, syncs main, and reports completion", async () => {
+  const { runner, calls } = makeSequenceRunner([
+    jsonResult({ runId: "worker-1", status: "review_ready", queueJobId: "job-1", nextOperatorAction: "worker ready" }),
+    jsonResult({ runId: "pr-worker-1", status: "pr_created", pr: { url: "https://github.com/acme/repo/pull/1", number: 1 } }),
+    jsonResult({ runId: "pr-worker-1", status: "gate_passed", pr: { url: "https://github.com/acme/repo/pull/1", number: 1, gateStatus: "passed" } }),
+    jsonResult({ runId: "pr-worker-1", status: "gate_passed", lifecycle: { mergeReady: true }, pr: { url: "https://github.com/acme/repo/pull/1", number: 1 } }),
+    jsonResult({ runId: "pr-worker-1", status: "merged", pr: { url: "https://github.com/acme/repo/pull/1", number: 1 }, merge: { mergeCommit: "abc123" } }),
+    jsonResult({ runId: "pr-worker-1", status: "synced", pr: { url: "https://github.com/acme/repo/pull/1", number: 1 }, merge: { syncedMainSha: "def456" } }),
+  ]);
+
+  const result = await runOrchestratorRun({
+    lane: "worker_job",
+    initiative: "greenfield-scaffold",
+    jobId: "job-1",
+    maxSteps: 3,
+    maxRuntimeSeconds: 300,
+    allowPrCreate: true,
+    autoLand: true,
+    syncMain: true,
+    approvalRef: "approval-123",
+  }, runner, cleanPreflight);
+
+  assert.equal(result.status, "completed");
+  assert.equal(result.pr.created, true);
+  assert.equal(result.pr.url, "https://github.com/acme/repo/pull/1");
+  assert.equal(result.merge.attempted, true);
+  assert.equal(result.merge.allowed, true);
+  assert.equal(calls.length, 6);
+  assert.equal(calls[0].command, "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id job-1 --max-steps 3 --max-runtime-seconds 300 --no-stop-before-pr --allow-pr-create --approval-ref approval-123 --json");
+  assert.equal(calls[1].command, "npm run harness:pr-lifecycle -- create --initiative greenfield-scaffold --worker-run-id worker-1 --run-id pr-worker-1 --json");
+  assert.equal(calls[4].command, "npm run harness:pr-lifecycle -- merge --initiative greenfield-scaffold --run-id pr-worker-1 --allow-merge --approval-ref approval-123 --method squash --json");
+  assert.equal(calls[5].command, "npm run harness:pr-lifecycle -- sync-main --initiative greenfield-scaffold --run-id pr-worker-1 --json");
+});
+
+test("auto-land requires approval and worker-job lane", async () => {
+  const { runner } = makeRunner(jsonResult({}));
+
+  assert.match((await runOrchestratorRun({ lane: "worker_job", initiative: "greenfield-scaffold", jobId: "job-1", maxSteps: 3, maxRuntimeSeconds: 300, autoLand: true }, runner, cleanPreflight)).blockers.join("\n"), /approval-ref/);
+  assert.match((await runOrchestratorRun({ lane: "parallel_lanes", initiative: "greenfield-scaffold", maxSteps: 3, maxRuntimeSeconds: 300, maxParallel: 2, workerCommand: "npm test", autoLand: true, approvalRef: "approval-123" }, runner, cleanPreflight)).blockers.join("\n"), /worker_job/);
 });

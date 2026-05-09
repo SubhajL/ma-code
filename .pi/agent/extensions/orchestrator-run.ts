@@ -45,6 +45,9 @@ export interface OrchestratorRunRequest {
   maxParallel?: number;
   workerCommand?: string;
   allowPrCreate?: boolean;
+  autoLand?: boolean;
+  syncMain?: boolean;
+  mergeMethod?: "squash" | "merge" | "rebase";
   approvalRef?: string;
 }
 
@@ -65,14 +68,20 @@ export interface OrchestratorRunSessionResult {
   blockers: string[];
   stopReason: OrchestratorRunStopReason;
   pr: {
-    created: false;
-    url: null;
-    gateStatus: null;
+    created: boolean;
+    url: string | null;
+    gateStatus: string | null;
   };
   merge: {
-    attempted: false;
-    allowed: false;
-    reason: "Phase 4 stops before merge by default";
+    attempted: boolean;
+    allowed: boolean;
+    reason: string;
+  };
+  autoLand?: {
+    enabled: boolean;
+    prRunId: string | null;
+    commands: string[];
+    syncedMain: boolean;
   };
   rawOutputExcerpt: string;
   nextSafeActions: string[];
@@ -162,7 +171,8 @@ function baseResult(input: OrchestratorRunRequest, selectedLane: OrchestratorRun
     blockers: [],
     stopReason: "none",
     pr: { created: false, url: null, gateStatus: null },
-    merge: { attempted: false, allowed: false, reason: "Phase 4 stops before merge by default" },
+    merge: { attempted: false, allowed: false, reason: input.autoLand ? "Auto-land requested but not completed" : "Phase 4 stops before merge by default" },
+    autoLand: input.autoLand ? { enabled: true, prRunId: null, commands: [], syncedMain: false } : undefined,
     rawOutputExcerpt: "",
     nextSafeActions: [],
   };
@@ -203,6 +213,9 @@ function buildDelegatedRunCall(input: OrchestratorRunRequest): { lane: Orchestra
   const maxRuntimeSeconds = positiveInteger(input.maxRuntimeSeconds, "--max-runtime-seconds");
   const maxParallel = optionalPositiveInteger(input.maxParallel, "--max-parallel", 1);
   if (input.allowPrCreate && !input.approvalRef?.trim()) throw new Error("--allow-pr-create requires --approval-ref.");
+  if (input.autoLand && !input.approvalRef?.trim()) throw new Error("--auto-land requires --approval-ref.");
+  if (input.autoLand && lane !== "worker_job") throw new Error("--auto-land is currently supported only for the worker_job lane.");
+  if (input.syncMain && !input.autoLand) throw new Error("--sync-main requires --auto-land.");
 
   if (lane === "queue_level") {
     const args = ["run", "--run", "--initiative", initiative, "--max-steps", String(maxSteps), "--max-runtime-seconds", String(maxRuntimeSeconds)];
@@ -213,8 +226,8 @@ function buildDelegatedRunCall(input: OrchestratorRunRequest): { lane: Orchestra
 
   if (lane === "worker_job") {
     const jobId = assertJobId(input.jobId);
-    const args = ["run", "--initiative", initiative, "--job-id", jobId, "--max-steps", String(maxSteps), "--max-runtime-seconds", String(maxRuntimeSeconds), "--stop-before-pr"];
-    if (input.allowPrCreate && input.approvalRef) args.push("--allow-pr-create", "--approval-ref", input.approvalRef.trim());
+    const args = ["run", "--initiative", initiative, "--job-id", jobId, "--max-steps", String(maxSteps), "--max-runtime-seconds", String(maxRuntimeSeconds), input.autoLand ? "--no-stop-before-pr" : "--stop-before-pr"];
+    if ((input.allowPrCreate || input.autoLand) && input.approvalRef) args.push("--allow-pr-create", "--approval-ref", input.approvalRef.trim());
     args.push("--json");
     return { lane, call: callFor(ALLOWED_SCRIPTS[lane], args) };
   }
@@ -274,8 +287,10 @@ export function assertSafeDelegatedRunCommand(lane: OrchestratorRunLane, command
       throw new Error("queue_level run command must use bounded AFK run --run with JSON output.");
     }
   } else if (lane === "worker_job") {
-    if (after[0] !== "run" || !after.includes("--job-id") || !after.includes("--max-steps") || !after.includes("--max-runtime-seconds") || !after.includes("--stop-before-pr") || !after.includes("--json")) {
-      throw new Error("worker_job run command must execute one bounded worker job and stop before PR.");
+    const hasStopBoundary = after.includes("--stop-before-pr");
+    const hasApprovedPrBoundary = after.includes("--no-stop-before-pr") && after.includes("--allow-pr-create") && after.includes("--approval-ref");
+    if (after[0] !== "run" || !after.includes("--job-id") || !after.includes("--max-steps") || !after.includes("--max-runtime-seconds") || !(hasStopBoundary || hasApprovedPrBoundary) || !after.includes("--json")) {
+      throw new Error("worker_job run command must execute one bounded worker job and either stop before PR or carry approved PR creation.");
     }
   } else {
     if (after[0] !== "run" || !after.includes("--max-parallel") || !after.includes("--max-runtime-seconds") || !after.includes("--worker-command") || !after.includes("--json")) {
@@ -343,6 +358,38 @@ function workCompleted(lane: OrchestratorRunLane, record: Record<string, unknown
   return [];
 }
 
+function prLifecycleCall(argsAfterSeparator: string[]): DelegatedRunCall {
+  return callFor("harness:pr-lifecycle", argsAfterSeparator);
+}
+
+function prRunIdFor(workerRunId: string): string {
+  return `pr-${workerRunId}`;
+}
+
+function prInfoFrom(record: Record<string, unknown>): { url: string | null; number: number | null; gateStatus: string | null } {
+  const pr = isRecord(record.pr) ? record.pr : {};
+  const url = typeof pr.url === "string" ? pr.url : null;
+  const rawNumber = pr.number;
+  const number = typeof rawNumber === "number" ? rawNumber : typeof rawNumber === "string" && /^\d+$/.test(rawNumber) ? Number(rawNumber) : null;
+  const gateStatus = typeof pr.gateStatus === "string" ? pr.gateStatus : typeof record.status === "string" && record.status.includes("gate") ? record.status : null;
+  return { url, number, gateStatus };
+}
+
+async function runJsonCommand(call: DelegatedRunCall, runner: DelegatedRunRunner): Promise<{ result: DelegatedRunResult; parsed: Record<string, unknown> | null }> {
+  const result = await runner(call);
+  if (result.exitCode !== 0) return { result, parsed: null };
+  try {
+    const parsed = JSON.parse(result.stdout);
+    return { result, parsed: isRecord(parsed) ? parsed : null };
+  } catch {
+    return { result, parsed: null };
+  }
+}
+
+function mergeMethodFor(input: OrchestratorRunRequest): "squash" | "merge" | "rebase" {
+  return input.mergeMethod ?? "squash";
+}
+
 export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: DelegatedRunRunner = defaultRunner, preflight: OrchestratorRunPreflight = defaultOrchestratorRunPreflight): Promise<OrchestratorRunSessionResult> {
   let lane: OrchestratorRunLane | null = null;
   let call: DelegatedRunCall | null = null;
@@ -384,6 +431,98 @@ export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: 
     };
   }
 
+  const startedWork = workStarted(lane, parsed);
+  const completedWork = workCompleted(lane, parsed);
+
+  if (input.autoLand) {
+    const workerRunId = typeof parsed.runId === "string" ? parsed.runId : null;
+    if (!workerRunId) {
+      return {
+        ...base,
+        status: "blocked",
+        blockers: ["Auto-land requires worker execution JSON with runId."],
+        stopReason: "approval_boundary",
+        startedWork,
+        completedWork,
+        nextSafeActions: ["Inspect worker execution output; rerun after worker-run evidence is available."],
+      };
+    }
+
+    const approvalRef = input.approvalRef?.trim();
+    if (!approvalRef) {
+      return {
+        ...base,
+        status: "blocked",
+        blockers: ["Auto-land requires --approval-ref."],
+        stopReason: "approval_boundary",
+        startedWork,
+        completedWork,
+        nextSafeActions: ["Rerun with an explicit approval reference or omit --auto-land."],
+      };
+    }
+
+    const prRunId = prRunIdFor(workerRunId);
+    const commands: string[] = [];
+    const runStep = async (stepCall: DelegatedRunCall, expected: string | ((record: Record<string, unknown>) => boolean)) => {
+      commands.push(stepCall.command);
+      const step = await runJsonCommand(stepCall, runner);
+      if (step.result.exitCode !== 0 || !step.parsed) {
+        return { ok: false, parsed: step.parsed, result: step.result, blockers: [`Auto-land command failed: ${stepCall.command}`] };
+      }
+      const passed = typeof expected === "string" ? String(step.parsed.status) === expected : expected(step.parsed);
+      if (!passed) {
+        return { ok: false, parsed: step.parsed, result: step.result, blockers: readStrings(step.parsed.blockers).length > 0 ? readStrings(step.parsed.blockers) : [`Auto-land command did not reach expected state: ${stepCall.command}`] };
+      }
+      return { ok: true, parsed: step.parsed, result: step.result, blockers: [] as string[] };
+    };
+
+    const create = await runStep(prLifecycleCall(["create", "--initiative", assertSlug(input.initiative, "--initiative"), "--worker-run-id", workerRunId, "--run-id", prRunId, "--json"]), "pr_created");
+    if (!create.ok || !create.parsed) {
+      return { ...base, status: "blocked", blockers: create.blockers, stopReason: "approval_boundary", startedWork, completedWork, rawOutputExcerpt: excerpt(create.result.stdout, create.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, nextSafeActions: ["Resolve PR creation blockers before rerunning auto-land."] };
+    }
+
+    const gate = await runStep(prLifecycleCall(["gate", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--json"]), "gate_passed");
+    if (!gate.ok || !gate.parsed) {
+      return { ...base, status: "blocked", blockers: gate.blockers, stopReason: "validation_failure", startedWork, completedWork, rawOutputExcerpt: excerpt(gate.result.stdout, gate.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, nextSafeActions: ["Wait for or fix PR gate checks, then rerun auto-land from PR lifecycle evidence."] };
+    }
+
+    const mergeReady = await runStep(prLifecycleCall(["merge-ready", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--json"]), (record) => String(record.status) === "gate_passed" && isRecord(record.lifecycle) && record.lifecycle.mergeReady === true);
+    if (!mergeReady.ok || !mergeReady.parsed) {
+      return { ...base, status: "blocked", blockers: mergeReady.blockers, stopReason: "validation_failure", startedWork, completedWork, rawOutputExcerpt: excerpt(mergeReady.result.stdout, mergeReady.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, nextSafeActions: ["Resolve merge-ready blockers before applying merge."] };
+    }
+
+    const merge = await runStep(prLifecycleCall(["merge", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--allow-merge", "--approval-ref", approvalRef, "--method", mergeMethodFor(input), "--json"]), "merged");
+    if (!merge.ok || !merge.parsed) {
+      return { ...base, status: "blocked", blockers: merge.blockers, stopReason: "approval_boundary", startedWork, completedWork, rawOutputExcerpt: excerpt(merge.result.stdout, merge.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, merge: { attempted: true, allowed: true, reason: "bounded merge helper blocked merge" }, nextSafeActions: ["Inspect bounded merge helper blockers before rerunning."] };
+    }
+
+    let finalRecord = merge.parsed;
+    let syncedMain = false;
+    if (input.syncMain) {
+      const sync = await runStep(prLifecycleCall(["sync-main", "--initiative", assertSlug(input.initiative, "--initiative"), "--run-id", prRunId, "--json"]), "synced");
+      if (!sync.ok || !sync.parsed) {
+        return { ...base, status: "blocked", blockers: sync.blockers, stopReason: "dirty_repo", startedWork, completedWork, rawOutputExcerpt: excerpt(sync.result.stdout, sync.result.stderr), autoLand: { enabled: true, prRunId, commands, syncedMain: false }, merge: { attempted: true, allowed: true, reason: "merge completed; sync-main blocked" }, nextSafeActions: ["Resolve sync-main blockers before starting downstream AFK work."] };
+      }
+      finalRecord = sync.parsed;
+      syncedMain = true;
+    }
+
+    const pr = prInfoFrom(finalRecord);
+    return {
+      ...base,
+      status: "completed",
+      blockers: [],
+      stopReason: "none",
+      startedWork,
+      completedWork,
+      pr: { created: true, url: pr.url, gateStatus: pr.gateStatus },
+      merge: { attempted: true, allowed: true, reason: syncedMain ? "auto-land merged and synced local main" : "auto-land merged; local main sync not requested" },
+      autoLand: { enabled: true, prRunId, commands, syncedMain },
+      rawOutputExcerpt: "",
+      nextSafeActions: [syncedMain ? "Continue with the next eligible AFK issue." : "Sync local main before starting downstream AFK work."],
+    };
+  }
+
   const stopReason = stopReasonFrom(lane, parsed, result.stdout);
   const blockers = readStrings(parsed.blockers);
   const status = statusFrom(lane, parsed, stopReason);
@@ -392,14 +531,15 @@ export async function runOrchestratorRun(input: OrchestratorRunRequest, runner: 
     status,
     blockers,
     stopReason,
-    startedWork: workStarted(lane, parsed),
-    completedWork: workCompleted(lane, parsed),
+    startedWork,
+    completedWork,
     rawOutputExcerpt: "",
     nextSafeActions: unique([
       typeof parsed.nextOperatorAction === "string" ? parsed.nextOperatorAction : "",
       status === "completed" ? "Inspect run evidence and decide whether a separate PR lifecycle handoff is appropriate." : "Inspect blockers and rerun only after the boundary is resolved.",
     ]),
   };
+
 }
 
 // Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
