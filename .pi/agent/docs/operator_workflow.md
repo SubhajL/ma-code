@@ -550,3 +550,6 @@ Rules:
 - Ambiguous requests return `status: "needs_input"` during dry-run and no delegated command.
 
 See `.pi/agent/docs/master_orchestrator.md` for the selected-path, apply-path, and Phase 4 run-lane contract.
+
+## Master orchestrator Phase 5 evidence and merge handoff
+Use `npm run harness:operator -- orchestrate evidence --initiative <slug> --run-id <id> --lifecycle-evidence reports/lifecycle/<id>.json --json` to aggregate existing pipeline, AFK, worker, PR, lifecycle, and coding-log evidence without merging. Use `npm run harness:operator -- orchestrate merge-check --pr <number> --method squash --lifecycle-evidence reports/lifecycle/<id>.json --json` for readiness. `merge-apply` requires `--approval-ref <ref>`, runs `harness:merge check` first, and delegates apply only to `harness:merge`; default behavior remains stop-before-merge with no raw git merge.

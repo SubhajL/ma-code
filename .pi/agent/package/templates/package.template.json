@@ -64,7 +64,9 @@
     "validate:orchestrator-classifier": "./scripts/validate-orchestrator-classifier.sh",
     "validate:orchestrator-dry-run": "./scripts/validate-orchestrator-dry-run.sh",
     "validate:orchestrator-apply": "./scripts/validate-orchestrator-apply.sh",
-    "validate:orchestrator-run": "./scripts/validate-orchestrator-run.sh"
+    "validate:orchestrator-run": "./scripts/validate-orchestrator-run.sh",
+    "test:orchestrator-evidence": "node --import tsx --test tests/extension-units/orchestrator-evidence.test.ts tests/integration/orchestrator-evidence.test.ts",
+    "validate:orchestrator-evidence": "./scripts/validate-orchestrator-evidence.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

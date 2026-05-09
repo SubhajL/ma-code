@@ -24,13 +24,22 @@ import {
   type OrchestratorRunRequest,
   type OrchestratorRunSessionResult,
 } from "../.pi/agent/extensions/orchestrator-run.ts";
+import {
+  collectOrchestratorEvidence,
+  runOrchestratorMergeApply,
+  runOrchestratorMergeCheck,
+  type OrchestratorEvidenceSummary,
+  type OrchestratorMergeOptions,
+} from "../.pi/agent/extensions/orchestrator-evidence.ts";
 
 const execFile = promisify(execFileCallback);
 
 export type HarnessOrchestrateOptions =
   | { command: "classify" | "dry-run"; goal: string; json?: boolean; repoRoot?: string }
   | ({ command: "apply"; json?: boolean; repoRoot?: string } & OrchestratorApplyRequest)
-  | ({ command: "run"; json?: boolean; repoRoot?: string } & OrchestratorRunRequest);
+  | ({ command: "run"; json?: boolean; repoRoot?: string } & OrchestratorRunRequest)
+  | { command: "evidence"; initiative: string; runId?: string; lifecycleEvidence?: string; codingLog?: string; writeReport?: boolean; json?: boolean; repoRoot?: string }
+  | ({ command: "merge-check" | "merge-apply"; json?: boolean; repoRoot?: string } & OrchestratorMergeOptions);
 
 function usage(): string {
   return [
@@ -41,6 +50,9 @@ function usage(): string {
     "  harness-orchestrate run --initiative <slug> --max-steps <n> --max-runtime-seconds <n> [--json]",
     "  harness-orchestrate run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> [--allow-pr-create --approval-ref <ref>] [--json]",
     "  harness-orchestrate run --lane parallel_lanes --initiative <slug> --max-steps <n> --max-runtime-seconds <n> --max-parallel <n> --worker-command <cmd> [--json]",
+    "  harness-orchestrate evidence --initiative <slug> [--run-id <id>] [--lifecycle-evidence <path>] [--write-report] [--json]",
+    "  harness-orchestrate merge-check --pr <number> [--method squash|merge|rebase] [--lifecycle-evidence <path>] [--json]",
+    "  harness-orchestrate merge-apply --pr <number> --approval-ref <ref> [--method squash|merge|rebase] [--lifecycle-evidence <path>] [--json]",
     "",
     "Apply paths:",
     "  product_intake --initiative <slug> --description <text>",
@@ -61,6 +73,8 @@ function usage(): string {
     "  - apply delegates exactly one allowlisted materialization helper and verifies reported createdFiles against explicit write-path allowlists",
     "  - apply does not run workers, create PRs, merge, sync main, or accept generic command strings",
     "  - run delegates exactly one bounded execution lane, requires max limits, defaults to stop-before-merge, and never merges",
+    "  - evidence consumes existing run/lifecycle/log artifacts first; optional reports are explicit",
+    "  - merge-check and merge-apply delegate only to harness:merge; merge-apply requires --approval-ref",
   ].join("\n");
 }
 
@@ -103,10 +117,52 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
   const [commandValue, ...rest] = argv;
   if (!commandValue || commandValue === "help" || commandValue === "--help" || commandValue === "-h") throw new Error(usage());
   if (["create", "merge", "sync-main", "git"].includes(commandValue)) rejectUnsafeApplyVerb(commandValue);
-  if (commandValue !== "classify" && commandValue !== "dry-run" && commandValue !== "apply" && commandValue !== "run") throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
+  if (!["classify", "dry-run", "apply", "run", "evidence", "merge-check", "merge-apply"].includes(commandValue)) throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
 
   let goal: string | undefined;
   let json = false;
+
+  if (commandValue === "evidence") {
+    let initiative: string | undefined;
+    let runId: string | undefined;
+    let lifecycleEvidence: string | undefined;
+    let codingLog: string | undefined;
+    let writeReport = false;
+    for (let index = 0; index < rest.length; index += 1) {
+      const arg = rest[index];
+      if (arg === "--initiative" || arg === "--slug") initiative = requireValue(rest[++index], arg);
+      else if (arg === "--run-id") runId = requireValue(rest[++index], "--run-id");
+      else if (arg === "--lifecycle-evidence" || arg === "--evidence-file") lifecycleEvidence = requireValue(rest[++index], arg);
+      else if (arg === "--coding-log") codingLog = requireValue(rest[++index], "--coding-log");
+      else if (arg === "--write-report") writeReport = true;
+      else if (arg === "--json") json = true;
+      else throw new Error(`Unknown argument: ${arg}\n${usage()}`);
+    }
+    if (!initiative) throw new Error("--initiative is required for evidence.");
+    return { command: "evidence", initiative, runId, lifecycleEvidence, codingLog, writeReport, json };
+  }
+
+  if (commandValue === "merge-check" || commandValue === "merge-apply") {
+    let pr: string | undefined;
+    let method: OrchestratorMergeOptions["method"] | undefined;
+    let lifecycleEvidence: string | undefined;
+    let approvalRef: string | undefined;
+    for (let index = 0; index < rest.length; index += 1) {
+      const arg = rest[index];
+      if (arg === "--pr") pr = requireValue(rest[++index], "--pr");
+      else if (arg === "--method") {
+        const raw = requireValue(rest[++index], "--method");
+        if (raw !== "squash" && raw !== "merge" && raw !== "rebase") throw new Error("--method must be squash, merge, or rebase.");
+        method = raw;
+      } else if (arg === "--lifecycle-evidence" || arg === "--evidence-file") lifecycleEvidence = requireValue(rest[++index], arg);
+      else if (arg === "--approval-ref") approvalRef = requireValue(rest[++index], "--approval-ref");
+      else if (arg === "--json") json = true;
+      else if (["--sync-main", "--git", "--raw-merge"].includes(arg)) throw new Error(`${arg} is not supported by harness-orchestrate ${commandValue}.`);
+      else throw new Error(`Unknown argument: ${arg}\n${usage()}`);
+    }
+    if (!pr) throw new Error("--pr is required.");
+    return { command: commandValue, pr, method, lifecycleEvidence, approvalRef, json };
+  }
 
   if (commandValue === "apply") {
     let path: OrchestratorApplyPath | undefined;
@@ -293,6 +349,18 @@ export async function runHarnessOrchestrateRun(options: Extract<HarnessOrchestra
   return runOrchestratorRun({ ...options, repoRoot: resolve(options.repoRoot ?? process.cwd()) });
 }
 
+export async function runHarnessOrchestrateEvidence(options: Extract<HarnessOrchestrateOptions, { command: "evidence" }>): Promise<OrchestratorEvidenceSummary> {
+  return collectOrchestratorEvidence({ ...options, repoRoot: resolve(options.repoRoot ?? process.cwd()) });
+}
+
+export async function runHarnessOrchestrateMergeCheck(options: Extract<HarnessOrchestrateOptions, { command: "merge-check" }>): Promise<OrchestratorEvidenceSummary> {
+  return runOrchestratorMergeCheck({ ...options, repoRoot: resolve(options.repoRoot ?? process.cwd()) });
+}
+
+export async function runHarnessOrchestrateMergeApply(options: Extract<HarnessOrchestrateOptions, { command: "merge-apply" }>): Promise<OrchestratorEvidenceSummary> {
+  return runOrchestratorMergeApply({ ...options, repoRoot: resolve(options.repoRoot ?? process.cwd()) });
+}
+
 function renderClassificationText(result: OrchestratorClassification): string {
   return [
     "Harness Orchestrate Phase 1 Classification",
@@ -337,6 +405,22 @@ function renderApplyText(result: OrchestratorApplyMaterializationResult): string
   ].join("\n");
 }
 
+function renderEvidenceText(result: OrchestratorEvidenceSummary): string {
+  return [
+    `Harness Orchestrate Phase 5 ${result.mode}`,
+    `runId: ${result.runId}`,
+    `selectedPath: ${result.selectedPath ?? "none"}`,
+    `status: ${result.status}`,
+    `approvalRef: ${result.approval.approvalRef ?? "none"}`,
+    `mergeAttempted: ${result.merge.attempted}`,
+    "delegatedCommands:",
+    ...(result.delegatedCommands.length > 0 ? result.delegatedCommands.map((entry) => `- ${entry.command} (${entry.status})`) : ["- none"]),
+    "blockers:",
+    ...(result.blockers.length > 0 ? result.blockers.map((entry) => `- ${entry}`) : ["- none"]),
+    `nextSafeAction: ${result.nextSafeAction}`,
+  ].join("\n");
+}
+
 function renderRunText(result: OrchestratorRunSessionResult): string {
   return [
     "Harness Orchestrate Phase 4 Run",
@@ -372,6 +456,24 @@ async function main(argv: string[]): Promise<void> {
     const result = await runHarnessOrchestrateRun(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderRunText(result)}\n`);
     if (result.status === "blocked" || result.status === "failed") process.exitCode = 1;
+    return;
+  }
+  if (options.command === "evidence") {
+    const result = await runHarnessOrchestrateEvidence(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderEvidenceText(result)}\n`);
+    if (result.status === "blocked") process.exitCode = 1;
+    return;
+  }
+  if (options.command === "merge-check") {
+    const result = await runHarnessOrchestrateMergeCheck(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderEvidenceText(result)}\n`);
+    if (result.status === "blocked") process.exitCode = 1;
+    return;
+  }
+  if (options.command === "merge-apply") {
+    const result = await runHarnessOrchestrateMergeApply(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderEvidenceText(result)}\n`);
+    if (result.status !== "merged") process.exitCode = 1;
     return;
   }
   const result = await runHarnessOrchestrateApply(options);

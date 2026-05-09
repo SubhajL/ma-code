@@ -50,20 +50,25 @@ required_files=(
   ".pi/agent/extensions/orchestrator-dry-run.ts"
   ".pi/agent/extensions/orchestrator-apply-policy.ts"
   ".pi/agent/extensions/orchestrator-run.ts"
+  ".pi/agent/extensions/orchestrator-evidence.ts"
+  ".pi/agent/state/schemas/orchestrator-evidence.schema.json"
   ".pi/agent/docs/master_orchestrator.md"
   "scripts/harness-orchestrate.ts"
   "scripts/validate-orchestrator-classifier.sh"
   "scripts/validate-orchestrator-dry-run.sh"
   "scripts/validate-orchestrator-apply.sh"
   "scripts/validate-orchestrator-run.sh"
+  "scripts/validate-orchestrator-evidence.sh"
   "tests/extension-units/orchestrator-classifier.test.ts"
   "tests/extension-units/orchestrator-dry-run.test.ts"
   "tests/extension-units/orchestrator-apply-policy.test.ts"
   "tests/extension-units/orchestrator-run.test.ts"
+  "tests/extension-units/orchestrator-evidence.test.ts"
   "tests/integration/orchestrator-classifier.test.ts"
   "tests/integration/orchestrator-dry-run.test.ts"
   "tests/integration/orchestrator-apply.test.ts"
   "tests/integration/orchestrator-run.test.ts"
+  "tests/integration/orchestrator-evidence.test.ts"
   "scripts/validate-afk-orchestration.sh"
   "tests/extension-units/afk-orchestration.test.ts"
   "tests/integration/afk-orchestration.test.ts"
@@ -1425,25 +1430,33 @@ assert "validate:orchestrator-apply" in package_json.get("scripts", {})
 assert "validate:orchestrator-apply" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-run" in package_json.get("scripts", {})
 assert "validate:orchestrator-run" in package_template_json.get("scripts", {})
+assert "validate:orchestrator-evidence" in package_json.get("scripts", {})
+assert "validate:orchestrator-evidence" in package_template_json.get("scripts", {})
+orchestrator_evidence_schema = json.loads((root / ".pi/agent/state/schemas/orchestrator-evidence.schema.json").read_text(encoding="utf-8"))
 orchestrator_cli = (root / "scripts/harness-orchestrate.ts").read_text(encoding="utf-8")
 orchestrator_helper = (root / ".pi/agent/extensions/orchestrator-classifier.ts").read_text(encoding="utf-8")
 orchestrator_dry_run_helper = (root / ".pi/agent/extensions/orchestrator-dry-run.ts").read_text(encoding="utf-8")
 orchestrator_apply_helper = (root / ".pi/agent/extensions/orchestrator-apply-policy.ts").read_text(encoding="utf-8")
 orchestrator_run_helper = (root / ".pi/agent/extensions/orchestrator-run.ts").read_text(encoding="utf-8")
+orchestrator_evidence_helper = (root / ".pi/agent/extensions/orchestrator-evidence.ts").read_text(encoding="utf-8")
 orchestrator_doc = (root / ".pi/agent/docs/master_orchestrator.md").read_text(encoding="utf-8")
 operator_cli = (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
 assert "orchestrate" in operator_cli
-assert "Delegate to Phase 4 master orchestrator classify/dry-run/apply/run router" in operator_cli
+assert "Delegate to Phase 5 master orchestrator classify/dry-run/apply/run/evidence/merge router" in operator_cli
 assert "classify" in orchestrator_cli
 assert "dry-run" in orchestrator_cli
 assert "apply" in orchestrator_cli
 assert "run" in orchestrator_cli
+assert "evidence" in orchestrator_cli
+assert "merge-check" in orchestrator_cli
+assert "merge-apply" in orchestrator_cli
 assert "planOrchestratorDryRun" in orchestrator_cli
 assert "runOrchestratorApply" in orchestrator_cli
 assert "orchestrator-classifier.ts" in foundation_compile_validator
 assert "orchestrator-dry-run.ts" in foundation_compile_validator
 assert "orchestrator-apply-policy.ts" in foundation_compile_validator
 assert "orchestrator-run.ts" in foundation_compile_validator
+assert "orchestrator-evidence.ts" in foundation_compile_validator
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "--allow-merge", "harness:merge -- apply"]:
     assert forbidden not in orchestrator_helper
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "gh pr merge", "git merge"]:
@@ -1452,20 +1465,27 @@ for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "
     assert forbidden not in orchestrator_apply_helper
 for forbidden in ["task_update", "generate_task_packet", "gh pr merge", "git merge", "harness:merge -- apply"]:
     assert forbidden not in orchestrator_run_helper
+for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "gh pr merge"]:
+    assert forbidden not in orchestrator_evidence_helper
 for required in ["ALLOWED_SCRIPTS", "assertSafeDelegatedDryRunCommand", "MUTATING_VERBS", "writesFiles: false", "Delegated helper emitted invalid JSON"]:
     assert required in orchestrator_dry_run_helper
 for required in ["OrchestratorApplyPath", "buildOrchestratorApplyPlan", "assertCreatedFilesWithinAllowlist", "afk_queue_materialization", "--queue-only", "screen_approval", "approvalRef"]:
     assert required in orchestrator_apply_helper
 for required in ["OrchestratorRunLane", "queue_level", "worker_job", "parallel_lanes", "assertSafeDelegatedRunCommand", "defaultOrchestratorRunPreflight", "Phase 4 stops before merge by default", "harness:afk-orchestrate", "harness:worker-execute", "harness:parallel-worker-lanes"]:
     assert required in orchestrator_run_helper
+for required in ["collectOrchestratorEvidence", "runOrchestratorMergeCheck", "runOrchestratorMergeApply", "assertNoRawGitMergeCommand", "harness:merge", "defaultStopBeforeMerge", "rawGitMergeUsed"]:
+    assert required in orchestrator_evidence_helper
+assert orchestrator_evidence_schema["properties"]["merge"]["properties"]["rawGitMergeUsed"]["const"] is False
 for forbidden in ["harness:merge", "pr-lifecycle", "worker-execute", "git", ".pi/agent/state/runtime"]:
     assert forbidden in orchestrator_apply_helper
-for required in ["read-only", "selectedPath", "clarification", "npm run harness:operator -- orchestrate classify", "npm run harness:orchestrate -- dry-run", "npm run harness:orchestrate -- apply", "npm run harness:orchestrate -- run", "writesFiles: false", "exactly one allowlisted helper", "createdFiles", "--queue-only", "Phase 4", "queue_level", "worker_job", "parallel_lanes", "merge.attempted: false"]:
+for required in ["read-only", "selectedPath", "clarification", "npm run harness:operator -- orchestrate classify", "npm run harness:orchestrate -- dry-run", "npm run harness:orchestrate -- apply", "npm run harness:orchestrate -- run", "npm run harness:orchestrate -- evidence", "npm run harness:orchestrate -- merge-check", "npm run harness:orchestrate -- merge-apply", "writesFiles: false", "exactly one allowlisted helper", "createdFiles", "--queue-only", "Phase 4", "Phase 5", "queue_level", "worker_job", "parallel_lanes", "merge.attempted: false", "stop-before-merge", "reports/orchestration", "rawGitMergeUsed: false"]:
     assert required in orchestrator_doc
 assert "npm run harness:operator -- orchestrate classify" in operator_workflow_doc
 assert "npm run harness:operator -- orchestrate dry-run" in operator_workflow_doc
 assert "npm run harness:operator -- orchestrate apply" in operator_workflow_doc
 assert "npm run harness:operator -- orchestrate run" in operator_workflow_doc
+assert "npm run harness:operator -- orchestrate evidence" in operator_workflow_doc
+assert "npm run harness:operator -- orchestrate merge-check" in operator_workflow_doc
 assert "harness:product-pipeline" in package_json.get("scripts", {})
 assert "harness:product-pipeline" in package_template_json.get("scripts", {})
 assert "test:product-pipeline" in package_json.get("scripts", {})
