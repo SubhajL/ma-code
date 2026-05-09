@@ -10,11 +10,12 @@ import {
   type OrchestratorGitState,
   type OrchestratorInitiativeCandidate,
 } from "../.pi/agent/extensions/orchestrator-classifier.ts";
+import { planOrchestratorDryRun, type OrchestratorDryRunPlan } from "../.pi/agent/extensions/orchestrator-dry-run.ts";
 
 const execFile = promisify(execFileCallback);
 
 export interface HarnessOrchestrateOptions {
-  command: "classify";
+  command: "classify" | "dry-run";
   goal: string;
   json?: boolean;
   repoRoot?: string;
@@ -24,11 +25,11 @@ function usage(): string {
   return [
     "Usage:",
     "  harness-orchestrate classify --goal <human-goal> [--json]",
+    "  harness-orchestrate dry-run --goal <human-goal> [--json]",
     "",
     "Rules:",
-    "  - Phase 1 supports classify only",
     "  - classify is read-only and writes no files",
-    "  - returned nextDryRunCommand is advisory and is not executed",
+    "  - dry-run classifies, invokes at most one allowlisted dry-run/status/check helper, and writes no orchestrator files",
     "  - apply/run/create/merge execution is out of scope",
   ].join("\n");
 }
@@ -41,7 +42,7 @@ function requireValue(value: string | undefined, flag: string): string {
 export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateOptions {
   const [commandValue, ...rest] = argv;
   if (!commandValue || commandValue === "help" || commandValue === "--help" || commandValue === "-h") throw new Error(usage());
-  if (commandValue !== "classify") throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
+  if (commandValue !== "classify" && commandValue !== "dry-run") throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
 
   let goal: string | undefined;
   let json = false;
@@ -50,12 +51,12 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
     const arg = rest[index];
     if (arg === "--goal") goal = requireValue(rest[++index], "--goal");
     else if (arg === "--json") json = true;
-    else if (["--apply", "--run", "--create", "--merge", "--allow-merge"].includes(arg)) throw new Error(`${arg} is not supported by Phase 1 classify.`);
+    else if (["--apply", "--run", "--create", "--merge", "--allow-merge"].includes(arg)) throw new Error(`${arg} is not supported by harness-orchestrate ${commandValue}.`);
     else throw new Error(`Unknown argument: ${arg}\n${usage()}`);
   }
 
   if (!goal || goal.trim().length === 0) throw new Error("--goal is required.");
-  return { command: "classify", goal, json };
+  return { command: commandValue, goal, json };
 }
 
 async function pathExists(pathValue: string): Promise<boolean> {
@@ -118,7 +119,12 @@ export async function runHarnessOrchestrate(options: HarnessOrchestrateOptions):
   });
 }
 
-function renderText(result: OrchestratorClassification): string {
+export async function runHarnessOrchestrateDryRun(options: HarnessOrchestrateOptions): Promise<OrchestratorDryRunPlan> {
+  const classification = await runHarnessOrchestrate(options);
+  return planOrchestratorDryRun({ classification });
+}
+
+function renderClassificationText(result: OrchestratorClassification): string {
   return [
     "Harness Orchestrate Phase 1 Classification",
     `goal: ${result.goal}`,
@@ -130,10 +136,29 @@ function renderText(result: OrchestratorClassification): string {
   ].join("\n");
 }
 
+function renderDryRunText(result: OrchestratorDryRunPlan): string {
+  return [
+    "Harness Orchestrate Phase 2 Dry Run",
+    `selectedPath: ${result.selectedPath}`,
+    `confidence: ${result.confidence}`,
+    `status: ${result.status}`,
+    `delegatedCommand: ${result.delegatedCommand ?? "none"}`,
+    "blockers:",
+    ...(result.blockers.length > 0 ? result.blockers.map((entry) => `- ${entry}`) : ["- none"]),
+    "nextSafeActions:",
+    ...(result.nextSafeActions.length > 0 ? result.nextSafeActions.map((entry) => `- ${entry}`) : ["- none"]),
+  ].join("\n");
+}
+
 async function main(argv: string[]): Promise<void> {
   const options = parseHarnessOrchestrateArgs(argv);
-  const result = await runHarnessOrchestrate(options);
-  process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderText(result)}\n`);
+  if (options.command === "classify") {
+    const result = await runHarnessOrchestrate(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderClassificationText(result)}\n`);
+    return;
+  }
+  const result = await runHarnessOrchestrateDryRun(options);
+  process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderDryRunText(result)}\n`);
 }
 
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;

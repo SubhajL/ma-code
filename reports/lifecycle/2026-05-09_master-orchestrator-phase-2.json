@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "taskId": "task-1778306191203",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Implement harness:orchestrate dry-run with a delegated read-only planner that classifies when needed and invokes exactly one allowlisted dry-run/status/check helper.",
+      "Return normalized dry-run JSON with selected path, delegated command, status, blockers, missing artifacts, HITL gates, next safe actions, writesFiles=false, and raw output excerpts on errors.",
+      "Ambiguous or low-confidence classification must request clarification and run no helper.",
+      "Reject unsafe delegated commands including apply, run, create, merge apply, raw git merge, and direct runtime JSON mutation.",
+      "Dry-run writes no files and includes unit/integration coverage plus operator wrapper delegation."
+    ],
+    "tddSlice": "given a Phase 1 product_pipeline classification, delegate exactly one harness:product-pipeline dry-run --json helper and normalize the result"
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Use a dedicated git worktree/branch and do not mutate tracked files on root main.",
+      "Validate targeted tests, static checks, foundation compile, core regression, and git diff --check before PR.",
+      "Create PR, verify checks, merge to origin/main when gates pass, and sync local root main to origin/main or record blocker."
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778306191203-orchestrator-dry-run",
+    "commit": "f6fdcc2"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/120",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
