@@ -488,3 +488,6 @@ npm run harness:operator -- orchestrate run --initiative greenfield-scaffold --m
 ```
 
 The dry-run planner writes no orchestrator files, returns `writesFiles: false`, creates no tasks or queue jobs, creates no PRs, and performs no merge. The apply router is materialization-only: it rejects generic command strings, worker execution, PR creation, merge, sync-main, raw git, and direct `.pi/agent/state/runtime/*.json` edits. Allowlisted apply paths include product intake, issue materialization, product pipeline, Stitch prompt/artifact, screen approval, slice contract, FE/BE packets, and AFK queue materialization with mandatory `--queue-only`. The Phase 4 run session requires `--max-steps` and `--max-runtime-seconds`, blocks dirty/protected repo state before delegation, records `merge.attempted: false`, and never merges by default. See `.pi/agent/docs/master_orchestrator.md`.
+
+### Master orchestrator evidence and merge handoff
+Phase 5 adds evidence-first merge handoff commands. `npm run harness:orchestrate -- evidence --initiative <slug> --run-id <id> --json` consumes existing initiative/lifecycle/log artifacts and stops before merge. `merge-check` delegates to `harness:merge check`. `merge-apply` requires `--approval-ref <ref>` and delegates only to `harness:merge` after a ready check; raw git merge is never part of the orchestrator path.

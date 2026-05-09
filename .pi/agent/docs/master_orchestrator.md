@@ -157,3 +157,19 @@ npm run validate:orchestrator-dry-run
 npm run validate:orchestrator-apply
 npm run validate:orchestrator-run
 ```
+
+## Phase 5 Evidence Integration and Merge Handoff
+Phase 5 consumes existing evidence before writing any new orchestration report. It reads initiative artifacts under `docs/initiatives/<slug>/pipeline-runs/`, `afk-runs/`, `worker-runs/`, and `pr-runs/`, lifecycle evidence under `reports/lifecycle/*.json`, and the active Pi coding log with `Review Verdict` entries.
+
+```bash
+npm run harness:orchestrate -- evidence --initiative greenfield-scaffold --run-id run-123 --lifecycle-evidence reports/lifecycle/run-123.json --json
+npm run harness:orchestrate -- evidence --initiative greenfield-scaffold --run-id run-123 --lifecycle-evidence reports/lifecycle/run-123.json --write-report --json
+npm run harness:orchestrate -- merge-check --pr 123 --method squash --lifecycle-evidence reports/lifecycle/run-123.json --json
+npm run harness:orchestrate -- merge-apply --pr 123 --method squash --approval-ref human-123 --lifecycle-evidence reports/lifecycle/run-123.json --json
+npm run harness:operator -- orchestrate evidence --initiative greenfield-scaffold --run-id run-123 --json
+npm run harness:operator -- orchestrate merge-check --pr 123 --method squash --json
+```
+
+Phase 5 is stop-before-merge by default. `evidence` and `merge-check` record `merge.attempted: false`; `merge-apply` requires an explicit `--approval-ref` and delegates only to `harness:merge` after a ready `harness:merge check` result. Optional durable reports are additive under `reports/orchestration/<run-id>.json` and `reports/orchestration/<run-id>.md`; they do not replace lifecycle, PR, helper, or coding-log evidence.
+
+The normalized output preserves `selectedPath`, exact delegated commands, helper outputs/artifact paths, blockers, HITL gates, approval refs, `nextSafeAction`, and merge flags including `rawGitMergeUsed: false`. Raw `git merge`, direct `.pi/agent/state/runtime/*.json` edits, hidden auto-merge, deployment, tagging, changelog, and environment rollout remain out of scope.

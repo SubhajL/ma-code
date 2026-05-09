@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Orchestrator Evidence Summary",
+  "type": "object",
+  "required": ["version", "runId", "mode", "status", "selectedPath", "delegatedCommands", "consumedEvidence", "blockers", "hitlGates", "approval", "nextSafeAction", "merge"],
+  "properties": {
+    "version": { "const": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["evidence", "merge_check", "merge_apply"] },
+    "status": { "enum": ["ready", "blocked", "merged"] },
+    "selectedPath": { "type": ["string", "null"] },
+    "delegatedCommands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "status"],
+        "properties": {
+          "command": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["planned", "passed", "failed", "blocked"] },
+          "artifactPath": { "type": "string" },
+          "exitCode": { "type": "number" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "consumedEvidence": {
+      "type": "object",
+      "required": ["initiativeRuns", "lifecycleEvidence", "codingLog", "reviewVerdict", "prGate", "mergeHelper"],
+      "properties": {
+        "initiativeRuns": { "type": "array", "items": { "type": "string" } },
+        "lifecycleEvidence": { "type": ["string", "null"] },
+        "codingLog": { "type": ["string", "null"] },
+        "reviewVerdict": { "enum": ["no_required_fixes", "changes_required", null] },
+        "prGate": { "type": ["object", "null"] },
+        "mergeHelper": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "blockers": { "type": "array", "items": { "type": "string" } },
+    "hitlGates": { "type": "array", "items": { "type": "string" } },
+    "approval": {
+      "type": "object",
+      "required": ["required", "approvalRef", "approvedAction"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "approvalRef": { "type": ["string", "null"] },
+        "approvedAction": { "enum": ["merge", null] }
+      },
+      "additionalProperties": true
+    },
+    "nextSafeAction": { "type": "string" },
+    "merge": {
+      "type": "object",
+      "required": ["defaultStopBeforeMerge", "attempted", "delegatedOnlyToHarnessMerge", "rawGitMergeUsed"],
+      "properties": {
+        "defaultStopBeforeMerge": { "const": true },
+        "attempted": { "type": "boolean" },
+        "delegatedOnlyToHarnessMerge": { "const": true },
+        "rawGitMergeUsed": { "const": false }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
