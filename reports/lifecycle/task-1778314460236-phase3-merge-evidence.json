@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "taskId": "task-1778314460236",
+  "planning": {
+    "acceptanceCriteria": [
+      "npm run harness:orchestrate -- apply ... --json exists and delegates to allowlisted helpers only",
+      "Every apply path declares exact delegated command, required args, allowed write paths, approval requirements, and next safe action",
+      "Orchestrator invokes exactly one delegated helper per call and rejects generic command strings and unsafe verbs",
+      "Delegated createdFiles are verified inside declared allowlist",
+      "Targeted tests and static checks pass"
+    ],
+    "tddSlice": "stitch_prompt apply delegates to harness:stitch-prompt and verifies created files under docs/initiatives/<slug>/stitch-prompts/."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Phase 3 apply CLI is implemented",
+      "Policy/helper/static docs are wired",
+      "PR gate is clean"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "split/task-1778314460236-orchestrator-apply",
+    "commit": "c08d7da97dd399fd1596c639b23ae48d368f250e"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/121",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
