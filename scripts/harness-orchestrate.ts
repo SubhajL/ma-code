@@ -31,11 +31,17 @@ import {
   type OrchestratorEvidenceSummary,
   type OrchestratorMergeOptions,
 } from "../.pi/agent/extensions/orchestrator-evidence.ts";
+import {
+  analyzeOrchestratorContext,
+  collectOrchestratorContextSignals,
+  type OrchestratorContextAssessment,
+} from "../.pi/agent/extensions/orchestrator-context.ts";
 
 const execFile = promisify(execFileCallback);
 
 export type HarnessOrchestrateOptions =
   | { command: "classify" | "dry-run"; goal: string; json?: boolean; repoRoot?: string }
+  | { command: "context"; goal?: string; initiative?: string; json?: boolean; repoRoot?: string }
   | ({ command: "apply"; json?: boolean; repoRoot?: string } & OrchestratorApplyRequest)
   | ({ command: "run"; json?: boolean; repoRoot?: string } & OrchestratorRunRequest)
   | { command: "evidence"; initiative: string; runId?: string; lifecycleEvidence?: string; codingLog?: string; writeReport?: boolean; json?: boolean; repoRoot?: string }
@@ -45,6 +51,7 @@ function usage(): string {
   return [
     "Usage:",
     "  harness-orchestrate classify --goal <human-goal> [--json]",
+    "  harness-orchestrate context [--goal <human-goal>] [--initiative <slug>] [--json]",
     "  harness-orchestrate dry-run --goal <human-goal> [--json]",
     "  harness-orchestrate apply --path <apply-path> [target args] [--json]",
     "  harness-orchestrate run --initiative <slug> --max-steps <n> --max-runtime-seconds <n> [--json]",
@@ -117,10 +124,22 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
   const [commandValue, ...rest] = argv;
   if (!commandValue || commandValue === "help" || commandValue === "--help" || commandValue === "-h") throw new Error(usage());
   if (["create", "merge", "sync-main", "git"].includes(commandValue)) rejectUnsafeApplyVerb(commandValue);
-  if (!["classify", "dry-run", "apply", "run", "evidence", "merge-check", "merge-apply"].includes(commandValue)) throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
+  if (!["classify", "context", "dry-run", "apply", "run", "evidence", "merge-check", "merge-apply"].includes(commandValue)) throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
 
   let goal: string | undefined;
   let json = false;
+
+  if (commandValue === "context") {
+    let initiative: string | undefined;
+    for (let index = 0; index < rest.length; index += 1) {
+      const arg = rest[index];
+      if (arg === "--goal") goal = requireValue(rest[++index], "--goal");
+      else if (arg === "--initiative" || arg === "--slug") initiative = requireValue(rest[++index], arg);
+      else if (arg === "--json") json = true;
+      else throw new Error(`Unknown argument: ${arg}\n${usage()}`);
+    }
+    return { command: "context", goal, initiative, json };
+  }
 
   if (commandValue === "evidence") {
     let initiative: string | undefined;
@@ -336,6 +355,12 @@ export async function runHarnessOrchestrate(options: Extract<HarnessOrchestrateO
   });
 }
 
+export async function runHarnessOrchestrateContext(options: Extract<HarnessOrchestrateOptions, { command: "context" }>): Promise<OrchestratorContextAssessment> {
+  const repoRoot = options.repoRoot ?? process.cwd();
+  const signals = await collectOrchestratorContextSignals({ repoRoot, initiativeSlug: options.initiative, goal: options.goal });
+  return analyzeOrchestratorContext(signals);
+}
+
 export async function runHarnessOrchestrateDryRun(options: Extract<HarnessOrchestrateOptions, { command: "classify" | "dry-run" }>): Promise<OrchestratorDryRunPlan> {
   const classification = await runHarnessOrchestrate(options);
   return planOrchestratorDryRun({ classification });
@@ -370,6 +395,21 @@ function renderClassificationText(result: OrchestratorClassification): string {
     `nextDryRunCommand: ${result.nextDryRunCommand ?? "none"}`,
     "blockedReasons:",
     ...(result.blockedReasons.length > 0 ? result.blockedReasons.map((entry) => `- ${entry}`) : ["- none"]),
+  ].join("\n");
+}
+
+function renderContextText(result: OrchestratorContextAssessment): string {
+  return [
+    "Harness Orchestrate repo context",
+    `repoContext: ${result.repoContext}`,
+    `initiativeMaturity: ${result.initiativeMaturity}`,
+    `greenfieldEligible: ${result.greenfieldEligible}`,
+    "safeNextModes:",
+    ...(result.safeNextModes.length > 0 ? result.safeNextModes.map((entry) => `- ${entry}`) : ["- none"]),
+    "blockedModes:",
+    ...(result.blockedModes.length > 0 ? result.blockedModes.map((entry) => `- ${entry}`) : ["- none"]),
+    "reasoning:",
+    ...(result.reasoning.length > 0 ? result.reasoning.map((entry) => `- ${entry}`) : ["- none"]),
   ].join("\n");
 }
 
@@ -445,6 +485,11 @@ async function main(argv: string[]): Promise<void> {
   if (options.command === "classify") {
     const result = await runHarnessOrchestrate(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderClassificationText(result)}\n`);
+    return;
+  }
+  if (options.command === "context") {
+    const result = await runHarnessOrchestrateContext(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderContextText(result)}\n`);
     return;
   }
   if (options.command === "dry-run") {

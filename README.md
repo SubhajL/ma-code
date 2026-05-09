@@ -480,6 +480,7 @@ Phase 1 added a read-only classifier. Phase 2 added a delegated dry-run planner.
 
 ```bash
 npm run harness:orchestrate -- classify --goal "Build checkout mini flow" --json
+npm run harness:orchestrate -- context --initiative greenfield-scaffold --goal "continue greenfield scaffold AFK issues" --json
 npm run harness:orchestrate -- dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
 npm run harness:orchestrate -- apply --path stitch_prompt --initiative checkout --slice slice-001 --json
 npm run harness:orchestrate -- run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
@@ -490,4 +491,6 @@ npm run harness:operator -- orchestrate run --initiative greenfield-scaffold --m
 The dry-run planner writes no orchestrator files, returns `writesFiles: false`, creates no tasks or queue jobs, creates no PRs, and performs no merge. The apply router is materialization-only: it rejects generic command strings, worker execution, PR creation, merge, sync-main, raw git, and direct `.pi/agent/state/runtime/*.json` edits. Allowlisted apply paths include product intake, issue materialization, product pipeline, Stitch prompt/artifact, screen approval, slice contract, FE/BE packets, and AFK queue materialization with mandatory `--queue-only`. The Phase 4 run session requires `--max-steps` and `--max-runtime-seconds`, blocks dirty/protected repo state before delegation, records `merge.attempted: false`, and never merges by default. See `.pi/agent/docs/master_orchestrator.md`.
 
 ### Master orchestrator evidence and merge handoff
+The repo/initiative context preflight reports `repoContext`, `initiativeMaturity`, `greenfieldEligible`, `safeNextModes`, and `blockedModes` before operators assume greenfield behavior; an initiative slug such as `greenfield-scaffold` is label-only and does not prove the current repo is greenfield.
+
 Phase 5 adds evidence-first merge handoff commands. `npm run harness:orchestrate -- evidence --initiative <slug> --run-id <id> --json` consumes existing initiative/lifecycle/log artifacts and stops before merge. `merge-check` delegates to `harness:merge check`. `merge-apply` requires `--approval-ref <ref>` and delegates only to `harness:merge` after a ready check; raw git merge is never part of the orchestrator path.
