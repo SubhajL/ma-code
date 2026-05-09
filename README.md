@@ -352,6 +352,10 @@ node --import tsx scripts/harness-package.ts bootstrap --dest /path/to/target-re
 npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --dry-run
 npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --apply
 npm run harness:init-feature -- --slug example-major-feature
+npm run harness:issue-materialize -- dry-run --source docs/initiatives/greenfield-scaffold/source/approved-g-issues.json
+npm run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 1
+npm run harness:afk-orchestrate -- apply --queue-only --initiative greenfield-scaffold
+npm run harness:afk-orchestrate -- run --run --initiative greenfield-scaffold --max-steps 1 --max-runtime-seconds 30 --max-parallel 1
 npm run harness:screen-approval -- status --initiative example-major-feature --slice slice-001
 npm run harness:screen-approval -- approve --initiative example-major-feature --slice slice-001 --by reviewer --note "Approved for FE implementation."
 ```
@@ -361,6 +365,8 @@ The bounded `harness:product-intake` helper is the safe Phase 1 entry point for 
 The `harness:screen-approval` helper is the safe Phase 5 gate after mock screen artifact generation. It writes only `docs/initiatives/<feature-slug>/screen-artifacts/<slice-id>.approval.json`, binds approval to the current artifact hash, and does not create Stitch calls, task packets, queue jobs, worker dispatch, frontend code, backend code, or protected runtime JSON.
 
 The lower-level `harness:init-feature` helper scaffolds `docs/initiatives/<feature-slug>/` from the repo-local initiative templates and prints optional next-step suggestions for `/skill:g-grill`, `/skill:g-prd`, and `/skill:g-issues`.
+
+Phase A issue materialization creates durable initiative issue artifacts only. Phase B AFK queue orchestration (`harness:afk-orchestrate`) reads those artifacts, applies dependency/HITL/validation/parallel-safety eligibility, and can create queue-ready jobs through the queue-runner helper path with `queueJobSource: issue-materialization` provenance. Phase B has no daemon, hidden scheduler, free-roaming pickup, product-code implementation, or direct raw `.pi/agent/state/runtime/*.json` edit path; run mode requires explicit `--run`, `--max-steps`, `--max-runtime-seconds`, and `--max-parallel`.
 
 See also:
 - `.pi/agent/docs/harness_packaging_strategy.md`

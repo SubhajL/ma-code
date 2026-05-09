@@ -98,7 +98,10 @@
     "validate:slice-dependencies": "./scripts/validate-slice-dependencies.sh",
     "harness:issue-materialize": "node --import tsx scripts/harness-issue-materialize.ts",
     "test:issue-materialize": "node --import tsx --test tests/extension-units/issue-materialization.test.ts tests/integration/issue-materialization.test.ts",
-    "validate:issue-materialization": "./scripts/validate-issue-materialization.sh"
+    "validate:issue-materialization": "./scripts/validate-issue-materialization.sh",
+    "harness:afk-orchestrate": "node --import tsx scripts/harness-afk-orchestrate.ts",
+    "test:afk-orchestration": "node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/integration/afk-orchestration.test.ts",
+    "validate:afk-orchestration": "./scripts/validate-afk-orchestration.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

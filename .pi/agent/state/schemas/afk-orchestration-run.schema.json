@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AfkOrchestrationRun",
+  "type": "object",
+  "required": [
+    "version",
+    "runId",
+    "initiativeId",
+    "mode",
+    "maxParallel",
+    "sourceArtifacts",
+    "eligibleIssues",
+    "blockedIssues",
+    "deferredIssues",
+    "parallelDecisions",
+    "materializedQueueJobs",
+    "startedQueueJobs",
+    "lastAction",
+    "nextOperatorAction"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "runId": { "type": "string" },
+    "initiativeId": { "type": "string" },
+    "mode": { "type": "string", "enum": ["dry_run", "apply", "run", "status"] },
+    "maxParallel": { "type": "integer", "minimum": 1 },
+    "sourceArtifacts": {
+      "type": "object",
+      "required": ["issues", "slicePlan", "pipeline", "summaries"],
+      "properties": {
+        "issues": { "type": "string" },
+        "slicePlan": { "type": "string" },
+        "pipeline": { "type": "string" },
+        "summaries": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "eligibleIssues": { "type": "array", "items": { "$ref": "#/$defs/issueRecord" } },
+    "blockedIssues": { "type": "array", "items": { "$ref": "#/$defs/issueRecord" } },
+    "deferredIssues": { "type": "array", "items": { "$ref": "#/$defs/issueRecord" } },
+    "skippedIssues": { "type": "array", "items": { "$ref": "#/$defs/issueRecord" } },
+    "doneIssues": { "type": "array", "items": { "$ref": "#/$defs/issueRecord" } },
+    "parallelDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["issueIds", "status", "reason", "sharedPaths"],
+        "properties": {
+          "issueIds": { "type": "array", "items": { "type": "string" } },
+          "status": { "type": "string", "enum": ["single", "parallel_candidate", "forced_sequential", "sequential_default"] },
+          "reason": { "type": "string" },
+          "sharedPaths": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "materializedQueueJobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status", "sourceIssueId", "sourceInitiativeId", "taskClass", "assignedTeam", "assignedRole", "acceptanceCriteria", "domains", "allowedPaths", "dependencies", "budget", "approvalRequired", "stop_conditions", "sourceArtifactPaths", "queueJobSource"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "string", "const": "queued" },
+          "sourceIssueId": { "type": "string" },
+          "sourceInitiativeId": { "type": "string" },
+          "taskClass": { "type": "string", "const": "implementation" },
+          "assignedTeam": { "type": "string", "const": "build" },
+          "assignedRole": { "type": "string" },
+          "acceptanceCriteria": { "type": "array", "items": { "type": "string" } },
+          "domains": { "type": "array", "items": { "type": "string" } },
+          "allowedPaths": { "type": "array", "items": { "type": "string" } },
+          "dependencies": { "type": "array", "items": { "type": "string" } },
+          "budget": { "type": "object" },
+          "approvalRequired": { "type": "boolean", "const": false },
+          "stop_conditions": { "type": "array", "items": { "type": "string" } },
+          "sourceArtifactPaths": { "type": "array", "items": { "type": "string" } },
+          "queueJobSource": {
+            "type": "object",
+            "required": ["kind", "initiativeId", "issueId"],
+            "properties": {
+              "kind": { "type": "string", "const": "issue-materialization" },
+              "initiativeId": { "type": "string" },
+              "issueId": { "type": "string" },
+              "runId": { "type": "string" },
+              "sourceArtifactPaths": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "startedQueueJobs": { "type": "array", "items": { "type": "string" } },
+    "lastAction": { "type": "string" },
+    "nextOperatorAction": { "type": "string" },
+    "explainIssue": { "anyOf": [{ "$ref": "#/$defs/issueRecord" }, { "type": "null" }] }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "issueRecord": {
+      "type": "object",
+      "required": ["issueId", "title", "disposition", "reasons", "dependencies"],
+      "properties": {
+        "issueId": { "type": "string" },
+        "title": { "type": "string" },
+        "disposition": { "type": "string", "enum": ["eligible", "blocked", "deferred", "skipped", "done"] },
+        "reasons": { "type": "array", "items": { "type": "string" } },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "queueJobId": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

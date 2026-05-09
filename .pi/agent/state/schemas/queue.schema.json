@@ -199,6 +199,40 @@
           "modelOverride": {
             "type": "string"
           },
+          "queueJobSource": {
+            "description": "Durable provenance for queue jobs generated from issue materialization artifacts.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "kind",
+              "initiativeId",
+              "issueId"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "issue-materialization"
+              },
+              "initiativeId": {
+                "type": "string"
+              },
+              "issueId": {
+                "type": "string"
+              },
+              "runId": {
+                "type": "string"
+              },
+              "sourceArtifactPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "additionalProperties": false
+          },
           "tddSlice": {
             "description": "Optional explicit TDD slice metadata for queued implementation work. Queue-runner preserves this into generated implementation packets when provided.",
             "type": [

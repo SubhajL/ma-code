@@ -111,6 +111,14 @@ export interface QueueGraphifyOrchestrationStepSummary {
   reason: string;
 }
 
+export interface QueueJobSource {
+  kind: "issue-materialization";
+  initiativeId: string;
+  issueId: string;
+  runId?: string;
+  sourceArtifactPaths?: string[];
+}
+
 export interface QueueJob {
   id: string;
   goal: string;
@@ -143,6 +151,7 @@ export interface QueueJob {
   graphifyOrchestration?: QueueGraphifyOrchestrationInput | null;
   scheduledWorkflowId?: string | null;
   scheduledRunKey?: string | null;
+  queueJobSource?: QueueJobSource | null;
   linkedTaskId?: string | null;
   packetId?: string | null;
   selectedModelId?: string | null;
@@ -809,6 +818,40 @@ export function selectEligibleQueuedJob(state: QueueState): QueueJob | null {
     .map(({ job }) => job)[0] ?? null;
 }
 
+export interface MaterializeQueueJobsResult {
+  version: 1;
+  createdJobs: QueueJob[];
+  existingJobIds: string[];
+  queueJobIds: string[];
+}
+
+export async function materializeQueueJobs(cwd: string, jobs: QueueJob[]): Promise<MaterializeQueueJobsResult> {
+  return mutateQueueState(cwd, (state) => {
+    const createdJobs: QueueJob[] = [];
+    const existingJobIds: string[] = [];
+    const seenIds = new Set(state.jobs.map((job) => job.id));
+
+    for (const inputJob of jobs) {
+      const job = normalizeQueueJob(inputJob);
+      if (job.status !== "queued") throw new Error(`Queue materialization only accepts queued jobs: ${job.id}`);
+      if (seenIds.has(job.id)) {
+        existingJobIds.push(job.id);
+        continue;
+      }
+      seenIds.add(job.id);
+      state.jobs.push(job);
+      createdJobs.push(job);
+    }
+
+    return {
+      version: 1 as const,
+      createdJobs,
+      existingJobIds,
+      queueJobIds: jobs.map((job) => job.id),
+    };
+  });
+}
+
 function normalizeQueueJob(job: QueueJob): QueueJob {
   return {
     ...job,
@@ -823,6 +866,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),
     qualityInput: job.qualityInput ?? null,
     graphifyOrchestration: job.graphifyOrchestration ?? null,
+    queueJobSource: job.queueJobSource ?? null,
     linkedTaskId: job.linkedTaskId ?? null,
     packetId: job.packetId ?? null,
     selectedModelId: job.selectedModelId ?? null,
