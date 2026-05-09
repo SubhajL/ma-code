@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "taskId": "task-1778325710561",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Add deterministic repo/initiative context classifier for Master Orchestrator that distinguishes greenfield-eligible from existing harness/brownfield/active initiative contexts.",
+      "Expose the classifier through harness:orchestrate and operator surfaces without running workers, queues, PRs, or merge operations.",
+      "Add tests/validators/docs/static wiring proving repo context, initiative maturity, greenfield eligibility, safe next modes, blocked modes, and no-write behavior.",
+      "Use a dedicated branch/worktree, create PR, merge through bounded helper if gates pass, and sync local root main with evidence recorded."
+    ],
+    "tddSlice": "harness-orchestrate context reports current harness as non-greenfield and active existing initiative for greenfield-scaffold."
+  },
+  "implementation": {
+    "changedFiles": [
+      ".pi/agent/extensions/orchestrator-context.ts",
+      "scripts/harness-orchestrate.ts",
+      "scripts/validate-orchestrator-context.sh",
+      "tests/extension-units/orchestrator-context.test.ts",
+      "tests/integration/orchestrator-context.test.ts"
+    ],
+    "commit": "384f576"
+  },
+  "validation": {
+    "red": "integration context test failed before CLI context wiring",
+    "green": "validate-orchestrator-context.sh passed with 8 tests and context JSON assertions",
+    "commands": [
+      "validate-orchestrator-context.sh x3",
+      "check-foundation-extension-compile.sh",
+      "check-repo-static.sh",
+      "orchestrator classifier/dry-run/apply/run/evidence validators",
+      "validate-core-workflows.sh",
+      "validate-harness-package.sh",
+      "validate-extension-unit-tests.sh",
+      "git diff --check"
+    ]
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/126",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  },
+  "task": {
+    "id": "task-1778325710561",
+    "status": "review",
+    "acceptanceCriteria": [
+      "Add deterministic repo/initiative context classifier for Master Orchestrator that distinguishes greenfield-eligible from existing harness/brownfield/active initiative contexts.",
+      "Expose the classifier through harness:orchestrate and operator surfaces without running workers, queues, PRs, or merge operations.",
+      "Add tests/validators/docs/static wiring proving repo context, initiative maturity, greenfield eligibility, safe next modes, blocked modes, and no-write behavior.",
+      "Use a dedicated branch/worktree, create PR, merge through bounded helper if gates pass, and sync local root main with evidence recorded."
+    ],
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "creation": {
+    "commit": "f7a78c7",
+    "branch": "split/task-1778325710561-mo-context-classifier"
+  }
+}

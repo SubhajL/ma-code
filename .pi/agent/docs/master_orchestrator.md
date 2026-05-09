@@ -173,3 +173,12 @@ npm run harness:operator -- orchestrate merge-check --pr 123 --method squash --j
 Phase 5 is stop-before-merge by default. `evidence` and `merge-check` record `merge.attempted: false`; `merge-apply` requires an explicit `--approval-ref` and delegates only to `harness:merge` after a ready `harness:merge check` result. Optional durable reports are additive under `reports/orchestration/<run-id>.json` and `reports/orchestration/<run-id>.md`; they do not replace lifecycle, PR, helper, or coding-log evidence.
 
 The normalized output preserves `selectedPath`, exact delegated commands, helper outputs/artifact paths, blockers, HITL gates, approval refs, `nextSafeAction`, and merge flags including `rawGitMergeUsed: false`. Raw `git merge`, direct `.pi/agent/state/runtime/*.json` edits, hidden auto-merge, deployment, tagging, changelog, and environment rollout remain out of scope.
+
+## Repo and initiative context classifier
+- `harness-orchestrate context [--goal <human-goal>] [--initiative <slug>] [--json]` is the read-only context preflight for Master Orchestrator work.
+- It classifies the current repository separately from the requested action path so an initiative name such as `greenfield-scaffold` never proves the current repository is actually greenfield.
+- Output includes `repoContext`, `initiativeMaturity`, `greenfieldEligible`, `reasoning`, `safeNextModes`, `blockedModes`, and bounded read-only `signals`.
+- Existing harness repos and brownfield projects set `greenfieldEligible: false` and include `greenfield_assumption` in `blockedModes`.
+- Existing initiative artifacts such as `issues.json`, `pipeline.json`, `slice-plan.json`, slices, worker runs, or PR runs classify the initiative as `active_existing_initiative` and force incremental planning.
+- Safe next modes for active existing initiatives may include `dry_run`, `status`, `product_pipeline`, `afk_queue`, `bounded_worker`, and `pr_lifecycle`; unbounded parallelism remains blocked without explicit dependency proof.
+- The context classifier does not run workers, create queue jobs, create PRs, merge, sync main, call live providers, or mutate `.pi/agent/state/runtime/*.json`.

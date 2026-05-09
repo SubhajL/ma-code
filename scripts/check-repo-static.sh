@@ -1423,7 +1423,9 @@ assert "parallel-worker-lanes" in operator_workflow_doc
 assert "harness:orchestrate" in package_json.get("scripts", {})
 assert "harness:orchestrate" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-classifier" in package_json.get("scripts", {})
+assert "validate:orchestrator-context" in package_json.get("scripts", {})
 assert "validate:orchestrator-classifier" in package_template_json.get("scripts", {})
+assert "validate:orchestrator-context" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-dry-run" in package_json.get("scripts", {})
 assert "validate:orchestrator-dry-run" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-apply" in package_json.get("scripts", {})
@@ -1434,6 +1436,7 @@ assert "validate:orchestrator-evidence" in package_json.get("scripts", {})
 assert "validate:orchestrator-evidence" in package_template_json.get("scripts", {})
 orchestrator_evidence_schema = json.loads((root / ".pi/agent/state/schemas/orchestrator-evidence.schema.json").read_text(encoding="utf-8"))
 orchestrator_cli = (root / "scripts/harness-orchestrate.ts").read_text(encoding="utf-8")
+orchestrator_context_helper = (root / ".pi/agent/extensions/orchestrator-context.ts").read_text(encoding="utf-8")
 orchestrator_helper = (root / ".pi/agent/extensions/orchestrator-classifier.ts").read_text(encoding="utf-8")
 orchestrator_dry_run_helper = (root / ".pi/agent/extensions/orchestrator-dry-run.ts").read_text(encoding="utf-8")
 orchestrator_apply_helper = (root / ".pi/agent/extensions/orchestrator-apply-policy.ts").read_text(encoding="utf-8")
@@ -1452,11 +1455,19 @@ assert "merge-check" in orchestrator_cli
 assert "merge-apply" in orchestrator_cli
 assert "planOrchestratorDryRun" in orchestrator_cli
 assert "runOrchestratorApply" in orchestrator_cli
+assert "runHarnessOrchestrateContext" in orchestrator_cli
+assert "harness-orchestrate context" in orchestrator_cli
+assert "orchestrator-context.ts" in foundation_compile_validator
 assert "orchestrator-classifier.ts" in foundation_compile_validator
 assert "orchestrator-dry-run.ts" in foundation_compile_validator
 assert "orchestrator-apply-policy.ts" in foundation_compile_validator
 assert "orchestrator-run.ts" in foundation_compile_validator
 assert "orchestrator-evidence.ts" in foundation_compile_validator
+assert "analyzeOrchestratorContext" in orchestrator_context_helper
+assert "greenfield_assumption" in orchestrator_context_helper
+assert "active_existing_initiative" in orchestrator_context_helper
+for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "--allow-merge", "harness:merge -- apply", "gh pr merge", "git merge"]:
+    assert forbidden not in orchestrator_context_helper
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "--allow-merge", "harness:merge -- apply"]:
     assert forbidden not in orchestrator_helper
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "gh pr merge", "git merge"]:
