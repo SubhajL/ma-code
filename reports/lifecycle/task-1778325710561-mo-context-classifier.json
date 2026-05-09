@@ -21,8 +21,13 @@
     "extensionUnits": "pass",
     "diffCheck": "pass"
   },
-  "commit": "d46a094",
+  "commit": "0cfb654",
   "prGate": {
-    "status": "pending"
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/126",
+    "state": "OPEN"
   }
 }

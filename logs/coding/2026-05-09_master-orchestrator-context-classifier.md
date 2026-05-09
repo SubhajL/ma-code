@@ -52,3 +52,11 @@
   - Initiative slug `greenfield-scaffold` is explicitly treated as label-only when current repo/initiative evidence says otherwise.
   - Existing MO path classifier remains unchanged except for the new explicit context mode; future enforcement before AFK/parallel modes remains a follow-up rather than hidden behavior in this slice.
 - Review Verdict: no_required_fixes
+
+## Submission (2026-05-09T12:05:00Z)
+
+- Branch pushed: `split/task-1778325710561-mo-context-classifier`.
+- PR created: https://github.com/SubhajL/ma-code/pull/126
+- Initial `npm --silent run harness:pr-gate` from the dependency-less worktree failed because `tsx` was unavailable in that worktree; reran the same gate script with root TSX loader.
+- PR gate command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-pr-gate.ts --pr 126 --max-attempts 3 --json`.
+- PR gate result: pass; PR #126 state OPEN, mergeStateStatus CLEAN, recommended next action `merge_or_sync`.
