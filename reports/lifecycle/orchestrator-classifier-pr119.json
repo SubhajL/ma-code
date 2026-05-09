@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "taskId": "task-1778301685339",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Add deterministic read-only classifier helper for known harness paths with clarification fallback.",
+      "Add harness:orchestrate CLI and harness:operator delegation for classify mode only.",
+      "Add unit/integration tests proving JSON output, no writes, operator delegation, and nextDryRunCommand script wiring.",
+      "Update docs/static wiring/logs per repo conventions.",
+      "Validate targeted tests, static checks, git diff --check, and core workflow regression before merge."
+    ],
+    "tddSlice": "classify a new product idea into product_feature and return harness:product-intake --dry-run"
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Read-only classifier implemented and validated.",
+      "PR submitted and checks passed."
+    ],
+    "status": "done",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task/task-1778301685339-master-orchestrator-phase1",
+    "commit": "03762a0"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/119",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
