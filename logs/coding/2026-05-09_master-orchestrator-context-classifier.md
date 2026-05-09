@@ -60,3 +60,11 @@
 - Initial `npm --silent run harness:pr-gate` from the dependency-less worktree failed because `tsx` was unavailable in that worktree; reran the same gate script with root TSX loader.
 - PR gate command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-pr-gate.ts --pr 126 --max-attempts 3 --json`.
 - PR gate result: pass; PR #126 state OPEN, mergeStateStatus CLEAN, recommended next action `merge_or_sync`.
+
+## Lifecycle evidence fix (2026-05-09T12:25:00Z)
+
+- Goal: fix PR #126 lifecycle evidence bundle so bounded merge helper can evaluate exact `merge_ready` fields instead of stopping at `planning_ready`.
+- Root cause: previous bundle used semantically meaningful keys (`implementation.commit`, `validation`) but missed exact helper-consumed keys: `task.acceptanceCriteria`, `task.validationDecision`, `task.status`, `redGreenEvidence`, and `creation.commit`.
+- Files changed: `reports/lifecycle/task-1778325710561-mo-context-classifier.json` only.
+- RED command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-slice-lifecycle.ts check --stage merge_ready --evidence-file reports/lifecycle/task-1778325710561-mo-context-classifier.json --json` failed with currentStage `planning_ready` before this evidence-bundle shape fix.
+- GREEN command: `node --import /Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs scripts/harness-slice-lifecycle.ts check --stage merge_ready --evidence-file reports/lifecycle/task-1778325710561-mo-context-classifier.json --json` now passes after adding the exact lifecycle evidence fields.
