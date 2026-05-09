@@ -94,3 +94,8 @@ LOW
 - Approved merge mode delegates only to `harness:merge`; no raw git merge path was added.
 
 Review Verdict: no_required_fixes
+
+## Submission Evidence (2026-05-09T10:10:00Z)
+- Committed implementation on branch `split/task-1778320412934-orchestrator-evidence`.
+- Created PR #124: https://github.com/SubhajL/ma-code/pull/124.
+- Updated lifecycle evidence at `reports/lifecycle/task-1778320412934-phase5-merge-evidence.json` with PR URL.
