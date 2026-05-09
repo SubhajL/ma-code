@@ -65,3 +65,16 @@
 ### Risks / Follow-ups
 - None for the reported startup error.
 - The root checkout will need this branch/commit landed before `pi` in `/Users/subhajlimanond/dev/ma-code` sees the fix.
+
+## Submission (2026-05-09T16:15:00+07:00)
+
+### PR
+- URL: https://github.com/SubhajL/ma-code/pull/122
+- Base: `main`
+- Head: `task-1778316285554-fix-extension-factories`
+- State: OPEN
+
+### Submission Evidence
+- Branch pushed to origin.
+- PR created with validation summary and low-risk/no-op-export scope.
+- Next: wait for CI/security checks, then use bounded merge helper.

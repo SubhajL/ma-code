@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "taskId": "task-1778316285554",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "pi no longer reports invalid factory function for parallel-worker-lanes.ts",
+      "pi no longer reports invalid factory function for slice-dependency-decision.ts",
+      "Affected extension modules export valid default factory functions without changing helper behavior",
+      "Regression tests/static checks cover default factory exports",
+      "Relevant validation passes"
+    ],
+    "tddSlice": "extension-factory-exports.test.ts fails for missing default exports, then passes after helper-only no-op factory exports are added."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "PR created for factory export fix",
+      "PR gate passes",
+      "Merge to origin/main and local sync complete"
+    ],
+    "status": "review",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task-1778316285554-fix-extension-factories",
+    "commit": "6a1f786"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/122",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}
