@@ -101,7 +101,10 @@
     "validate:issue-materialization": "./scripts/validate-issue-materialization.sh",
     "harness:afk-orchestrate": "node --import tsx scripts/harness-afk-orchestrate.ts",
     "test:afk-orchestration": "node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/integration/afk-orchestration.test.ts",
-    "validate:afk-orchestration": "./scripts/validate-afk-orchestration.sh"
+    "validate:afk-orchestration": "./scripts/validate-afk-orchestration.sh",
+    "harness:worker-execute": "node --import tsx scripts/harness-worker-execute.ts",
+    "test:worker-execution": "node --import tsx --test tests/extension-units/worker-execution.test.ts tests/integration/worker-execution.test.ts",
+    "validate:worker-execution": "./scripts/validate-worker-execution.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

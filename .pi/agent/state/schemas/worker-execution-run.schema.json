@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "WorkerExecutionRun",
+  "type": "object",
+  "required": [
+    "version",
+    "runId",
+    "initiativeId",
+    "sourceIssueId",
+    "queueJobId",
+    "linkedTaskId",
+    "mode",
+    "status",
+    "worktree",
+    "steps",
+    "retryPolicy",
+    "prBoundary",
+    "stopReason",
+    "nextOperatorAction",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "version": { "type": "integer", "const": 1 },
+    "runId": { "type": "string" },
+    "initiativeId": { "type": "string" },
+    "sourceIssueId": { "type": "string" },
+    "queueJobId": { "type": "string" },
+    "linkedTaskId": { "type": ["string", "null"] },
+    "mode": { "type": "string", "enum": ["dry_run", "run", "resume", "status"] },
+    "status": { "type": "string", "enum": ["planned", "running", "blocked", "failed", "review_ready", "done"] },
+    "worktree": {
+      "type": "object",
+      "required": ["path", "branch", "baseRef", "leaseId"],
+      "properties": {
+        "path": { "type": ["string", "null"] },
+        "branch": { "type": ["string", "null"] },
+        "baseRef": { "type": "string" },
+        "leaseId": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "steps": {
+      "type": "object",
+      "required": ["planning", "coding", "validation", "review"],
+      "properties": {
+        "planning": { "$ref": "#/$defs/step" },
+        "coding": { "$ref": "#/$defs/step" },
+        "validation": { "$ref": "#/$defs/step" },
+        "review": { "$ref": "#/$defs/step" }
+      },
+      "additionalProperties": false
+    },
+    "retryPolicy": {
+      "type": "object",
+      "required": ["maxStepRetries", "attempts"],
+      "properties": {
+        "maxStepRetries": { "type": "integer", "minimum": 0, "maximum": 2 },
+        "attempts": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      },
+      "additionalProperties": false
+    },
+    "prBoundary": {
+      "type": "object",
+      "required": ["stopBeforePr", "allowPrCreate", "prCreated", "reason"],
+      "properties": {
+        "stopBeforePr": { "type": "boolean" },
+        "allowPrCreate": { "type": "boolean" },
+        "prCreated": { "type": "boolean", "const": false },
+        "reason": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "stopReason": { "type": ["string", "null"] },
+    "nextOperatorAction": { "type": "string" },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" }
+  },
+  "$defs": {
+    "commandResult": {
+      "type": "object",
+      "required": ["command", "exitCode", "stdout", "stderr", "durationMs"],
+      "properties": {
+        "command": { "type": "string" },
+        "exitCode": { "type": "integer" },
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" },
+        "durationMs": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": { "type": "string", "enum": ["pending", "skipped", "running", "passed", "failed", "blocked"] },
+        "logPath": { "type": ["string", "null"] },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "redCommand": { "type": ["string", "null"] },
+        "redResult": { "anyOf": [{ "$ref": "#/$defs/commandResult" }, { "type": "null" }] },
+        "greenCommand": { "type": ["string", "null"] },
+        "greenResult": { "anyOf": [{ "$ref": "#/$defs/commandResult" }, { "type": "null" }] },
+        "changedFiles": { "type": "array", "items": { "type": "string" } },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/commandResult" } },
+        "verdict": { "type": "string", "enum": ["no_required_fixes", "changes_required", "not_run"] },
+        "findings": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
