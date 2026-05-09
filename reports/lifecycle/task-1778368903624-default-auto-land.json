@@ -28,10 +28,15 @@
     "verdict": "no_required_fixes"
   },
   "creation": {
-    "branch": "task/task-1778368903624-default-auto-land"
+    "branch": "task/task-1778368903624-default-auto-land",
+    "commit": "9fb046c"
   },
   "prGate": {
     "status": "pass",
     "mergeStateStatus": "CLEAN"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/129",
+    "state": "OPEN"
   }
 }
