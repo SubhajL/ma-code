@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "taskId": "task-1778382556601",
+  "planning": {
+    "acceptanceCriteria": [
+      "Planning/coding logs updated with lifecycle evidence.",
+      "Runtime path applies landed HITL approval evidence from initiative artifacts.",
+      "Stale blocked AFK jobs are requeued by normal queue materialization.",
+      "Roadmap/prose issue materialization path remains validated."
+    ],
+    "tddSlice": "Durable HITL approval resolves issue-001 and requeues downstream AFK jobs through AFK orchestration and queue-runner public entry points."
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Planning/coding logs updated with lifecycle evidence.",
+      "Runtime path applies landed HITL approval evidence from initiative artifacts.",
+      "Stale blocked AFK jobs are requeued by normal queue materialization.",
+      "Roadmap/prose issue materialization path remains validated."
+    ],
+    "status": "done",
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task/task-1778377949313-durable-afk-continuation",
+    "commit": "0490a5db3e65b65b90e69d1f1b2044e3d00746bb"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/133",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}

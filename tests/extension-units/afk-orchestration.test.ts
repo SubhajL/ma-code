@@ -47,6 +47,11 @@ async function tempRepo(issues: AfkIssueArtifact[], options: { omitSummaries?: s
   return cwd;
 }
 
+async function writeAfkApprovals(cwd: string, approvals: unknown[]): Promise<void> {
+  const root = join(cwd, "docs", "initiatives", "greenfield-scaffold");
+  await writeFile(join(root, "afk-approvals.json"), `${JSON.stringify({ version: 1, approvals }, null, 2)}\n`, "utf8");
+}
+
 const canonicalIssues = () => [
   baseIssue("issue-001", { type: "HITL", status: "planned", validationProof: [], domains: ["docs"], filesToModify: ["docs/foundation.md"], allowedPaths: ["docs"], hitlGates: ["approve foundation"] }),
   baseIssue("issue-002", { dependencies: ["issue-001"], domains: ["frontend"], filesToModify: ["apps/web/src/App.tsx"], allowedPaths: ["apps/web"] }),
@@ -112,6 +117,55 @@ test("missing allowedPaths, domains, acceptance, validation proof, or summary bl
   assert.match(reasons["issue-004"], /Missing acceptance criteria/);
   assert.match(reasons["issue-005"], /Missing validation proof/);
   assert.match(reasons["issue-006"], /Missing per-slice summary/);
+});
+
+test("durable AFK approvals resolve HITL dependencies for queue materialization", async () => {
+  const cwd = await tempRepo(canonicalIssues());
+  await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z", note: "foundation approved" }]);
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
+
+  assert.deepEqual(result.doneIssues.map((issue) => issue.issueId), ["issue-001"]);
+  assert.match(result.doneIssues[0]?.reasons.join(" ") ?? "", /hitl:issue-001:approved/);
+  assert.deepEqual(result.eligibleIssues.map((issue) => issue.issueId), ["issue-002", "issue-003"]);
+  assert.deepEqual(result.deferredIssues.map((issue) => issue.issueId), ["issue-004"]);
+  assert.ok(result.materializedQueueJobs[0]?.sourceArtifactPaths.includes("docs/initiatives/greenfield-scaffold/afk-approvals.json"));
+});
+
+test("AFK apply requeues stale blocked jobs after durable blockers are resolved", async () => {
+  const cwd = await tempRepo(canonicalIssues());
+  await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z" }]);
+  await mkdir(join(cwd, ".pi", "agent", "state", "runtime"), { recursive: true });
+  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify({
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [{
+      id: "afk-greenfield-scaffold-issue-002",
+      goal: "Build issue-002",
+      priority: "high",
+      status: "blocked",
+      team: "build",
+      taskClass: "implementation",
+      workType: "implementation",
+      domains: ["frontend"],
+      allowedPaths: ["apps/web"],
+      acceptanceCriteria: ["issue-002 acceptance"],
+      dependencies: [],
+      approvalRequired: false,
+      stop_conditions: ["approval_boundary_hit"],
+      assignedRole: "frontend_worker",
+      notes: ["Blocked before durable HITL approval landed."],
+      queueJobSource: { kind: "issue-materialization", initiativeId: "greenfield-scaffold", issueId: "issue-002", sourceArtifactPaths: ["docs/initiatives/greenfield-scaffold/issues.json"] },
+    }],
+  }, null, 2)}\n`, "utf8");
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "apply", initiativeId: "greenfield-scaffold", maxParallel: 2, runId: "afk-requeue" });
+  const queue = await readQueueState(cwd);
+
+  assert.match(result.lastAction, /Requeued 1 stale blocked queue job/);
+  assert.equal(queue.jobs.find((job) => job.id === "afk-greenfield-scaffold-issue-002")?.status, "queued");
+  assert.equal(queue.jobs.find((job) => job.id === "afk-greenfield-scaffold-issue-003")?.status, "queued");
 });
 
 test("shared files or mutating path overlap are forced sequential", async () => {

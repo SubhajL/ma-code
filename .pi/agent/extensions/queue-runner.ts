@@ -970,6 +970,7 @@ export interface MaterializeQueueJobsResult {
   version: 1;
   createdJobs: QueueJob[];
   existingJobIds: string[];
+  requeuedJobs: QueueJob[];
   queueJobIds: string[];
 }
 
@@ -977,13 +978,32 @@ export async function materializeQueueJobs(cwd: string, jobs: QueueJob[]): Promi
   return mutateQueueState(cwd, (state) => {
     const createdJobs: QueueJob[] = [];
     const existingJobIds: string[] = [];
+    const requeuedJobs: QueueJob[] = [];
     const seenIds = new Set(state.jobs.map((job) => job.id));
 
     for (const inputJob of jobs) {
       const job = normalizeQueueJob(inputJob);
       if (job.status !== "queued") throw new Error(`Queue materialization only accepts queued jobs: ${job.id}`);
-      if (seenIds.has(job.id)) {
+      const existingIndex = state.jobs.findIndex((existingJob) => existingJob.id === job.id);
+      if (existingIndex >= 0) {
+        const existingJob = state.jobs[existingIndex]!;
         existingJobIds.push(job.id);
+        if (existingJob.status === "blocked") {
+          const mergedJob = normalizeQueueJob({
+            ...job,
+            notes: [
+              ...(existingJob.notes ?? []),
+              ...(job.notes ?? []),
+              `Requeued stale blocked job ${job.id} during queue materialization after blockers were resolved.`,
+            ],
+            linkedTaskId: existingJob.linkedTaskId ?? job.linkedTaskId ?? null,
+            packetId: existingJob.packetId ?? job.packetId ?? null,
+            selectedModelId: existingJob.selectedModelId ?? job.selectedModelId ?? null,
+            initialHandoffId: existingJob.initialHandoffId ?? job.initialHandoffId ?? null,
+          });
+          state.jobs[existingIndex] = mergedJob;
+          requeuedJobs.push(mergedJob);
+        }
         continue;
       }
       seenIds.add(job.id);
@@ -995,6 +1015,7 @@ export async function materializeQueueJobs(cwd: string, jobs: QueueJob[]): Promi
       version: 1 as const,
       createdJobs,
       existingJobIds,
+      requeuedJobs,
       queueJobIds: jobs.map((job) => job.id),
     };
   });
