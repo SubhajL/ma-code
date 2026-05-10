@@ -29,6 +29,14 @@ export interface AfkIssueArtifact {
   approvalRequired?: boolean;
 }
 
+export interface AfkIssueApproval {
+  issueId: string;
+  approvalRef: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  note?: string;
+}
+
 export interface AfkIssueRecord {
   issueId: string;
   title: string;
@@ -69,6 +77,7 @@ export interface AfkSourceArtifacts {
   issues: string;
   slicePlan: string;
   pipeline: string;
+  approvals?: string;
   summaries: string[];
 }
 
@@ -111,6 +120,7 @@ interface LoadedArtifacts {
   initiativeRoot: string;
   sourceArtifacts: AfkSourceArtifacts;
   issues: AfkIssueArtifact[];
+  approvals: Map<string, AfkIssueApproval>;
 }
 
 const INITIATIVE_ROOT = "docs/initiatives";
@@ -173,6 +183,31 @@ function normalizeIssue(value: unknown, index: number): AfkIssueArtifact {
   };
 }
 
+function normalizeApproval(value: unknown, index: number): AfkIssueApproval {
+  if (!isRecord(value)) throw new Error(`afk-approvals.approvals[${index}] must be an object.`);
+  const issueId = typeof value.issueId === "string" ? assertSlug(value.issueId, `afk-approvals.approvals[${index}].issueId`) : "";
+  const approvalRef = typeof value.approvalRef === "string" ? value.approvalRef.trim() : "";
+  if (!issueId) throw new Error(`afk-approvals.approvals[${index}].issueId is required.`);
+  if (!approvalRef) throw new Error(`afk-approvals.approvals[${index}].approvalRef is required.`);
+  return {
+    issueId,
+    approvalRef,
+    approvedBy: typeof value.approvedBy === "string" && value.approvedBy.trim() ? value.approvedBy.trim() : undefined,
+    approvedAt: typeof value.approvedAt === "string" && value.approvedAt.trim() ? value.approvedAt.trim() : undefined,
+    note: typeof value.note === "string" && value.note.trim() ? value.note.trim() : undefined,
+  };
+}
+
+async function loadApprovals(repoRoot: string, approvalsPath: string): Promise<Map<string, AfkIssueApproval>> {
+  if (!(await exists(resolve(repoRoot, approvalsPath)))) return new Map();
+  const approvalsJson = await readJson(resolve(repoRoot, approvalsPath), "afk-approvals.json");
+  if (!isRecord(approvalsJson) || !Array.isArray(approvalsJson.approvals)) throw new Error(`${approvalsPath} must contain an approvals array.`);
+  return new Map(approvalsJson.approvals.map((approval, index) => {
+    const normalized = normalizeApproval(approval, index);
+    return [normalized.issueId, normalized] as const;
+  }));
+}
+
 async function exists(path: string): Promise<boolean> {
   try {
     await access(path);
@@ -204,6 +239,7 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
   const issuesPath = `${initiativeRoot}/issues.json`;
   const slicePlanPath = `${initiativeRoot}/slice-plan.json`;
   const pipelinePath = `${initiativeRoot}/pipeline.json`;
+  const approvalsPath = `${initiativeRoot}/afk-approvals.json`;
   for (const artifactPath of [issuesPath, slicePlanPath, pipelinePath]) {
     if (!(await exists(resolve(repoRoot, artifactPath)))) throw new Error(`Missing Phase A artifact: ${artifactPath}`);
   }
@@ -211,6 +247,7 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
   const issuesJson = await readJson(resolve(repoRoot, issuesPath), "issues.json");
   if (!isRecord(issuesJson) || !Array.isArray(issuesJson.issues)) throw new Error(`${issuesPath} must contain an issues array.`);
   const issues = issuesJson.issues.map(normalizeIssue);
+  const approvals = await loadApprovals(repoRoot, approvalsPath);
   const summaries: string[] = [];
   for (const issue of issues) {
     const summaryPath = `${initiativeRoot}/slices/${issue.issueId}.summary.json`;
@@ -222,14 +259,28 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
       issues: issuesPath,
       slicePlan: slicePlanPath,
       pipeline: pipelinePath,
+      approvals: approvals.size > 0 ? approvalsPath : undefined,
       summaries,
     },
     issues,
+    approvals,
   };
 }
 
 function statusDoneOrApproved(issue: AfkIssueArtifact | undefined): boolean {
   return issue?.status === "done" || issue?.status === "approved";
+}
+
+function hasDurableHitlApproval(issue: AfkIssueArtifact | undefined, approvals: Map<string, AfkIssueApproval>): AfkIssueApproval | undefined {
+  if (!issue) return undefined;
+  const approval = approvals.get(issue.issueId);
+  if (!approval?.approvalRef) return undefined;
+  const hitlBounded = issue.type === "HITL" || issue.approvalRequired === true || (issue.hitlGates ?? []).length > 0;
+  return hitlBounded ? approval : undefined;
+}
+
+function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, approvals: Map<string, AfkIssueApproval>): boolean {
+  return statusDoneOrApproved(issue) || !!hasDurableHitlApproval(issue, approvals);
 }
 
 function assignedRoleForDomains(domains: string[]): QueueJob["assignedRole"] {
@@ -311,8 +362,13 @@ function evaluateIssues(artifacts: LoadedArtifacts): {
     const dependencies = normalizeStringArray(issue.dependencies);
     const recordBase = { issueId: issue.issueId, title: issue.title, dependencies, queueJobId: queueJobId(artifacts.sourceArtifacts.issues.split("/")[2] ?? "initiative", issue.issueId) };
     const reasons: string[] = [];
-    if (statusDoneOrApproved(issue)) {
-      doneIssues.push({ ...recordBase, disposition: "done", reasons: [`Issue status is ${issue.status}.`] });
+    const durableApproval = hasDurableHitlApproval(issue, artifacts.approvals);
+    if (statusDoneOrApproved(issue) || durableApproval) {
+      doneIssues.push({
+        ...recordBase,
+        disposition: "done",
+        reasons: [durableApproval ? `Durable HITL approval ${durableApproval.approvalRef} resolves this blocker.` : `Issue status is ${issue.status}.`],
+      });
       continue;
     }
     if (issue.type === "HITL") {
@@ -320,7 +376,7 @@ function evaluateIssues(artifacts: LoadedArtifacts): {
       continue;
     }
     if (issue.type !== "AFK") reasons.push(`Unsupported issue type: ${issue.type || "missing"}.`);
-    const unresolved = dependencies.filter((dependencyId) => !statusDoneOrApproved(byId.get(dependencyId)));
+    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), artifacts.approvals));
     if (unresolved.length > 0) {
       deferredIssues.push({ ...recordBase, disposition: "deferred", reasons: [`Unresolved dependencies: ${unresolved.join(", ")}.`] });
       continue;
@@ -451,7 +507,13 @@ function buildRun(input: AfkOrchestrationInput, artifacts: LoadedArtifacts, exis
   const runId = input.runId ? assertSlug(input.runId, "runId") : timestampRunId(now);
   const maxParallel = Math.max(1, input.maxParallel ?? 1);
   const evaluated = evaluateIssues(artifacts);
-  const sourceArtifactPaths = [artifacts.sourceArtifacts.issues, artifacts.sourceArtifacts.slicePlan, artifacts.sourceArtifacts.pipeline, ...artifacts.sourceArtifacts.summaries];
+  const sourceArtifactPaths = [
+    artifacts.sourceArtifacts.issues,
+    artifacts.sourceArtifacts.slicePlan,
+    artifacts.sourceArtifacts.pipeline,
+    ...(artifacts.sourceArtifacts.approvals ? [artifacts.sourceArtifacts.approvals] : []),
+    ...artifacts.sourceArtifacts.summaries,
+  ];
   const queueJobs = evaluated.eligible.map((issue) => buildQueueJob(input.initiativeId, issue, runId, sourceArtifactPaths));
   const materializedQueueJobs = queueJobs.map((job, index) => summarizeQueueJob(job, evaluated.eligible[index], input.initiativeId, sourceArtifactPaths));
   const explainIssue = input.explainIssueId
@@ -521,8 +583,15 @@ export async function runAfkOrchestration(input: AfkOrchestrationInput): Promise
   if (input.command === "run" && (!input.maxSteps || !input.maxRuntimeSeconds)) throw new Error("run mode requires explicit --max-steps and --max-runtime-seconds.");
 
   const materialization = await materializeQueueJobs(repoRoot, queueJobs);
-  run.lastAction = materialization.createdJobs.length > 0
-    ? `Materialized ${materialization.createdJobs.length} queue job(s) through queue-runner materializeQueueJobs.`
+  const materializationActions: string[] = [];
+  if (materialization.createdJobs.length > 0) {
+    materializationActions.push(`Materialized ${materialization.createdJobs.length} queue job(s) through queue-runner materializeQueueJobs.`);
+  }
+  if (materialization.requeuedJobs.length > 0) {
+    materializationActions.push(`Requeued ${materialization.requeuedJobs.length} stale blocked queue job(s) through queue-runner materializeQueueJobs.`);
+  }
+  run.lastAction = materializationActions.length > 0
+    ? materializationActions.join(" ")
     : "No new queue jobs materialized; matching queue jobs already exist.";
   run.nextOperatorAction = input.command === "apply" ? "Review queue status, then run a bounded queue session explicitly if desired." : "Bounded queue session completed or stopped; inspect startedQueueJobs and queue status.";
 
