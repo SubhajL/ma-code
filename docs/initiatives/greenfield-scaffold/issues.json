@@ -14,7 +14,7 @@
       "issueId": "issue-001",
       "title": "Approve greenfield scaffold foundation contract",
       "type": "HITL",
-      "status": "planned",
+      "status": "approved",
       "dependencies": [],
       "userStoriesCovered": [
         "greenfield-scaffold-story-001"
