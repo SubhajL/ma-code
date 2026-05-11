@@ -1,7 +1,7 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-11_hitl-approval-artifact-validation.md`
+- `logs/coding/2026-05-11_greenfield-afk-issue-005-approval-and-mo-continuation.md`
 
 ## Current planning log
 - `reports/planning/2026-05-11_hitl-approval-artifact-validation-plan.md`
