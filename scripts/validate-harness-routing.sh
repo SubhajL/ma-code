@@ -223,22 +223,22 @@ const cases = [
   {
     name: "planning default",
     input: { role: "planning_lead" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "default", thinking: "high" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4", source: "default", thinking: "high" },
   },
   {
     name: "critical role not downgraded",
     input: { role: "orchestrator", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "default", thinking: "high", blockedContains: "blocked from budget_pressure" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4", source: "default", thinking: "high", blockedContains: "blocked from budget_pressure" },
   },
   {
     name: "backend budget override",
     input: { role: "backend_worker", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
   },
   {
     name: "build lead budget override",
     input: { role: "build_lead", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
   },
   {
     name: "frontend harder task stronger override",
@@ -247,7 +247,7 @@ const cases = [
   },
   {
     name: "provider failure fallback",
-    input: { role: "backend_worker", reason: "provider_failure", failedModels: ["openai-codex/gpt-5.4"] },
+    input: { role: "backend_worker", reason: "provider_failure", failedModels: ["github-copilot/gpt-5.4"] },
     expected: { selectedModelId: "anthropic/claude-sonnet-4-6", source: "fallback" },
   },
   {
@@ -268,7 +268,7 @@ const cases = [
   {
     name: "backend phase fallback",
     input: { role: "backend_worker", phaseLane: "backend_implementation" },
-    expected: { selectedModelId: "openai-codex/gpt-5.4", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
   },
 ];
 
@@ -383,11 +383,11 @@ check_3_live_probe() {
   local out="$TMP_ROOT/check_3_live_probe.jsonl"
   local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/harness-routing.ts --mode json \"Use resolve_harness_route for role backend_worker with reason budget_pressure and budgetMode conserve, then report the exact selected model ID in one sentence.\""
   if (cd "$REPO_ROOT" && bash -lc "$cmd") >"$out" 2>&1; then
-    if grep -Fq '"toolName":"resolve_harness_route"' "$out" && grep -Fq 'openai-codex/gpt-5.4-mini' "$out"; then
+    if grep -Fq '"toolName":"resolve_harness_route"' "$out" && grep -Fq 'github-copilot/gpt-5.4-mini' "$out"; then
       local detail="Live probe observed resolve_harness_route and the expected selected model ID."
       record_result "$name" "PASS" "$detail"
       append_summary_row "$name" "PASS" "$detail"
-      append_check_section "$name" "PASS" "$cmd" "- tool call observed: \`resolve_harness_route\`\n- expected selected model found: \`openai-codex/gpt-5.4-mini\`"
+      append_check_section "$name" "PASS" "$cmd" "- tool call observed: \`resolve_harness_route\`\n- expected selected model found: \`github-copilot/gpt-5.4-mini\`"
     else
       local detail="Live probe ran but expected tool/result evidence was missing."
       record_result "$name" "FAIL" "$detail"

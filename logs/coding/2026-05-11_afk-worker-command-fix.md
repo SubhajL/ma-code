@@ -616,3 +616,30 @@ LOW
   - remaining merge risk is now CI re-run timing / GitHub state, not a known local static-check mismatch.
 - Follow-ups or known gaps:
   - push this CI-unblock commit, wait for PR #141 checks to go green, then run the bounded merge helper and sync local `main`.
+
+## 2026-05-11T21:33:42+0700
+- Goal: clear the remaining failing PR #141 CI gate (`Routing Validators`) so the PR can become mergeable.
+- Files changed and why:
+  - `scripts/validate-harness-routing.sh` — aligned validator expectations with the current repo routing policy, replacing stale `openai-codex/gpt-5.4*` expectations with the repo’s active `github-copilot/gpt-5.4*` backend defaults/fallbacks.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this CI-unblock evidence entry.
+- Tests added or changed:
+  - none; this slice updates executable validation expectations only.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-harness-routing.sh`
+  - failed because the executable harness-routing validator still expected `openai-codex/gpt-5.4` for planning/default and backend phase fallback even though `.pi/agent/models.json` and unit tests already use `github-copilot/gpt-5.4`.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-harness-routing.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/harness-routing.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/harness-routing.test.ts; ./scripts/validate-harness-routing.sh; done`
+- Wiring verification evidence:
+  - `scripts/validate-harness-routing.sh` now agrees with `.pi/agent/models.json` on the repo’s current backend default/budget/phase fallback model IDs.
+  - unit routing tests still pass, so the executable validator and public routing behavior are aligned again.
+- Behavior changes and risk notes:
+  - no runtime behavior changed; this is a CI validator-alignment fix only.
+  - remaining risk is now GitHub/CI propagation time rather than a known local validation mismatch.
+- Follow-ups or known gaps:
+  - push this validator-alignment commit, wait for PR #141 checks to finish green, then rerun the merge helper and land with `--sync-main`.
