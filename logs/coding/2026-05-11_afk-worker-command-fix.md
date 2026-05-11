@@ -643,3 +643,30 @@ LOW
   - remaining risk is now GitHub/CI propagation time rather than a known local validation mismatch.
 - Follow-ups or known gaps:
   - push this validator-alignment commit, wait for PR #141 checks to finish green, then rerun the merge helper and land with `--sync-main`.
+
+## 2026-05-11T21:46:55+0700
+- Goal: clear the remaining `Task-packets validation` CI gate so PR #141 can finish all required validators.
+- Files changed and why:
+  - `scripts/validate-task-packets.sh` — aligned the helper-level packet-generation validator with the repo’s current conservative budget-override model `github-copilot/gpt-5.4-mini`.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this CI-unblock evidence entry.
+- Tests added or changed:
+  - none; this slice updates executable validation expectations only.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-task-packets.sh`
+  - failed because the validator still expected helper-generated packet `modelOverride` `openai-codex/gpt-5.4-mini` while current routing emits `github-copilot/gpt-5.4-mini`.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-task-packets.sh`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-harness-routing.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do ./scripts/validate-harness-routing.sh; ./scripts/validate-task-packets.sh; ./scripts/check-repo-static.sh; done`
+- Wiring verification evidence:
+  - `scripts/validate-task-packets.sh` now matches the route-selected packet override model observed from the current harness routing configuration.
+  - all three affected executable validators (`validate-harness-routing`, `validate-task-packets`, `check-repo-static`) pass repeatedly together after the fix.
+- Behavior changes and risk notes:
+  - no runtime behavior changed; this is CI validator-alignment only.
+  - remaining risk is now only CI propagation / merge-state refresh on GitHub.
+- Follow-ups or known gaps:
+  - push this validator-alignment commit, wait for PR #141 checks to go green, then rerun merge helper and land with `--sync-main`.
