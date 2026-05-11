@@ -37,9 +37,9 @@ Current cost tuning reduced default thinking for:
 - backend_worker
 
 And added a budget override path for:
-- build_lead -> `openai-codex/gpt-5.4-mini`
-- frontend_worker -> `openai-codex/gpt-5.4-mini`
-- backend_worker -> `openai-codex/gpt-5.4-mini`
+- build_lead -> `github-copilot/gpt-5.4-mini`
+- frontend_worker -> `github-copilot/gpt-5.4-mini`
+- backend_worker -> `github-copilot/gpt-5.4-mini`
 
 ## Important routing concepts
 ### default

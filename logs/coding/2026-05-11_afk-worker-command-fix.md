@@ -550,3 +550,57 @@ LOW
 - stop at downstream issue-006 validation failure rather than conflating it with worker execution bootstrap.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12 CI Routing Validator Fix
+
+- Goal of this unit of work:
+  - fix PR #142 CI failures caused by validator/doc expectations that still referenced old `openai-codex` active defaults after the task branch intentionally moved repo defaults/fallbacks to `github-copilot/gpt-5.4`.
+- Files changed and why:
+  - `scripts/check-repo-static.sh`: updated backend phase fallback expectation to `github-copilot/gpt-5.4`.
+  - `scripts/validate-harness-routing.sh`: updated helper-level expected default/budget/fallback models and provider-failure failed model input to match current routing config.
+  - `scripts/validate-task-packets.sh`: updated budget override packet expectation to `github-copilot/gpt-5.4-mini`.
+  - `.pi/agent/docs/phase_model_routing.md`: updated backend fallback documentation.
+  - `.pi/agent/docs/operator_model_routing_guide.md`: updated operator-visible budget fallback examples.
+- Tests added or changed:
+  - no new tests; existing CI validators were corrected to match the intended model routing config changed earlier in this task branch.
+- RED command and key failure reason:
+  - `./scripts/check-repo-static.sh` failed with `AssertionError` at the phase routing fallback assertion because it expected `openai-codex/gpt-5.4` while `.pi/agent/models.json` now uses `github-copilot/gpt-5.4`.
+  - `./scripts/validate-harness-routing.sh` failed with `planning default: expected selectedModelId=openai-codex/gpt-5.4 got github-copilot/gpt-5.4`, then after the first correction failed with `provider failure fallback: expected selectedModelId=anthropic/claude-sonnet-4-6 got github-copilot/gpt-5.4` because the test still marked the old provider as failed.
+- GREEN commands:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/validate-harness-routing.sh`
+  - result: `Harness-routing validation PASS`.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/check-repo-static.sh && ./scripts/validate-task-packets.sh && ./scripts/check-foundation-extension-compile.sh`
+  - result: `repo-static-checks-ok`, `Task-packets validation PASS`, `foundation-extension-compile-ok`.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && node --import tsx --test tests/extension-units/harness-routing.test.ts tests/extension-units/worker-same-runtime-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts && git diff --check main...HEAD && git diff --check`
+  - result: `tests 33`, `pass 33`, `fail 0`, diff checks passed.
+- Wiring verification evidence:
+  - static and routing validators now agree with `.pi/agent/models.json` provider/model defaults used by the worker execution plan.
+  - task-packet validator now agrees with budget routing model override produced from the current config.
+- Behavior changes and risk notes:
+  - this is validator/documentation alignment; it does not change runtime dispatch beyond the existing config updates already present in the branch.
+  - generated validation reports under `reports/validation/` were left untracked.
+- Follow-ups or known gaps:
+  - rerun PR checks after pushing the validator-alignment commit.
+
+### Manual g-check Review After CI Fix
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- none
+
+## Open Questions / Assumptions
+- Assumption: `github-copilot/gpt-5.4` and `github-copilot/gpt-5.4-mini` are the intended current verified defaults/fallbacks for this branch.
+
+## Recommended Tests / Validation
+- completed: repo static checks.
+- completed: harness-routing validator.
+- completed: task-packets validator.
+- completed: foundation extension compile.
+- completed: targeted extension unit tests including harness-routing and worker execution.
+
+## Rollout Notes
+- push commit to PR #142 and wait for CI checks before merge.
+
+Review Verdict: no_required_fixes

@@ -1510,7 +1510,7 @@ assert set(phase_profiles) == {"screen_design", "frontend_implementation", "back
 for lane, expected_target, expected_fallback in [
     ("screen_design", "opus-4.7", "anthropic/claude-opus-4-5"),
     ("frontend_implementation", "opus-4.7", "anthropic/claude-opus-4-5"),
-    ("backend_implementation", "gpt-5.5", "openai-codex/gpt-5.4"),
+    ("backend_implementation", "gpt-5.5", "github-copilot/gpt-5.4"),
 ]:
     profile = phase_profiles[lane]
     assert profile["targetModelRequest"] == expected_target
