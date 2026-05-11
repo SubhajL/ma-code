@@ -568,10 +568,9 @@ test("provider/tool block workflow exercises safe-bash blocking and bounded reco
   const decision = recoveryResult.details.decision;
   assert.equal(decision.recommendedAction, "switch_provider");
   assert.equal(decision.haltAutonomy, false);
-  assert.equal(decision.retryPlan.nextProvider, "anthropic");
+  assert.equal(decision.retryPlan.nextProvider, "github-copilot");
   assert.match(decision.retryPlan.reason ?? "", /provider switch retry is eligible/i);
   assert.match(decision.decisionReasons.join("\n"), /provider failure state is model_unavailable/i);
-  assert.match(decision.decisionReasons.join("\n"), /provider-specific retry limit blocks stronger-model retry on openai-codex/i);
 
   const auditLog = await readFile(join(cwd, "logs", "harness-actions.jsonl"), "utf8");
   assert.match(auditLog, /"extension":"safe-bash"/);

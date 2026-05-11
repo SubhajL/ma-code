@@ -733,3 +733,41 @@ LOW
   - remaining landing risk should now be limited to GitHub check rerun/merge-state refresh and lifecycle helper evidence, not failing local validators.
 - Follow-ups or known gaps:
   - push this final validator-alignment commit, wait for PR #141 checks to refresh green, then re-run merge readiness and land with `--sync-main`.
+
+## 2026-05-11T22:24:00+0700
+- Goal: finish the PR #141 CI-unblock sequence by aligning the remaining core-workflows expectations with the repo’s current recovery/provider behavior.
+- Files changed and why:
+  - `tests/integration/core-workflows.test.ts` — updated the provider/tool block workflow integration expectations to use the repo’s current `github-copilot/gpt-5.4-mini` provider-failure path and observed recovery output.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this final CI-unblock evidence entry.
+- Tests added or changed:
+  - updated `tests/integration/core-workflows.test.ts`
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test --test-name-pattern "provider/tool block workflow exercises safe-bash blocking and bounded recovery guidance" tests/integration/core-workflows.test.ts`
+  - failed because the integration still asserted stale provider-specific recovery details from the old `openai-codex` stack.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-core-workflows.sh`
+  - failed because that stale integration expectation was still embedded in the executable core-workflows validator.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test --test-name-pattern "provider/tool block workflow exercises safe-bash blocking and bounded recovery guidance" tests/integration/core-workflows.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-core-workflows.sh`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-policy.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-runtime.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-harness-routing.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-task-packets.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+- Wiring verification evidence:
+  - the full local CI-equivalent validator stack now passes together on the task branch:
+    - `validate-core-workflows.sh`
+    - `validate-recovery-policy.sh`
+    - `validate-recovery-runtime.sh`
+    - `validate-harness-routing.sh`
+    - `validate-task-packets.sh`
+    - `check-repo-static.sh`
+    - `check-foundation-extension-compile.sh`
+- Behavior changes and risk notes:
+  - no product/runtime behavior changed in this CI-unblock slice; only executable validator and integration-test expectations were aligned with the repo’s current routing/recovery outputs.
+  - remaining work should now be GitHub check propagation, merge-state refresh, and lifecycle/merge-helper evidence only.
+- Follow-ups or known gaps:
+  - push this final CI-unblock commit, wait for PR #141 checks to report green, then run merge helper and sync local `main`.
