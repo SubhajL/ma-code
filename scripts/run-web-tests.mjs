@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 const TEST_DIR = "tests/web";
 const aliases = new Map([
+  ["components", "tests/web/components.test.tsx"],
   ["design-tokens", "tests/web/design-tokens.test.ts"],
 ]);
 
@@ -12,7 +13,7 @@ function allWebTests() {
   try {
     return readdirSync(TEST_DIR)
       .map((entry) => join(TEST_DIR, entry))
-      .filter((path) => path.endsWith(".test.ts") && statSync(path).isFile())
+      .filter((path) => /\.test\.(ts|tsx)$/.test(path) && statSync(path).isFile())
       .sort();
   } catch {
     return [];

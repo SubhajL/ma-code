@@ -251,7 +251,7 @@
       "issueId": "issue-007",
       "title": "Create shared component primitives",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-006"
       ],
