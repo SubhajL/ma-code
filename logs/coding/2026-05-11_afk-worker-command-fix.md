@@ -695,3 +695,56 @@ Review Verdict: no_required_fixes
   - if CI still fails, the logs should now expose the npm install cause instead of a silent exit.
 - Follow-ups or known gaps:
   - push and rerun PR #142 checks.
+
+## 2026-05-12 Mistral Transitive Postinstall CI Fix
+
+- Goal of this unit of work:
+  - fix CI temp-package installs failing inside transitive `@mistralai/mistralai` setup scripts during validator-only temp runtime setup.
+- Files changed and why:
+  - `scripts/check-foundation-extension-compile.sh`: temp `npm install` now uses `--ignore-scripts` so provider SDK postinstall hooks are not executed for a TypeScript-only compile validator.
+  - `scripts/validate-skill-routing.sh`: temp `npm install` now uses `--ignore-scripts` for the same reason.
+- Tests added or changed:
+  - none; changed validator install flags only.
+- RED command and key failure reason:
+  - GitHub PR #142 `Foundation Extension Compile` failed with `npm error ... @mistralai/mistralai ... node setup.mjs ... Module not found ... tanstack_runner.js`.
+  - GitHub PR #142 `Routing Validators` failed at skill-routing temp install with the same transitive `@mistralai/mistralai` setup failure.
+- Internet/current-package check:
+  - Exa/npm registry lookup confirmed `@mistralai/mistralai` is the Mistral TypeScript client library and is ESM-only in v2; it is not a direct dependency of this AFK fix.
+  - The package is pulled transitively through Pi runtime dependencies used by temp validator projects.
+  - Because these validators only need compile/import checks and no provider SDK postinstall side effects, ignoring install scripts is a bounded CI fix.
+- GREEN commands:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/check-foundation-extension-compile.sh`
+  - result: `foundation-extension-compile-ok`.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/validate-skill-routing.sh --skip-live`
+  - result: `Skill-routing validation PASS`.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/validate-harness-routing.sh && ./scripts/validate-recovery-policy.sh && ./scripts/validate-recovery-runtime.sh && git diff --check`
+  - result: harness-routing, recovery-policy, recovery-runtime PASS; diff check passed.
+- Wiring verification evidence:
+  - CI uses these same scripts for `Foundation Extension Compile` and the first `Routing Validators` step.
+- Behavior changes and risk notes:
+  - runtime code unchanged.
+  - risk is limited to temp validator installs; if future validator code needs a dependency postinstall artifact, the failure should surface during compile/runtime validation.
+- Follow-ups or known gaps:
+  - push and wait for PR #142 checks again.
+
+### Manual g-check Review After Mistral Postinstall Fix
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- none
+
+## Open Questions / Assumptions
+- Assumption: temp validators do not need provider SDK postinstall scripts because they perform TypeScript compile/helper checks, not live provider SDK execution.
+
+## Recommended Tests / Validation
+- completed: foundation extension compile.
+- completed: skill-routing validator with `--skip-live`.
+- completed: harness-routing, recovery-policy, and recovery-runtime validators.
+- completed: `git diff --check`.
+
+## Rollout Notes
+- push to PR #142 and wait for GitHub checks; this should bypass the Mistral transitive setup-script failure in temp validator installs.
+
+Review Verdict: no_required_fixes

@@ -222,10 +222,10 @@ setup_temp_runtime() {
 }
 JSON
   cp "$REPO_ROOT/.pi/agent/extensions/g-skill-auto-route.ts" "$workdir/src/g-skill-auto-route.ts"
-  if ! (cd "$workdir" && npm install --silent --no-audit --no-fund >"$TMP_ROOT/skill-routing-npm-install.log" 2>&1); then
+  if ! (cd "$workdir" && npm install --silent --no-audit --no-fund --ignore-scripts >"$TMP_ROOT/skill-routing-npm-install.log" 2>&1); then
     echo "skill-routing npm install failed; retrying with visible output" >&2
     cat "$TMP_ROOT/skill-routing-npm-install.log" >&2 || true
-    (cd "$workdir" && npm install --no-audit --no-fund) || exit 1
+    (cd "$workdir" && npm install --no-audit --no-fund --ignore-scripts) || exit 1
   fi
 }
 
