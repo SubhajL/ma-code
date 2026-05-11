@@ -28,6 +28,17 @@ function baseIssue(id: string, overrides: Partial<AfkIssueArtifact> = {}): AfkIs
 async function writeInitiative(cwd: string, issues: AfkIssueArtifact[], options: { omitSummaries?: string[] } = {}): Promise<void> {
   const root = join(cwd, "docs", "initiatives", "greenfield-scaffold");
   await mkdir(join(root, "slices"), { recursive: true });
+  await mkdir(join(cwd, ".pi"), { recursive: true });
+  await writeFile(
+    join(cwd, ".pi", "settings.json"),
+    `${JSON.stringify({
+      defaultProvider: "github-copilot",
+      defaultModel: "gpt-5.4",
+      defaultThinkingLevel: "high",
+      enabledModels: ["github-copilot/gpt-5.4", "github-copilot/gpt-5.4-mini"],
+    }, null, 2)}\n`,
+    "utf8",
+  );
   await writeFile(join(root, "issues.json"), `${JSON.stringify({ version: 1, initiativeId: "greenfield-scaffold", issues }, null, 2)}\n`, "utf8");
   await writeFile(join(root, "slice-plan.json"), `${JSON.stringify({ version: 1, initiativeId: "greenfield-scaffold" }, null, 2)}\n`, "utf8");
   await writeFile(join(root, "pipeline.json"), `${JSON.stringify({ version: 1, initiativeId: "greenfield-scaffold" }, null, 2)}\n`, "utf8");
@@ -221,6 +232,19 @@ test("apply writes an AFK run artifact and creates queue jobs only through queue
   assert.ok(queue.jobs.every((job) => job.queueJobSource?.kind === "issue-materialization"));
   assert.ok(queue.jobs.every((job) => job.approvalRequired === false));
   assert.ok(queue.jobs.every((job) => job.tddSlice));
+  const workerExecutionPlan = queue.jobs[0]?.workerExecutionPlan;
+  assert.equal(queue.jobs[0]?.implementationCommand, undefined);
+  assert.equal(workerExecutionPlan?.strategy, "same_runtime_prompt");
+  assert.equal(workerExecutionPlan?.toolProfile, "coding");
+  assert.equal(workerExecutionPlan?.includeProjectExtensions, false);
+  assert.equal(workerExecutionPlan?.includeContextFiles, true);
+  assert.equal(workerExecutionPlan?.provider, "github-copilot");
+  assert.equal(workerExecutionPlan?.modelId, "gpt-5.4");
+  assert.equal(workerExecutionPlan?.thinkingLevel, "high");
+  assert.match(workerExecutionPlan?.prompt ?? "", /Implement AFK issue issue-002/);
+  assert.doesNotMatch(workerExecutionPlan?.prompt ?? "", /\/skill:g-coding/);
+  assert.doesNotMatch(workerExecutionPlan?.prompt ?? "", /\/skill:g-planning/);
+  assert.deepEqual(queue.jobs[0]?.validationCommands, ["npm test -- issue-002"]);
   assert.equal(runArtifact.materializedQueueJobs[0].queueJobSource.kind, "issue-materialization");
 });
 

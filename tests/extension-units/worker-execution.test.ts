@@ -47,7 +47,7 @@ function queueJob(overrides: Partial<QueueJob> = {}): QueueJob {
   };
 }
 
-async function writeFixture(options: { issueOverrides?: Record<string, unknown>; jobOverrides?: Partial<QueueJob> } = {}): Promise<string> {
+async function writeFixture(options: { issueOverrides?: Record<string, unknown>; jobOverrides?: Partial<QueueJob>; activeJobId?: string | null } = {}): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), "worker-execution-"));
   await mkdir(join(cwd, "docs", "initiatives", "greenfield-scaffold", "slices"), { recursive: true });
   await mkdir(join(cwd, ".pi", "agent", "state", "runtime"), { recursive: true });
@@ -72,7 +72,7 @@ async function writeFixture(options: { issueOverrides?: Record<string, unknown>;
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slice-plan.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/pipeline.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json"), "{\"version\":1}\n", "utf8");
-  await writeFile(join(cwd, ".pi/agent/state/runtime/queue.json"), `${JSON.stringify({ version: 1, paused: false, activeJobId: null, jobs: [queueJob(options.jobOverrides)] }, null, 2)}\n`, "utf8");
+  await writeFile(join(cwd, ".pi/agent/state/runtime/queue.json"), `${JSON.stringify({ version: 1, paused: false, activeJobId: options.activeJobId ?? null, jobs: [queueJob(options.jobOverrides)] }, null, 2)}\n`, "utf8");
   await git(cwd, ["init", "-b", "main"]);
   await git(cwd, ["config", "user.email", "test@example.com"]);
   await git(cwd, ["config", "user.name", "Test User"]);
@@ -109,6 +109,34 @@ test("eligibility rejects HITL, approvalRequired, missing allowed paths, missing
   }
 });
 
+test("run defaults worker baseRef to the current branch so worker worktrees inherit task-branch config", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      implementationCommand: "node -e \"require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n')\"",
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+  await mkdir(join(cwd, ".pi"), { recursive: true });
+  await writeFile(join(cwd, ".pi", "settings.json"), `${JSON.stringify({ defaultProvider: "github-copilot", defaultModel: "gpt-5.4", defaultThinkingLevel: "high", marker: "current-branch-config" }, null, 2)}\n`, "utf8");
+  await git(cwd, ["checkout", "-b", "task/current-runtime-branch"]);
+  await git(cwd, ["add", ".pi/settings.json"]);
+  await git(cwd, ["commit", "-m", "branch-config"]);
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-current-branch",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.worktree.baseRef, "task/current-runtime-branch");
+  const workerSettings = await readFile(join(result.worktree.path!, ".pi", "settings.json"), "utf8");
+  assert.match(workerSettings, /current-branch-config/);
+});
+
 test("run creates isolated worktree, records RED/GREEN, validation, review, queue linkage, and stops before PR", async () => {
   const cwd = await writeFixture();
   const result = await runWorkerExecution({
@@ -140,6 +168,88 @@ test("run creates isolated worktree, records RED/GREEN, validation, review, queu
   assert.equal(queue.jobs[0].workerExecution?.runArtifactPath, "docs/initiatives/greenfield-scaffold/worker-runs/worker-green.json");
 });
 
+test("run uses queue job implementation command fallback and allows Pi log artifacts", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      implementationCommand: "node -e \"require('fs').mkdirSync('logs/coding',{recursive:true});require('fs').mkdirSync('reports/planning',{recursive:true});require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n');require('fs').writeFileSync('logs/CURRENT.md','# current\\n');require('fs').writeFileSync('logs/coding/test.md','# coding\\n');require('fs').writeFileSync('reports/planning/test.md','# planning\\n')\"",
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-job-fallback",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.status, "review_ready");
+  assert.match(result.steps.coding.greenCommand ?? "", /^node -e/);
+  assert.ok(result.steps.coding.changedFiles.includes("logs/CURRENT.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("reports/planning/test.md"));
+});
+
+test("run prefers structured same-runtime worker execution plans over legacy implementation commands", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      implementationCommand: "node -e \"process.exit(17)\"",
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement the bounded docs update and return success.",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "github-copilot",
+        modelId: "gpt-5.4",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-same-runtime-plan",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    reviewVerdict: "no_required_fixes",
+    sameRuntimeExecutor: async (worktreePath, plan) => {
+      assert.equal(plan.strategy, "same_runtime_prompt");
+      assert.equal(plan.modelId, "gpt-5.4");
+      await mkdir(join(worktreePath, "logs", "coding"), { recursive: true });
+      await mkdir(join(worktreePath, "reports", "planning"), { recursive: true });
+      await mkdir(join(worktreePath, "docs", "initiatives", "greenfield-scaffold"), { recursive: true });
+      await writeFile(join(worktreePath, "docs", "initiatives", "greenfield-scaffold", "notes.md"), "ok\n", "utf8");
+      await writeFile(join(worktreePath, "logs", "CURRENT.md"), "# current\n", "utf8");
+      await writeFile(join(worktreePath, "logs", "coding", "task.md"), "## log\n", "utf8");
+      await writeFile(join(worktreePath, "reports", "planning", "task.md"), "## plan\n", "utf8");
+      return {
+        command: "same_runtime_prompt",
+        exitCode: 0,
+        stdout: "__PI_OK__\nok",
+        stderr: "",
+        durationMs: 1,
+      };
+    },
+  });
+
+  assert.equal(result.status, "review_ready");
+  assert.equal(result.steps.coding.status, "passed");
+  assert.match(result.steps.coding.greenCommand ?? "", /same_runtime_prompt/);
+  assert.ok(result.steps.coding.changedFiles.includes("docs/initiatives/greenfield-scaffold/notes.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("logs/CURRENT.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("logs/coding/task.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("reports/planning/task.md"));
+});
+
 test("resume refuses terminal worker runs", async () => {
   const cwd = await writeFixture();
   await runWorkerExecution({
@@ -151,6 +261,7 @@ test("resume refuses terminal worker runs", async () => {
     baseRef: "main",
     maxSteps: 4,
     maxRuntimeSeconds: 10,
+    implementationCommand: "node -e \"require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n')\"",
     validationCommands: ["node -e \"process.exit(0)\""],
   });
 
@@ -160,8 +271,16 @@ test("resume refuses terminal worker runs", async () => {
   );
 });
 
-test("failed validation and review changes-required block before completion while preserving worktree", async () => {
-  const validationCwd = await writeFixture();
+test("failed validation finalizes linked task and clears active queue job while review changes-required still blocks before completion", async () => {
+  const validationCwd = await writeFixture({
+    activeJobId: "afk-greenfield-scaffold-issue-002",
+    jobOverrides: {
+      status: "running",
+      implementationCommand: "node -e \"require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n')\"",
+      validationCommands: ["node -e \"process.exit(2)\""],
+    },
+  });
+
   const failed = await runWorkerExecution({
     repoRoot: validationCwd,
     command: "run",
@@ -171,13 +290,22 @@ test("failed validation and review changes-required block before completion whil
     baseRef: "main",
     maxSteps: 4,
     maxRuntimeSeconds: 10,
-    validationCommands: ["node -e \"process.exit(2)\""],
   });
   assert.equal(failed.status, "failed");
   assert.match(failed.stopReason ?? "", /validation failure/);
   assert.ok(failed.worktree.path);
+  const failedQueue = await readQueueState(validationCwd);
+  const failedTasks = JSON.parse(await readFile(join(validationCwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as { tasks: Array<{ id: string; status: string }> };
+  assert.equal(failedQueue.activeJobId, null);
+  assert.equal(failedQueue.jobs[0].status, "failed");
+  assert.equal(failedTasks.tasks.find((task) => task.id === failed.linkedTaskId)?.status, "failed");
 
-  const reviewCwd = await writeFixture();
+  const reviewCwd = await writeFixture({
+    jobOverrides: {
+      implementationCommand: "node -e \"require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n')\"",
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
   const review = await runWorkerExecution({
     repoRoot: reviewCwd,
     command: "run",
@@ -187,7 +315,6 @@ test("failed validation and review changes-required block before completion whil
     baseRef: "main",
     maxSteps: 4,
     maxRuntimeSeconds: 10,
-    validationCommands: ["node -e \"process.exit(0)\""],
     reviewVerdict: "changes_required",
   });
   assert.equal(review.status, "blocked");
@@ -208,6 +335,23 @@ test("max step budget is respected before worktree execution", async () => {
   });
   assert.equal(result.status, "blocked");
   assert.match(result.stopReason ?? "", /max step budget/);
+});
+
+test("run blocks clearly when no implementation command or queue execution plan is available", async () => {
+  const cwd = await writeFixture();
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-missing-plan",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.stopReason ?? "", /No implementation command or queue execution plan/);
 });
 
 test("run ignores generated initiative runtime run artifacts when checking worktree cleanliness", async () => {

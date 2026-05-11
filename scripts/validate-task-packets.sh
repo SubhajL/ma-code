@@ -265,8 +265,8 @@ const generated = generateTaskPacket(policy, teams, routingConfig, {
 validateTaskPacketShape(generated.packet);
 if (generated.packet.assignedTeam !== "build") throw new Error("expected build packet");
 if (generated.packet.assignedRole !== "backend_worker") throw new Error("expected backend_worker role");
-if (generated.packet.modelOverride !== "openai-codex/gpt-5.4-mini") {
-  throw new Error(`expected budget override modelOverride openai-codex/gpt-5.4-mini, got ${generated.packet.modelOverride}`);
+if (generated.packet.modelOverride !== "github-copilot/gpt-5.4-mini") {
+  throw new Error(`expected budget override modelOverride github-copilot/gpt-5.4-mini, got ${generated.packet.modelOverride}`);
 }
 if ((generated.packet as any).tddSlice?.firstTracerBehavior !== tddSlice.firstTracerBehavior) throw new Error("expected packet tddSlice firstTracerBehavior");
 if (!generated.renderedPacket.includes("## Goal")) throw new Error("expected rendered packet goal heading");

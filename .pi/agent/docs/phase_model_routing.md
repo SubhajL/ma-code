@@ -30,7 +30,7 @@ Supported `phaseLane` values:
 ## Current defaults
 - `screen_design` requests `opus-4.7` but uses verified fallback `anthropic/claude-opus-4-5` until verified.
 - `frontend_implementation` requests `opus-4.7` but uses verified fallback `anthropic/claude-opus-4-5` until verified.
-- `backend_implementation` requests `gpt-5.5` but uses verified fallback `openai-codex/gpt-5.4` until verified.
+- `backend_implementation` requests `gpt-5.5` but uses verified fallback `github-copilot/gpt-5.4` until verified.
 
 ## Future use
 - Phase 8 FE packet generation should pass `phaseLane: frontend_implementation`.

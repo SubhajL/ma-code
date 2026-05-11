@@ -128,6 +128,17 @@ export interface QueueJobWorkerExecutionLinkage {
   updatedAt: string;
 }
 
+export interface QueueJobWorkerExecutionPlan {
+  strategy: "same_runtime_prompt";
+  prompt: string;
+  toolProfile?: "none" | "read_only" | "coding";
+  includeProjectExtensions?: boolean;
+  includeContextFiles?: boolean;
+  provider?: string;
+  modelId?: string;
+  thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+}
+
 export interface QueueJob {
   id: string;
   goal: string;
@@ -155,6 +166,10 @@ export interface QueueJob {
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
+  redCommand?: string;
+  implementationCommand?: string;
+  workerExecutionPlan?: QueueJobWorkerExecutionPlan | null;
+  validationCommands?: string[];
   tddSlice?: TaskPacketInput["tddSlice"];
   qualityInput?: QualityQueueInput | null;
   graphifyOrchestration?: QueueGraphifyOrchestrationInput | null;
@@ -379,6 +394,20 @@ function cloneQueueJobTddSlice(tddSlice: TaskPacketInput["tddSlice"]): TaskPacke
   };
 }
 
+function cloneQueueJobWorkerExecutionPlan(plan: QueueJob["workerExecutionPlan"]): QueueJob["workerExecutionPlan"] {
+  if (!plan) return null;
+  return {
+    strategy: plan.strategy,
+    prompt: plan.prompt,
+    toolProfile: plan.toolProfile,
+    includeProjectExtensions: plan.includeProjectExtensions,
+    includeContextFiles: plan.includeContextFiles,
+    provider: plan.provider,
+    modelId: plan.modelId,
+    thinkingLevel: plan.thinkingLevel,
+  };
+}
+
 function modelIdFromContext(ctx: { model?: { id?: string } | null }): string | null {
   return ctx.model?.id ?? null;
 }
@@ -543,7 +572,11 @@ export async function updateQueueJobWorkerExecution(
       updatedAt: new Date().toISOString(),
     };
     if (linkage.linkedTaskId && !job.linkedTaskId) job.linkedTaskId = linkage.linkedTaskId;
-    if (terminalStatus) job.status = terminalStatus;
+    if (terminalStatus) {
+      job.status = terminalStatus;
+      job.finishedAt = job.workerExecution.updatedAt;
+      if (state.activeJobId === jobId) state.activeJobId = null;
+    }
     job.updatedAt = job.workerExecution.updatedAt;
     return job;
   });
@@ -1032,6 +1065,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     ),
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
     notes: [...(job.notes ?? [])],
+    workerExecutionPlan: cloneQueueJobWorkerExecutionPlan(job.workerExecutionPlan),
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),
     qualityInput: job.qualityInput ?? null,
     graphifyOrchestration: job.graphifyOrchestration ?? null,

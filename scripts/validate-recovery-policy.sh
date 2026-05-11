@@ -231,14 +231,14 @@ const cases = [
     name: "research provider failure prefers stronger same-provider model",
     input: {
       role: "research_worker",
-      currentModelId: "openai-codex/gpt-5.4-mini",
+      currentModelId: "github-copilot/gpt-5.4-mini",
       providerFailureState: "model_unavailable",
       retryCounts: { sameLane: 0, strongerModel: 0, providerSwitch: 0, total: 0 },
     },
     expected: {
       failureClass: "provider_failure",
       recommendedAction: "retry_stronger_model",
-      strongerModelCandidate: "openai-codex/gpt-5.4",
+      strongerModelCandidate: "github-copilot/gpt-5.4",
       escalationRequired: false,
     },
   },
@@ -246,7 +246,7 @@ const cases = [
     name: "backend provider failure switches provider when same-provider stronger unavailable",
     input: {
       role: "backend_worker",
-      currentModelId: "openai-codex/gpt-5.4",
+      currentModelId: "github-copilot/gpt-5.4",
       providerFailureState: "provider_down",
       retryCounts: { sameLane: 0, strongerModel: 1, providerSwitch: 0, total: 1 },
     },
@@ -288,7 +288,7 @@ const cases = [
     name: "provider retry budget exhaustion escalates",
     input: {
       role: "backend_worker",
-      currentModelId: "openai-codex/gpt-5.4",
+      currentModelId: "github-copilot/gpt-5.4",
       providerFailureState: "rate_limited",
       retryCounts: { sameLane: 0, strongerModel: 1, providerSwitch: 1, total: 2 },
     },
@@ -368,13 +368,13 @@ check_3_live_tool_probe() {
     return
   fi
 
-  local cmd="$PI_BIN --mode json --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/recovery-policy.ts -e $REPO_ROOT/.pi/agent/extensions/harness-routing.ts \"Use resolve_recovery_policy for role research_worker with currentModelId openai-codex/gpt-5.4-mini, providerFailureState model_unavailable, and retryCounts sameLane 0 strongerModel 0 providerSwitch 0 total 0. Report the exact recommended action and stronger-model candidate in one sentence.\""
+  local cmd="$PI_BIN --mode json --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/recovery-policy.ts -e $REPO_ROOT/.pi/agent/extensions/harness-routing.ts \"Use resolve_recovery_policy for role research_worker with currentModelId github-copilot/gpt-5.4-mini, providerFailureState model_unavailable, and retryCounts sameLane 0 strongerModel 0 providerSwitch 0 total 0. Report the exact recommended action and stronger-model candidate in one sentence.\""
 
   if (
     cd "$REPO_ROOT" &&
     eval "$cmd" >"$out" 2>&1
   ); then
-    if grep -Fq 'retry_stronger_model' "$out" && grep -Fq 'openai-codex/gpt-5.4' "$out"; then
+    if grep -Fq 'retry_stronger_model' "$out" && grep -Fq 'github-copilot/gpt-5.4' "$out"; then
       local detail="Live tool probe observed the expected recovery-policy recommendation and candidate model."
       record_result "$name" "PASS" "$detail"
       append_summary_row "$name" "PASS" "$detail"
