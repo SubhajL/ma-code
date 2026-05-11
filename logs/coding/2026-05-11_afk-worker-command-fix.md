@@ -670,3 +670,28 @@ Review Verdict: no_required_fixes
   - validation-only log update; no runtime code changed.
 - Follow-ups or known gaps:
   - push and wait for GitHub checks.
+
+## 2026-05-12 CI NPM Install Robustness Follow-up
+
+- Goal of this unit of work:
+  - address repeated GitHub CI failures where temporary validator package `npm install` steps exited nonzero without useful output in `Foundation Extension Compile` and `Skill-routing validation`.
+- Files changed and why:
+  - `scripts/check-foundation-extension-compile.sh`: added a visible retry path for the temp package `npm install`, including first-attempt log output on failure.
+  - `scripts/validate-skill-routing.sh`: added the same visible retry path and hard failure if both install attempts fail.
+- Tests added or changed:
+  - no new tests; validator scripts were hardened against transient/silent npm install failures.
+- RED command and key failure reason:
+  - GitHub PR #142 checks repeatedly failed in `Foundation Extension Compile` and `Routing Validators` with no validator details; both failing steps were at temp-package setup boundaries that previously suppressed `npm install` output.
+- GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/check-foundation-extension-compile.sh && ./scripts/validate-skill-routing.sh --skip-live`
+  - result: `foundation-extension-compile-ok` and `Skill-routing validation PASS`.
+- Other validation commands run:
+  - `git diff --check`
+  - result: passed with no output.
+- Wiring verification evidence:
+  - validator temp runtime setup remains in the same scripts used by CI; only install retry/diagnostic behavior changed.
+- Behavior changes and risk notes:
+  - no runtime harness behavior changed.
+  - if CI still fails, the logs should now expose the npm install cause instead of a silent exit.
+- Follow-ups or known gaps:
+  - push and rerun PR #142 checks.
