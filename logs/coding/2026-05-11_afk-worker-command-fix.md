@@ -748,3 +748,27 @@ Review Verdict: no_required_fixes
 - push to PR #142 and wait for GitHub checks; this should bypass the Mistral transitive setup-script failure in temp validator installs.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12 Core Workflow Routing Expectation Fix
+
+- Goal of this unit of work:
+  - fix the remaining PR #142 `Routing Validators` CI failure in the core-workflows validator after provider defaults moved from `openai-codex` to `github-copilot`.
+- Files changed and why:
+  - `tests/integration/core-workflows.test.ts`: updated the provider/tool block recovery case to use `github-copilot/gpt-5.4-mini` as the failed current model and `github-copilot` as the provider-specific retry-budget key, while still expecting provider switch to `anthropic` after the active provider's stronger-model retry budget is exhausted.
+- Tests added or changed:
+  - updated existing core workflow integration expectation only.
+- RED command and key failure reason:
+  - `./scripts/validate-core-workflows.sh` failed because the provider/tool block test still used old provider/model expectations and saw `actual 'github-copilot'` vs expected `anthropic`, then after partial alignment expected `switch_provider` while the stale current model produced `stop`.
+- GREEN commands:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && node --import tsx --test tests/integration/core-workflows.test.ts && ./scripts/validate-core-workflows.sh`
+  - result: integration test reported `tests 10`, `pass 10`, `fail 0`; core-workflows validation PASS.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/validate-harness-package.sh`
+  - result: harness-package-validation PASS.
+- Other validation commands run:
+  - none.
+- Wiring verification evidence:
+  - core workflow integration now exercises provider-specific retry budget behavior using the active provider family from `.pi/agent/models.json`.
+- Behavior changes and risk notes:
+  - test expectation only; runtime recovery behavior remains provider switch to Anthropic once active GitHub Copilot provider retry budget is exhausted.
+- Follow-ups or known gaps:
+  - push and wait for PR #142 checks again.

@@ -558,10 +558,10 @@ test("provider/tool block workflow exercises safe-bash blocking and bounded reco
   const recoveryResult = await resolveRecoveryRuntimeDecision({
     taskId,
     role: "backend_worker",
-    currentModelId: "openai-codex/gpt-5.4-mini",
+    currentModelId: "github-copilot/gpt-5.4-mini",
     providerFailureState: "model_unavailable",
     providerRetryCounts: {
-      "openai-codex": 1,
+      "github-copilot": 1,
     },
   });
 
@@ -571,7 +571,7 @@ test("provider/tool block workflow exercises safe-bash blocking and bounded reco
   assert.equal(decision.retryPlan.nextProvider, "anthropic");
   assert.match(decision.retryPlan.reason ?? "", /provider switch retry is eligible/i);
   assert.match(decision.decisionReasons.join("\n"), /provider failure state is model_unavailable/i);
-  assert.match(decision.decisionReasons.join("\n"), /provider-specific retry limit blocks stronger-model retry on openai-codex/i);
+  assert.match(decision.decisionReasons.join("\n"), /provider-specific retry limit blocks stronger-model retry on github-copilot/i);
 
   const auditLog = await readFile(join(cwd, "logs", "harness-actions.jsonl"), "utf8");
   assert.match(auditLog, /"extension":"safe-bash"/);
