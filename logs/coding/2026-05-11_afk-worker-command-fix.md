@@ -171,3 +171,31 @@ Review Verdict: changes_required
 - Follow-ups or known gaps:
   - Propagate the settings fix onto a clean runtime-verification lane, then rerun `issue-006`.
   - Do not claim the AFK frontier is unblocked until the updated runtime lane reaches a terminal state or explicit blocker.
+
+## 2026-05-11T13:52:26+0700
+- Goal: align harness routing policy with the actually available local GPT-5.4 provider so `pi /skill:g-planning` and `pi /skill:g-coding` worker commands stop selecting stale `openai-codex` fallbacks.
+- Files changed and why:
+  - `.pi/agent/models.json` — switched remaining runtime routing provider/fallback references from `openai-codex/gpt-5.4*` to `github-copilot/gpt-5.4*` for active worker/recovery/validation paths and backend implementation fallback.
+  - `tests/extension-units/harness-routing.test.ts` — updated route expectations to assert the active fallback/override IDs now resolve to `github-copilot/gpt-5.4*`.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this second runtime-debugging evidence entry.
+- Tests added or changed:
+  - `tests/extension-units/harness-routing.test.ts` expectations updated for the active fallback provider.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/harness-routing.test.ts`
+  - Failure reason: repo routing still resolved `backend_implementation` and budget-pressure role-only paths to `openai-codex/gpt-5.4*`, contradicting the live runtime environment and the updated expected fallback provider.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/harness-routing.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/harness-routing.test.ts >/tmp/task1778474916959-routing-$i.txt 2>&1 || exit 1; done && echo '3 consecutive harness-routing test passes'`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && pi --help > /tmp/task1778474916959-pi-help-post-models.txt 2>&1 && ! grep -q 'No models match pattern' /tmp/task1778474916959-pi-help-post-models.txt && echo 'pi help remains warning-free'`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify && npm --silent run harness:worker-execute -- run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-006 --max-steps 8 --max-runtime-seconds 900 --json`
+- Wiring verification evidence:
+  - `harness-routing` now resolves the active backend implementation fallback to `github-copilot/gpt-5.4` and role-only budget pressure to `github-copilot/gpt-5.4-mini`.
+  - Plain `pi` startup remains warning-free in the authoritative task worktree after the routing-policy update.
+  - The rerun still failed, so model bootstrap was only one blocker; another worker-command/runtime issue remains to be isolated.
+- Behavior changes and risk notes:
+  - Repo-local routing policy now matches the locally available GPT-5.4 provider family instead of stale `openai-codex` IDs.
+  - The AFK frontier is still not unblocked because issue-006 failed again after the routing fix.
+- Follow-ups or known gaps:
+  - Inspect the new worker artifact `worker-20260511t063157z.json` and preserved worker worktree for the next blocker.
+  - Do not advance remaining AFK issues automatically until the post-routing failure is explained.

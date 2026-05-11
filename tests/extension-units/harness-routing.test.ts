@@ -22,10 +22,10 @@ test("backend phase lane uses high-thinking fallback while gpt-5.5 is unverified
   assert.equal(result.phaseRoutingSource, "fallback_until_verified");
   assert.equal(result.requestedModelVerificationStatus, "unverified");
   assert.equal(result.requestedModelTarget, "gpt-5.5");
-  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4");
+  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4");
   assert.equal(result.thinking, "high");
-  assert.notEqual(result.selectedModelId, "openai-codex/gpt-5.5");
-  assert.match(result.policyNotes.join("\n"), /using verified fallback openai-codex\/gpt-5\.4/);
+  assert.notEqual(result.selectedModelId, "github-copilot/gpt-5.5");
+  assert.match(result.policyNotes.join("\n"), /using verified fallback github-copilot\/gpt-5\.4/);
 });
 
 test("screen and frontend phase lanes use verified fallback while opus-4.7 is unverified", async () => {
@@ -81,11 +81,11 @@ test("explicit allowed modelOverride takes precedence over phase lane", async ()
   const result = resolveHarnessRoute(await repoConfig(), {
     role: "backend_worker",
     reason: "human_override",
-    modelOverride: "openai-codex/gpt-5.4",
+    modelOverride: "github-copilot/gpt-5.4",
     phaseLane: "backend_implementation",
   });
 
-  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4");
+  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4");
   assert.equal(result.source, "default");
   assert.equal(result.phaseRoutingSource, "explicit_override_precedence");
   assert.match(result.policyNotes.join("\n"), /Explicit model override takes precedence/);
@@ -106,7 +106,7 @@ test("role-only routing remains backward compatible", async () => {
     budgetMode: "conserve",
   });
 
-  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4-mini");
+  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4-mini");
   assert.equal(result.source, "budget_override");
   assert.equal(result.thinking, "minimal");
   assert.equal(result.phaseLane, null);
