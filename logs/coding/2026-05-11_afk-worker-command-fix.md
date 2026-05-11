@@ -590,3 +590,29 @@ LOW
 ### Next Action
 - Do not land yet.
 - Fix or resolve the failing `Repo Static Checks` CI gate, then rerun compact PR inspection and `npm run harness:merge -- check --pr 141 --json` before any merge/apply step.
+
+## 2026-05-11T21:21:20+0700
+- Goal: unblock PR #141 landing by fixing the failing `Repo Static Checks` CI gate caused by stale static expectations for the backend implementation phase fallback model.
+- Files changed and why:
+  - `scripts/check-repo-static.sh` — updated the phase-routing static assertion to expect the repo’s current verified backend fallback model `github-copilot/gpt-5.4` instead of stale `openai-codex/gpt-5.4`.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this CI-unblock evidence entry.
+- Tests added or changed:
+  - none; this slice updates static validation expectations only.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - failed with `AssertionError` because the static check still expected backend phase fallback `openai-codex/gpt-5.4` while `.pi/agent/models.json` and harness-routing tests already use `github-copilot/gpt-5.4`.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/harness-routing.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/harness-routing.test.ts; ./scripts/check-repo-static.sh; done`
+- Wiring verification evidence:
+  - `scripts/check-repo-static.sh` now matches the actual `phase_routing_profiles.backend_implementation.fallbackModelId` value in `.pi/agent/models.json`.
+  - `tests/extension-units/harness-routing.test.ts` still passes, confirming the static check and runtime routing expectations are aligned again.
+- Behavior changes and risk notes:
+  - no runtime behavior changed; this is a CI/static-validation alignment fix for the existing routing configuration.
+  - remaining merge risk is now CI re-run timing / GitHub state, not a known local static-check mismatch.
+- Follow-ups or known gaps:
+  - push this CI-unblock commit, wait for PR #141 checks to go green, then run the bounded merge helper and sync local `main`.
