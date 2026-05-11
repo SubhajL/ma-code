@@ -700,3 +700,36 @@ LOW
   - after this slice, the remaining landing risk should only be GitHub check propagation / merge-state refresh.
 - Follow-ups or known gaps:
   - push this recovery-validator alignment commit, wait for PR #141 checks to go fully green, then run merge helper with `--sync-main`.
+
+## 2026-05-11T22:08:30+0700
+- Goal: clear the remaining `Recovery-runtime validation` CI gate and finish aligning the validator stack with the repo’s current routed provider IDs.
+- Files changed and why:
+  - `scripts/validate-recovery-runtime.sh` — aligned recovery-runtime validator cases with the repo’s current `github-copilot/gpt-5.4*` routing baseline while preserving the validator-worker stricter anthro escalation case and the provider-switch case semantics.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this final CI-unblock evidence entry.
+- Tests added or changed:
+  - none; this slice updates executable validation expectations only.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-runtime.sh`
+  - failed because the executable recovery-runtime validator still mixed stale `openai-codex/gpt-5.4*` expectations with repo-current `github-copilot/gpt-5.4*` routing behavior.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-runtime.sh`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-policy.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-harness-routing.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-task-packets.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+- Wiring verification evidence:
+  - all validator surfaces now pass together locally against the current routing/recovery configuration:
+    - `validate-harness-routing.sh`
+    - `validate-task-packets.sh`
+    - `validate-recovery-policy.sh`
+    - `validate-recovery-runtime.sh`
+    - `check-repo-static.sh`
+    - `check-foundation-extension-compile.sh`
+- Behavior changes and risk notes:
+  - no product/runtime behavior changed; these are executable-validator alignment fixes only.
+  - remaining landing risk should now be limited to GitHub check rerun/merge-state refresh and lifecycle helper evidence, not failing local validators.
+- Follow-ups or known gaps:
+  - push this final validator-alignment commit, wait for PR #141 checks to refresh green, then re-run merge readiness and land with `--sync-main`.
