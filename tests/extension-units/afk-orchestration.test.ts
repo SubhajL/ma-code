@@ -232,6 +232,7 @@ test("apply writes an AFK run artifact and creates queue jobs only through queue
   assert.ok(queue.jobs.every((job) => job.queueJobSource?.kind === "issue-materialization"));
   assert.ok(queue.jobs.every((job) => job.approvalRequired === false));
   assert.ok(queue.jobs.every((job) => job.tddSlice));
+  assert.match(queue.jobs[0]?.implementationCommand ?? "", /--no-extensions/);
   assert.match(queue.jobs[0]?.implementationCommand ?? "", /--model "github-copilot\/gpt-5\.4"/);
   assert.match(queue.jobs[0]?.implementationCommand ?? "", /--thinking "high"/);
   assert.match(queue.jobs[0]?.implementationCommand ?? "", /\/skill:g-planning/);

@@ -251,3 +251,30 @@ Review Verdict: changes_required
 - Follow-ups or known gaps:
   - Re-run issue-006 from a fresh runtime lane that starts from the updated task branch.
   - If issue-006 still fails after this baseRef fix, the next blocker is no longer stale branch/config inheritance and should be treated as a new concrete defect.
+
+## 2026-05-11T15:00:55+0700
+- Goal: prevent nested AFK worker `pi` skill commands from loading repo-local extension files that are not valid Pi factory exports.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` — added `--no-extensions` to generated nested `pi` skill commands so AFK worker execution does not fail while bootstrapping repo-local utility modules as Pi extensions.
+  - `tests/extension-units/afk-orchestration.test.ts` — extended the public queue-job assertion to require `--no-extensions` on derived implementation commands.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this blocker-diagnosis/TDD evidence entry.
+- Tests added or changed:
+  - `tests/extension-units/afk-orchestration.test.ts` now verifies the queue-materialized command includes `--no-extensions` alongside explicit model/thinking flags.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - Failure reason: derived AFK implementation commands still lacked `--no-extensions`, and a bounded manual repro in the preserved worker worktree showed nested `pi` failing with `Extension does not export a valid factory function` for repo utility modules such as `afk-worker-execution-plan.ts` and `git-dirty-runtime-artifacts.ts`.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/harness-routing.test.ts >/tmp/task1778474916959-fullscope-$i.txt 2>&1 || exit 1; done && ./scripts/check-foundation-extension-compile.sh && git diff --check && echo '3 consecutive full-scope passes + compile + diff-check'`
+  - bounded manual repro command in the preserved worker worktree used to isolate the failure mode before the fix:
+    - `timeout 60s bash -lc "$cmd" > /tmp/issue006-manual.txt 2>&1`
+- Wiring verification evidence:
+  - Queue-materialized AFK implementation commands are the only source used by worker execution for nested `pi` skill invocation, and those commands now explicitly disable repo-local extension loading.
+  - This keeps nested `pi` skill sessions focused on skills/prompts/logs instead of trying to bootstrap every repo utility module as a Pi extension.
+- Behavior changes and risk notes:
+  - New AFK worker nested `pi` commands will run with explicit model/thinking flags and without repo extension auto-loading.
+  - This avoids the confirmed extension-factory bootstrap failure, but a fresh runtime lane is still required because already-materialized queue jobs keep the old command string.
+- Follow-ups or known gaps:
+  - Materialize one more fresh runtime lane from current HEAD and rerun issue-006.
+  - If issue-006 still fails after this fix, the next blocker is neither stale model selection nor extension auto-loading and must be treated as a new concrete runtime defect.
