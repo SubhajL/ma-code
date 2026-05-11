@@ -485,3 +485,68 @@ LOW
   - a new fresh-lane runtime proof is still required because the earlier fresh6 evidence is invalidated by the wrapper parse failure.
 - Follow-ups or known gaps:
   - rerun fresh issue-006 verification from a new lane built from the post-fix commit.
+
+## 2026-05-12 Continuation Alignment
+
+- Confirmed this continuation is the same fix family: untangle MO -> queue -> AFK worker execution by using structured same-runtime worker execution plans instead of brittle nested process command derivation.
+- Active continuation should occur only in `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9`; the primary cwd is on a prior dirty branch and should not be used for new edits.
+- Next validation focus: prove task acceptance locally first, then perform at most one bounded live MO/worker proof only if necessary.
+
+## 2026-05-12 Validation, QCHECK, and g-check Handoff
+
+- Goal of this unit of work:
+  - validate and prepare the AFK same-runtime worker execution fix for PR creation and landing.
+  - keep work scoped to `task-1778474916959` and the `task/task-1778474916959-runtime-verify-fresh9` worktree.
+- Files changed in this continuation:
+  - `reports/planning/2026-05-11_afk-worker-command-fix-plan.md`: appended continuation alignment plan.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md`: appended continuation, validation, and review evidence.
+- Tests added or changed in this continuation:
+  - none; this continuation validated the already-implemented tests on the task branch.
+- RED command and key failure reason:
+  - no new RED run was practical in this landing continuation because the branch already contained the implementation and historical RED/GREEN evidence from earlier slices; this unit focused on validation, review, and landing.
+  - historical acceptance blocker preserved in task evidence: worker job `issue-006` had `codingStatus=skipped` / `No implementation command was provided` before structured `workerExecutionPlan` execution.
+- GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && for i in 1 2 3; do echo "--- targeted test run $i/3 ---"; node --import tsx --test tests/extension-units/worker-same-runtime-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts || exit $?; done`
+  - result: all three runs passed; each run reported `tests 25`, `pass 25`, `fail 0`.
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/check-foundation-extension-compile.sh`
+  - result: `foundation-extension-compile-ok`.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && git diff --check main...HEAD && git diff --check`
+  - result: passed with no output.
+- Wiring verification evidence:
+  - `.pi/agent/extensions/afk-orchestration.ts` materializes AFK queue jobs with `workerExecutionPlan`.
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` builds `same_runtime_prompt` plans and excludes brittle `/skill:g-planning` / `/skill:g-coding` process prompts from the worker plan.
+  - `.pi/agent/extensions/worker-execution.ts` resolves `workerExecutionPlan` from input/job and runs it before legacy `implementationCommand` fallback.
+  - `.pi/agent/extensions/worker-same-runtime-execution.ts` builds the deterministic same-runtime bridge invocation.
+  - `.pi/agent/extensions/queue-runner.ts` and worker-execution tests cover terminal queue/task finalization behavior.
+  - `.pi/agent/state/schemas/queue.schema.json` includes the new `workerExecutionPlan` queue-job shape.
+- Behavior changes and risk notes:
+  - fresh AFK worker jobs now execute through a structured same-runtime plan instead of failing solely because `implementationCommand` is absent.
+  - legacy `implementationCommand` remains for older queued jobs.
+  - downstream greenfield `issue-006` may still fail at `npm run test:web -- design-tokens`; that is outside this worker-plumbing fix.
+  - untracked `docs/initiatives/greenfield-scaffold/afk-runs/` and `worker-runs/` artifacts remain runtime evidence in the worktree and are not intended for this source PR.
+- Follow-ups or known gaps:
+  - after landing, resume MO/queue progression and treat issue-006 design-token validation as the next explicit downstream blocker if it recurs.
+
+### Manual g-check Review
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- none
+
+## Open Questions / Assumptions
+- Assumption: provider/model config changes to `github-copilot/gpt-5.4` remain intended because prior runtime evidence showed the old `openai-codex` defaults were unavailable in nested/worker execution.
+- Assumption: generated `afk-runs/` and `worker-runs/` artifacts should remain untracked runtime evidence and should not be included in this PR.
+
+## Recommended Tests / Validation
+- completed: targeted worker/AFK test scope passed 3 consecutive times.
+- completed: foundation extension compile check passed.
+- completed: `git diff --check` passed.
+
+## Rollout Notes
+- land as harness runtime change; after merge, sync local main and resume queue only after confirming the merged main includes the same-runtime worker execution plan.
+- stop at downstream issue-006 validation failure rather than conflating it with worker execution bootstrap.
+
+Review Verdict: no_required_fixes

@@ -332,3 +332,13 @@
   - prompt contract too weak if child skills are removed without enough direct instruction
   - accidental scope growth into a broader queue/runtime redesign
   - repeated expensive live reruns without new information
+
+## 2026-05-12 Continuation Alignment Plan
+
+- Discovery path: Auggie attempted with a 2s bound and timed out; continued with local task-state, git/worktree, log, and targeted source inspection.
+- Goal: finish `task-1778474916959` by keeping the AFK/MO worker execution fix focused on structured `workerExecutionPlan` / `same_runtime_prompt` dispatch and clean queue/task finalization.
+- Active worktree: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9` on branch `task/task-1778474916959-runtime-verify-fresh9`.
+- Non-goal: do not fix downstream greenfield `issue-006` design-token validation in this task; treat it as the next blocker once worker plumbing is proven.
+- First TDD slice: verify a fresh AFK queue job materializes `workerExecutionPlan.strategy = same_runtime_prompt`, worker execution prefers that structured plan over legacy `implementationCommand`, and missing plan/command blocks explicitly.
+- Validation slice: rerun `node --import tsx --test tests/extension-units/worker-same-runtime-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts`; use no more than one bounded live MO/worker proof if local evidence is insufficient.
+- Acceptance checks: worker jobs do not fail solely from absent implementation commands; failed validation paths finalize queue/task active state; issue-006 validation failure is recorded as downstream rather than worker-bootstrap failure.
