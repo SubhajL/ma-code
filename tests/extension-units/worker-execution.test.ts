@@ -210,6 +210,28 @@ test("max step budget is respected before worktree execution", async () => {
   assert.match(result.stopReason ?? "", /max step budget/);
 });
 
+test("run ignores generated initiative runtime run artifacts when checking worktree cleanliness", async () => {
+  const cwd = await writeFixture();
+  await mkdir(join(cwd, "docs", "initiatives", "greenfield-scaffold", "afk-runs"), { recursive: true });
+  await writeFile(join(cwd, "docs", "initiatives", "greenfield-scaffold", "afk-runs", "afk-test.json"), "{}\n", "utf8");
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-ignores-afk-runs",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    implementationCommand: "node -e \"require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n')\"",
+    validationCommands: ["node -e \"process.exit(0)\""],
+  });
+
+  assert.equal(result.status, "review_ready");
+  assert.doesNotMatch(result.stopReason ?? "", /dirty or conflicted worktree|afk-runs/);
+});
+
 test("protected and outside-allowed path mutations are blocked", async () => {
   const protectedCwd = await writeFixture({ issueOverrides: { allowedPaths: [".pi/agent/state/runtime"] }, jobOverrides: { allowedPaths: [".pi/agent/state/runtime"] } });
   const protectedResult = await runWorkerExecution({ repoRoot: protectedCwd, command: "dry-run", initiativeId: "greenfield-scaffold", queueJobId: "afk-greenfield-scaffold-issue-002" });
