@@ -553,3 +553,40 @@ LOW
 ### Rollout Notes
 - New AFK queue jobs now use `workerExecutionPlan`; older queued jobs still fall back to `implementationCommand` for compatibility.
 - Review Verdict: no_required_fixes
+
+## Submission (2026-05-11T21:11:32+0700)
+
+### Submitted
+- Repo: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix
+- Branch: task/task-1778474916959-afk-worker-command-fix
+- Base: main
+- Commands Run:
+  - `git push -u origin task/task-1778474916959-afk-worker-command-fix`
+  - `gh pr create --base main --head task/task-1778474916959-afk-worker-command-fix --title "feat(afk): add same-runtime worker execution plan" --body-file .pi/agent/artifacts/pr/task-1778474916959-pr-body.md`
+  - `gh pr view 141 --json number,url,state,mergeStateStatus,headRefName,baseRefName,isDraft,reviewDecision,statusCheckRollup`
+  - `gh pr checks 141`
+  - `npm run harness:merge -- check --pr 141 --json`
+
+### Submission Result
+- PR: #141
+- URL: https://github.com/SubhajL/ma-code/pull/141
+- State: OPEN
+- Draft: false
+- Head/Base: task/task-1778474916959-afk-worker-command-fix -> main
+- Current mergeStateStatus: BLOCKED
+
+### Compact Check Status
+- Passing:
+  - CodeQL
+  - Dependency Review
+  - Foundation Extension Compile
+  - Routing Validators
+- Failing:
+  - Repo Static Checks
+- Merge helper status:
+  - not ready to apply while PR mergeStateStatus is `BLOCKED`
+  - one merge-helper check attempt also hit a transient GitHub `gh pr checks` 504 timeout before later PR inspection confirmed the blocking CI state
+
+### Next Action
+- Do not land yet.
+- Fix or resolve the failing `Repo Static Checks` CI gate, then rerun compact PR inspection and `npm run harness:merge -- check --pr 141 --json` before any merge/apply step.
