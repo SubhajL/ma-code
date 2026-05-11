@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import type { QueueJob } from "./queue-runner.ts";
+import type { QueueJob, QueueJobWorkerExecutionPlan } from "./queue-runner.ts";
 
 export interface AfkWorkerExecutionPlanIssue {
   issueId: string;
@@ -12,12 +12,6 @@ export interface AfkWorkerExecutionPlanIssue {
   filesToModify?: string[];
   validationProof?: string[];
   domains?: string[];
-}
-
-interface PiRepoSettings {
-  defaultProvider?: string;
-  defaultModel?: string;
-  defaultThinkingLevel?: string;
 }
 
 const OPERATIONAL_LOG_PATHS = [
@@ -48,40 +42,42 @@ function summarizeTddSlice(tddSlice: QueueJob["tddSlice"] | undefined): string {
   ].join(" ");
 }
 
-function shellSingleQuote(value: string): string {
-  return `'${value.replace(/'/g, `'"'"'`)}'`;
+function splitProviderModel(value: string | undefined): { provider?: string; modelId?: string } {
+  if (!value) return {};
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return {};
+  const slashIndex = trimmed.indexOf("/");
+  if (slashIndex <= 0 || slashIndex === trimmed.length - 1) return { modelId: trimmed };
+  return {
+    provider: trimmed.slice(0, slashIndex),
+    modelId: trimmed.slice(slashIndex + 1),
+  };
 }
 
-function readRepoPiInvocation(repoRoot: string): { modelId?: string; thinking?: string } {
+function readRepoPiInvocation(repoRoot: string): { provider?: string; modelId?: string; thinkingLevel?: QueueJobWorkerExecutionPlan["thinkingLevel"] } {
   try {
-    const raw = JSON.parse(readFileSync(resolve(repoRoot, ".pi", "settings.json"), "utf8")) as PiRepoSettings;
-    const defaultProvider = raw.defaultProvider?.trim() ?? "";
-    const defaultModel = raw.defaultModel?.trim() ?? "";
-    const modelId = defaultModel.includes("/")
-      ? defaultModel
-      : defaultProvider && defaultModel
-        ? `${defaultProvider}/${defaultModel}`
-        : undefined;
+    const settingsPath = resolve(repoRoot, ".pi", "settings.json");
+    const raw = JSON.parse(readFileSync(settingsPath, "utf8")) as {
+      defaultModel?: string;
+      defaultProvider?: string;
+      defaultThinkingLevel?: string;
+    };
+    const combinedModelId = raw.defaultModel?.includes("/")
+      ? raw.defaultModel
+      : raw.defaultProvider && raw.defaultModel
+        ? `${raw.defaultProvider}/${raw.defaultModel}`
+        : raw.defaultModel;
     const thinking = raw.defaultThinkingLevel?.trim();
     return {
-      modelId,
-      thinking: thinking && VALID_THINKING_LEVELS.has(thinking) ? thinking : undefined,
+      ...splitProviderModel(combinedModelId),
+      thinkingLevel: thinking && VALID_THINKING_LEVELS.has(thinking) ? thinking as QueueJobWorkerExecutionPlan["thinkingLevel"] : undefined,
     };
   } catch {
     return {};
   }
 }
 
-function buildPiCommand(repoRoot: string, prompt: string): string {
-  const invocation = readRepoPiInvocation(repoRoot);
-  const segments = ["pi", "--print", "--no-session", "--no-extensions"];
-  if (invocation.modelId) segments.push("--model", JSON.stringify(invocation.modelId));
-  if (invocation.thinking) segments.push("--thinking", JSON.stringify(invocation.thinking));
-  segments.push(JSON.stringify(prompt));
-  return segments.join(" ");
-}
-
-function buildCodingPrompt(initiativeId: string, issue: AfkWorkerExecutionPlanIssue, tddSlice: QueueJob["tddSlice"] | undefined): string {
+function buildSameRuntimePrompt(initiativeId: string, issue: AfkWorkerExecutionPlanIssue, tddSlice: QueueJob["tddSlice"] | undefined): string {
   const goal = issue.whatToBuild?.trim() || issue.title;
   const allowedPaths = normalizeAllowedPaths(issue.allowedPaths);
   const filesToModify = normalizeList(issue.filesToModify);
@@ -94,28 +90,37 @@ function buildCodingPrompt(initiativeId: string, issue: AfkWorkerExecutionPlanIs
       ? "Also follow backend safety guidance when touching backend files."
       : "";
   return [
-    "/skill:g-coding",
     `Implement AFK issue ${issue.issueId} for initiative ${initiativeId}.`,
     `Goal: ${goal}.`,
-    "The planning inputs are already supplied in this prompt; do not run a separate planning pass before coding.",
     `Allowed paths: ${allowedPaths.join(", ") || "none"}.`,
     `Files to modify: ${filesToModify.join(", ") || "none"}.`,
     `Acceptance criteria: ${acceptance.join(" | ") || "none"}.`,
     `Validation commands to run after implementation: ${validation.join(" | ") || "none"}.`,
     summarizeTddSlice(tddSlice),
     domainSafety,
-    "Use strict TDD, keep changes bounded, update Pi logs, and stop before PR creation.",
+    "Use strict TDD: add or update the smallest relevant failing test first, confirm RED for the right reason, implement the smallest passing change, then rerun the relevant validation commands.",
+    "Read logs/CURRENT.md before updating logs, append progress to the active coding log, and keep Pi log conventions intact.",
+    "Do not create a PR, do not merge, and stop after bounded implementation plus validation evidence.",
   ].join(" ");
 }
 
-export function buildAfkImplementationCommand(
+export function buildAfkWorkerExecutionPlan(
   repoRoot: string,
   initiativeId: string,
   issue: AfkWorkerExecutionPlanIssue,
   tddSlice: QueueJob["tddSlice"] | undefined,
-): string {
-  const codingPrompt = buildCodingPrompt(initiativeId, issue, tddSlice);
-  return `bash -lc ${shellSingleQuote(buildPiCommand(repoRoot, codingPrompt))}`;
+): QueueJobWorkerExecutionPlan {
+  const invocation = readRepoPiInvocation(repoRoot);
+  return {
+    strategy: "same_runtime_prompt",
+    prompt: buildSameRuntimePrompt(initiativeId, issue, tddSlice),
+    toolProfile: "coding",
+    includeProjectExtensions: false,
+    includeContextFiles: true,
+    provider: invocation.provider,
+    modelId: invocation.modelId,
+    thinkingLevel: invocation.thinkingLevel,
+  };
 }
 
 export function isOperationalLogPath(pathValue: string): boolean {

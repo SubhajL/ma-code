@@ -128,6 +128,17 @@ export interface QueueJobWorkerExecutionLinkage {
   updatedAt: string;
 }
 
+export interface QueueJobWorkerExecutionPlan {
+  strategy: "same_runtime_prompt";
+  prompt: string;
+  toolProfile?: "none" | "read_only" | "coding";
+  includeProjectExtensions?: boolean;
+  includeContextFiles?: boolean;
+  provider?: string;
+  modelId?: string;
+  thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh";
+}
+
 export interface QueueJob {
   id: string;
   goal: string;
@@ -157,6 +168,7 @@ export interface QueueJob {
   modelOverride?: string;
   redCommand?: string;
   implementationCommand?: string;
+  workerExecutionPlan?: QueueJobWorkerExecutionPlan | null;
   validationCommands?: string[];
   tddSlice?: TaskPacketInput["tddSlice"];
   qualityInput?: QualityQueueInput | null;
@@ -379,6 +391,20 @@ function cloneQueueJobTddSlice(tddSlice: TaskPacketInput["tddSlice"]): TaskPacke
     boundaryDependencies: [...tddSlice.boundaryDependencies],
     mockPlan: tddSlice.mockPlan,
     outOfScopeBehaviors: [...tddSlice.outOfScopeBehaviors],
+  };
+}
+
+function cloneQueueJobWorkerExecutionPlan(plan: QueueJob["workerExecutionPlan"]): QueueJob["workerExecutionPlan"] {
+  if (!plan) return null;
+  return {
+    strategy: plan.strategy,
+    prompt: plan.prompt,
+    toolProfile: plan.toolProfile,
+    includeProjectExtensions: plan.includeProjectExtensions,
+    includeContextFiles: plan.includeContextFiles,
+    provider: plan.provider,
+    modelId: plan.modelId,
+    thinkingLevel: plan.thinkingLevel,
   };
 }
 
@@ -1039,6 +1065,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     ),
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
     notes: [...(job.notes ?? [])],
+    workerExecutionPlan: cloneQueueJobWorkerExecutionPlan(job.workerExecutionPlan),
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),
     qualityInput: job.qualityInput ?? null,
     graphifyOrchestration: job.graphifyOrchestration ?? null,

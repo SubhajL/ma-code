@@ -7,7 +7,7 @@ import {
   type QueueJob,
   type QueueJobStatus,
 } from "./queue-runner.ts";
-import { buildAfkImplementationCommand } from "./afk-worker-execution-plan.ts";
+import { buildAfkWorkerExecutionPlan } from "./afk-worker-execution-plan.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -519,7 +519,7 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
     assignedRole: assignedRoleForDomains(domains ?? []),
     routeReason: "default",
     budgetMode: "balanced",
-    implementationCommand: buildAfkImplementationCommand(repoRoot, initiativeId, issue, tddSlice),
+    workerExecutionPlan: buildAfkWorkerExecutionPlan(repoRoot, initiativeId, issue, tddSlice),
     validationCommands: normalizeStringArray(issue.validationProof),
     tddSlice,
     queueJobSource: {

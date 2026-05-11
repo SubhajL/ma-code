@@ -264,3 +264,71 @@
   - implementation commit `3716875` already exists
   - the task is still blocked on runtime verification / final evidence, not yet ready for landing
   - the remaining path to PR creation, `origin/main`, and local `main` landing is now explicitly sequenced
+
+## 2026-05-11T16:58:38+0700 - optimal gap-fix planning refresh
+- Goal:
+  - decide whether the current AFK worker path is optimized after fresh runtime verification and define the best bounded architectural fix.
+- Discovery used:
+  - attempted `auggie_discover` with a 2s bound; it timed out
+  - continued with direct inspection of `afk-worker-execution-plan.ts`, `afk-orchestration.ts`, `queue-runner.ts`, `worker-execution.ts`, `same-runtime-bridge.ts`, `issue-006.summary.json`, and the fresh runtime evidence from `worker-20260511t091229z`
+  - used `second_model_plan`; it converged on moving AFK worker execution off nested CLI and onto a same-runtime child-session path
+- Current truth:
+  - the simplified single nested `/skill:g-coding` command is an improvement, but it is not the optimized end state
+  - fresh-lane proof shows issue-006 still fails after a 900s bounded run even with the simplified command
+  - queue/task finalization is now healthy; the remaining gap is the implementation execution mechanism itself
+- Recommended architecture:
+  - introduce a structured worker execution plan for AFK jobs instead of relying only on `implementationCommand` shell strings
+  - execute AFK implementation work through a same-runtime child-session helper that reuses shared auth/model state and coding tools, rather than spawning nested `pi /skill:...` CLI commands
+  - keep legacy `implementationCommand` fallback only for older queued jobs during migration
+- First TDD slice for implementation:
+  - tracer behavior: a fresh AFK queue job for issue-006 is executed through a same-runtime worker execution plan instead of `bash -lc 'pi ...'`
+  - proving public surface: `queue.jobs[].workerExecutionPlan`, `runWorkerExecution(...).steps.coding`, and preserved `worker-runs/*.json`
+  - boundary plan: stub the same-runtime execution helper in unit tests; do not use live provider calls in the first slice
+  - out of scope for first slice: removing all legacy command-string fallback for already-materialized jobs
+- Acceptance for the next implementation slice:
+  - new AFK queue jobs materialize a structured same-runtime execution plan for implementation work
+  - worker execution prefers the structured same-runtime path and only falls back to `implementationCommand` when necessary for backward compatibility
+  - targeted unit tests cover plan materialization, worker execution dispatch, failure propagation, and finalization
+  - fresh runtime verification for issue-006 proves the new path either succeeds or fails with richer structured evidence than a bare shell exit
+
+## 2026-05-11T17:09:02+0700 - execution-through-landing planning refresh
+- Intent handled conservatively:
+  - the human asked to implement through PR creation and landing, but this turn is explicitly routed to `g-planning`
+  - no code was implemented in this turn; this entry records the execution-ready plan and the required skill sequence for the next turns
+- Goal:
+  - finish `task-1778474916959` from implementation of the same-runtime AFK worker path through review, validation, PR creation, `origin/main` landing, and local `main` sync
+- Recommended execution sequence:
+  - `g-coding`:
+    - add structured `workerExecutionPlan` support
+    - add same-runtime worker execution helper
+    - keep `implementationCommand` fallback for old jobs
+    - complete targeted RED/GREEN tests and one fresh issue-006 runtime proof
+  - `g-check`:
+    - skeptical working-tree review after the implementation slice is validation-clean
+  - `g-create`:
+    - create bounded commit set from the reviewed working tree
+    - prefer Graphite (`gt`) because it is installed; use git fallback only if Graphite blocks
+  - validator / live proof:
+    - run one provider-backed validator or equivalent bounded live proof only where local evidence is insufficient
+  - `g-submit`:
+    - create/update PR using `gt` or `gh`
+    - land only after review/validation/CI gates are satisfied
+  - local sync:
+    - fast-forward or re-sync local `main` only after `origin/main` reflects the landed change
+- Landing gates before PR/merge:
+  - structured same-runtime AFK path implemented and tested
+  - fresh issue-006 runtime verification no longer depends on nested CLI skill execution
+  - `g-check` verdict is `no_required_fixes`
+  - required fast gates pass
+  - one bounded live validation run is recorded if live proof is still needed
+  - PR-ready evidence is present in the task and Pi logs
+- First execution slice TDD contract:
+  - tracer behavior: fresh AFK queue jobs for issue-006 materialize and execute `workerExecutionPlan.strategy = same_runtime_prompt`
+  - public proof: `queue.jobs[].workerExecutionPlan`, `worker-runs/*.json`, `.pi/agent/state/runtime/queue.json`
+  - boundary plan: stub same-runtime execution in unit tests first; keep old command fallback intact
+  - out of scope: removing legacy fallback for old queue jobs in the first slice
+- Main risks called out for landing:
+  - same-runtime child-session lifecycle bugs
+  - prompt contract too weak if child skills are removed without enough direct instruction
+  - accidental scope growth into a broader queue/runtime redesign
+  - repeated expensive live reruns without new information

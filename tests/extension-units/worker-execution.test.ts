@@ -193,6 +193,63 @@ test("run uses queue job implementation command fallback and allows Pi log artif
   assert.ok(result.steps.coding.changedFiles.includes("reports/planning/test.md"));
 });
 
+test("run prefers structured same-runtime worker execution plans over legacy implementation commands", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      implementationCommand: "node -e \"process.exit(17)\"",
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement the bounded docs update and return success.",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "github-copilot",
+        modelId: "gpt-5.4",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-same-runtime-plan",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    reviewVerdict: "no_required_fixes",
+    sameRuntimeExecutor: async (worktreePath, plan) => {
+      assert.equal(plan.strategy, "same_runtime_prompt");
+      assert.equal(plan.modelId, "gpt-5.4");
+      await mkdir(join(worktreePath, "logs", "coding"), { recursive: true });
+      await mkdir(join(worktreePath, "reports", "planning"), { recursive: true });
+      await mkdir(join(worktreePath, "docs", "initiatives", "greenfield-scaffold"), { recursive: true });
+      await writeFile(join(worktreePath, "docs", "initiatives", "greenfield-scaffold", "notes.md"), "ok\n", "utf8");
+      await writeFile(join(worktreePath, "logs", "CURRENT.md"), "# current\n", "utf8");
+      await writeFile(join(worktreePath, "logs", "coding", "task.md"), "## log\n", "utf8");
+      await writeFile(join(worktreePath, "reports", "planning", "task.md"), "## plan\n", "utf8");
+      return {
+        command: "same_runtime_prompt",
+        exitCode: 0,
+        stdout: "__PI_OK__\nok",
+        stderr: "",
+        durationMs: 1,
+      };
+    },
+  });
+
+  assert.equal(result.status, "review_ready");
+  assert.equal(result.steps.coding.status, "passed");
+  assert.match(result.steps.coding.greenCommand ?? "", /same_runtime_prompt/);
+  assert.ok(result.steps.coding.changedFiles.includes("docs/initiatives/greenfield-scaffold/notes.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("logs/CURRENT.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("logs/coding/task.md"));
+  assert.ok(result.steps.coding.changedFiles.includes("reports/planning/task.md"));
+});
+
 test("resume refuses terminal worker runs", async () => {
   const cwd = await writeFixture();
   await runWorkerExecution({

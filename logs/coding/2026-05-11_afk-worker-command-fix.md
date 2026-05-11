@@ -391,3 +391,97 @@ LOW
 ### Rollout Notes
 - This change only affects newly materialized AFK queue jobs; older preserved queue jobs still contain the prior chained command form.
 - Review Verdict: no_required_fixes
+
+## 2026-05-11T16:30:11+0700
+- Goal: run one fresh-lane runtime verification from current task HEAD after commit `6d1f341` to prove whether the simplified single-command AFK worker path unblocks issue-006.
+- Files changed and why:
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended fresh runtime verification evidence and the new blocker statement.
+- Tests added or changed:
+  - none; runtime verification only.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh5 && npm --silent run harness:worker-execute -- run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-006 --max-steps 8 --max-runtime-seconds 900 --json`
+  - Result: fresh worker run `worker-20260511t091229z` still failed after the full bounded 900s window; the simplified single `/skill:g-coding` nested command exited 1 with no changed files.
+- Exact GREEN command:
+  - none for end-to-end issue-006 completion; the runtime verification remained blocked.
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh5 && npm --silent run harness:afk-orchestrate -- apply --initiative greenfield-scaffold --max-parallel 1 --json`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh5 && npm --silent run harness:worker-execute -- status --initiative greenfield-scaffold --json`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh5 && npm --silent run harness:worker-execute -- explain-run --initiative greenfield-scaffold --run-id worker-20260511t091229z --json`
+- Wiring verification evidence:
+  - Fresh queue materialization in `task-1778474916959-runtime-verify-fresh5` produced `afk-greenfield-scaffold-issue-006` with the new single nested command shape: one `/skill:g-coding` invocation, no `/skill:g-planning`, no `&&`.
+  - Queue finalization worked in the fresh lane: `.pi/agent/state/runtime/queue.json` shows `activeJobId: null`, job `afk-greenfield-scaffold-issue-006` status `failed`, and worker linkage status `failed`.
+  - Linked runtime task finalization also worked: `.pi/agent/state/runtime/tasks.json` shows linked task `task-1778490749758` in `failed` status with `activeTaskId: null`.
+  - Preserved worktree `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh5-worktrees/worker-20260511t091229z-issue-006` remained clean with no tracked-file changes, confirming the worker never completed the bounded implementation slice.
+- Behavior changes and risk notes:
+  - The simplification removed the duplicated planning subprocess, but it was not sufficient to get issue-006 through the worker lane.
+  - Current best evidence now points beyond `planning && coding` chaining alone: even a single nested `g-coding` CLI run is still too heavy or otherwise failing for this AFK worker slice.
+- Follow-ups or known gaps:
+  - The next bounded fix should replace nested child `pi /skill:g-coding` execution with a same-runtime/tool-driven worker path rather than another shell-string refinement.
+  - Do not claim the AFK frontier unblocked yet; issue-006 remains the gating blocker before the next AFK/HITL boundary.
+
+## 2026-05-11T20:35:22+0700
+- Goal: implement the first bounded same-runtime AFK worker slice so fresh queue jobs stop materializing nested `/skill:g-coding` CLI commands and worker execution can prefer a structured same-runtime plan with legacy fallback.
+- Files changed and why:
+  - `.pi/agent/extensions/queue-runner.ts` — added `QueueJobWorkerExecutionPlan` typing and queue-state cloning so runtime queue jobs can persist structured same-runtime execution plans.
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` — replaced nested skill-command derivation with direct same-runtime prompt materialization, carrying repo model/thinking defaults into structured plan metadata.
+  - `.pi/agent/extensions/afk-orchestration.ts` — fresh AFK queue jobs now write `workerExecutionPlan` instead of `implementationCommand`.
+  - `.pi/agent/extensions/worker-same-runtime-execution.ts` — added deterministic same-runtime bridge command construction and plan descriptions for worker execution.
+  - `.pi/agent/extensions/worker-execution.ts` — worker execution now prefers structured same-runtime plans, supports a test seam for the same-runtime executor, and keeps legacy `implementationCommand` fallback.
+  - `.pi/agent/state/schemas/queue.schema.json` — documented the persisted `workerExecutionPlan` schema surface.
+  - `tests/extension-units/afk-orchestration.test.ts` — now proves fresh AFK jobs materialize same-runtime worker plans instead of nested skill commands.
+  - `tests/extension-units/worker-execution.test.ts` — added preference coverage proving structured same-runtime plans beat legacy command fallback.
+  - `tests/extension-units/worker-same-runtime-execution.test.ts` — added focused command-builder coverage for same-runtime bridge execution.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this implementation evidence entry.
+- Tests added or changed:
+  - added `tests/extension-units/worker-same-runtime-execution.test.ts`
+  - updated `tests/extension-units/afk-orchestration.test.ts`
+  - updated `tests/extension-units/worker-execution.test.ts`
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - failed because fresh AFK queue jobs still exposed `implementationCommand` instead of a structured same-runtime worker plan.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-same-runtime-execution.test.ts`
+  - failed because `.pi/agent/extensions/worker-same-runtime-execution.ts` did not exist yet.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-execution.test.ts`
+  - failed because worker execution had no structured same-runtime dispatch path or test seam for it.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-same-runtime-execution.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-execution.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/worker-same-runtime-execution.test.ts; done`
+- Wiring verification evidence:
+  - fresh AFK queue materialization now writes `queue.jobs[].workerExecutionPlan` with strategy `same_runtime_prompt`, explicit provider/model/thinking defaults, and a direct bounded coding prompt.
+  - `runWorkerExecution(...)` now resolves `workerExecutionPlan` before falling back to `implementationCommand`, and the new worker-execution test proves structured plans win over legacy command fallback.
+  - the same-runtime command builder targets `./.pi/agent/extensions/same-runtime-bridge.ts` through a deterministic bridge wrapper rather than `/skill:g-coding` child commands.
+- Behavior changes and risk notes:
+  - fresh AFK jobs no longer depend on nested child skill command strings for implementation dispatch.
+  - legacy jobs still retain `implementationCommand` fallback, so migration stays reversible.
+  - this slice still needs a fresh end-to-end issue-006 runtime proof before claiming the AFK frontier is unblocked.
+- Follow-ups or known gaps:
+  - run one fresh-lane issue-006 verification from current task HEAD to prove the new same-runtime path under real runtime conditions.
+  - if the same-runtime bridge wrapper still fails, the next blocker should be treated as a bridge/result-contract defect rather than another nested-skill prompt issue.
+
+## 2026-05-11T20:39:21+0700
+- Goal: fix the first same-runtime runtime-proof defect after fresh lane `task-1778474916959-runtime-verify-fresh6` failed immediately with a shell parse error in the bridge command wrapper.
+- Files changed and why:
+  - `.pi/agent/extensions/worker-same-runtime-execution.ts` — changed the bridge command builder to pass the large driver prompt through a quoted heredoc (`PROMPT=$(cat <<'__PI_PROMPT__' ...)`) instead of inline nested shell quoting.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this follow-up fix and runtime-proof diagnosis.
+- Tests added or changed:
+  - no new tests; existing command-builder coverage remained the proving surface for this shell-wrapper refinement.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh6 && npm --silent run harness:worker-execute -- run --initiative greenfield-scaffold --job-id afk-greenfield-scaffold-issue-006 --max-steps 8 --max-runtime-seconds 900 --json`
+  - failed immediately because the first same-runtime bridge wrapper used deeply nested inline shell quoting and bash reported a parse error before the bridge could run.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-same-runtime-execution.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+- Wiring verification evidence:
+  - the same-runtime execution helper now injects the bridge driver prompt via heredoc, which avoids the earlier parse failure from nested inline quoting while preserving the same `same-runtime-bridge.ts` execution path.
+- Behavior changes and risk notes:
+  - this is a shell-wrapper robustness fix only; it does not change the structured queue plan shape or worker dispatch preference.
+  - a new fresh-lane runtime proof is still required because the earlier fresh6 evidence is invalidated by the wrapper parse failure.
+- Follow-ups or known gaps:
+  - rerun fresh issue-006 verification from a new lane built from the post-fix commit.
