@@ -1,0 +1,9 @@
+{
+  "name": "@ma-code/greenfield-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import ../../node_modules/tsx/dist/loader.mjs --test src/health.test.ts",
+    "build": "../../node_modules/.bin/tsc --noEmit --allowImportingTsExtensions --target ES2022 --module NodeNext --moduleResolution NodeNext --lib ES2022 --types node src/health.ts src/server.ts src/health.test.ts"
+  }
+}
