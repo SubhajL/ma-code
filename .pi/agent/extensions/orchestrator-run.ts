@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
+import { filterMeaningfulGitDirtyLines } from "./git-dirty-runtime-artifacts.ts";
+
 const execFile = promisify(execFileCallback);
 
 export type OrchestratorRunLane = "queue_level" | "worker_job" | "parallel_lanes";
@@ -368,7 +370,7 @@ export function assertSafeDelegatedRunCommand(lane: OrchestratorRunLane, command
 export async function defaultOrchestratorRunPreflight(repoRoot: string): Promise<OrchestratorRunPreflightResult> {
   try {
     const result = await execFile("git", ["-C", repoRoot, "status", "--porcelain"], { encoding: "utf8" });
-    const dirtyLines = result.stdout.split("\n").map((line) => line.trim()).filter(Boolean);
+    const dirtyLines = filterMeaningfulGitDirtyLines(result.stdout.split("\n").map((line) => line.trim()).filter(Boolean));
     const blockers: string[] = [];
     if (dirtyLines.length > 0) blockers.push(`dirty repo: ${dirtyLines.slice(0, 5).join("; ")}`);
     if (dirtyLines.some((line) => line.includes(".pi/agent/state/runtime") || /\.env(?:\.|$)/.test(line))) blockers.push("protected path mutation is visible in git status.");

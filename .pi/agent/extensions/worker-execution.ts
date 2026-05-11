@@ -3,6 +3,7 @@ import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { filterMeaningfulGitDirtyLines } from "./git-dirty-runtime-artifacts.ts";
 import {
   readQueueState,
   updateQueueJobWorkerExecution,
@@ -379,7 +380,8 @@ async function ensureCleanGitWorktree(pathValue: string): Promise<void> {
   } catch (error) {
     throw new Error(`Unable to inspect git worktree at ${pathValue}: ${(error as Error).message}`);
   }
-  if (porcelain.trim()) throw new Error(`Refusing dirty or conflicted worktree at ${pathValue}: ${porcelain.split("\n")[0]}`);
+  const dirtyLines = filterMeaningfulGitDirtyLines(porcelain.split("\n").map((line) => line.trim()).filter(Boolean));
+  if (dirtyLines.length > 0) throw new Error(`Refusing dirty or conflicted worktree at ${pathValue}: ${dirtyLines[0]}`);
 }
 
 async function createIsolatedWorktree(repoRoot: string, run: WorkerExecutionRun, input: WorkerExecutionInput): Promise<{ path: string; branch: string }> {

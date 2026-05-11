@@ -6,6 +6,7 @@ import { join } from "node:path";
 
 import {
   assertSafeDelegatedRunCommand,
+  defaultOrchestratorRunPreflight,
   runOrchestratorRun,
   type DelegatedRunCall,
   type DelegatedRunResult,
@@ -237,4 +238,27 @@ test("enabled default auto-land policy without approval ref blocks before delega
   assert.equal(result.status, "blocked");
   assert.match(result.blockers.join("\n"), /approval-ref/);
   assert.equal(calls.length, 0);
+});
+
+test("default preflight ignores generated initiative runtime run artifacts while still blocking other dirty files", async () => {
+  const repoRoot = await mkdtemp(join(tmpdir(), "orch-preflight-runtime-artifacts-"));
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const git = promisify(execFile);
+
+  await git("git", ["init"], { cwd: repoRoot });
+  await writeFile(join(repoRoot, "README.md"), "fixture\n", "utf8");
+  await mkdir(join(repoRoot, "docs", "initiatives", "checkout"), { recursive: true });
+  await writeFile(join(repoRoot, "docs", "initiatives", "checkout", "issues.json"), "{}\n", "utf8");
+  await git("git", ["add", "README.md", "docs/initiatives/checkout/issues.json"], { cwd: repoRoot });
+  await git("git", ["-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "init"], { cwd: repoRoot });
+  await mkdir(join(repoRoot, "docs", "initiatives", "checkout", "afk-runs"), { recursive: true });
+  await writeFile(join(repoRoot, "docs", "initiatives", "checkout", "afk-runs", "run-001.json"), "{}\n", "utf8");
+
+  assert.deepEqual(await defaultOrchestratorRunPreflight(repoRoot), { safe: true, blockers: [] });
+
+  await writeFile(join(repoRoot, "dirty.txt"), "nope\n", "utf8");
+  const blocked = await defaultOrchestratorRunPreflight(repoRoot);
+  assert.equal(blocked.safe, false);
+  assert.match(blocked.blockers.join("\n"), /dirty.txt/);
 });
