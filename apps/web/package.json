@@ -1,0 +1,9 @@
+{
+  "name": "@ma-code/greenfield-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --import ../../node_modules/tsx/dist/loader.mjs --test src/App.test.ts",
+    "build": "../../node_modules/.bin/tsc --noEmit --allowImportingTsExtensions --target ES2022 --module NodeNext --moduleResolution NodeNext --jsx preserve --lib DOM,ES2022 --types node src/App.tsx src/main.tsx src/App.test.ts"
+  }
+}
