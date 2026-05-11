@@ -39,3 +39,23 @@
   - Other dirty files still block, including unrelated docs/code changes and protected/runtime state paths.
 - Follow-ups or known gaps:
   - Need to land this harness fix, sync `main`, and rerun greenfield AFK continuation through MO to confirm progression reaches the next HITL boundary in a real worktree.
+
+## 2026-05-11T04:00:00Z
+- Goal: close the compile-lane gap exposed by PR #140 CI before merge.
+- Files changed and why:
+  - `scripts/check-foundation-extension-compile.sh` now copies and typechecks `git-dirty-runtime-artifacts.ts`, so the foundation compile lane sees the new shared helper used by `orchestrator-run.ts`.
+- Tests added or changed: none.
+- Exact RED command and key failure reason:
+  - GitHub Actions `Foundation Extension Compile` on PR #140 failed with `TS2307: Cannot find module './git-dirty-runtime-artifacts.ts'` because the compile harness copied `orchestrator-run.ts` but not the new shared helper.
+- Exact GREEN command:
+  - `./scripts/check-foundation-extension-compile.sh`
+- GREEN result:
+  - `foundation-extension-compile-ok`
+- Other validation commands run:
+  - `node --import tsx --test tests/extension-units/orchestrator-run.test.ts tests/extension-units/worker-execution.test.ts`
+- Wiring verification evidence:
+  - The compile harness now stages the helper file alongside the importing runtime extensions, so local compile coverage matches the production CI lane.
+- Behavior changes and risk notes:
+  - No runtime behavior change beyond restoring compile-lane parity for the new helper import.
+- Follow-ups or known gaps:
+  - Amend the PR branch with this compile-harness fix, then merge and rerun the real MO continuation.
