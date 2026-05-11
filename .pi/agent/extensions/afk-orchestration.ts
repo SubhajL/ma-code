@@ -23,6 +23,11 @@ export interface AfkIssueArtifact {
   validationProof?: string[];
   domains?: string[];
   filesToModify?: string[];
+  schemaPaths?: string[];
+  migrationPaths?: string[];
+  configPaths?: string[];
+  testPaths?: string[];
+  fixturePaths?: string[];
   allowedPaths?: Array<string | { path?: string; access?: string; mutating?: boolean }>;
   hitlGates?: string[];
   whatToBuild?: string;
@@ -176,6 +181,11 @@ function normalizeIssue(value: unknown, index: number): AfkIssueArtifact {
     validationProof: normalizeStringArray(value.validationProof),
     domains: normalizeStringArray(value.domains),
     filesToModify: normalizeStringArray(value.filesToModify),
+    schemaPaths: normalizeStringArray(value.schemaPaths),
+    migrationPaths: normalizeStringArray(value.migrationPaths),
+    configPaths: normalizeStringArray(value.configPaths),
+    testPaths: normalizeStringArray(value.testPaths),
+    fixturePaths: normalizeStringArray(value.fixturePaths),
     allowedPaths: Array.isArray(value.allowedPaths) ? value.allowedPaths as AfkIssueArtifact["allowedPaths"] : [],
     hitlGates: normalizeStringArray(value.hitlGates),
     whatToBuild: typeof value.whatToBuild === "string" ? value.whatToBuild.trim() : undefined,
@@ -271,16 +281,80 @@ function statusDoneOrApproved(issue: AfkIssueArtifact | undefined): boolean {
   return issue?.status === "done" || issue?.status === "approved";
 }
 
-function hasDurableHitlApproval(issue: AfkIssueArtifact | undefined, approvals: Map<string, AfkIssueApproval>): AfkIssueApproval | undefined {
-  if (!issue) return undefined;
-  const approval = approvals.get(issue.issueId);
-  if (!approval?.approvalRef) return undefined;
-  const hitlBounded = issue.type === "HITL" || issue.approvalRequired === true || (issue.hitlGates ?? []).length > 0;
-  return hitlBounded ? approval : undefined;
+function hitlBounded(issue: AfkIssueArtifact | undefined): boolean {
+  return !!issue && (issue.type === "HITL" || issue.approvalRequired === true || (issue.hitlGates ?? []).length > 0);
 }
 
-function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, approvals: Map<string, AfkIssueApproval>): boolean {
-  return statusDoneOrApproved(issue) || !!hasDurableHitlApproval(issue, approvals);
+function requiredApprovalArtifacts(issue: AfkIssueArtifact | undefined): string[] {
+  if (!issue) return [];
+  return [...new Set([
+    ...normalizeStringArray(issue.filesToModify),
+    ...normalizeStringArray(issue.schemaPaths),
+    ...normalizeStringArray(issue.migrationPaths),
+    ...normalizeStringArray(issue.configPaths),
+    ...normalizeStringArray(issue.testPaths),
+    ...normalizeStringArray(issue.fixturePaths),
+  ])];
+}
+
+function missingApprovalContext(approval: AfkIssueApproval | undefined): string[] {
+  if (!approval) return [];
+  const missing: string[] = [];
+  if (!approval.approvedBy) missing.push("approvedBy");
+  if (!approval.approvedAt) missing.push("approvedAt");
+  if (!approval.note) missing.push("note");
+  return missing;
+}
+
+interface HitlApprovalAssessment {
+  approval?: AfkIssueApproval;
+  requiredArtifacts: string[];
+  missingArtifacts: string[];
+  missingApprovalContext: string[];
+}
+
+async function assessHitlApprovals(repoRoot: string, issues: AfkIssueArtifact[], approvals: Map<string, AfkIssueApproval>): Promise<Map<string, HitlApprovalAssessment>> {
+  const assessments = await Promise.all(issues.filter((issue) => hitlBounded(issue)).map(async (issue) => {
+    const requiredArtifacts = requiredApprovalArtifacts(issue);
+    const missingArtifacts: string[] = [];
+    for (const artifactPath of requiredArtifacts) {
+      if (!(await exists(resolve(repoRoot, artifactPath)))) missingArtifacts.push(artifactPath);
+    }
+    const approval = approvals.get(issue.issueId);
+    return [issue.issueId, {
+      approval,
+      requiredArtifacts,
+      missingArtifacts,
+      missingApprovalContext: missingApprovalContext(approval),
+    } satisfies HitlApprovalAssessment] as const;
+  }));
+  return new Map(assessments);
+}
+
+function hasDurableHitlApproval(issue: AfkIssueArtifact | undefined, assessments: Map<string, HitlApprovalAssessment>): AfkIssueApproval | undefined {
+  if (!issue) return undefined;
+  const assessment = assessments.get(issue.issueId);
+  if (!assessment?.approval?.approvalRef) return undefined;
+  if (assessment.missingArtifacts.length > 0) return undefined;
+  if (assessment.missingApprovalContext.length > 0) return undefined;
+  return hitlBounded(issue) ? assessment.approval : undefined;
+}
+
+function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, assessments: Map<string, HitlApprovalAssessment>): boolean {
+  if (!issue) return false;
+  const assessment = assessments.get(issue.issueId);
+  const satisfiedByStatus = statusDoneOrApproved(issue) && (!assessment || assessment.missingArtifacts.length === 0);
+  return satisfiedByStatus || !!hasDurableHitlApproval(issue, assessments);
+}
+
+function specificHitlApprovalReasons(issue: AfkIssueArtifact, assessment: HitlApprovalAssessment | undefined): string[] {
+  const reasons: string[] = [];
+  if (assessment?.requiredArtifacts.length) reasons.push(`Required approval artifacts: ${assessment.requiredArtifacts.join(", ")}.`);
+  if (assessment?.missingArtifacts.length) reasons.push(`Missing required approval artifacts: ${assessment.missingArtifacts.join(", ")}.`);
+  if (assessment?.approval && assessment.missingApprovalContext.length) reasons.push(`Durable approval is missing required context fields: ${assessment.missingApprovalContext.join(", ")}.`);
+  const reviewTargets = assessment?.requiredArtifacts.length ? assessment.requiredArtifacts.join(", ") : "the declared HITL artifact(s)";
+  reasons.push(`Specific human approval required for ${issue.issueId} "${issue.title}" after reviewing: ${reviewTargets}.`);
+  return reasons;
 }
 
 function assignedRoleForDomains(domains: string[]): QueueJob["assignedRole"] {
@@ -341,14 +415,15 @@ function buildParallelDecisions(eligibleIssues: AfkIssueArtifact[], maxParallel:
   return decisions;
 }
 
-function evaluateIssues(artifacts: LoadedArtifacts): {
+async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Promise<{
   eligible: AfkIssueArtifact[];
   eligibleIssues: AfkIssueRecord[];
   blockedIssues: AfkIssueRecord[];
   deferredIssues: AfkIssueRecord[];
   skippedIssues: AfkIssueRecord[];
   doneIssues: AfkIssueRecord[];
-} {
+}> {
+  const hitlAssessments = await assessHitlApprovals(repoRoot, artifacts.issues, artifacts.approvals);
   const byId = new Map(artifacts.issues.map((issue) => [issue.issueId, issue]));
   const summarySet = new Set(artifacts.sourceArtifacts.summaries);
   const eligible: AfkIssueArtifact[] = [];
@@ -362,8 +437,10 @@ function evaluateIssues(artifacts: LoadedArtifacts): {
     const dependencies = normalizeStringArray(issue.dependencies);
     const recordBase = { issueId: issue.issueId, title: issue.title, dependencies, queueJobId: queueJobId(artifacts.sourceArtifacts.issues.split("/")[2] ?? "initiative", issue.issueId) };
     const reasons: string[] = [];
-    const durableApproval = hasDurableHitlApproval(issue, artifacts.approvals);
-    if (statusDoneOrApproved(issue) || durableApproval) {
+    const hitlAssessment = hitlAssessments.get(issue.issueId);
+    const durableApproval = hasDurableHitlApproval(issue, hitlAssessments);
+    const satisfiedByStatus = statusDoneOrApproved(issue) && (!hitlAssessment || hitlAssessment.missingArtifacts.length === 0);
+    if (satisfiedByStatus || durableApproval) {
       doneIssues.push({
         ...recordBase,
         disposition: "done",
@@ -372,11 +449,11 @@ function evaluateIssues(artifacts: LoadedArtifacts): {
       continue;
     }
     if (issue.type === "HITL") {
-      skippedIssues.push({ ...recordBase, disposition: "skipped", reasons: ["HITL issues are never queued automatically."] });
+      skippedIssues.push({ ...recordBase, disposition: "skipped", reasons: [...specificHitlApprovalReasons(issue, hitlAssessment), "HITL issues are never queued automatically."] });
       continue;
     }
     if (issue.type !== "AFK") reasons.push(`Unsupported issue type: ${issue.type || "missing"}.`);
-    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), artifacts.approvals));
+    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), hitlAssessments));
     if (unresolved.length > 0) {
       deferredIssues.push({ ...recordBase, disposition: "deferred", reasons: [`Unresolved dependencies: ${unresolved.join(", ")}.`] });
       continue;
@@ -502,11 +579,11 @@ async function latestAfkRun(repoRoot: string, initiativeId: string): Promise<Afk
   }
 }
 
-function buildRun(input: AfkOrchestrationInput, artifacts: LoadedArtifacts, existingStatuses?: Map<string, QueueJobStatus>): AfkOrchestrationRun {
+async function buildRun(repoRoot: string, input: AfkOrchestrationInput, artifacts: LoadedArtifacts, existingStatuses?: Map<string, QueueJobStatus>): Promise<AfkOrchestrationRun> {
   const now = input.now ?? new Date().toISOString();
   const runId = input.runId ? assertSlug(input.runId, "runId") : timestampRunId(now);
   const maxParallel = Math.max(1, input.maxParallel ?? 1);
-  const evaluated = evaluateIssues(artifacts);
+  const evaluated = await evaluateIssues(repoRoot, artifacts);
   const sourceArtifactPaths = [
     artifacts.sourceArtifacts.issues,
     artifacts.sourceArtifacts.slicePlan,
@@ -563,14 +640,14 @@ export async function runAfkOrchestration(input: AfkOrchestrationInput): Promise
 
   if (input.command === "status") {
     const statuses = await readIssueQueueStatuses(repoRoot, initiativeId);
-    const run = buildRun({ ...input, initiativeId, maxParallel }, artifacts, statuses);
+    const run = await buildRun(repoRoot, { ...input, initiativeId, maxParallel }, artifacts, statuses);
     const latest = await latestAfkRun(repoRoot, initiativeId);
     run.lastAction = latest ? `Latest AFK run artifact: ${afkRunPath(initiativeId, latest.runId)}` : "No AFK run artifact found.";
     run.nextOperatorAction = run.eligibleIssues.length > 0 ? "Run dry-run or apply --queue-only after reviewing current queue state." : "Resolve visible blockers before queue materialization.";
     return run;
   }
 
-  const run = buildRun({ ...input, initiativeId, maxParallel }, artifacts);
+  const run = await buildRun(repoRoot, { ...input, initiativeId, maxParallel }, artifacts);
   const queueJobs = run.materializedQueueJobs.map((summary) => {
     const issue = artifacts.issues.find((candidate) => candidate.issueId === summary.sourceIssueId)!;
     return buildQueueJob(initiativeId, issue, run.runId, summary.sourceArtifactPaths);
