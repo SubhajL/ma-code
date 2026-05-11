@@ -305,3 +305,89 @@ Review Verdict: changes_required
 - Follow-ups or known gaps:
   - Materialize a fresh runtime lane from current HEAD and rerun issue-006 with the new command form.
   - If issue-006 still fails after this fix, the next blocker is beyond model/default/extension/session bootstrapping and should be treated as a deeper worker-command defect.
+
+## 2026-05-11T15:45:21+0700
+- Goal: explain the current AFK issue-006 blocker clearly, including what the nested worker command is, what gaps remain, and what the most likely fix directions are.
+- Files changed and why:
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this explanatory status note for the active task.
+- Tests added or changed:
+  - none; explanatory turn only.
+- Exact RED command and key failure reason:
+  - none in this turn; reused prior runtime evidence already captured in this log.
+- Exact GREEN command:
+  - none in this turn; no new implementation executed.
+- Other validation commands run:
+  - none in this turn beyond reading existing evidence.
+- Wiring verification evidence:
+  - Current nested AFK worker command is the queue-materialized `implementationCommand` that `runWorkerExecution(...)` shells via `bash -lc` inside an isolated worker worktree.
+  - Latest evidence still shows that command timing out/failing for issue-006 even after explicit model, no-extensions, no-session, and current-branch fixes.
+- Behavior changes and risk notes:
+  - No runtime behavior changed in this explanatory turn.
+  - The current best diagnosis is that raw nested `pi /skill:g-planning` + `pi /skill:g-coding` execution is itself the remaining bottleneck/defect, not repo model defaults alone.
+- Follow-ups or known gaps:
+  - Most likely next bounded fix is replacing raw nested CLI skill execution with a lighter same-runtime/tool-driven execution path or otherwise reducing the nested command scope.
+
+## 2026-05-11T16:06:14+0700
+- Goal: reduce the AFK worker execution path to a single bounded `g-coding` child command so issue-006 is no longer forced through a chained `g-planning && g-coding` nested CLI sequence.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` — removed the separate planning-command generation and now materializes a single `pi ... /skill:g-coding` command with the precomputed planning inputs embedded directly in the coding prompt.
+  - `tests/extension-units/afk-orchestration.test.ts` — tightened queue-job assertions to require a single `g-coding` command and to reject both `/skill:g-planning` and shell chaining (`&&`).
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this implementation and review evidence.
+- Tests added or changed:
+  - `tests/extension-units/afk-orchestration.test.ts` now proves AFK queue jobs stay on one bounded `g-coding` invocation instead of chaining planning plus coding.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - failed because the generated `implementationCommand` still contained `/skill:g-planning` and shell chaining.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-execution.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/harness-routing.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts; done`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && timeout 45s pi --print --no-session --no-extensions --model "github-copilot/gpt-5.4" --thinking "high" "/skill:g-coding Reply with exactly: ok"`
+- Wiring verification evidence:
+  - `buildAfkImplementationCommand(...)` now shells exactly one nested Pi command instead of `planning && coding`.
+  - The coding prompt explicitly states that planning inputs are already supplied and that no separate planning pass should run before coding.
+  - The updated orchestration test now proves the queue-materialized `implementationCommand` keeps the explicit repo model/thinking flags while dropping `/skill:g-planning` and `&&`.
+  - A bounded live one-shot `g-coding` invocation completed successfully with `ok`, which is stronger evidence than the prior chained nested command path.
+- Behavior changes and risk notes:
+  - AFK queue jobs are now materially lighter and less opaque because they no longer spawn two sequential full skill runs for the same slice.
+  - This is still a nested CLI strategy, so it removes the largest known redundancy first but does not yet provide the full same-runtime/tool-driven architecture.
+- Follow-ups or known gaps:
+  - Re-run issue-006 in a fresh runtime lane from current task HEAD to confirm the single-command path clears the remaining worker timeout.
+  - If issue-006 still times out, the next bounded step should move the worker implementation path onto a same-runtime/tool-driven executor rather than another shell-string refinement.
+
+## Review (2026-05-11T16:06:21+0700) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix
+- Branch: task/task-1778474916959-afk-worker-command-fix
+- Scope: working-tree
+- Commands Run: `git diff -- .pi/agent/extensions/afk-worker-execution-plan.ts tests/extension-units/afk-orchestration.test.ts`; `node --import tsx --test tests/extension-units/afk-orchestration.test.ts`; `node --import tsx --test tests/extension-units/worker-execution.test.ts`; `node --import tsx --test tests/extension-units/harness-routing.test.ts`; `./scripts/check-foundation-extension-compile.sh`; `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumed the precomputed AFK issue packet plus TDD slice is sufficient input for a direct `g-coding` turn without a separate nested `g-planning` CLI step.
+- End-to-end fresh-lane verification for issue-006 is still pending.
+
+### Recommended Tests / Validation
+- Materialize a fresh runtime lane from current HEAD and rerun issue-006 through the worker path.
+- If issue-006 passes, continue the AFK frontier from the next queued issue without reintroducing a planning subcommand.
+
+### Rollout Notes
+- This change only affects newly materialized AFK queue jobs; older preserved queue jobs still contain the prior chained command form.
+- Review Verdict: no_required_fixes

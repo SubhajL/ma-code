@@ -81,25 +81,6 @@ function buildPiCommand(repoRoot: string, prompt: string): string {
   return segments.join(" ");
 }
 
-function buildPlanningPrompt(initiativeId: string, issue: AfkWorkerExecutionPlanIssue, tddSlice: QueueJob["tddSlice"] | undefined): string {
-  const goal = issue.whatToBuild?.trim() || issue.title;
-  const allowedPaths = normalizeAllowedPaths(issue.allowedPaths);
-  const filesToModify = normalizeList(issue.filesToModify);
-  const acceptance = normalizeList(issue.acceptanceCriteria);
-  const validation = normalizeList(issue.validationProof);
-  return [
-    "/skill:g-planning",
-    `Plan a bounded AFK implementation for ${initiativeId} ${issue.issueId}.`,
-    `Goal: ${goal}.`,
-    `Allowed paths: ${allowedPaths.join(", ") || "none"}.`,
-    `Primary files to modify: ${filesToModify.join(", ") || "none"}.`,
-    `Acceptance criteria: ${acceptance.join(" | ") || "none"}.`,
-    `Validation commands after implementation: ${validation.join(" | ") || "none"}.`,
-    summarizeTddSlice(tddSlice),
-    "Use the repo Pi log convention and create/update the active planning/coding logs for this slice.",
-  ].join(" ");
-}
-
 function buildCodingPrompt(initiativeId: string, issue: AfkWorkerExecutionPlanIssue, tddSlice: QueueJob["tddSlice"] | undefined): string {
   const goal = issue.whatToBuild?.trim() || issue.title;
   const allowedPaths = normalizeAllowedPaths(issue.allowedPaths);
@@ -116,6 +97,7 @@ function buildCodingPrompt(initiativeId: string, issue: AfkWorkerExecutionPlanIs
     "/skill:g-coding",
     `Implement AFK issue ${issue.issueId} for initiative ${initiativeId}.`,
     `Goal: ${goal}.`,
+    "The planning inputs are already supplied in this prompt; do not run a separate planning pass before coding.",
     `Allowed paths: ${allowedPaths.join(", ") || "none"}.`,
     `Files to modify: ${filesToModify.join(", ") || "none"}.`,
     `Acceptance criteria: ${acceptance.join(" | ") || "none"}.`,
@@ -132,10 +114,8 @@ export function buildAfkImplementationCommand(
   issue: AfkWorkerExecutionPlanIssue,
   tddSlice: QueueJob["tddSlice"] | undefined,
 ): string {
-  const planningPrompt = buildPlanningPrompt(initiativeId, issue, tddSlice);
   const codingPrompt = buildCodingPrompt(initiativeId, issue, tddSlice);
-  const script = `${buildPiCommand(repoRoot, planningPrompt)} && ${buildPiCommand(repoRoot, codingPrompt)}`;
-  return `bash -lc ${shellSingleQuote(script)}`;
+  return `bash -lc ${shellSingleQuote(buildPiCommand(repoRoot, codingPrompt))}`;
 }
 
 export function isOperationalLogPath(pathValue: string): boolean {
