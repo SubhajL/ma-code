@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "approvals": [
+    {
+      "issueId": "issue-005",
+      "approvalRef": "hitl:issue-005:approved",
+      "approvedBy": "human:subhajlimanond",
+      "approvedAt": "2026-05-11T01:46:30Z",
+      "note": "Approved product navigation and information architecture."
+    }
+  ]
+}
