@@ -226,3 +226,28 @@ Review Verdict: changes_required
 - Follow-ups or known gaps:
   - Materialize a fresh runtime lane from the updated task branch and rerun issue-006.
   - Do not declare the AFK frontier unblocked until the fresh lane either passes issue-006 or exposes a new non-model-specific blocker.
+
+## 2026-05-11T14:40:34+0700
+- Goal: stop new worker worktrees from booting off stale `origin/main` so they inherit the current task-branch runtime/config fixes during AFK execution.
+- Files changed and why:
+  - `.pi/agent/extensions/worker-execution.ts` — changed default worker `baseRef` selection from hardcoded `origin/main` to the current git branch (fallback `HEAD`) of the invoking repo.
+  - `tests/extension-units/worker-execution.test.ts` — added a tracer test proving a run without explicit `baseRef` uses the current branch and that the created worker worktree inherits branch-local `.pi/settings.json` content.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this TDD evidence entry.
+- Tests added or changed:
+  - `tests/extension-units/worker-execution.test.ts` now covers the default-baseRef behavior for worker worktrees.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-execution.test.ts`
+  - Failure reason: the new tracer test showed `run.worktree.baseRef` defaulted to `origin/main` instead of the current task branch, so worker worktrees could boot without current task-branch config/runtime fixes.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/worker-execution.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/harness-routing.test.ts >/tmp/task1778474916959-scope-$i.txt 2>&1 || exit 1; done && ./scripts/check-foundation-extension-compile.sh && git diff --check && echo '3 consecutive expanded-scope passes + compile + diff-check'`
+- Wiring verification evidence:
+  - Worker worktree creation now defaults from the invoking repo’s current branch, which is the runtime path actually used by `runWorkerExecution(...)` before `git worktree add -b ... <baseRef>` executes.
+  - The new test verifies the created worker worktree inherits branch-local `.pi/settings.json`, which is the exact configuration path needed for AFK worker `pi` skill bootstrapping.
+- Behavior changes and risk notes:
+  - New worker runs launched from an updated task/runtime branch should no longer silently base themselves on stale `origin/main`.
+  - Existing preserved worker worktrees/artifacts from older failed runs still reflect the old behavior and should not be treated as current proof.
+- Follow-ups or known gaps:
+  - Re-run issue-006 from a fresh runtime lane that starts from the updated task branch.
+  - If issue-006 still fails after this baseRef fix, the next blocker is no longer stale branch/config inheritance and should be treated as a new concrete defect.

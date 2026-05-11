@@ -1,4 +1,4 @@
-import { execFile as execFileCallback } from "node:child_process";
+import { execFile as execFileCallback, execFileSync } from "node:child_process";
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -325,7 +325,16 @@ function emptyStep(status: WorkerStepStatus = "pending"): WorkerRunStep {
   return { status, commands: [], evidence: [] };
 }
 
-function buildPlannedRun(input: WorkerExecutionInput, context: LoadedWorkerContext): WorkerExecutionRun {
+function currentGitBaseRef(repoRoot: string): string {
+  try {
+    const branch = execFileSync("git", ["branch", "--show-current"], { cwd: repoRoot, encoding: "utf8" }).trim();
+    return branch || "HEAD";
+  } catch {
+    return "HEAD";
+  }
+}
+
+function buildPlannedRun(repoRoot: string, input: WorkerExecutionInput, context: LoadedWorkerContext): WorkerExecutionRun {
   const now = nowIso(input.now);
   const runId = input.runId ? assertSlug(input.runId, "runId") : timestampRunId(now);
   const allowPrCreate = input.allowPrCreate === true && Boolean(input.explicitApprovalRef);
@@ -343,7 +352,7 @@ function buildPlannedRun(input: WorkerExecutionInput, context: LoadedWorkerConte
     worktree: {
       path: null,
       branch: null,
-      baseRef: input.baseRef ?? "origin/main",
+      baseRef: input.baseRef ?? currentGitBaseRef(repoRoot),
       leaseId: null,
     },
     steps: {
@@ -520,7 +529,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     throw new Error(`resume requires a non-terminal worker run; ${resumeRun.runId} is ${resumeRun.status}.`);
   }
   const context = await loadContext(repoRoot, initiativeId, input.queueJobId ?? resumeRun?.queueJobId);
-  const run = resumeRun ?? buildPlannedRun(input, context);
+  const run = resumeRun ?? buildPlannedRun(repoRoot, input, context);
   const problems = eligibilityProblems(context.job, context.issue);
   if (problems.length > 0) {
     run.steps.planning = { status: "blocked", evidence: problems };

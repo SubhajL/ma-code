@@ -109,6 +109,34 @@ test("eligibility rejects HITL, approvalRequired, missing allowed paths, missing
   }
 });
 
+test("run defaults worker baseRef to the current branch so worker worktrees inherit task-branch config", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      implementationCommand: "node -e \"require('fs').mkdirSync('docs/initiatives/greenfield-scaffold',{recursive:true});require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok\\n')\"",
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+  await mkdir(join(cwd, ".pi"), { recursive: true });
+  await writeFile(join(cwd, ".pi", "settings.json"), `${JSON.stringify({ defaultProvider: "github-copilot", defaultModel: "gpt-5.4", defaultThinkingLevel: "high", marker: "current-branch-config" }, null, 2)}\n`, "utf8");
+  await git(cwd, ["checkout", "-b", "task/current-runtime-branch"]);
+  await git(cwd, ["add", ".pi/settings.json"]);
+  await git(cwd, ["commit", "-m", "branch-config"]);
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-current-branch",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.worktree.baseRef, "task/current-runtime-branch");
+  const workerSettings = await readFile(join(result.worktree.path!, ".pi", "settings.json"), "utf8");
+  assert.match(workerSettings, /current-branch-config/);
+});
+
 test("run creates isolated worktree, records RED/GREEN, validation, review, queue linkage, and stops before PR", async () => {
   const cwd = await writeFixture();
   const result = await runWorkerExecution({
