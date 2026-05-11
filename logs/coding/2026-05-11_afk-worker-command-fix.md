@@ -670,3 +670,33 @@ LOW
   - remaining risk is now only CI propagation / merge-state refresh on GitHub.
 - Follow-ups or known gaps:
   - push this validator-alignment commit, wait for PR #141 checks to go green, then rerun merge helper and land with `--sync-main`.
+
+## 2026-05-11T21:56:04+0700
+- Goal: clear the remaining `Recovery-policy validation` CI gate so PR #141 can finish all required routing/validator checks.
+- Files changed and why:
+  - `scripts/validate-recovery-policy.sh` — aligned recovery-policy validator expectations with the repo’s active `github-copilot/gpt-5.4*` routing stack instead of stale `openai-codex/gpt-5.4*` expectations.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this CI-unblock evidence entry.
+- Tests added or changed:
+  - none; this slice updates executable validation expectations only.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-policy.sh`
+  - failed because the helper-level validator still expected research recovery to climb from `openai-codex/gpt-5.4-mini` to `openai-codex/gpt-5.4`, while current routing/recovery policy now uses `github-copilot/gpt-5.4-mini` -> `github-copilot/gpt-5.4`.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-recovery-policy.sh`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-harness-routing.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/validate-task-packets.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-repo-static.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && git diff --check`
+- Wiring verification evidence:
+  - all four executable validators now agree with the repo’s current routed provider IDs:
+    - `validate-harness-routing.sh`
+    - `validate-task-packets.sh`
+    - `validate-recovery-policy.sh`
+    - `check-repo-static.sh`
+- Behavior changes and risk notes:
+  - no runtime behavior changed; this is validator-alignment only.
+  - after this slice, the remaining landing risk should only be GitHub check propagation / merge-state refresh.
+- Follow-ups or known gaps:
+  - push this recovery-validator alignment commit, wait for PR #141 checks to go fully green, then run merge helper with `--sync-main`.
