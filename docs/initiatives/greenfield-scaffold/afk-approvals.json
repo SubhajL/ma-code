@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "approvals": [
+    {
+      "issueId": "issue-005",
+      "approvalRef": "user-prompt-2026-05-11-approve-issue-005-and-continue-afk",
+      "approvedBy": "human:subhajlimanond",
+      "approvedAt": "2026-05-11T03:29:27Z",
+      "note": "Approved issue-005 after reviewing docs/initiatives/greenfield-scaffold/navigation.md; continue AFK issues until the next HITL boundary via MO."
+    }
+  ]
+}

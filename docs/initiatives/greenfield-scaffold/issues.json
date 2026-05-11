@@ -48,7 +48,7 @@
       "issueId": "issue-002",
       "title": "Scaffold repository app shell",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-001"
       ],
@@ -89,7 +89,7 @@
       "issueId": "issue-003",
       "title": "Scaffold backend service shell",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-001"
       ],
@@ -174,7 +174,7 @@
       "issueId": "issue-005",
       "title": "Approve product navigation and information architecture",
       "type": "HITL",
-      "status": "planned",
+      "status": "approved",
       "dependencies": [
         "issue-002"
       ],
