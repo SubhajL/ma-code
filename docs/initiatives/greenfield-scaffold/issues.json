@@ -210,7 +210,7 @@
       "issueId": "issue-006",
       "title": "Create design token scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-005"
       ],

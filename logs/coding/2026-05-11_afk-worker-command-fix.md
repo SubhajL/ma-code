@@ -772,3 +772,139 @@ Review Verdict: no_required_fixes
   - test expectation only; runtime recovery behavior remains provider switch to Anthropic once active GitHub Copilot provider retry budget is exhausted.
 - Follow-ups or known gaps:
   - push and wait for PR #142 checks again.
+
+## 2026-05-12T06:39:24+0700
+- Goal: implement greenfield-scaffold `issue-006` as a bounded frontend scaffold slice that exposes color, spacing, and typography design token primitives through `apps/web/src/styles/tokens.css` with a matching TypeScript token map and focused tests.
+- Lifecycle readiness: direct-implementation exemption from the issue packet in the current worker task; no separate planning artifact was provided for this bounded slice.
+- Discovery path: read `AGENTS.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `.pi/agent/skills/frontend-safety/SKILL.md`, `docs/initiatives/greenfield-scaffold/slices/issue-006.summary.json`, root `package.json`, `apps/web/package.json`, and existing `apps/web/src/App.tsx` / `apps/web/src/App.test.ts`; then used direct file inspection because the target style/test files did not yet exist.
+- Tracer bullet behavior: design tokens expose color, spacing, and typography primitives with tests.
+- Public interface proving it: `apps/web/src/styles/tokens.css` and `apps/web/src/styles/theme.ts`, exercised by `tests/web/design-tokens.test.ts`.
+- Boundary dependencies / mocks: none; the test reads the public CSS file directly and imports the public TypeScript token map.
+- Out of scope: wiring the tokens into app rendering, adding a root npm validation alias, or changing Phase A materialization metadata.
+- Files changed and why:
+  - `tests/web/design-tokens.test.ts` — added a behavior-first test for token groups, then extended it to verify every TypeScript token reference maps to a defined CSS custom property.
+  - `apps/web/src/styles/theme.ts` — added grouped color, spacing, and typography token exports plus an aggregate `themeTokens` map.
+  - `apps/web/src/styles/tokens.css` — added the CSS custom-property scaffold backing the exported token primitives.
+- Tests added or changed:
+  - added `tests/web/design-tokens.test.ts`.
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/web/design-tokens.test.ts`
+  - First RED failure: `ERR_MODULE_NOT_FOUND` because `apps/web/src/styles/theme.ts` did not exist yet.
+  - Second RED failure after adding `theme.ts`: `ENOENT` because `apps/web/src/styles/tokens.css` did not exist yet.
+- Exact GREEN command:
+  - `node --import tsx --test tests/web/design-tokens.test.ts`
+- GREEN result:
+  - `tests 2`, `pass 2`, `fail 0`.
+- Other validation commands run:
+  - `for i in 1 2 3; do node --import tsx --test tests/web/design-tokens.test.ts >/tmp/design-tokens-$i.txt 2>&1 || exit 1; done && echo '3 consecutive passes'`
+  - `npm run test:web -- design-tokens` — exited with status 1 because the repository currently has no root `test:web` npm script; this alias gap is outside the issue packet's allowed file set.
+  - `node -e "const pkg=require('./package.json'); console.log(pkg.scripts['test:web'] ?? 'MISSING')"`
+  - `! grep -nH '[[:blank:]]$' apps/web/src/styles/tokens.css apps/web/src/styles/theme.ts tests/web/design-tokens.test.ts && echo 'no trailing whitespace in changed files'`
+- Wiring verification evidence:
+  - `tests/web/design-tokens.test.ts` imports `theme.ts` through the public TypeScript interface and reads `tokens.css` from its published path.
+  - The test verifies the public token groups are `color`, `spacing`, and `typography` and that each exported `var(--token)` reference is defined in `tokens.css`.
+- Behavior changes and risk notes:
+  - The web app scaffold now has a design-token source of truth for color, spacing, and typography primitives in both CSS and TypeScript forms.
+  - No runtime component imports `tokens.css` yet; that wiring is intentionally left for follow-on slices.
+  - The requested validation alias `npm run test:web -- design-tokens` is still unavailable in this repo state.
+- Follow-ups or known gaps:
+  - If the workflow requires the exact npm alias to pass, add the missing root `test:web` script in a separate permitted slice.
+  - Later frontend slices can import `tokens.css` and consume `themeTokens` for component styling.
+
+## Review (2026-05-12T06:39:24+0700) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778541954975-greenfield-afk-run-worktrees/worker-20260511t233539z-issue-006`
+- Branch: `worker/worker-20260511t233539z-issue-006`
+- Scope: `working-tree`
+- Commands Run:
+  - `read logs/CURRENT.md`
+  - `git status --porcelain=v1`
+  - `git branch --show-current`
+  - `git rev-parse --show-toplevel`
+  - `read apps/web/src/styles/tokens.css`
+  - `read apps/web/src/styles/theme.ts`
+  - `read tests/web/design-tokens.test.ts`
+  - `node --import tsx --test tests/web/design-tokens.test.ts`
+  - `for i in 1 2 3; do node --import tsx --test tests/web/design-tokens.test.ts >/tmp/design-tokens-$i.txt 2>&1 || exit 1; done`
+  - `npm run test:web -- design-tokens`
+  - `node -e "const pkg=require('./package.json'); console.log(pkg.scripts['test:web'] ?? 'MISSING')"`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- The issue packet's exact validation command, `npm run test:web -- design-tokens`, still exits with status 1 because the repository root has no `test:web` script (`package.json` reports `MISSING`). That means the requested completion proof cannot succeed verbatim from this working tree even though the focused direct test passes. Fix direction: add the missing root validation alias in a separate allowed slice or relax the required command.
+
+LOW
+- No runtime file currently imports `apps/web/src/styles/tokens.css`, so the token scaffold is present but not yet applied to the app shell. This is acceptable for the bounded scaffold slice, but follow-on UI slices need to wire it in before expecting visual impact.
+
+### Open Questions / Assumptions
+- Assumed the task packet's strict file bounds prevent fixing the missing root npm alias in this slice.
+- Assumed standalone token exposure is sufficient for issue-006 even without app-shell import wiring.
+
+### Recommended Tests / Validation
+- completed: `node --import tsx --test tests/web/design-tokens.test.ts`
+- completed: 3 consecutive direct test passes for `tests/web/design-tokens.test.ts`
+- pending external gap: make `npm run test:web -- design-tokens` available if the exact packet validation alias is mandatory.
+
+### Rollout Notes
+- Do not claim full packet completion without noting that the exact requested npm validation alias is currently unavailable.
+- The product-code slice itself is bounded and reversible: add/remove the new style scaffold files and focused test only.
+
+Review Verdict: changes_required
+
+## 2026-05-11 Issue-006 Validation Alias Fix
+
+- Goal of the change:
+  - make the exact durable issue validation command `npm run test:web -- design-tokens` executable for the design-token scaffold instead of relying on a one-off direct Node test invocation.
+- Files changed and why:
+  - `package.json`: added `test:web` script as the web test entry point.
+  - `scripts/run-web-tests.mjs`: maps the durable `design-tokens` alias to `tests/web/design-tokens.test.ts` and runs web tests through Node's test runner with `tsx`.
+  - `apps/web/src/styles/theme.ts`: design token scaffold source.
+  - `apps/web/src/styles/tokens.css`: CSS custom properties for token primitives.
+  - `tests/web/design-tokens.test.ts`: observable token scaffold tests.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md`: records this validation-alias fix and review handoff.
+- Tests added or changed:
+  - added `tests/web/design-tokens.test.ts` with token shape and CSS-variable wiring coverage.
+  - added `scripts/run-web-tests.mjs` to support current/future `tests/web/*.test.ts` entry points.
+- RED command and key failure reason:
+  - `npm run test:web -- design-tokens`
+  - failed before the alias fix because `package.json` had no `test:web` script.
+- GREEN command:
+  - `for i in 1 2 3; do npm run test:web -- design-tokens || exit $?; done && git diff --check`
+  - result: 3 consecutive passes; each run reported `tests 2`, `pass 2`, `fail 0`; `git diff --check` passed.
+- Other validation commands run:
+  - `node --import tsx --test tests/web/design-tokens.test.ts` passed before adding the durable npm alias.
+- Wiring verification evidence:
+  - `package.json` exposes `test:web`.
+  - `scripts/run-web-tests.mjs` maps `design-tokens` to `tests/web/design-tokens.test.ts`.
+  - `tests/web/design-tokens.test.ts` imports `apps/web/src/styles/theme.ts` and reads `apps/web/src/styles/tokens.css` to verify every referenced CSS variable is defined.
+- Behavior changes and risk notes:
+  - adds a small repo-level web test runner script because the issue's durable validation command requires an npm entry point.
+  - package dependencies are unchanged.
+- Follow-ups or known gaps:
+  - none for issue-006; continue AFK progression after this PR lands and issue-006 is marked done.
+
+### Manual g-check Review for Issue-006
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- future web slices can add more aliases or rely on the default `tests/web/*.test.ts` path.
+
+## Open Questions / Assumptions
+- Assumption: adding `test:web` at the repo package level is acceptable because multiple greenfield web AFK issues reference `npm run test:web -- <alias>` validation proofs.
+
+## Recommended Tests / Validation
+- completed: `for i in 1 2 3; do npm run test:web -- design-tokens || exit $?; done && git diff --check`
+
+## Rollout Notes
+- land this as the issue-006 PR, then mark issue-006 done in the AFK initiative state before continuing to dependent issues.
+
+Review Verdict: no_required_fixes
