@@ -647,3 +647,26 @@ Review Verdict: no_required_fixes
 - rerun PR #142 checks and merge only after GitHub checks pass.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12 Routing Validator Sweep Before Re-Push
+
+- Goal of this unit of work:
+  - run the remaining local validators from the GitHub Routing Validators job before re-pushing PR #142.
+- Files changed and why:
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md`: recorded validation evidence.
+- Tests added or changed:
+  - none.
+- RED command and key failure reason:
+  - not applicable for this sweep; the preceding recovery validator REDs were already recorded.
+- GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/validate-queue-semantics.sh && ./scripts/validate-team-activation.sh && ./scripts/validate-handoffs.sh && ./scripts/validate-same-runtime-bridge.sh && ./scripts/validate-queue-runner.sh --skip-live`
+  - result: command exited 0; validators reported PASS for handoffs, same-runtime bridge, queue-runner, and generated PASS reports for queue/team validators.
+- Other validation commands run:
+  - none in this sweep.
+- Wiring verification evidence:
+  - same-runtime bridge validator passed after the worker execution plan changes.
+  - queue-runner validator passed after queue/job schema and finalization changes.
+- Behavior changes and risk notes:
+  - validation-only log update; no runtime code changed.
+- Follow-ups or known gaps:
+  - push and wait for GitHub checks.
