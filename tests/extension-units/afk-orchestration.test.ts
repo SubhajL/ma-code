@@ -221,6 +221,9 @@ test("apply writes an AFK run artifact and creates queue jobs only through queue
   assert.ok(queue.jobs.every((job) => job.queueJobSource?.kind === "issue-materialization"));
   assert.ok(queue.jobs.every((job) => job.approvalRequired === false));
   assert.ok(queue.jobs.every((job) => job.tddSlice));
+  assert.match(queue.jobs[0]?.implementationCommand ?? "", /\/skill:g-planning/);
+  assert.match(queue.jobs[0]?.implementationCommand ?? "", /\/skill:g-coding/);
+  assert.deepEqual(queue.jobs[0]?.validationCommands, ["npm test -- issue-002"]);
   assert.equal(runArtifact.materializedQueueJobs[0].queueJobSource.kind, "issue-materialization");
 });
 

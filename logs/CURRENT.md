@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-11_fix-mo-run-artifact-dirty-checks.md`
+- `logs/coding/2026-05-11_afk-worker-command-fix.md`
 
 ## Current planning log
-- `reports/planning/2026-05-11_hitl-approval-artifact-validation-plan.md`
+- `reports/planning/2026-05-11_afk-worker-command-fix-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

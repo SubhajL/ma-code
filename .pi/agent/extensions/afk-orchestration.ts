@@ -7,6 +7,7 @@ import {
   type QueueJob,
   type QueueJobStatus,
 } from "./queue-runner.ts";
+import { buildAfkImplementationCommand } from "./afk-worker-execution-plan.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -493,6 +494,7 @@ function buildQueueJob(initiativeId: string, issue: AfkIssueArtifact, runId: str
   const domains = normalizeStringArray(issue.domains).filter((domain) => (VALID_DOMAINS as readonly string[]).includes(domain)) as QueueJob["domains"];
   const allowedPaths = normalizeAllowedPaths(issue.allowedPaths);
   const jobId = queueJobId(initiativeId, issue.issueId);
+  const tddSlice = buildTddSlice(issue);
   return {
     id: jobId,
     goal: issue.whatToBuild || issue.title,
@@ -517,7 +519,9 @@ function buildQueueJob(initiativeId: string, issue: AfkIssueArtifact, runId: str
     assignedRole: assignedRoleForDomains(domains ?? []),
     routeReason: "default",
     budgetMode: "balanced",
-    tddSlice: buildTddSlice(issue),
+    implementationCommand: buildAfkImplementationCommand(initiativeId, issue, tddSlice),
+    validationCommands: normalizeStringArray(issue.validationProof),
+    tddSlice,
     queueJobSource: {
       kind: "issue-materialization",
       initiativeId,

@@ -1,0 +1,51 @@
+# AFK worker command derivation and finalization fix
+
+## 2026-05-11T04:45:00Z
+- Goal: implement the AFK worker execution-plan fix so MO worker jobs stop skipping coding due to missing implementationCommand and queue/task state finalizes cleanly on failures.
+- Lifecycle readiness: using planning artifact `reports/planning/2026-05-11_afk-worker-command-fix-plan.md` in this worktree.
+- Discovery path: read `AGENTS.md`, `README.md`, `logs/CURRENT.md`; Auggie timed out; used direct inspection of `afk-orchestration.ts`, `queue-runner.ts`, `orchestrator-run.ts`, `worker-execution.ts`, related unit tests, and the failed greenfield issue-006 worker artifact.
+- Tracer bullet behavior: an AFK worker job should no longer start with coding skipped solely because no explicit implementation command was plumbed through the queue/orchestrator path.
+- Public interface proving it: `buildQueueJob(...)`, `runOrchestratorRun(...)`, `runWorkerExecution(...)`, and queue/task state after worker terminal outcomes.
+- Boundary dependencies / mocks: temp repo fixtures for worker execution, delegated runner spies for orchestrator-run, queue state fixtures for queue-runner.
+- Out of scope: actual design-token feature implementation for issue-006; this slice fixes harness execution plumbing only.
+
+## 2026-05-11T05:05:00Z
+- Goal: add executable AFK worker commands at queue materialization time, use them during worker execution, allow Pi log artifacts, and finalize queue/task state cleanly on terminal worker outcomes.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` adds derived AFK implementation-command generation and operational log path detection.
+  - `.pi/agent/extensions/afk-orchestration.ts` now attaches derived `implementationCommand` and `validationCommands` to AFK queue jobs.
+  - `.pi/agent/extensions/queue-runner.ts` now carries worker execution command fields on `QueueJob` and clears `activeJobId` / sets `finishedAt` on terminal worker linkage updates.
+  - `.pi/agent/extensions/worker-execution.ts` now consumes queue-job command fallbacks, blocks clearly when no execution plan exists, allows Pi log artifacts during changed-file checks, records GREEN command details, and finalizes linked tasks on blocked/failed worker outcomes.
+  - `tests/extension-units/afk-orchestration.test.ts` verifies materialized AFK queue jobs now include derived implementation and validation commands.
+  - `tests/extension-units/worker-execution.test.ts` verifies queue-job implementation-command fallback, Pi log artifact allowance, explicit missing-plan blocking, and failed validation cleanup of queue/task state.
+  - `scripts/check-foundation-extension-compile.sh` now includes the new helper in the compile harness.
+  - `logs/CURRENT.md` points at this feature group's plan/coding logs.
+- Tests added or changed:
+  - AFK queue job execution-plan assertions in `afk-orchestration.test.ts`
+  - queue-job command fallback / Pi log artifact allowance in `worker-execution.test.ts`
+  - explicit missing-plan blocker in `worker-execution.test.ts`
+  - failed validation queue/task cleanup in `worker-execution.test.ts`
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts`
+  - Failures showed the current runtime had no queue-job implementation command, worker execution blocked or skipped coding, and changed-file enforcement treated untracked Pi log directories as outside allowed paths.
+  - `./scripts/check-foundation-extension-compile.sh`
+  - Initially failed because the new helper file was not copied into the compile harness.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/queue-runner.test.ts`
+- GREEN result:
+  - full changed test scope passes.
+- Other validation commands run:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/queue-runner.test.ts` (3 consecutive passes)
+  - `./scripts/check-foundation-extension-compile.sh`
+  - `git diff --check`
+- Wiring verification evidence:
+  - AFK queue jobs now carry `implementationCommand` / `validationCommands` from `buildQueueJob(...)`.
+  - Worker execution now resolves commands from `WorkerExecutionInput` first, then queue job metadata.
+  - Queue linkage now clears `activeJobId` when worker outcomes are terminal.
+  - Linked task finalization now runs from `blockRun(...)` for blocked/failed worker outcomes.
+- Behavior changes and risk notes:
+  - Fresh queue materialization should let AFK workers start with a derived `pi` planning/coding command instead of silently skipping coding.
+  - Older pre-fix queue jobs without execution-plan fields now fail fast with an explicit blocker instead of a misleading skipped-coding path.
+  - Pi operational logs are now allowed as worker side effects, but arbitrary non-allowed paths remain blocked.
+- Follow-ups or known gaps:
+  - Need a fresh post-change MO verification run to confirm issue-006 no longer fails specifically for missing implementation command and to see the next real frontier/blocker.

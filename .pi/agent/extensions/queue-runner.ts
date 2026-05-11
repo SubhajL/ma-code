@@ -155,6 +155,9 @@ export interface QueueJob {
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
+  redCommand?: string;
+  implementationCommand?: string;
+  validationCommands?: string[];
   tddSlice?: TaskPacketInput["tddSlice"];
   qualityInput?: QualityQueueInput | null;
   graphifyOrchestration?: QueueGraphifyOrchestrationInput | null;
@@ -543,7 +546,11 @@ export async function updateQueueJobWorkerExecution(
       updatedAt: new Date().toISOString(),
     };
     if (linkage.linkedTaskId && !job.linkedTaskId) job.linkedTaskId = linkage.linkedTaskId;
-    if (terminalStatus) job.status = terminalStatus;
+    if (terminalStatus) {
+      job.status = terminalStatus;
+      job.finishedAt = job.workerExecution.updatedAt;
+      if (state.activeJobId === jobId) state.activeJobId = null;
+    }
     job.updatedAt = job.workerExecution.updatedAt;
     return job;
   });

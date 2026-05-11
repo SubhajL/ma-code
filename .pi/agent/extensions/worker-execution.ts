@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { filterMeaningfulGitDirtyLines } from "./git-dirty-runtime-artifacts.ts";
+import { isOperationalLogPath } from "./afk-worker-execution-plan.ts";
 import {
   readQueueState,
   updateQueueJobWorkerExecution,
@@ -398,12 +399,13 @@ async function createIsolatedWorktree(repoRoot: string, run: WorkerExecutionRun,
 }
 
 async function changedFiles(cwd: string): Promise<string[]> {
-  const output = await runGit(cwd, ["status", "--porcelain=v1"]);
+  const output = await runGit(cwd, ["status", "--porcelain=v1", "--untracked-files=all"]);
   return output.split("\n").filter(Boolean).map((line) => line.slice(3).trim()).filter(Boolean).sort();
 }
 
 function assertChangedFilesAllowed(files: string[], allowedPaths: string[]): void {
   const problems = files.flatMap((file) => {
+    if (isOperationalLogPath(file)) return [];
     if (isProtectedPath(file)) return [`protected path mutation attempt: ${file}`];
     if (!pathWithinAllowed(file, allowedPaths)) return [`changed file outside allowed paths: ${file}`];
     return [];
@@ -411,8 +413,18 @@ function assertChangedFilesAllowed(files: string[], allowedPaths: string[]): voi
   if (problems.length > 0) throw new Error(problems.join("; "));
 }
 
-function validationCommands(input: WorkerExecutionInput, issue: AfkIssueArtifact): string[] {
-  return input.validationCommands && input.validationCommands.length > 0 ? input.validationCommands : normalizeStringArray(issue.validationProof);
+function resolvedRedCommand(input: WorkerExecutionInput, job: QueueJob): string | undefined {
+  return input.redCommand ?? job.redCommand ?? undefined;
+}
+
+function resolvedImplementationCommand(input: WorkerExecutionInput, job: QueueJob): string | undefined {
+  return input.implementationCommand ?? job.implementationCommand ?? undefined;
+}
+
+function validationCommands(input: WorkerExecutionInput, issue: AfkIssueArtifact, job: QueueJob): string[] {
+  return input.validationCommands && input.validationCommands.length > 0
+    ? input.validationCommands
+    : (job.validationCommands && job.validationCommands.length > 0 ? job.validationCommands : normalizeStringArray(issue.validationProof));
 }
 
 async function ensureLinkedTask(repoRoot: string, run: WorkerExecutionRun, job: QueueJob): Promise<string | null> {
@@ -448,6 +460,23 @@ async function recordTaskEvidence(repoRoot: string, taskId: string | null, evide
   });
 }
 
+async function finalizeLinkedTask(repoRoot: string, taskId: string | null, terminalStatus: "blocked" | "failed", reason: string, evidence: string[]): Promise<void> {
+  if (!taskId) return;
+  const policy = await loadCompletionGatePolicy(repoRoot);
+  await mutateTaskState(repoRoot, (state) => {
+    const task = getTask(state, taskId) as TaskRecord | undefined;
+    if (!task) return;
+    for (const item of evidence) {
+      applyTaskUpdateAction(state, { action: "evidence", id: taskId, evidence: [item] }, policy);
+    }
+    applyTaskUpdateAction(state, {
+      action: terminalStatus === "failed" ? "fail" : "block",
+      id: taskId,
+      note: `Phase C worker execution ${terminalStatus}: ${reason}`,
+    }, policy);
+  });
+}
+
 function commandSummary(result: WorkerCommandResult): string {
   return `${result.command} exited ${result.exitCode}${result.stderr ? `: ${result.stderr.slice(0, 200)}` : ""}`;
 }
@@ -465,6 +494,7 @@ async function blockRun(repoRoot: string, run: WorkerExecutionRun, reason: strin
     lastReason: reason,
     linkedTaskId: run.linkedTaskId,
   }, status);
+  await finalizeLinkedTask(repoRoot, run.linkedTaskId, status, reason, [`Worker run artifact: ${workerRunPath(run.initiativeId, run.runId)}`]);
   return run;
 }
 
@@ -506,7 +536,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
       "Planning step generated a bounded implementation plan from queue job/tddSlice metadata; no provider-backed hidden loop was started.",
     ],
   };
-  run.steps.validation.commands = validationCommands(input, context.issue);
+  run.steps.validation.commands = validationCommands(input, context.issue, context.job);
   run.nextOperatorAction = "Run with explicit bounds to create an isolated worktree and execute the bounded worker loop.";
 
   if (input.command === "dry-run") return run;
@@ -552,24 +582,29 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     });
 
     const allowedPaths = normalizeAllowedPaths(context.issue.allowedPaths).length > 0 ? normalizeAllowedPaths(context.issue.allowedPaths) : normalizeStringArray(context.job.allowedPaths);
-    run.steps.coding = { status: "skipped", commands: [], evidence: ["No implementation command was provided; engine recorded evidence and validation/review gates only."], changedFiles: [] };
-    if (input.redCommand) {
-      const redResult = await runCommand(worktree.path, input.redCommand, input.maxRuntimeSeconds);
-      run.steps.coding.redCommand = input.redCommand;
+    const redCommand = resolvedRedCommand(input, context.job);
+    const implementationCommand = resolvedImplementationCommand(input, context.job);
+    run.steps.coding = { status: "skipped", commands: [], evidence: ["No implementation command or queue execution plan was provided."], changedFiles: [] };
+    if (redCommand) {
+      const redResult = await runCommand(worktree.path, redCommand, input.maxRuntimeSeconds);
+      run.steps.coding.redCommand = redCommand;
       run.steps.coding.redResult = redResult;
       if (redResult.exitCode === 0) return blockRun(repoRoot, run, "RED command passed unexpectedly before implementation.", "failed");
     }
-    if (input.implementationCommand) {
-      run.steps.coding.status = "running";
-      run.steps.coding.commands = [input.implementationCommand];
-      const implementation = await runCommand(worktree.path, input.implementationCommand, input.maxRuntimeSeconds);
-      run.steps.coding.evidence = [commandSummary(implementation)];
-      if (implementation.exitCode !== 0) return blockRun(repoRoot, run, `implementation command failed: ${commandSummary(implementation)}`, "failed");
-      const files = await changedFiles(worktree.path);
-      assertChangedFilesAllowed(files, allowedPaths);
-      run.steps.coding.changedFiles = files;
-      run.steps.coding.status = "passed";
+    if (!implementationCommand) {
+      return blockRun(repoRoot, run, `No implementation command or queue execution plan is available for ${context.issue.issueId}.`, "blocked");
     }
+    run.steps.coding.status = "running";
+    run.steps.coding.commands = [implementationCommand];
+    const implementation = await runCommand(worktree.path, implementationCommand, input.maxRuntimeSeconds);
+    run.steps.coding.evidence = [commandSummary(implementation)];
+    if (implementation.exitCode !== 0) return blockRun(repoRoot, run, `implementation command failed: ${commandSummary(implementation)}`, "failed");
+    const files = await changedFiles(worktree.path);
+    assertChangedFilesAllowed(files, allowedPaths);
+    run.steps.coding.changedFiles = files;
+    run.steps.coding.status = "passed";
+    run.steps.coding.greenCommand = implementationCommand;
+    run.steps.coding.greenResult = implementation;
 
     const validationResults: WorkerCommandResult[] = [];
     for (const command of run.steps.validation.commands ?? []) {
