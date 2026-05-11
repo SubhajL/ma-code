@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { runAfkOrchestration, type AfkIssueArtifact } from "../../.pi/agent/extensions/afk-orchestration.ts";
@@ -52,6 +52,12 @@ async function writeAfkApprovals(cwd: string, approvals: unknown[]): Promise<voi
   await writeFile(join(root, "afk-approvals.json"), `${JSON.stringify({ version: 1, approvals }, null, 2)}\n`, "utf8");
 }
 
+async function writeReviewArtifact(cwd: string, relativePath: string, content = "# artifact\n"): Promise<void> {
+  const path = join(cwd, relativePath);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, content, "utf8");
+}
+
 const canonicalIssues = () => [
   baseIssue("issue-001", { type: "HITL", status: "planned", validationProof: [], domains: ["docs"], filesToModify: ["docs/foundation.md"], allowedPaths: ["docs"], hitlGates: ["approve foundation"] }),
   baseIssue("issue-002", { dependencies: ["issue-001"], domains: ["frontend"], filesToModify: ["apps/web/src/App.tsx"], allowedPaths: ["apps/web"] }),
@@ -79,6 +85,7 @@ test("issue 2 and 3 become eligible after issue 1 is done, while issue 4 waits f
   const issues = canonicalIssues();
   issues[0].status = "done";
   const cwd = await tempRepo(issues);
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
 
@@ -93,6 +100,7 @@ test("issue 4 becomes eligible only after issues 2 and 3 are done", async () => 
   issues[1].status = "done";
   issues[2].status = "done";
   const cwd = await tempRepo(issues);
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold" });
 
@@ -108,6 +116,7 @@ test("missing allowedPaths, domains, acceptance, validation proof, or summary bl
     baseIssue("issue-005", { dependencies: ["issue-001"], validationProof: [] }),
     baseIssue("issue-006", { dependencies: ["issue-001"] }),
   ], { omitSummaries: ["issue-006"] });
+  await writeReviewArtifact(cwd, "services/issue-001/index.ts", "export const foundation = true;\n");
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold" });
   const reasons = Object.fromEntries(result.blockedIssues.map((issue) => [issue.issueId, issue.reasons.join(" ")]));
@@ -121,6 +130,7 @@ test("missing allowedPaths, domains, acceptance, validation proof, or summary bl
 
 test("durable AFK approvals resolve HITL dependencies for queue materialization", async () => {
   const cwd = await tempRepo(canonicalIssues());
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
   await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z", note: "foundation approved" }]);
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
@@ -134,7 +144,8 @@ test("durable AFK approvals resolve HITL dependencies for queue materialization"
 
 test("AFK apply requeues stale blocked jobs after durable blockers are resolved", async () => {
   const cwd = await tempRepo(canonicalIssues());
-  await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z" }]);
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
+  await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z", note: "foundation approved" }]);
   await mkdir(join(cwd, ".pi", "agent", "state", "runtime"), { recursive: true });
   await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify({
     version: 1,
@@ -174,6 +185,7 @@ test("shared files or mutating path overlap are forced sequential", async () => 
     baseIssue("issue-002", { dependencies: ["issue-001"], filesToModify: ["apps/shared/index.ts"], allowedPaths: ["apps/shared"] }),
     baseIssue("issue-003", { dependencies: ["issue-001"], filesToModify: ["apps/shared/index.ts"], allowedPaths: ["apps/shared"] }),
   ]);
+  await writeReviewArtifact(cwd, "services/issue-001/index.ts", "export const foundation = true;\n");
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
 
@@ -185,6 +197,7 @@ test("status reports eligibility without creating runtime queue state", async ()
   const issues = canonicalIssues();
   issues[0].status = "done";
   const cwd = await tempRepo(issues);
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "status", initiativeId: "greenfield-scaffold", explainIssueId: "issue-002" });
 
@@ -197,6 +210,7 @@ test("apply writes an AFK run artifact and creates queue jobs only through queue
   const issues = canonicalIssues();
   issues[0].status = "done";
   const cwd = await tempRepo(issues);
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
 
   const result = await runAfkOrchestration({ repoRoot: cwd, command: "apply", initiativeId: "greenfield-scaffold", now: "2026-05-09T00:00:00.000Z", maxParallel: 2 });
   const queue = await readQueueState(cwd);
@@ -222,4 +236,30 @@ test("run mode requires explicit bounds and delegates to bounded session without
 
   assert.match(result.lastAction, /runBoundedQueueSession; stopReason=idle/);
   assert.deepEqual(result.startedQueueJobs, []);
+});
+
+test("durable HITL approval is ignored when required review artifacts are missing", async () => {
+  const cwd = await tempRepo(canonicalIssues());
+  await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z", note: "foundation approved" }]);
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
+  const skipped = result.skippedIssues.find((issue) => issue.issueId === "issue-001");
+
+  assert.ok(skipped);
+  assert.match(skipped?.reasons.join(" ") ?? "", /Missing required approval artifacts: docs\/foundation\.md/);
+  assert.match(skipped?.reasons.join(" ") ?? "", /Specific human approval required for issue-001/);
+  assert.equal(result.doneIssues.length, 0);
+});
+
+test("durable HITL approval requires specific approval context fields", async () => {
+  const cwd = await tempRepo(canonicalIssues());
+  await writeReviewArtifact(cwd, "docs/foundation.md", "# foundation\n");
+  await writeAfkApprovals(cwd, [{ issueId: "issue-001", approvalRef: "hitl:issue-001:approved", approvedBy: "operator", approvedAt: "2026-05-10T00:00:00.000Z" }]);
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
+  const skipped = result.skippedIssues.find((issue) => issue.issueId === "issue-001");
+
+  assert.ok(skipped);
+  assert.match(skipped?.reasons.join(" ") ?? "", /Durable approval is missing required context fields: note/);
+  assert.equal(result.doneIssues.length, 0);
 });
