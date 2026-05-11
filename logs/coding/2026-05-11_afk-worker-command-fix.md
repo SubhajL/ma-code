@@ -604,3 +604,46 @@ Review Verdict: no_required_fixes
 - push commit to PR #142 and wait for CI checks before merge.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12 Recovery Validator CI Follow-up
+
+- Goal of this unit of work:
+  - fix the second PR #142 Routing Validators CI failure after harness-routing/static checks were green.
+- Files changed and why:
+  - `scripts/validate-recovery-policy.sh`: updated recovery-policy helper expectations from `openai-codex` to `github-copilot` current/stronger model IDs.
+  - `scripts/validate-recovery-runtime.sh`: updated recovery-runtime helper expectations and provider retry budget key from `openai-codex` to `github-copilot`.
+- Tests added or changed:
+  - no new test files; validator expectations were aligned with `.pi/agent/models.json` defaults.
+- RED command and key failure reason:
+  - `./scripts/validate-recovery-policy.sh` failed with `research provider failure prefers stronger same-provider model: expected recommendedAction="retry_stronger_model", got "switch_provider"` because the validator used removed `openai-codex` model IDs.
+  - `./scripts/validate-recovery-runtime.sh` failed with `provider-specific budget can force provider switch: recommended action` because the test marked the old `openai-codex` provider budgeted instead of `github-copilot`.
+- GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-runtime-verify-fresh9 && ./scripts/validate-skill-routing.sh --skip-live && ./scripts/validate-harness-routing.sh && ./scripts/validate-recovery-policy.sh && ./scripts/validate-recovery-runtime.sh`
+  - result: `Skill-routing validation PASS`, `Harness-routing validation PASS`, `Recovery-policy validation PASS`, `Recovery-runtime validation PASS`.
+- Other validation commands run:
+  - previous validator-alignment commands remain valid: repo static, task-packets, compile, targeted extension tests, and diff checks.
+- Wiring verification evidence:
+  - recovery policy/runtime validators now exercise the same active provider family as `.pi/agent/models.json` routing defaults and provider-specific retry budget logic.
+- Behavior changes and risk notes:
+  - validator-only alignment; runtime recovery implementation was not changed.
+- Follow-ups or known gaps:
+  - push and wait for PR #142 CI again.
+
+### Manual g-check Review After Recovery Validator Fix
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- none
+
+## Open Questions / Assumptions
+- Assumption: provider-specific retry budget coverage should follow the active `github-copilot` provider after the default provider switch.
+
+## Recommended Tests / Validation
+- completed: skill-routing, harness-routing, recovery-policy, and recovery-runtime validators passed locally.
+
+## Rollout Notes
+- rerun PR #142 checks and merge only after GitHub checks pass.
+
+Review Verdict: no_required_fixes

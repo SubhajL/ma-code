@@ -267,7 +267,7 @@ const cases = [
     name: "first validation failure retries same lane",
     input: {
       role: "backend_worker",
-      currentModelId: "openai-codex/gpt-5.4",
+      currentModelId: "github-copilot/gpt-5.4",
       task: {
         id: "task-first-retry",
         title: "Fix failing validator",
@@ -289,7 +289,7 @@ const cases = [
     name: "repeated validation failure rolls back bounded lane",
     input: {
       role: "backend_worker",
-      currentModelId: "openai-codex/gpt-5.4",
+      currentModelId: "github-copilot/gpt-5.4",
       task: {
         id: "task-repeat-failure",
         title: "Fix failing validator again",
@@ -311,7 +311,7 @@ const cases = [
     name: "validator role uses stricter role-specific retry rules",
     input: {
       role: "validator_worker",
-      currentModelId: "openai-codex/gpt-5.4",
+      currentModelId: "github-copilot/gpt-5.4",
       task: {
         id: "task-validator",
         title: "Validator follow-up",
@@ -332,10 +332,10 @@ const cases = [
     name: "provider-specific budget can force provider switch",
     input: {
       role: "research_worker",
-      currentModelId: "openai-codex/gpt-5.4-mini",
+      currentModelId: "github-copilot/gpt-5.4-mini",
       providerFailureState: "model_unavailable",
       providerRetryCounts: {
-        "openai-codex": 1
+        "github-copilot": 1
       }
     },
     expected: {
@@ -367,7 +367,7 @@ for (const testCase of cases) {
 
 const fromState = resolveRecoveryRuntimeDecision(policy, routingConfig, {
   role: "backend_worker",
-  currentModelId: "openai-codex/gpt-5.4",
+  currentModelId: "github-copilot/gpt-5.4",
   task: JSON.parse(readFileSync("./.pi/agent/state/runtime/tasks.json", "utf8")).tasks[0],
 });
 assert.equal(fromState.recommendedAction, "rollback");
@@ -413,7 +413,7 @@ check_2_extension_compile() {
 check_3_live_tool_probe() {
   local name="3. live resolve_recovery_runtime_decision tool probe"
   local out="$TMP_ROOT/check_3_live_tool_probe.jsonl"
-  local cmd="$PI_BIN --mode json --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/recovery-policy.ts -e $REPO_ROOT/.pi/agent/extensions/recovery-runtime.ts -e $REPO_ROOT/.pi/agent/extensions/harness-routing.ts \"Use resolve_recovery_runtime_decision for role backend_worker with currentModelId openai-codex/gpt-5.4, approvalRequired true, and a failed implementation task with retryCount 0, validation fail, and evidence path reports/validation/failure.md. Report the exact recommended action and whether autonomy should halt in one sentence.\""
+  local cmd="$PI_BIN --mode json --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/recovery-policy.ts -e $REPO_ROOT/.pi/agent/extensions/recovery-runtime.ts -e $REPO_ROOT/.pi/agent/extensions/harness-routing.ts \"Use resolve_recovery_runtime_decision for role backend_worker with currentModelId github-copilot/gpt-5.4, approvalRequired true, and a failed implementation task with retryCount 0, validation fail, and evidence path reports/validation/failure.md. Report the exact recommended action and whether autonomy should halt in one sentence.\""
 
   if [[ $INCLUDE_LIVE -eq 0 ]]; then
     local detail="Live probe skipped by default to avoid unnecessary provider-backed validation spend."
