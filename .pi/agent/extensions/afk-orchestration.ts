@@ -490,7 +490,7 @@ function buildTddSlice(issue: AfkIssueArtifact): NonNullable<QueueJob["tddSlice"
   };
 }
 
-function buildQueueJob(initiativeId: string, issue: AfkIssueArtifact, runId: string, sourceArtifactPaths: string[]): QueueJob {
+function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueArtifact, runId: string, sourceArtifactPaths: string[]): QueueJob {
   const domains = normalizeStringArray(issue.domains).filter((domain) => (VALID_DOMAINS as readonly string[]).includes(domain)) as QueueJob["domains"];
   const allowedPaths = normalizeAllowedPaths(issue.allowedPaths);
   const jobId = queueJobId(initiativeId, issue.issueId);
@@ -519,7 +519,7 @@ function buildQueueJob(initiativeId: string, issue: AfkIssueArtifact, runId: str
     assignedRole: assignedRoleForDomains(domains ?? []),
     routeReason: "default",
     budgetMode: "balanced",
-    implementationCommand: buildAfkImplementationCommand(initiativeId, issue, tddSlice),
+    implementationCommand: buildAfkImplementationCommand(repoRoot, initiativeId, issue, tddSlice),
     validationCommands: normalizeStringArray(issue.validationProof),
     tddSlice,
     queueJobSource: {
@@ -595,7 +595,7 @@ async function buildRun(repoRoot: string, input: AfkOrchestrationInput, artifact
     ...(artifacts.sourceArtifacts.approvals ? [artifacts.sourceArtifacts.approvals] : []),
     ...artifacts.sourceArtifacts.summaries,
   ];
-  const queueJobs = evaluated.eligible.map((issue) => buildQueueJob(input.initiativeId, issue, runId, sourceArtifactPaths));
+  const queueJobs = evaluated.eligible.map((issue) => buildQueueJob(input.repoRoot, input.initiativeId, issue, runId, sourceArtifactPaths));
   const materializedQueueJobs = queueJobs.map((job, index) => summarizeQueueJob(job, evaluated.eligible[index], input.initiativeId, sourceArtifactPaths));
   const explainIssue = input.explainIssueId
     ? [...evaluated.eligibleIssues, ...evaluated.blockedIssues, ...evaluated.deferredIssues, ...evaluated.skippedIssues, ...evaluated.doneIssues]
@@ -654,7 +654,7 @@ export async function runAfkOrchestration(input: AfkOrchestrationInput): Promise
   const run = await buildRun(repoRoot, { ...input, initiativeId, maxParallel }, artifacts);
   const queueJobs = run.materializedQueueJobs.map((summary) => {
     const issue = artifacts.issues.find((candidate) => candidate.issueId === summary.sourceIssueId)!;
-    return buildQueueJob(initiativeId, issue, run.runId, summary.sourceArtifactPaths);
+    return buildQueueJob(repoRoot, initiativeId, issue, run.runId, summary.sourceArtifactPaths);
   });
 
   if (input.command === "dry-run") return run;

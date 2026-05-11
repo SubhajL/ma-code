@@ -199,3 +199,30 @@ Review Verdict: changes_required
 - Follow-ups or known gaps:
   - Inspect the new worker artifact `worker-20260511t063157z.json` and preserved worker worktree for the next blocker.
   - Do not advance remaining AFK issues automatically until the post-routing failure is explained.
+
+## 2026-05-11T14:18:22+0700
+- Goal: make derived AFK worker skill commands use the repo's current Pi default model/thinking selection explicitly, instead of inheriting stale worker-worktree defaults.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` — added repo-local `.pi/settings.json` lookup and explicit `--model` / `--thinking` flags to generated `pi` planning/coding commands.
+  - `.pi/agent/extensions/afk-orchestration.ts` — passed `repoRoot` through when deriving AFK implementation commands.
+  - `tests/extension-units/afk-orchestration.test.ts` — added a tracer assertion that materialized AFK implementation commands include the explicit repo-selected model and thinking flags.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this debugging/TDD evidence entry.
+- Tests added or changed:
+  - `tests/extension-units/afk-orchestration.test.ts` now verifies generated implementation commands include `--model "github-copilot/gpt-5.4"` and `--thinking "high"` from repo-local Pi settings.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - Failure reason: the derived `implementationCommand` still used plain `pi "..."` invocations with no explicit model/thinking flags, so it could inherit stale defaults from worker worktrees.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/harness-routing.test.ts >/tmp/task1778474916959-changed-scope-$i.txt 2>&1 || exit 1; done && echo '3 consecutive changed-scope passes' && git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && ./scripts/check-foundation-extension-compile.sh`
+- Wiring verification evidence:
+  - AFK queue materialization is the authoritative source of `implementationCommand`, and it now derives those commands using the current repo's Pi defaults rather than whatever stale defaults exist in an isolated worker worktree.
+  - The public queue-job surface now exposes explicit `--model` and `--thinking` flags, which lets downstream worker execution stay aligned with the originating repo selection.
+- Behavior changes and risk notes:
+  - New AFK queue jobs will carry explicit model selection in their generated `pi` commands.
+  - Existing already-materialized failed queue jobs in older runtime lanes still carry stale commands and need a fresh queue materialization / runtime lane to benefit from this fix.
+- Follow-ups or known gaps:
+  - Materialize a fresh runtime lane from the updated task branch and rerun issue-006.
+  - Do not declare the AFK frontier unblocked until the fresh lane either passes issue-006 or exposes a new non-model-specific blocker.
