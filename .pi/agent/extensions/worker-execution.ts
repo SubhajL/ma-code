@@ -6,6 +6,10 @@ import { promisify } from "node:util";
 import { filterMeaningfulGitDirtyLines } from "./git-dirty-runtime-artifacts.ts";
 import { isOperationalLogPath } from "./afk-worker-execution-plan.ts";
 import {
+  buildWorkerExecutionPlanInvocation,
+  describeWorkerExecutionPlan,
+} from "./worker-same-runtime-execution.ts";
+import {
   readQueueState,
   updateQueueJobWorkerExecution,
   type QueueJob,
@@ -98,6 +102,12 @@ export interface WorkerExecutionRun {
   updatedAt: string;
 }
 
+type SameRuntimeExecutor = (
+  worktreePath: string,
+  plan: NonNullable<QueueJob["workerExecutionPlan"]>,
+  timeoutSeconds: number,
+) => Promise<WorkerCommandResult>;
+
 export interface WorkerExecutionInput {
   repoRoot?: string;
   command: WorkerExecutionCommand;
@@ -113,12 +123,14 @@ export interface WorkerExecutionInput {
   maxSteps?: number;
   redCommand?: string;
   implementationCommand?: string;
+  workerExecutionPlan?: QueueJob["workerExecutionPlan"];
   validationCommands?: string[];
   reviewVerdict?: Exclude<WorkerReviewVerdict, "not_run">;
   stopBeforePr?: boolean;
   allowPrCreate?: boolean;
   explicitApprovalRef?: string;
   explainRunId?: string;
+  sameRuntimeExecutor?: SameRuntimeExecutor;
 }
 
 interface AfkIssueArtifact {
@@ -430,6 +442,46 @@ function resolvedImplementationCommand(input: WorkerExecutionInput, job: QueueJo
   return input.implementationCommand ?? job.implementationCommand ?? undefined;
 }
 
+function resolvedWorkerExecutionPlan(input: WorkerExecutionInput, job: QueueJob): QueueJob["workerExecutionPlan"] {
+  return input.workerExecutionPlan ?? job.workerExecutionPlan ?? null;
+}
+
+async function runWorkerExecutionPlan(
+  worktreePath: string,
+  plan: NonNullable<QueueJob["workerExecutionPlan"]>,
+  timeoutSeconds: number,
+  executor?: SameRuntimeExecutor,
+): Promise<WorkerCommandResult> {
+  if (executor) return executor(worktreePath, plan, timeoutSeconds);
+  const invocation = buildWorkerExecutionPlanInvocation(plan);
+  const started = Date.now();
+  try {
+    const result = await execFile(invocation.program, invocation.args, {
+      cwd: worktreePath,
+      encoding: "utf8",
+      timeout: Math.max(1, timeoutSeconds) * 1000,
+      maxBuffer: 1024 * 1024,
+    });
+    return {
+      command: invocation.displayCommand,
+      exitCode: 0,
+      stdout: result.stdout.trimEnd(),
+      stderr: result.stderr.trimEnd(),
+      durationMs: Date.now() - started,
+    };
+  } catch (error) {
+    const failure = error as { code?: number | string; stdout?: string; stderr?: string; message?: string };
+    const code = typeof failure.code === "number" ? failure.code : 1;
+    return {
+      command: invocation.displayCommand,
+      exitCode: code,
+      stdout: (failure.stdout ?? "").trimEnd(),
+      stderr: (failure.stderr ?? failure.message ?? "").trimEnd(),
+      durationMs: Date.now() - started,
+    };
+  }
+}
+
 function validationCommands(input: WorkerExecutionInput, issue: AfkIssueArtifact, job: QueueJob): string[] {
   return input.validationCommands && input.validationCommands.length > 0
     ? input.validationCommands
@@ -592,6 +644,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
 
     const allowedPaths = normalizeAllowedPaths(context.issue.allowedPaths).length > 0 ? normalizeAllowedPaths(context.issue.allowedPaths) : normalizeStringArray(context.job.allowedPaths);
     const redCommand = resolvedRedCommand(input, context.job);
+    const workerExecutionPlan = resolvedWorkerExecutionPlan(input, context.job);
     const implementationCommand = resolvedImplementationCommand(input, context.job);
     run.steps.coding = { status: "skipped", commands: [], evidence: ["No implementation command or queue execution plan was provided."], changedFiles: [] };
     if (redCommand) {
@@ -600,19 +653,24 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
       run.steps.coding.redResult = redResult;
       if (redResult.exitCode === 0) return blockRun(repoRoot, run, "RED command passed unexpectedly before implementation.", "failed");
     }
-    if (!implementationCommand) {
+    if (!workerExecutionPlan && !implementationCommand) {
       return blockRun(repoRoot, run, `No implementation command or queue execution plan is available for ${context.issue.issueId}.`, "blocked");
     }
     run.steps.coding.status = "running";
-    run.steps.coding.commands = [implementationCommand];
-    const implementation = await runCommand(worktree.path, implementationCommand, input.maxRuntimeSeconds);
-    run.steps.coding.evidence = [commandSummary(implementation)];
+    const codingCommand = workerExecutionPlan ? describeWorkerExecutionPlan(workerExecutionPlan) : implementationCommand!;
+    run.steps.coding.commands = [codingCommand];
+    const implementation = workerExecutionPlan
+      ? await runWorkerExecutionPlan(worktree.path, workerExecutionPlan, input.maxRuntimeSeconds, input.sameRuntimeExecutor)
+      : await runCommand(worktree.path, implementationCommand!, input.maxRuntimeSeconds);
+    run.steps.coding.evidence = workerExecutionPlan
+      ? [`workerExecutionPlan: ${describeWorkerExecutionPlan(workerExecutionPlan)}`, commandSummary(implementation)]
+      : [commandSummary(implementation)];
     if (implementation.exitCode !== 0) return blockRun(repoRoot, run, `implementation command failed: ${commandSummary(implementation)}`, "failed");
     const files = await changedFiles(worktree.path);
     assertChangedFilesAllowed(files, allowedPaths);
     run.steps.coding.changedFiles = files;
     run.steps.coding.status = "passed";
-    run.steps.coding.greenCommand = implementationCommand;
+    run.steps.coding.greenCommand = codingCommand;
     run.steps.coding.greenResult = implementation;
 
     const validationResults: WorkerCommandResult[] = [];
