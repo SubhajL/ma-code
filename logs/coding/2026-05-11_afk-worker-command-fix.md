@@ -278,3 +278,30 @@ Review Verdict: changes_required
 - Follow-ups or known gaps:
   - Materialize one more fresh runtime lane from current HEAD and rerun issue-006.
   - If issue-006 still fails after this fix, the next blocker is neither stale model selection nor extension auto-loading and must be treated as a new concrete runtime defect.
+
+## 2026-05-11T15:19:38+0700
+- Goal: make nested AFK worker `pi` commands explicitly non-interactive and ephemeral so they do not hang waiting for a session/UI lifecycle instead of completing the requested skill turn.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-worker-execution-plan.ts` — added `--print` and `--no-session` to generated nested `pi` commands so worker-launched skill runs are bounded one-shot executions.
+  - `tests/extension-units/afk-orchestration.test.ts` — strengthened the queue-job command assertion to require `--print` and `--no-session` in addition to explicit model/thinking/extension flags.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this blocker-diagnosis/TDD evidence entry.
+- Tests added or changed:
+  - `tests/extension-units/afk-orchestration.test.ts` now verifies non-interactive flags are present on the generated nested `pi` command.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - Failure reason: derived implementation commands still lacked `--print` / `--no-session`, and a bounded 60s manual repro of the generated command in a preserved worker worktree exited `124` with no output, consistent with an interactive/session hang rather than immediate task execution.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778474916959-afk-worker-command-fix && for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/harness-routing.test.ts >/tmp/task1778474916959-postprint-$i.txt 2>&1 || exit 1; done && ./scripts/check-foundation-extension-compile.sh && git diff --check && echo '3 consecutive post-print full-scope passes + compile + diff-check'`
+  - bounded manual repro used to isolate the hang mode before this fix:
+    - `timeout 60s bash -lc "$cmd" > /tmp/issue006-manual-noext.txt 2>&1`
+- Wiring verification evidence:
+  - Queue materialization is the only source of the nested `pi` worker command, and it now emits a bounded one-shot CLI form: `pi --print --no-session --no-extensions --model ... --thinking ... "..."`.
+  - This removes interactive/session persistence from the worker execution path while preserving the repo-selected model and prompt payload.
+- Behavior changes and risk notes:
+  - New AFK worker commands are now explicitly single-turn and ephemeral.
+  - Already-materialized queue jobs in older runtime lanes still contain the pre-fix command and cannot prove the fix.
+- Follow-ups or known gaps:
+  - Materialize a fresh runtime lane from current HEAD and rerun issue-006 with the new command form.
+  - If issue-006 still fails after this fix, the next blocker is beyond model/default/extension/session bootstrapping and should be treated as a deeper worker-command defect.

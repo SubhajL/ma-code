@@ -74,7 +74,7 @@ function readRepoPiInvocation(repoRoot: string): { modelId?: string; thinking?: 
 
 function buildPiCommand(repoRoot: string, prompt: string): string {
   const invocation = readRepoPiInvocation(repoRoot);
-  const segments = ["pi", "--no-extensions"];
+  const segments = ["pi", "--print", "--no-session", "--no-extensions"];
   if (invocation.modelId) segments.push("--model", JSON.stringify(invocation.modelId));
   if (invocation.thinking) segments.push("--thinking", JSON.stringify(invocation.thinking));
   segments.push(JSON.stringify(prompt));
