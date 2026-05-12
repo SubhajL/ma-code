@@ -1353,3 +1353,46 @@ Review Verdict: no_required_fixes
 - merge this before continuing AFK execution through issue-004/008/015.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12T04:42:49Z
+- Goal: materialize the new `mixed-domain-harness-optimization` initiative as durable repo artifacts and push it forward far enough for the master orchestrator to start bounded implementation work.
+- Lifecycle readiness:
+  - Used the active planning context in `reports/planning/2026-05-11_afk-worker-command-fix-plan.md` plus the explicit human approval in the current conversation to materialize the initiative.
+- Discovery path:
+  - Read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `scripts/harness-issue-materialize.ts`, `scripts/harness-product-pipeline.ts`, `scripts/harness-orchestrate.ts`, existing `docs/initiatives/greenfield-scaffold/source/approved-g-issues.json`, and related product-pipeline/issue-materialization tests.
+  - Auggie was unavailable due credits; continued with local direct inspection.
+- Files changed and why:
+  - `docs/initiatives/mixed-domain-harness-optimization/source/approved-g-issues.json` — added the approved mixed-domain optimization issue source for initiative materialization.
+  - `docs/initiatives/mixed-domain-harness-optimization/backlog.md` — generated durable backlog summary via issue materialization.
+  - `docs/initiatives/mixed-domain-harness-optimization/issues.json` — generated durable issue artifact set for downstream phases.
+  - `docs/initiatives/mixed-domain-harness-optimization/pipeline.json` — generated product-pipeline plan for the initiative.
+  - `docs/initiatives/mixed-domain-harness-optimization/slice-plan.json` — generated slice lifecycle plan for the initiative.
+  - `docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json` through `issue-006.summary.json` — generated slice summaries consumed by pipeline/AFK orchestration.
+  - `docs/initiatives/mixed-domain-harness-optimization/materialization-runs/run-20260512T043114Z.{json,md}` and pipeline run artifacts — recorded durable materialization/pipeline evidence.
+- Tests added or changed:
+  - none; this slice creates durable initiative artifacts and bounded runtime evidence rather than new automated tests.
+- Exact RED command and key failure reason:
+  - `npm run harness:issue-materialize -- dry-run --source docs/initiatives/mixed-domain-harness-optimization/source/approved-g-issues.json`
+  - Failure reason: the source artifact did not exist yet, so the materializer failed with `ENOENT`.
+- Exact GREEN command:
+  - `npm run harness:issue-materialize -- apply --source docs/initiatives/mixed-domain-harness-optimization/source/approved-g-issues.json --overwrite`
+- Other validation commands run:
+  - `jq '.initiativeId, (.issues|length), .issues[0].status, .issues[1].dependencies' docs/initiatives/mixed-domain-harness-optimization/source/approved-g-issues.json`
+  - `npm run harness:issue-materialize -- dry-run --source docs/initiatives/mixed-domain-harness-optimization/source/approved-g-issues.json`
+  - `npm run harness:product-pipeline -- dry-run --initiative mixed-domain-harness-optimization --max-parallel 1 --json`
+  - `npm run harness:product-pipeline -- apply --initiative mixed-domain-harness-optimization --max-parallel 1 --json`
+  - `git diff --check`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778558911426-mixed-domain-harness-optimization-mo-run && npm run harness:product-pipeline -- apply --initiative mixed-domain-harness-optimization --max-parallel 1 --json`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778558911426-mixed-domain-harness-optimization-mo-run && npm run harness:orchestrate -- run --initiative mixed-domain-harness-optimization --max-steps 1 --max-runtime-seconds 60 --json`
+- Wiring verification evidence:
+  - Issue materialization generated the durable artifact set (`issues.json`, `pipeline.json`, `slice-plan.json`, issue summaries, run reports) under `docs/initiatives/mixed-domain-harness-optimization/`, which is the exact file layout consumed by the product pipeline and AFK orchestration phases.
+  - The clean MO worktree run delegated to `npm run harness:afk-orchestrate -- run --run --initiative mixed-domain-harness-optimization --max-steps 1 --max-runtime-seconds 60 --json`.
+  - Clean-worktree runtime evidence shows queue job `afk-mixed-domain-harness-optimization-issue-002` is `running` with linked task `task-1778560922665`, proving the new initiative reached actual bounded implementation execution.
+- Behavior changes and risk notes:
+  - The repo now has a durable mixed-domain optimization initiative artifact set that the existing product pipeline can consume.
+  - Because `harness:orchestrate run` requires a clean repo, I used an isolated clean worktree/branch (`task/task-1778558911426-mixed-domain-harness-optimization-mo-run`) and committed only the initiative docs there so MO could advance without unrelated dirty-state blockers.
+  - The root task branch still contains unrelated pre-existing dirty state in `docs/initiatives/greenfield-scaffold/navigation.md`, so MO launch from the root worktree remains blocked until that branch is cleaned or ignored via a separate isolated lane.
+- Follow-ups or known gaps:
+  - Monitor and review the active clean-worktree runtime task `task-1778560922665` / queue job `afk-mixed-domain-harness-optimization-issue-002`.
+  - Reconcile the clean-worktree committed initiative docs with the root task branch before any PR/merge workflow.
+  - If we want root-worktree MO launches to work directly, remove or isolate unrelated dirty tracked files before rerunning `harness:orchestrate run`.
