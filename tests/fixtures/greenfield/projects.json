@@ -1,0 +1,26 @@
+[
+  {
+    "kind": "project",
+    "id": "project-001",
+    "ownerUserId": "user-001",
+    "slug": "local-sandbox-alpha",
+    "name": "Local Sandbox Alpha",
+    "createdAt": "2026-05-12T01:00:00.000Z"
+  },
+  {
+    "kind": "project",
+    "id": "project-002",
+    "ownerUserId": "user-002",
+    "slug": "local-sandbox-beta",
+    "name": "Local Sandbox Beta",
+    "createdAt": "2026-05-12T01:05:00.000Z"
+  },
+  {
+    "kind": "project",
+    "id": "project-003",
+    "ownerUserId": "user-003",
+    "slug": "local-sandbox-gamma",
+    "name": "Local Sandbox Gamma",
+    "createdAt": "2026-05-12T01:10:00.000Z"
+  }
+]

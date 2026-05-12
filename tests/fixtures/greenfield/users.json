@@ -1,0 +1,23 @@
+[
+  {
+    "kind": "user",
+    "id": "user-001",
+    "email": "user-001@example.com",
+    "displayName": "Test User 001",
+    "createdAt": "2026-05-12T00:00:00.000Z"
+  },
+  {
+    "kind": "user",
+    "id": "user-002",
+    "email": "user-002@example.com",
+    "displayName": "Test User 002",
+    "createdAt": "2026-05-12T00:05:00.000Z"
+  },
+  {
+    "kind": "user",
+    "id": "user-003",
+    "email": "user-003@example.com",
+    "displayName": "Test User 003",
+    "createdAt": "2026-05-12T00:10:00.000Z"
+  }
+]

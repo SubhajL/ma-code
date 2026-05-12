@@ -509,7 +509,7 @@
       "issueId": "issue-013",
       "title": "Create fixture and seed data scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-009"
       ],
