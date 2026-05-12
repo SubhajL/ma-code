@@ -1144,3 +1144,77 @@ Review Verdict: no_required_fixes
 - land this as issue-009 PR, then continue to issue-010/013 and other newly unblocked AFK work.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12T00:18:00Z
+- Goal: implement greenfield-scaffold issue-010 by adding the first migration scaffold plus static listing/validation helpers without applying production data.
+- Files changed and why:
+  - `migrations/0001_greenfield_init.sql` — added the first bounded greenfield SQL scaffold with explicit `not_ready`, `validate_only`, and `ROLLBACK` markers.
+  - `services/api/src/db/migrations.ts` — added typed migration scaffold metadata, listing, SQL loading, and static validation helpers for the new migration file.
+  - `tests/api/migrations.test.ts` — added TDD coverage for phase-a queue readiness, worker dependency metadata, and rollback-only migration validation.
+  - `migrations/index.ts` — added the minimal directory entrypoint required for the durable `npm run test:api -- migrations` validation command to resolve and execute the API test module.
+- Tests added or changed:
+  - added `tests/api/migrations.test.ts`.
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/api/migrations.test.ts`
+  - failed with `ERR_MODULE_NOT_FOUND` because `services/api/src/db/migrations.ts` did not exist yet.
+- Exact GREEN command:
+  - `node --import tsx --test tests/api/migrations.test.ts`
+- Other validation commands run:
+  - `npm run test:api -- migrations`
+- Wiring verification evidence:
+  - `listGreenfieldMigrations()` now lists `migrations/0001_greenfield_init.sql` as a `queueReadiness: not_ready` phase-a scaffold.
+  - `validateGreenfieldMigrationScaffold()` statically validates header markers, scaffolded table definitions, and the rollback-only guard without applying the migration.
+  - `migrations/index.ts` allows the durable API validation command to resolve the `migrations` directory and run `tests/api/migrations.test.ts` through the existing test runner.
+- Behavior changes and risk notes:
+  - the first migration artifact is now present and inspectable, but it is still intentionally phase-a bounded and not production-apply ready.
+  - validation is static and file-based; no live database execution or production data mutation occurs in this slice.
+- Follow-ups or known gaps:
+  - future migration slices can extend the listing/validation helper beyond the first scaffold once more migration files exist.
+
+## 2026-05-12 Issue-010 Migration Scaffold
+
+- Goal of the change:
+  - implement greenfield-scaffold issue-010 by adding a first migration scaffold that remains rollback-only/not-applied.
+- Files changed and why:
+  - `migrations/0001_greenfield_init.sql`: first bounded SQL migration scaffold.
+  - `migrations/index.ts`: migration registry entry point.
+  - `services/api/src/db/migrations.ts`: typed migration metadata and validation helpers.
+  - `tests/api/migrations.test.ts`: tests for migration listing and rollback-only constraints.
+  - `docs/initiatives/greenfield-scaffold/issues.json`: marks issue-010 done after validation.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md`: records evidence and review handoff.
+- Tests added or changed:
+  - added `tests/api/migrations.test.ts`.
+- RED command and key failure reason:
+  - no new manual RED after worker execution because Phase C produced a review-ready slice; the validation target was already available from the issue-009 API test runner.
+- GREEN command:
+  - `for i in 1 2 3; do npm run test:api -- migrations || exit $?; done && git diff --check`
+  - result: 3 consecutive passes and diff check passed.
+- Other validation commands run:
+  - `npm --silent run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 3 --json` succeeded after marking issue-010 done.
+- Wiring verification evidence:
+  - `npm run test:api -- migrations` discovers/runs the migration tests.
+  - migration tests import `services/api/src/db/migrations.ts` and validate the SQL scaffold is listed but not applied.
+- Behavior changes and risk notes:
+  - this is a migration scaffold only; it does not execute migrations or connect to a database.
+- Follow-ups or known gaps:
+  - land issue-010 PR, sync main, and continue AFK frontier.
+
+### Manual g-check Review for Issue-010
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- future migration work can add an apply runner once deployment/runtime DB policy exists.
+
+## Open Questions / Assumptions
+- Assumption: rollback-only/not-applied metadata is the correct safety boundary for this first migration scaffold.
+
+## Recommended Tests / Validation
+- completed: `for i in 1 2 3; do npm run test:api -- migrations || exit $?; done && git diff --check`
+- completed: AFK dry-run after marking issue-010 done.
+
+## Rollout Notes
+- land this as issue-010 PR, then continue the AFK frontier.
+
+Review Verdict: no_required_fixes

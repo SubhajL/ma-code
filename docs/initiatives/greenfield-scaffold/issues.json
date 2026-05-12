@@ -380,7 +380,7 @@
       "issueId": "issue-010",
       "title": "Add first migration scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-009"
       ],
