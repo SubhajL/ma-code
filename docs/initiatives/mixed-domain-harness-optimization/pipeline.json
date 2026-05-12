@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "initiativeId": "mixed-domain-harness-optimization",
+  "maxParallelSlices": 2,
+  "slices": [
+    {
+      "sliceId": "issue-001",
+      "title": "Approve mixed-domain harness operating contract",
+      "status": "done",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-002",
+      "title": "Preflight mixed-domain validation contracts before worker execution",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-003",
+      "title": "Add first-class composite mixed-domain worker packet and role semantics",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-004",
+      "title": "Add salvage-aware recovery for interrupted mixed-domain worker runs",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-005",
+      "title": "Improve mixed-domain parallelism beyond shared-path-root serialization",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-006",
+      "title": "Add coordinated sub-lane execution under one mixed-domain parent slice",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    }
+  ],
+  "parallelDecisions": [],
+  "phaseABoundary": {
+    "queueReadiness": "not_ready",
+    "queueReadyConversion": "Phase B only",
+    "materializedWork": {
+      "queueJobIds": [],
+      "workerSessionIds": [],
+      "worktreePaths": []
+    }
+  }
+}

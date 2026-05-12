@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "runId": "run-20260512T043114Z",
+  "initiativeId": "mixed-domain-harness-optimization",
+  "generatedAt": "20260512T043114Z",
+  "source": {
+    "kind": "g-issues",
+    "capturedAt": "2026-05-12T04:02:34.000Z",
+    "approvedBy": "human:subhajlimanond",
+    "approvalRef": "user-prompt-2026-05-12-mixed-domain-harness-optimization-materialization",
+    "sourcePath": "docs/initiatives/mixed-domain-harness-optimization/source/approved-g-issues.json",
+    "sourceHash": "03a17ab7897f0d3aa6941ba6e728608658191c2641e47274d272f13dff5de608"
+  },
+  "issueCount": 6,
+  "hitlCount": 0,
+  "afkCount": 6,
+  "plannedArtifacts": [
+    "docs/initiatives/mixed-domain-harness-optimization/backlog.md",
+    "docs/initiatives/mixed-domain-harness-optimization/issues.json",
+    "docs/initiatives/mixed-domain-harness-optimization/materialization-runs/run-20260512T043114Z.json",
+    "docs/initiatives/mixed-domain-harness-optimization/materialization-runs/run-20260512T043114Z.md",
+    "docs/initiatives/mixed-domain-harness-optimization/pipeline.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slice-plan.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json",
+    "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json"
+  ],
+  "phaseABoundary": {
+    "writesOnlyUnder": "docs/initiatives/mixed-domain-harness-optimization",
+    "queueReadiness": "not_ready",
+    "noQueueJobs": true,
+    "noWorkerSessions": true
+  }
+}

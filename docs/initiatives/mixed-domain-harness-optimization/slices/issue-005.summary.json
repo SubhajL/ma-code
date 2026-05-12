@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "initiativeId": "mixed-domain-harness-optimization",
+  "issueId": "issue-005",
+  "type": "AFK",
+  "queueReadiness": "not_ready",
+  "dependencies": [
+    "issue-004"
+  ],
+  "summary": {
+    "sliceId": "issue-005",
+    "filesToModify": [
+      ".pi/agent/extensions/afk-orchestration.ts",
+      "tests/extension-units/afk-orchestration.test.ts",
+      "tests/extension-units/parallel-worker-lanes.test.ts"
+    ],
+    "allowedPaths": [
+      ".pi/agent/extensions",
+      "tests/extension-units"
+    ],
+    "contracts": [],
+    "schemaPaths": [],
+    "migrationPaths": [],
+    "configPaths": [],
+    "testPaths": [
+      "tests/extension-units/afk-orchestration.test.ts",
+      "tests/extension-units/parallel-worker-lanes.test.ts"
+    ],
+    "fixturePaths": [],
+    "notes": [
+      "Phase A source hash: 03a17ab7897f0d3aa6941ba6e728608658191c2641e47274d272f13dff5de608",
+      "Issue type: AFK",
+      "Allowed path roots: .pi/agent/extensions, tests/extension-units"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Safe non-overlapping mixed-domain slices can be marked parallel candidates.",
+    "Unsafe overlapping mixed-domain slices remain forced sequential.",
+    "Parallel decision output explains exactly why slices are parallel-safe or blocked."
+  ],
+  "validationProof": [
+    "node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts",
+    "git diff --check"
+  ],
+  "hitlGates": []
+}

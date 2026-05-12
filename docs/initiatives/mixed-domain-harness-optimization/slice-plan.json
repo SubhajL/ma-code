@@ -1,0 +1,320 @@
+{
+  "version": 1,
+  "initiativeId": "mixed-domain-harness-optimization",
+  "status": "planned",
+  "slices": [
+    {
+      "sliceId": "issue-001",
+      "issueId": "issue-001",
+      "title": "Approve mixed-domain harness operating contract",
+      "type": "AFK",
+      "status": "done",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        "docs/initiatives/mixed-domain-harness-optimization/contract.md",
+        ".pi/agent/docs/team_orchestration_architecture.md"
+      ],
+      "allowedPaths": [
+        "docs/initiatives/mixed-domain-harness-optimization",
+        ".pi/agent/docs"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [],
+      "fixturePaths": [],
+      "blockedReason": null
+    },
+    {
+      "sliceId": "issue-002",
+      "issueId": "issue-002",
+      "title": "Preflight mixed-domain validation contracts before worker execution",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-001"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        ".pi/agent/extensions/afk-orchestration.ts",
+        ".pi/agent/extensions/worker-execution.ts",
+        "tests/extension-units/afk-orchestration.test.ts",
+        "tests/extension-units/worker-execution.test.ts"
+      ],
+      "allowedPaths": [
+        ".pi/agent/extensions",
+        "tests/extension-units"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/extension-units/afk-orchestration.test.ts",
+        "tests/extension-units/worker-execution.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-001"
+    },
+    {
+      "sliceId": "issue-003",
+      "issueId": "issue-003",
+      "title": "Add first-class composite mixed-domain worker packet and role semantics",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-002"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        ".pi/agent/extensions/afk-orchestration.ts",
+        ".pi/agent/extensions/task-packets.ts",
+        ".pi/agent/extensions/queue-runner.ts",
+        "tests/extension-units/afk-orchestration.test.ts",
+        "tests/extension-units/queue-runner.test.ts",
+        "tests/extension-units/harness-routing.test.ts"
+      ],
+      "allowedPaths": [
+        ".pi/agent/extensions",
+        "tests/extension-units"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/extension-units/afk-orchestration.test.ts",
+        "tests/extension-units/queue-runner.test.ts",
+        "tests/extension-units/harness-routing.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-002"
+    },
+    {
+      "sliceId": "issue-004",
+      "issueId": "issue-004",
+      "title": "Add salvage-aware recovery for interrupted mixed-domain worker runs",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-003"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        ".pi/agent/extensions/queue-runner.ts",
+        ".pi/agent/extensions/worker-execution.ts",
+        "tests/extension-units/queue-runner.test.ts",
+        "tests/extension-units/worker-execution.test.ts"
+      ],
+      "allowedPaths": [
+        ".pi/agent/extensions",
+        "tests/extension-units"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/extension-units/queue-runner.test.ts",
+        "tests/extension-units/worker-execution.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-003"
+    },
+    {
+      "sliceId": "issue-005",
+      "issueId": "issue-005",
+      "title": "Improve mixed-domain parallelism beyond shared-path-root serialization",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-004"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        ".pi/agent/extensions/afk-orchestration.ts",
+        "tests/extension-units/afk-orchestration.test.ts",
+        "tests/extension-units/parallel-worker-lanes.test.ts"
+      ],
+      "allowedPaths": [
+        ".pi/agent/extensions",
+        "tests/extension-units"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/extension-units/afk-orchestration.test.ts",
+        "tests/extension-units/parallel-worker-lanes.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-004"
+    },
+    {
+      "sliceId": "issue-006",
+      "issueId": "issue-006",
+      "title": "Add coordinated sub-lane execution under one mixed-domain parent slice",
+      "type": "AFK",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "phaseEvidence": {
+        "stitch_prompt": {
+          "status": "materialized",
+          "artifactPath": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json",
+          "evidence": [
+            "Phase A issue summary generated from approved g-issues source."
+          ]
+        }
+      },
+      "dependencies": [
+        "issue-005"
+      ],
+      "queueReadiness": "not_ready",
+      "filesToModify": [
+        ".pi/agent/extensions/queue-runner.ts",
+        ".pi/agent/extensions/task-packets.ts",
+        ".pi/agent/extensions/product-pipeline.ts",
+        "scripts/harness-parallel-worker-lanes.ts",
+        "tests/extension-units/queue-runner.test.ts",
+        "tests/extension-units/product-pipeline.test.ts",
+        "tests/extension-units/parallel-worker-lanes.test.ts"
+      ],
+      "allowedPaths": [
+        ".pi/agent/extensions",
+        "scripts",
+        "tests/extension-units"
+      ],
+      "schemaPaths": [],
+      "migrationPaths": [],
+      "configPaths": [],
+      "testPaths": [
+        "tests/extension-units/queue-runner.test.ts",
+        "tests/extension-units/product-pipeline.test.ts",
+        "tests/extension-units/parallel-worker-lanes.test.ts"
+      ],
+      "fixturePaths": [],
+      "blockedReason": "Waiting for dependencies: issue-005"
+    }
+  ],
+  "policy": {
+    "phase": "A_issue_materialization_only",
+    "queueReadyConversion": "deferred_to_phase_b",
+    "queueReadiness": "not_ready",
+    "noWorkerExecution": true,
+    "noRuntimeStateMutation": true
+  }
+}
