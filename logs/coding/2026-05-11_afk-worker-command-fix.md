@@ -1062,3 +1062,85 @@ LOW
 - land this as issue-007 PR, then continue to the next AFK frontier.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12 Issue-009 Persistence Schema Placeholder
+
+- Goal of the change:
+  - implement greenfield-scaffold issue-009 by adding a bounded persistence schema placeholder that validates user/project records without requiring migrations.
+- Files changed and why:
+  - `schemas/greenfield/user.schema.json`: public Phase A placeholder schema for both `user` and `project` record shapes.
+  - `services/api/src/db/schema.ts`: runtime metadata plus lightweight placeholder validation helpers and explicit downstream worker dependencies.
+  - `tests/api/schema.test.ts`: TDD coverage for the public schema document, placeholder metadata, and user/project validation behavior.
+- Tests added or changed:
+  - added `tests/api/schema.test.ts`.
+- RED command and key failure reason:
+  - `node --import tsx --test tests/api/schema.test.ts`
+  - failed with `ERR_MODULE_NOT_FOUND` because `services/api/src/db/schema.ts` did not exist yet.
+- GREEN command:
+  - `node --import tsx --test tests/api/schema.test.ts`
+  - result: 3 tests passed.
+- Other validation commands run:
+  - `npm run test:api -- schema` → exited 1 with no stdout/stderr because the repo currently has no root `scripts.test:api` entry (`npm pkg get scripts.test:api` returned `{}`).
+  - `git diff --check`
+- Wiring verification evidence:
+  - the public schema file now exposes `oneOf` refs for `userRecord` and `projectRecord` definitions.
+  - `greenfieldPersistencePlaceholder.queueReadiness` remains `not_ready` and `requiresMigrations` remains `false` for the Phase A slice.
+  - `greenfieldPersistencePlaceholder.workerImplementationDependencies` identifies the next bounded worker dependencies: `issue-010` (migration scaffold) and `issue-013` (fixture/seed consumers).
+  - `validatePersistenceRecord(...)` accepts valid placeholder user/project records and rejects incomplete records with deterministic errors.
+- Behavior changes and risk notes:
+  - this is a scaffold-only persistence contract; it does not introduce migrations or database writes.
+  - the packet-specified validation alias is not yet wired at the repo root, so durable command-path validation remains blocked outside this slice's allowed files.
+- Follow-ups or known gaps:
+  - if the product pipeline requires `npm run test:api -- schema` to be durable from the repo root, a separate bounded validation-runner slice must add the missing root script wiring.
+
+## 2026-05-12 Issue-009 Persistence Schema Placeholder
+
+- Goal of the change:
+  - implement greenfield-scaffold issue-009 by adding a bounded persistence schema placeholder for user and project records without migrations.
+- Files changed and why:
+  - `schemas/greenfield/user.schema.json`: JSON schema artifact for user/project records.
+  - `services/api/src/db/schema.ts`: typed placeholder schema metadata and validation helpers.
+  - `tests/api/schema.test.ts`: observable API/schema tests for valid/invalid user/project records and phase-a bounded metadata.
+  - `package.json`: added `test:api` entry point for durable API validation commands.
+  - `scripts/run-api-tests.mjs`: maps the durable `schema` alias to `tests/api/schema.test.ts`.
+  - `docs/initiatives/greenfield-scaffold/issues.json`: marks issue-009 done after validation.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md`: records evidence and review handoff.
+- Tests added or changed:
+  - added `tests/api/schema.test.ts`.
+  - added `scripts/run-api-tests.mjs`.
+- RED command and key failure reason:
+  - `harness:worker-execute run ... issue-009` stopped with `validation failure: npm run test:api -- schema exited 1` because `package.json` had no `test:api` script yet.
+- GREEN command:
+  - `for i in 1 2 3; do npm run test:api -- schema || exit $?; done && git diff --check`
+  - result: 3 consecutive passes and diff check passed.
+- Other validation commands run:
+  - `node --import tsx --test tests/api/schema.test.ts` passed before adding the durable npm alias.
+  - `npm --silent run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 3 --json` succeeded after marking issue-009 done.
+- Wiring verification evidence:
+  - `npm run test:api -- schema` dispatches through `scripts/run-api-tests.mjs` to `tests/api/schema.test.ts`.
+  - schema tests import `services/api/src/db/schema.ts` and validate the JSON schema artifact exists.
+- Behavior changes and risk notes:
+  - no migration files or live database dependencies were added.
+  - adding the API test runner is needed to satisfy the durable validation proof; package dependencies remain unchanged.
+- Follow-ups or known gaps:
+  - land issue-009 PR, sync main, and continue AFK frontier.
+
+### Manual g-check Review for Issue-009
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- future backend slices can add more API aliases to `scripts/run-api-tests.mjs`.
+
+## Open Questions / Assumptions
+- Assumption: a JSON-schema plus TypeScript validation helper is the intended bounded persistence placeholder before migrations are introduced in issue-010.
+
+## Recommended Tests / Validation
+- completed: `for i in 1 2 3; do npm run test:api -- schema || exit $?; done && git diff --check`
+- completed: AFK dry-run after marking issue-009 done.
+
+## Rollout Notes
+- land this as issue-009 PR, then continue to issue-010/013 and other newly unblocked AFK work.
+
+Review Verdict: no_required_fixes
