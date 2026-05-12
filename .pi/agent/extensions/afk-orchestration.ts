@@ -1,5 +1,5 @@
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 
 import {
   materializeQueueJobs,
@@ -165,6 +165,80 @@ function normalizeAllowedPaths(value: unknown): string[] {
     if (isRecord(entry) && typeof entry.path === "string" && entry.path.trim()) return [entry.path.trim().replace(/^\.\//, "").replace(/\/$/, "")];
     return [];
   });
+}
+
+function splitCommand(command: string): string[] {
+  const parts = command.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g)?.map((part) => part.replace(/^("|')(.*)\1$/, "$2")) ?? [];
+  if (parts.length === 0) throw new Error("Command must not be empty.");
+  return parts;
+}
+
+function packageScriptName(tokens: string[]): string | null {
+  const [program, ...args] = tokens;
+  if ((program === "npm" || program === "pnpm" || program === "bun") && args[0] === "run" && typeof args[1] === "string" && args[1].trim()) {
+    return args[1].trim();
+  }
+  if ((program === "npm" || program === "pnpm") && ["test", "start", "stop", "restart"].includes(args[0] ?? "")) return args[0] ?? null;
+  return null;
+}
+
+async function executableExists(repoRoot: string, program: string): Promise<boolean> {
+  if (!program.trim()) return false;
+  if (program.includes("/")) return exists(resolve(repoRoot, program));
+  const entries = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
+  for (const entry of entries) {
+    if (await exists(resolve(entry, program))) return true;
+  }
+  return false;
+}
+
+interface PackageScriptLookup {
+  scripts: Record<string, unknown> | null;
+  problem: string | null;
+}
+
+async function loadPackageScripts(repoRoot: string): Promise<PackageScriptLookup> {
+  const packageJsonPath = resolve(repoRoot, "package.json");
+  if (!(await exists(packageJsonPath))) return { scripts: null, problem: `Missing package.json at ${packageJsonPath}.` };
+  try {
+    const parsed = JSON.parse(await readFile(packageJsonPath, "utf8")) as { scripts?: Record<string, unknown> };
+    return { scripts: isRecord(parsed.scripts) ? parsed.scripts : {}, problem: null };
+  } catch (error) {
+    return { scripts: null, problem: `Unable to read package.json at ${packageJsonPath}: ${(error as Error).message}` };
+  }
+}
+
+export interface ValidationCommandPreflightResult {
+  ok: boolean;
+  problems: string[];
+}
+
+export async function preflightValidationCommands(repoRootInput: string, commands: string[]): Promise<ValidationCommandPreflightResult> {
+  const repoRoot = resolve(repoRootInput);
+  const normalizedCommands = normalizeStringArray(commands);
+  const problems = new Set<string>();
+  let packageScripts: PackageScriptLookup | null = null;
+
+  for (const command of normalizedCommands) {
+    const tokens = splitCommand(command);
+    const program = tokens[0] ?? "";
+    if (!(await executableExists(repoRoot, program))) {
+      problems.add(`Validation contract missing executable "${program}" for command: ${command}`);
+      continue;
+    }
+    const scriptName = packageScriptName(tokens);
+    if (!scriptName) continue;
+    packageScripts ??= await loadPackageScripts(repoRoot);
+    if (packageScripts.problem) {
+      problems.add(`Validation contract ${packageScripts.problem} Command: ${command}`);
+      continue;
+    }
+    if (!packageScripts.scripts || typeof packageScripts.scripts[scriptName] !== "string" || !packageScripts.scripts[scriptName]) {
+      problems.add(`Validation contract missing npm script "${scriptName}" for command: ${command}`);
+    }
+  }
+
+  return { ok: problems.size === 0, problems: [...problems] };
 }
 
 function normalizeIssue(value: unknown, index: number): AfkIssueArtifact {
