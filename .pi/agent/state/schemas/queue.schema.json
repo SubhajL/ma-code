@@ -578,6 +578,15 @@
               }
             },
             "additionalProperties": false
+          },
+          "migrationPathNote": {
+            "type": "string"
+          },
+          "escalationInstructions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "additionalProperties": false

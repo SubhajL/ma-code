@@ -166,6 +166,8 @@ export interface QueueJob {
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
+  migrationPathNote?: string;
+  escalationInstructions?: string[];
   redCommand?: string;
   implementationCommand?: string;
   workerExecutionPlan?: QueueJobWorkerExecutionPlan | null;
@@ -1065,6 +1067,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     ),
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
     notes: [...(job.notes ?? [])],
+    escalationInstructions: job.escalationInstructions && job.escalationInstructions.length > 0 ? uniqueStrings(job.escalationInstructions) : undefined,
     workerExecutionPlan: cloneQueueJobWorkerExecutionPlan(job.workerExecutionPlan),
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),
     qualityInput: job.qualityInput ?? null,
@@ -1425,6 +1428,8 @@ function buildPacketInputForJob(job: QueueJob, teamId: TeamId, assignedRole: Har
     routeReason: job.routeReason,
     budgetMode: job.budgetMode,
     modelOverride: job.modelOverride,
+    migrationPathNote: job.migrationPathNote,
+    escalationInstructions: job.escalationInstructions,
   };
 }
 

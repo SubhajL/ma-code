@@ -1301,3 +1301,55 @@ Review Verdict: no_required_fixes
 - land this as issue-013 PR, then continue the AFK frontier.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12 AFK Mixed-Domain Queue Governance Fix
+
+- Goal of the change:
+  - unblock mixed frontend/backend AFK issues (issue-004, issue-008, issue-015) that were materialized as queue jobs but blocked before start by domain governance.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-orchestration.ts`: mixed governed-domain AFK queue jobs now include explicit `mixed-domain` migration/escalation evidence.
+  - `.pi/agent/extensions/queue-runner.ts`: queue jobs can carry `migrationPathNote` and `escalationInstructions` through task-packet generation.
+  - `.pi/agent/state/schemas/queue.schema.json`: schema permits the new queue job evidence fields.
+  - `tests/extension-units/afk-orchestration.test.ts`: regression test for mixed frontend/backend AFK job materialization evidence.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md`: records RED/GREEN and review evidence.
+- Tests added or changed:
+  - added `apply materializes mixed frontend/backend AFK jobs with explicit mixed-domain packet evidence`.
+- RED command and key failure reason:
+  - `npm --silent run harness:afk-orchestrate -- run --initiative greenfield-scaffold --run --max-parallel 3 --max-steps 25 --max-runtime-seconds 900 --json` after issue-013 materialized issue-004/008/015 but queue-runner blocked them with `Domain governance failed: backend domain work should be assigned to backend_worker; received frontend_worker.; mixed-domain work requires explicit escalation, mixed-domain justification, or multi-lane note.`
+  - New unit test initially failed because mixed-domain queue jobs lacked `migrationPathNote`/`escalationInstructions` evidence.
+- GREEN command:
+  - `./scripts/check-foundation-extension-compile.sh && node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/queue-runner.test.ts tests/extension-units/worker-execution.test.ts && git diff --check`
+  - result: compile ok; `tests 67`, `pass 67`, `fail 0`; diff check passed.
+- Other validation commands run:
+  - `npm --silent run harness:afk-orchestrate -- apply --initiative greenfield-scaffold --queue-only --max-parallel 3 --json`
+  - result: materialized issue-004/008/015 queue jobs containing mixed-domain migration/escalation evidence instead of bare jobs.
+- Wiring verification evidence:
+  - `afk-orchestration.ts` attaches evidence at queue-job creation.
+  - `queue-runner.ts` passes evidence into `generateTaskPacket`, which is the domain-governance enforcement boundary.
+  - queue schema admits persisted evidence fields.
+- Behavior changes and risk notes:
+  - mixed-domain AFK jobs remain single-owner queue jobs but now carry explicit mixed-domain review/escalation evidence as required by policy.
+  - if mixed-domain scope expands beyond scaffold coupling, the evidence instructs reviewers/operators to split into multi-lane work.
+- Follow-ups or known gaps:
+  - land this harness fix, then resume AFK progression from main; issue-004/008/015 should no longer self-block at queue start.
+
+### Manual g-check Review for AFK Mixed-Domain Fix
+
+## Required Fixes
+- none
+
+## Optional Improvements
+- future AFK materialization could derive separate parallel lanes for mixed-domain issues instead of single-owner jobs.
+
+## Open Questions / Assumptions
+- Assumption: these greenfield scaffold issues intentionally couple frontend/backend placeholder files and are acceptable as single bounded mixed-domain jobs with explicit review/escalation evidence.
+
+## Recommended Tests / Validation
+- completed: foundation extension compile.
+- completed: targeted afk-orchestration, queue-runner, and worker-execution unit tests.
+- completed: queue-only materialization proof for issue-004/008/015 mixed-domain evidence.
+
+## Rollout Notes
+- merge this before continuing AFK execution through issue-004/008/015.
+
+Review Verdict: no_required_fixes
