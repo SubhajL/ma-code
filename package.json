@@ -118,7 +118,8 @@
     "validate:orchestrator-evidence": "./scripts/validate-orchestrator-evidence.sh",
     "test:orchestrator-context": "node --import tsx --test tests/extension-units/orchestrator-context.test.ts tests/integration/orchestrator-context.test.ts",
     "validate:orchestrator-context": "bash scripts/validate-orchestrator-context.sh",
-    "test:web": "node scripts/run-web-tests.mjs"
+    "test:web": "node scripts/run-web-tests.mjs",
+    "test:api": "node scripts/run-api-tests.mjs"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

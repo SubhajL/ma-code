@@ -336,7 +336,7 @@
       "issueId": "issue-009",
       "title": "Define persistence schema placeholder",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-003"
       ],

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.greenfield.local/greenfield/user.schema.json",
+  "title": "Greenfield persistence placeholder schema",
+  "description": "Phase A placeholder schema for user and project persistence records. This scaffold validates record shapes without defining database migrations.",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/userRecord"
+    },
+    {
+      "$ref": "#/$defs/projectRecord"
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "userRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "email",
+        "displayName",
+        "createdAt"
+      ],
+      "properties": {
+        "kind": {
+          "const": "user"
+        },
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "email": {
+          "type": "string",
+          "minLength": 3,
+          "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    },
+    "projectRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "ownerUserId",
+        "slug",
+        "name",
+        "createdAt"
+      ],
+      "properties": {
+        "kind": {
+          "const": "project"
+        },
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "ownerUserId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "createdAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    }
+  }
+}
