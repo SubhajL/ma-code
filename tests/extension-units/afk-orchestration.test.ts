@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
-import { runAfkOrchestration, type AfkIssueArtifact } from "../../.pi/agent/extensions/afk-orchestration.ts";
+import { preflightValidationCommands, runAfkOrchestration, type AfkIssueArtifact } from "../../.pi/agent/extensions/afk-orchestration.ts";
 import { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 
 function baseIssue(id: string, overrides: Partial<AfkIssueArtifact> = {}): AfkIssueArtifact {
@@ -286,6 +286,25 @@ test("durable HITL approval requires specific approval context fields", async ()
   assert.ok(skipped);
   assert.match(skipped?.reasons.join(" ") ?? "", /Durable approval is missing required context fields: note/);
   assert.equal(result.doneIssues.length, 0);
+});
+
+test("validation proof preflight reports a missing npm wrapper script for the mixed-domain health-handshake case", async () => {
+  const cwd = await tempRepo([
+    baseIssue("issue-004", {
+      title: "Wire frontend/backend health handshake",
+      domains: ["frontend", "backend"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes", "tests/integration"],
+      filesToModify: ["apps/web/src/lib/health-client.ts", "services/api/src/routes/health.ts", "tests/integration/health-handshake.test.ts"],
+      validationProof: ["npm run test:integration -- health-handshake"],
+    }),
+  ]);
+  await writeFile(join(cwd, "package.json"), `${JSON.stringify({ name: "fixture", private: true, scripts: { "test:unit": "node -e \"process.exit(0)\"" } }, null, 2)}\n`, "utf8");
+
+  const preflight = await preflightValidationCommands(cwd, ["npm run test:integration -- health-handshake"]);
+
+  assert.equal(preflight.ok, false);
+  assert.match(preflight.problems[0] ?? "", /missing npm script "test:integration"/i);
+  assert.match(preflight.problems[0] ?? "", /health-handshake/);
 });
 
 test("apply materializes mixed frontend/backend AFK jobs with explicit mixed-domain packet evidence", async () => {

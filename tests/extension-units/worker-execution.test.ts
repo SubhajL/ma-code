@@ -47,7 +47,7 @@ function queueJob(overrides: Partial<QueueJob> = {}): QueueJob {
   };
 }
 
-async function writeFixture(options: { issueOverrides?: Record<string, unknown>; jobOverrides?: Partial<QueueJob>; activeJobId?: string | null } = {}): Promise<string> {
+async function writeFixture(options: { issueOverrides?: Record<string, unknown>; jobOverrides?: Partial<QueueJob>; activeJobId?: string | null; packageJson?: Record<string, unknown> | null } = {}): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), "worker-execution-"));
   await mkdir(join(cwd, "docs", "initiatives", "greenfield-scaffold", "slices"), { recursive: true });
   await mkdir(join(cwd, ".pi", "agent", "state", "runtime"), { recursive: true });
@@ -72,6 +72,7 @@ async function writeFixture(options: { issueOverrides?: Record<string, unknown>;
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slice-plan.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/pipeline.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json"), "{\"version\":1}\n", "utf8");
+  if (options.packageJson) await writeFile(join(cwd, "package.json"), `${JSON.stringify(options.packageJson, null, 2)}\n`, "utf8");
   await writeFile(join(cwd, ".pi/agent/state/runtime/queue.json"), `${JSON.stringify({ version: 1, paused: false, activeJobId: options.activeJobId ?? null, jobs: [queueJob(options.jobOverrides)] }, null, 2)}\n`, "utf8");
   await git(cwd, ["init", "-b", "main"]);
   await git(cwd, ["config", "user.email", "test@example.com"]);
@@ -352,6 +353,51 @@ test("run blocks clearly when no implementation command or queue execution plan 
 
   assert.equal(result.status, "blocked");
   assert.match(result.stopReason ?? "", /No implementation command or queue execution plan/);
+});
+
+test("run blocks with a validation-contract reason before mixed-domain worker execution begins when the wrapper script is missing", async () => {
+  const validationCommand = "npm run test:integration -- health-handshake";
+  const cwd = await writeFixture({
+    issueOverrides: {
+      domains: ["frontend", "backend"],
+      filesToModify: ["apps/web/src/lib/health-client.ts", "services/api/src/routes/health.ts", "tests/integration/health-handshake.test.ts"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes", "tests/integration"],
+      validationProof: [validationCommand],
+    },
+    jobOverrides: {
+      domains: ["frontend", "backend"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes", "tests/integration"],
+      implementationCommand: "node -e \"process.exit(0)\"",
+      validationCommands: [validationCommand],
+    },
+    packageJson: {
+      name: "fixture",
+      private: true,
+      scripts: {
+        "test:unit": "node -e \"process.exit(0)\"",
+      },
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-missing-validation-wrapper",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.worktree.path, null);
+  assert.equal(result.steps.validation.status, "blocked");
+  assert.match(result.stopReason ?? "", /validation-contract/i);
+  assert.match(result.stopReason ?? "", /missing npm script "test:integration"/i);
+  const queue = await readQueueState(cwd);
+  assert.equal(queue.jobs[0].status, "blocked");
+  assert.equal(queue.jobs[0].workerExecution?.status, "blocked");
 });
 
 test("run ignores generated initiative runtime run artifacts when checking worktree cleanliness", async () => {

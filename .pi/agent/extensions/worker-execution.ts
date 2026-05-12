@@ -5,6 +5,7 @@ import { promisify } from "node:util";
 
 import { filterMeaningfulGitDirtyLines } from "./git-dirty-runtime-artifacts.ts";
 import { isOperationalLogPath } from "./afk-worker-execution-plan.ts";
+import { preflightValidationCommands } from "./afk-orchestration.ts";
 import {
   buildWorkerExecutionPlanInvocation,
   describeWorkerExecutionPlan,
@@ -546,7 +547,9 @@ async function blockRun(repoRoot: string, run: WorkerExecutionRun, reason: strin
   run.status = status;
   run.stopReason = reason;
   run.updatedAt = new Date().toISOString();
-  run.nextOperatorAction = "Inspect the preserved worktree and worker-run artifact; unblock through runtime tools after fixing the cause.";
+  run.nextOperatorAction = run.worktree.path
+    ? "Inspect the preserved worktree and worker-run artifact; unblock through runtime tools after fixing the cause."
+    : "Fix the blocking contract/configuration issue, then rerun the worker with explicit bounds.";
   await writeWorkerRun(repoRoot, run);
   await updateQueueJobWorkerExecution(repoRoot, run.queueJobId, {
     runArtifactPath: workerRunPath(run.initiativeId, run.runId),
@@ -598,6 +601,17 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     ],
   };
   run.steps.validation.commands = validationCommands(input, context.issue, context.job);
+  const validationContract = await preflightValidationCommands(repoRoot, run.steps.validation.commands ?? []);
+  if (!validationContract.ok) {
+    const reason = `validation-contract: ${validationContract.problems.join("; ")}`;
+    run.steps.validation = {
+      status: "blocked",
+      commands: run.steps.validation.commands,
+      evidence: validationContract.problems,
+    };
+    run.nextOperatorAction = "Repair the declared validation/proof command contract, then rerun worker execution.";
+    return input.command === "dry-run" ? { ...run, status: "planned", stopReason: reason } : blockRun(repoRoot, run, reason, "blocked");
+  }
   run.nextOperatorAction = "Run with explicit bounds to create an isolated worktree and execute the bounded worker loop.";
 
   if (input.command === "dry-run") return run;

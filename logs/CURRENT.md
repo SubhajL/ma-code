@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-11_afk-worker-command-fix.md`
+- `logs/coding/2026-05-12_issue-002-recovery-and-landing.md`
 
 ## Current planning log
-- `reports/planning/2026-05-11_afk-worker-command-fix-plan.md`
+- `reports/planning/2026-05-12_issue-002-recovery-and-landing-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

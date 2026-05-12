@@ -1,0 +1,622 @@
+{
+  "version": 1,
+  "runId": "run-20260512T044025Z",
+  "initiativeId": "mixed-domain-harness-optimization",
+  "mode": "apply",
+  "status": "materialized",
+  "maxParallelSlices": 1,
+  "slices": [
+    {
+      "sliceId": "issue-001",
+      "title": "Approve mixed-domain harness operating contract",
+      "status": "done",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-002",
+      "title": "Preflight mixed-domain validation contracts before worker execution",
+      "status": "materialized",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-003",
+      "title": "Add first-class composite mixed-domain worker packet and role semantics",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-004",
+      "title": "Add salvage-aware recovery for interrupted mixed-domain worker runs",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-005",
+      "title": "Improve mixed-domain parallelism beyond shared-path-root serialization",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    },
+    {
+      "sliceId": "issue-006",
+      "title": "Add coordinated sub-lane execution under one mixed-domain parent slice",
+      "status": "planned",
+      "currentPhase": "stitch_prompt",
+      "phaseOrder": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "artifacts": {
+        "issueSummary": "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json"
+      },
+      "hitlGate": null,
+      "blockers": []
+    }
+  ],
+  "sliceDag": [
+    {
+      "sliceId": "issue-001",
+      "currentPhase": "stitch_prompt",
+      "nodes": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "edges": [
+        {
+          "from": "stitch_prompt",
+          "to": "stitch_generation"
+        },
+        {
+          "from": "stitch_generation",
+          "to": "screen_approval"
+        },
+        {
+          "from": "screen_approval",
+          "to": "slice_contract"
+        },
+        {
+          "from": "slice_contract",
+          "to": "fe_implementation"
+        },
+        {
+          "from": "fe_implementation",
+          "to": "fe_validation"
+        },
+        {
+          "from": "fe_validation",
+          "to": "be_implementation"
+        },
+        {
+          "from": "be_implementation",
+          "to": "be_validation"
+        },
+        {
+          "from": "be_validation",
+          "to": "quality"
+        }
+      ]
+    },
+    {
+      "sliceId": "issue-002",
+      "currentPhase": "stitch_prompt",
+      "nodes": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "edges": [
+        {
+          "from": "stitch_prompt",
+          "to": "stitch_generation"
+        },
+        {
+          "from": "stitch_generation",
+          "to": "screen_approval"
+        },
+        {
+          "from": "screen_approval",
+          "to": "slice_contract"
+        },
+        {
+          "from": "slice_contract",
+          "to": "fe_implementation"
+        },
+        {
+          "from": "fe_implementation",
+          "to": "fe_validation"
+        },
+        {
+          "from": "fe_validation",
+          "to": "be_implementation"
+        },
+        {
+          "from": "be_implementation",
+          "to": "be_validation"
+        },
+        {
+          "from": "be_validation",
+          "to": "quality"
+        }
+      ]
+    },
+    {
+      "sliceId": "issue-003",
+      "currentPhase": "stitch_prompt",
+      "nodes": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "edges": [
+        {
+          "from": "stitch_prompt",
+          "to": "stitch_generation"
+        },
+        {
+          "from": "stitch_generation",
+          "to": "screen_approval"
+        },
+        {
+          "from": "screen_approval",
+          "to": "slice_contract"
+        },
+        {
+          "from": "slice_contract",
+          "to": "fe_implementation"
+        },
+        {
+          "from": "fe_implementation",
+          "to": "fe_validation"
+        },
+        {
+          "from": "fe_validation",
+          "to": "be_implementation"
+        },
+        {
+          "from": "be_implementation",
+          "to": "be_validation"
+        },
+        {
+          "from": "be_validation",
+          "to": "quality"
+        }
+      ]
+    },
+    {
+      "sliceId": "issue-004",
+      "currentPhase": "stitch_prompt",
+      "nodes": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "edges": [
+        {
+          "from": "stitch_prompt",
+          "to": "stitch_generation"
+        },
+        {
+          "from": "stitch_generation",
+          "to": "screen_approval"
+        },
+        {
+          "from": "screen_approval",
+          "to": "slice_contract"
+        },
+        {
+          "from": "slice_contract",
+          "to": "fe_implementation"
+        },
+        {
+          "from": "fe_implementation",
+          "to": "fe_validation"
+        },
+        {
+          "from": "fe_validation",
+          "to": "be_implementation"
+        },
+        {
+          "from": "be_implementation",
+          "to": "be_validation"
+        },
+        {
+          "from": "be_validation",
+          "to": "quality"
+        }
+      ]
+    },
+    {
+      "sliceId": "issue-005",
+      "currentPhase": "stitch_prompt",
+      "nodes": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "edges": [
+        {
+          "from": "stitch_prompt",
+          "to": "stitch_generation"
+        },
+        {
+          "from": "stitch_generation",
+          "to": "screen_approval"
+        },
+        {
+          "from": "screen_approval",
+          "to": "slice_contract"
+        },
+        {
+          "from": "slice_contract",
+          "to": "fe_implementation"
+        },
+        {
+          "from": "fe_implementation",
+          "to": "fe_validation"
+        },
+        {
+          "from": "fe_validation",
+          "to": "be_implementation"
+        },
+        {
+          "from": "be_implementation",
+          "to": "be_validation"
+        },
+        {
+          "from": "be_validation",
+          "to": "quality"
+        }
+      ]
+    },
+    {
+      "sliceId": "issue-006",
+      "currentPhase": "stitch_prompt",
+      "nodes": [
+        "stitch_prompt",
+        "stitch_generation",
+        "screen_approval",
+        "slice_contract",
+        "fe_implementation",
+        "fe_validation",
+        "be_implementation",
+        "be_validation",
+        "quality"
+      ],
+      "edges": [
+        {
+          "from": "stitch_prompt",
+          "to": "stitch_generation"
+        },
+        {
+          "from": "stitch_generation",
+          "to": "screen_approval"
+        },
+        {
+          "from": "screen_approval",
+          "to": "slice_contract"
+        },
+        {
+          "from": "slice_contract",
+          "to": "fe_implementation"
+        },
+        {
+          "from": "fe_implementation",
+          "to": "fe_validation"
+        },
+        {
+          "from": "fe_validation",
+          "to": "be_implementation"
+        },
+        {
+          "from": "be_implementation",
+          "to": "be_validation"
+        },
+        {
+          "from": "be_validation",
+          "to": "quality"
+        }
+      ]
+    }
+  ],
+  "parallelDecisions": [
+    {
+      "sliceIds": [
+        "issue-001",
+        "issue-002"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-001 + issue-002."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-001",
+        "issue-003"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-001 + issue-003."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-001",
+        "issue-004"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-001 + issue-004."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-001",
+        "issue-005"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-001 + issue-005."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-001",
+        "issue-006"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-001 + issue-006."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-002",
+        "issue-003"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-002 + issue-003."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-002",
+        "issue-004"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-002 + issue-004."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-002",
+        "issue-005"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-002 + issue-005."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-002",
+        "issue-006"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-002 + issue-006."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-003",
+        "issue-004"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-003 + issue-004."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-003",
+        "issue-005"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-003 + issue-005."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-003",
+        "issue-006"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-003 + issue-006."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-004",
+        "issue-005"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-004 + issue-005."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-004",
+        "issue-006"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-004 + issue-006."
+      ],
+      "source": "missing_phase_10_proof"
+    },
+    {
+      "sliceIds": [
+        "issue-005",
+        "issue-006"
+      ],
+      "parallelAllowed": false,
+      "blockers": [
+        "Missing Phase 10 parallelAllowed proof for issue-005 + issue-006."
+      ],
+      "source": "missing_phase_10_proof"
+    }
+  ],
+  "materializedWork": {
+    "queueJobIds": [
+      "preview:mixed-domain-harness-optimization:issue-002:stitch_prompt"
+    ],
+    "workerSessionIds": [],
+    "worktreePaths": []
+  },
+  "blockedSlices": [],
+  "activeLanes": [
+    "issue-002"
+  ],
+  "nextOperatorAction": "Review materialized preview work, then run the next explicit apply step when ready.",
+  "lastAction": {
+    "action": "apply",
+    "at": "2026-05-12T04:40:25.787Z",
+    "summary": "Applied one bounded product pipeline materialization step."
+  }
+}
