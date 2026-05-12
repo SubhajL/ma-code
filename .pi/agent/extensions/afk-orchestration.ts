@@ -367,6 +367,18 @@ function assignedRoleForDomains(domains: string[]): QueueJob["assignedRole"] {
   return "backend_worker";
 }
 
+
+function mixedDomainPacketEvidence(issue: AfkIssueArtifact, domains: QueueJob["domains"]): Pick<QueueJob, "migrationPathNote" | "escalationInstructions"> {
+  const governedDomains = (domains ?? []).filter((domain) => domain === "frontend" || domain === "backend" || domain === "infra");
+  if (new Set(governedDomains).size <= 1) return {};
+  return {
+    migrationPathNote: `mixed-domain AFK issue ${issue.issueId} intentionally keeps coupled ${governedDomains.join("/")} scaffold files in one bounded queue job.`,
+    escalationInstructions: [
+      `mixed-domain AFK issue ${issue.issueId}: review ${governedDomains.join("/")} path ownership before PR creation; split into multi-lane work if implementation scope expands.`,
+    ],
+  };
+}
+
 function queueJobId(initiativeId: string, issueId: string): string {
   return `afk-${initiativeId}-${issueId}`;
 }
@@ -495,6 +507,7 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
   const allowedPaths = normalizeAllowedPaths(issue.allowedPaths);
   const jobId = queueJobId(initiativeId, issue.issueId);
   const tddSlice = buildTddSlice(issue);
+  const mixedDomainEvidence = mixedDomainPacketEvidence(issue, domains);
   return {
     id: jobId,
     goal: issue.whatToBuild || issue.title,
@@ -517,6 +530,7 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
     domains,
     allowedPaths,
     assignedRole: assignedRoleForDomains(domains ?? []),
+    ...mixedDomainEvidence,
     routeReason: "default",
     budgetMode: "balanced",
     workerExecutionPlan: buildAfkWorkerExecutionPlan(repoRoot, initiativeId, issue, tddSlice),

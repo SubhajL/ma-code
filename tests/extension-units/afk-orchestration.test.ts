@@ -287,3 +287,25 @@ test("durable HITL approval requires specific approval context fields", async ()
   assert.match(skipped?.reasons.join(" ") ?? "", /Durable approval is missing required context fields: note/);
   assert.equal(result.doneIssues.length, 0);
 });
+
+test("apply materializes mixed frontend/backend AFK jobs with explicit mixed-domain packet evidence", async () => {
+  const issues = [
+    baseIssue("issue-004", {
+      title: "Wire frontend/backend health handshake",
+      domains: ["frontend", "backend"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes", "tests/integration"],
+      filesToModify: ["apps/web/src/lib/health-client.ts", "services/api/src/routes/health.ts", "tests/integration/health-handshake.test.ts"],
+      validationProof: ["npm run test:integration -- health-handshake"],
+    }),
+  ];
+  const cwd = await tempRepo(issues);
+  await runAfkOrchestration({ repoRoot: cwd, command: "apply", initiativeId: "greenfield-scaffold", now: "2026-05-09T00:00:00.000Z", maxParallel: 2 });
+
+  const queue = await readQueueState(cwd);
+  const job = queue.jobs.find((candidate) => candidate.id === "afk-greenfield-scaffold-issue-004");
+  assert.ok(job, "expected mixed-domain issue-004 queue job");
+  assert.deepEqual(job.domains, ["frontend", "backend"]);
+  assert.equal(job.assignedRole, "frontend_worker");
+  assert.match(job.migrationPathNote ?? "", /mixed-domain/i);
+  assert.match((job.escalationInstructions ?? []).join("\n"), /mixed-domain/i);
+});
