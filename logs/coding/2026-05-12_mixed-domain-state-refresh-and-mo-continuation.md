@@ -173,3 +173,31 @@ LOW
 - Mixed-domain implementation still stops at the active-task boundary until the initiative artifacts are refreshed and the next AFK slice is activated.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12T10:55:00Z
+- Goal: reflect locally completed issue-003 in the mixed-domain initiative artifacts and push MO to the next active AFK slice.
+- Files changed and why:
+  - `docs/initiatives/mixed-domain-harness-optimization/issues.json` — marked `issue-003` done in local initiative state.
+  - `docs/initiatives/mixed-domain-harness-optimization/pipeline.json` — advanced the pipeline frontier to `issue-004` in local materialized state.
+  - `docs/initiatives/mixed-domain-harness-optimization/slice-plan.json` — kept local slice lifecycle aligned with the completed issue-003 implementation.
+  - `docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json` — added a local completion note for commit `cde4138`.
+  - `docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json` — added a next-frontier note pointing to `issue-004`.
+- Tests added or changed: none for this state-refresh/continuation unit.
+- RED command and key failure reason:
+  - `npm run harness:afk-orchestrate -- run --initiative mixed-domain-harness-optimization --run --max-steps 4 --max-runtime-seconds 180 --max-parallel 1 --json`
+  - With issue-003 still represented as unresolved or still occupying the active running slot, MO could not start issue-004 directly.
+- Exact GREEN command:
+  - `npm run harness:product-pipeline -- apply --initiative mixed-domain-harness-optimization --max-parallel 1 --json`
+  - Then bounded queue advancement via `run_next_queue_job` (tsx-loaded FakePi runtime invocation) finalized the old issue-003 running lane and started `issue-004` as the next active AFK task.
+- Other validation commands run:
+  - `npm run harness:afk-orchestrate -- run --initiative mixed-domain-harness-optimization --run --max-steps 4 --max-runtime-seconds 180 --max-parallel 1 --json`
+  - `npm run harness:afk-orchestrate -- status --initiative mixed-domain-harness-optimization --json`
+- Wiring verification evidence:
+  - `harness:product-pipeline -- apply` reported `activeLanes: ["issue-004"]` after the local issue-003 refresh.
+  - Runtime queue/task state now shows `afk-mixed-domain-harness-optimization-issue-004` as `running` with linked task `task-1778583265148` in progress.
+- Behavior changes and risk notes:
+  - The initiative has progressed beyond issue-003 and is now actively executing issue-004.
+  - The old issue-003 runtime lane finalized as `failed`/`failed` even though the code change was validated locally; this mismatch is exactly the failure mode described by the newly activated issue-004 recovery slice.
+- Follow-ups or known gaps:
+  - Active frontier is now `task-1778583265148` / `issue-004`; later slices remain out of scope until that task moves forward.
+  - Untracked runtime evidence continues to accumulate under `docs/initiatives/mixed-domain-harness-optimization/{afk-runs,pipeline-runs}`.
