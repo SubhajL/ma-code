@@ -55,6 +55,13 @@ export interface TaskPacketSource {
   generatedAt: string;
 }
 
+export interface DomainOwnership {
+  mode: "single_domain" | "mixed_domain";
+  owningDomain: DomainId;
+  owningRole: HarnessRole;
+  supportingDomains: DomainId[];
+}
+
 export interface GraphifyEvidence {
   graphifyBackedClaim?: boolean;
   claimScope?: "graphify_backed_claim" | "architecture_review" | "other";
@@ -104,6 +111,7 @@ export interface TaskPacket {
   nonGoals: string[];
   workType: WorkType;
   domains: DomainId[];
+  domainOwnership?: DomainOwnership | null;
   discoverySummary: string[];
   crossModelPlanningNote: string;
   filesToInspect: string[];
@@ -136,6 +144,7 @@ export interface TaskPacketInput {
   nonGoals?: string[];
   workType: WorkType;
   domains?: DomainId[];
+  domainOwnership?: DomainOwnership | null;
   filesToInspect?: string[];
   filesToModify?: string[];
   allowedPaths?: string[];
@@ -192,6 +201,13 @@ const TddSliceSchema = Type.Object({
   outOfScopeBehaviors: Type.Array(Type.String({ minLength: 1 }), { minItems: 1 }),
 });
 
+const DomainOwnershipSchema = Type.Object({
+  mode: StringEnum(["single_domain", "mixed_domain"] as const),
+  owningDomain: StringEnum(DOMAIN_IDS),
+  owningRole: StringEnum(ROLE_IDS),
+  supportingDomains: Type.Array(StringEnum(DOMAIN_IDS)),
+});
+
 const GenerateTaskPacketSchema = Type.Object({
   sourceGoalId: Type.String({ minLength: 1 }),
   parentTaskId: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
@@ -204,6 +220,7 @@ const GenerateTaskPacketSchema = Type.Object({
   nonGoals: Type.Optional(Type.Array(Type.String())),
   workType: StringEnum(WORK_TYPES),
   domains: Type.Optional(Type.Array(StringEnum(DOMAIN_IDS))),
+  domainOwnership: Type.Optional(Type.Union([DomainOwnershipSchema, Type.Null()])),
   filesToInspect: Type.Optional(Type.Array(Type.String())),
   filesToModify: Type.Optional(Type.Array(Type.String())),
   allowedPaths: Type.Optional(Type.Array(Type.String())),
@@ -237,6 +254,27 @@ function parseStringArray(raw: unknown): string[] {
 
 function uniqueStrings(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
+}
+
+function normalizeOwnedDomains(values: DomainId[]): DomainId[] {
+  return uniqueStrings((values ?? []) as string[]).filter((value): value is DomainId => DOMAIN_IDS.includes(value as DomainId));
+}
+
+function normalizeDomainOwnership(
+  ownership: DomainOwnership | null | undefined,
+  domains: DomainId[],
+  assignedRole: HarnessRole,
+): DomainOwnership | null {
+  if (!ownership) return null;
+  const owningDomain = DOMAIN_IDS.includes(ownership.owningDomain as DomainId) ? ownership.owningDomain : domains[0] ?? "backend";
+  const supportingDomains = normalizeOwnedDomains(ownership.supportingDomains ?? []).filter((domain) => domain !== owningDomain);
+  const coveredDomains = normalizeOwnedDomains([owningDomain, ...supportingDomains, ...domains]);
+  return {
+    mode: coveredDomains.length > 1 ? "mixed_domain" : "single_domain",
+    owningDomain,
+    owningRole: assignedRole,
+    supportingDomains,
+  };
 }
 
 function normalizeGraphifyEvidence(raw: GraphifyEvidence | null | undefined): GraphifyEvidence | null {
@@ -475,6 +513,9 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "",
     "## Assigned Role",
     `- ${packet.assignedRole}`,
+    packet.domainOwnership
+      ? [`- ownership: ${packet.domainOwnership.mode}`, `- owning domain: ${packet.domainOwnership.owningDomain}`, `- supporting domains: ${packet.domainOwnership.supportingDomains.length > 0 ? packet.domainOwnership.supportingDomains.join(", ") : "none"}`].join("\n")
+      : "- ownership: none",
     "",
     "## Task",
     `- ${packet.title}`,
@@ -644,6 +685,7 @@ export function generateTaskPacket(
     nonGoals: uniqueStrings(input.nonGoals ?? policy.defaults.non_goals),
     workType: input.workType,
     domains,
+    domainOwnership: normalizeDomainOwnership(input.domainOwnership, domains, input.assignedRole),
     discoverySummary: uniqueStrings(input.discoverySummary ?? policy.defaults.discovery_summary),
     crossModelPlanningNote: (input.crossModelPlanningNote ?? policy.defaults.cross_model_planning_note).trim(),
     filesToInspect,

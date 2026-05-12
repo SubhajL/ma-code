@@ -106,3 +106,36 @@ LOW
 - Final branch hygiene should explicitly account for the untracked run artifacts before PR creation.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-12T10:06:00Z
+- Goal: implement mixed-domain issue-003 so AFK queue jobs and generated task packets carry explicit composite ownership semantics instead of silently collapsing FE+BE work into a plain frontend worker role.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-orchestration.ts` — replaced the old domain-to-role shortcut with exported mixed-domain ownership derivation used when materializing AFK queue jobs.
+  - `.pi/agent/extensions/queue-runner.ts` — preserved mixed-domain ownership metadata when normalizing queue jobs and generating task packets.
+  - `.pi/agent/extensions/task-packets.ts` — added first-class `domainOwnership` packet semantics and rendered them explicitly in packet text.
+  - `tests/extension-units/afk-orchestration.test.ts` — updated the mixed FE+BE queue-job regression to expect explicit backend-owned mixed-domain semantics.
+  - `tests/extension-units/queue-runner.test.ts` — added queue-to-packet preservation coverage for mixed-domain ownership metadata.
+  - `tests/extension-units/harness-routing.test.ts` — added FE+BE ownership/route regression coverage using the exported ownership helper.
+- Tests added or changed:
+  - mixed FE+BE AFK queue-job role/ownership assertions
+  - mixed-domain queue-to-packet ownership preservation assertions
+  - mixed FE+BE ownership-to-route assertion
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/queue-runner.test.ts tests/extension-units/harness-routing.test.ts`
+  - Key failure reasons:
+    - `harness-routing.test.ts` imported `deriveDomainOwnershipForDomains`, but `afk-orchestration.ts` did not export it yet.
+    - `queue-runner.test.ts` expected mixed-domain ownership metadata on the generated packet, but the packet/job path still returned `undefined`.
+- Exact GREEN command:
+  - `for i in 1 2 3; do echo RUN:$i; node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/queue-runner.test.ts tests/extension-units/harness-routing.test.ts || exit 1; done`
+- Other validation commands run:
+  - `git diff --check`
+- Wiring verification evidence:
+  - AFK queue-job materialization now emits explicit `domainOwnership` metadata and chooses `backend_worker` for representative FE+BE composite ownership.
+  - Queue runner preserves that metadata into generated task packets, and packet rendering now prints ownership details instead of leaving the role collapse implicit.
+  - Harness routing tests verify that FE+BE mixed-domain ownership resolves to the backend worker route before model selection.
+- Behavior changes and risk notes:
+  - FE+BE mixed-domain jobs no longer look like plain frontend-only jobs; the owning domain/role and supporting domains are explicit.
+  - No new worker role was added; composite semantics remain compatible with existing build-team worker roles.
+- Follow-ups or known gaps:
+  - Active runtime task `task-1778579515702` is still in progress; initiative state has not yet been advanced beyond issue-003 in the durable artifacts.
+  - Untracked runtime evidence remains under `docs/initiatives/mixed-domain-harness-optimization/{afk-runs,pipeline-runs}`.

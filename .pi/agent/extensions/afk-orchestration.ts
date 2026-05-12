@@ -432,13 +432,34 @@ function specificHitlApprovalReasons(issue: AfkIssueArtifact, assessment: HitlAp
   return reasons;
 }
 
-function assignedRoleForDomains(domains: string[]): QueueJob["assignedRole"] {
-  if (domains.includes("frontend")) return "frontend_worker";
-  if (domains.includes("backend")) return "backend_worker";
-  if (domains.includes("infra")) return "infra_worker";
-  if (domains.includes("docs")) return "docs_worker";
-  if (domains.includes("research")) return "research_worker";
+const DOMAIN_OWNERSHIP_PRIORITY = ["backend", "infra", "frontend", "docs", "research"] as const;
+
+function assignedRoleForOwnedDomain(domain: string): QueueJob["assignedRole"] {
+  if (domain === "frontend") return "frontend_worker";
+  if (domain === "backend") return "backend_worker";
+  if (domain === "infra") return "infra_worker";
+  if (domain === "docs") return "docs_worker";
+  if (domain === "research") return "research_worker";
   return "backend_worker";
+}
+
+export function deriveDomainOwnershipForDomains(domains: string[]): {
+  assignedRole: QueueJob["assignedRole"];
+  domainOwnership: QueueJob["domainOwnership"];
+} {
+  const normalized = normalizeStringArray(domains).filter((domain) => (VALID_DOMAINS as readonly string[]).includes(domain)) as NonNullable<QueueJob["domains"]>;
+  const owningDomain = DOMAIN_OWNERSHIP_PRIORITY.find((domain) => normalized.includes(domain as typeof normalized[number])) ?? normalized[0] ?? "backend";
+  const assignedRole = assignedRoleForOwnedDomain(owningDomain);
+  const supportingDomains = normalized.filter((domain) => domain !== owningDomain);
+  return {
+    assignedRole,
+    domainOwnership: {
+      mode: supportingDomains.length > 0 ? "mixed_domain" : "single_domain",
+      owningDomain: owningDomain as NonNullable<QueueJob["domainOwnership"]>["owningDomain"],
+      owningRole: assignedRole,
+      supportingDomains,
+    },
+  };
 }
 
 
@@ -582,6 +603,7 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
   const jobId = queueJobId(initiativeId, issue.issueId);
   const tddSlice = buildTddSlice(issue);
   const mixedDomainEvidence = mixedDomainPacketEvidence(issue, domains);
+  const roleAssignment = deriveDomainOwnershipForDomains(domains ?? []);
   return {
     id: jobId,
     goal: issue.whatToBuild || issue.title,
@@ -603,7 +625,8 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
     workType: "implementation",
     domains,
     allowedPaths,
-    assignedRole: assignedRoleForDomains(domains ?? []),
+    assignedRole: roleAssignment.assignedRole,
+    domainOwnership: roleAssignment.domainOwnership,
     ...mixedDomainEvidence,
     routeReason: "default",
     budgetMode: "balanced",
