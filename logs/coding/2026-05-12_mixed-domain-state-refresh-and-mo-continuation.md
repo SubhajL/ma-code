@@ -139,3 +139,37 @@ Review Verdict: no_required_fixes
 - Follow-ups or known gaps:
   - Active runtime task `task-1778579515702` is still in progress; initiative state has not yet been advanced beyond issue-003 in the durable artifacts.
   - Untracked runtime evidence remains under `docs/initiatives/mixed-domain-harness-optimization/{afk-runs,pipeline-runs}`.
+
+## Review (2026-05-12 17:48:19 +07) - last-commit
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/20260512T094619Z-mixed-domain-refresh-continue-mo`
+- Branch: `task/task-1778579190339-mixed-domain-refresh-continue-mo`
+- Scope: `cde4138`
+- Commands Run: `git show --stat --name-status --summary cde4138`; `git show cde4138 -- .pi/agent/extensions/afk-orchestration.ts .pi/agent/extensions/queue-runner.ts .pi/agent/extensions/task-packets.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/queue-runner.test.ts tests/extension-units/harness-routing.test.ts`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumed backend ownership is the intended canonical worker role for representative FE+BE mixed-domain implementation slices because the acceptance text explicitly rejects silent collapse to `frontend_worker` and existing domain-governance tests already allow backend-owned mixed-domain escalation.
+
+### Recommended Tests / Validation
+- `for i in 1 2 3; do echo RUN:$i; node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/queue-runner.test.ts tests/extension-units/harness-routing.test.ts || exit 1; done`
+- `git diff --check`
+
+### Rollout Notes
+- The commit is bounded to queue/job/packet ownership semantics and regression coverage; it does not change provider routing policy files or team definitions.
+- Mixed-domain implementation still stops at the active-task boundary until the initiative artifacts are refreshed and the next AFK slice is activated.
+
+Review Verdict: no_required_fixes
