@@ -51,7 +51,7 @@
       "issueId": "issue-002",
       "title": "Preflight mixed-domain validation contracts before worker execution",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-001"
       ],

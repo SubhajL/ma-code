@@ -28,7 +28,7 @@
     {
       "sliceId": "issue-002",
       "title": "Preflight mixed-domain validation contracts before worker execution",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",

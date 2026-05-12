@@ -34,7 +34,8 @@
     "notes": [
       "Phase A source hash: 03a17ab7897f0d3aa6941ba6e728608658191c2641e47274d272f13dff5de608",
       "Issue type: AFK",
-      "Allowed path roots: .pi/agent/extensions, tests/extension-units"
+      "Allowed path roots: .pi/agent/extensions, tests/extension-units",
+      "Dependency issue-002 landed on main via 3acc26d (#150); refreshed initiative state makes this the next AFK frontier."
     ]
   },
   "acceptanceCriteria": [
