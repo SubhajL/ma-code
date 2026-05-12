@@ -127,3 +127,6 @@ export function isOperationalLogPath(pathValue: string): boolean {
   const normalized = pathValue.replace(/\\/g, "/").replace(/^\.\//, "");
   return OPERATIONAL_LOG_PATHS.some((prefix) => normalized === prefix || normalized.startsWith(prefix));
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function afkWorkerExecutionPlanExtension(): void {}

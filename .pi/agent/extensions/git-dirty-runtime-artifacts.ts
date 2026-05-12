@@ -24,3 +24,6 @@ export function filterMeaningfulGitDirtyLines(lines: string[]): string[] {
     return paths.length === 0 || !paths.every(isInitiativeRuntimeArtifactPath);
   });
 }
+
+// Helper-only module: export a no-op factory so directory autoload treats this as a valid extension.
+export default function gitDirtyRuntimeArtifactsExtension(): void {}
