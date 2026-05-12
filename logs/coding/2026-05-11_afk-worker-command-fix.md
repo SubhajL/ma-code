@@ -1396,3 +1396,37 @@ Review Verdict: no_required_fixes
   - Monitor and review the active clean-worktree runtime task `task-1778560922665` / queue job `afk-mixed-domain-harness-optimization-issue-002`.
   - Reconcile the clean-worktree committed initiative docs with the root task branch before any PR/merge workflow.
   - If we want root-worktree MO launches to work directly, remove or isolate unrelated dirty tracked files before rerunning `harness:orchestrate run`.
+
+## 2026-05-12T05:11:23Z
+- Goal: identify the exact root dirty files blocking root-worktree MO execution, clean the root branch, and keep advancing `mixed-domain-harness-optimization` until the next HITL gate or a concrete blocker was reached.
+- Files changed and why:
+  - `docs/initiatives/mixed-domain-harness-optimization/**` — committed the durable initiative artifact set onto the root task branch so the root lane no longer depended on an out-of-band clean worktree commit.
+  - `logs/coding/2026-05-11_afk-worker-command-fix.md` — appended this follow-up evidence entry.
+  - `docs/initiatives/greenfield-scaffold/navigation.md` — restored to HEAD content to remove the stray trailing `-` that was dirtying the root branch.
+- Tests added or changed:
+  - none in the root branch cleanup pass; downstream issue-002 worker run produced its own preserved test/code changes in the clean MO worker worktree.
+- Exact RED command and key failure reason:
+  - `npm run harness:orchestrate -- run --initiative mixed-domain-harness-optimization --max-steps 1 --max-runtime-seconds 60 --json`
+  - Failure reason: root orchestrator run stopped with `dirty_repo`; blockers were `M docs/initiatives/greenfield-scaffold/navigation.md` and `M logs/coding/2026-05-11_afk-worker-command-fix.md` before the initiative docs were committed on the root branch.
+- Exact GREEN command:
+  - `git status --short --branch && git update-index --refresh >/dev/null 2>&1; echo '---after-refresh---'; git status --short --branch`
+- Other validation commands run:
+  - `git diff -- docs/initiatives/greenfield-scaffold/navigation.md`
+  - `git add docs/initiatives/mixed-domain-harness-optimization && git commit -m "docs(initiative): materialize mixed-domain harness optimization"`
+  - `git checkout -- docs/initiatives/greenfield-scaffold/navigation.md && git add logs/coding/2026-05-11_afk-worker-command-fix.md && git commit -m "docs(log): record mixed-domain initiative kickoff"`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778558911426-mixed-domain-harness-optimization-mo-run && npm run harness:operator -- worker-execute run --initiative mixed-domain-harness-optimization --job-id afk-mixed-domain-harness-optimization-issue-002 --max-steps 4 --max-runtime-seconds 240 --json`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778558911426-mixed-domain-harness-optimization-mo-run-worktrees/worker-20260512t050154z-issue-002 && node --import tsx --test tests/extension-units/afk-orchestration.test.ts`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778558911426-mixed-domain-harness-optimization-mo-run-worktrees/worker-20260512t050154z-issue-002 && node --import tsx --test tests/extension-units/worker-execution.test.ts`
+  - `git diff --check`
+- Wiring verification evidence:
+  - The root branch now carries the same materialized initiative artifact set as the clean MO lane, so root and clean-lane source-of-truth docs are reconciled at the Git level.
+  - The clean MO worktree runtime advanced beyond planning into a real queue/task/worker boundary: queue job `afk-mixed-domain-harness-optimization-issue-002` created linked task `task-1778560922665`, then produced worker run artifact `docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-20260512t050154z.json` and preserved worker worktree `worker/worker-20260512t050154z-issue-002`.
+  - That preserved worktree contains issue-002 implementation work centered on AFK orchestration validation-contract preflight coverage.
+- Behavior changes and risk notes:
+  - Root cleanliness blocker is fixed; the root task branch itself is no longer inherently blocked by the previously dirty navigation/log state.
+  - We did not reach a later HITL gate in `mixed-domain-harness-optimization`; instead we hit a concrete implementation blocker on issue-002 because the same-runtime worker execution command failed after partially modifying the preserved worker worktree.
+  - The practical continuation point is now the preserved worker worktree for issue-002, not the original queue runner invocation.
+- Follow-ups or known gaps:
+  - The next blocker is `worker-20260512t050154z` / `task-1778560922665`, not a HITL gate.
+  - The clean MO worktree still has untracked runtime evidence under `docs/initiatives/mixed-domain-harness-optimization/afk-runs/`; this is operational evidence, not product code.
+  - Downstream initiative slices cannot advance until issue-002 is recovered to a review-ready/done state.
