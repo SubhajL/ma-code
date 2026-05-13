@@ -121,6 +121,28 @@ test("gate records pass/fail/pending states", async () => {
   assert.match(failed.blockers.join(" "), /PR gate failed/);
 });
 
+test("gate passes zero-check stacked PRs when merge state is clean and review state is clear", async () => {
+  const { cwd } = await writeFixture({ workerOverrides: { worktree: { path: ".", branch: "worker/worker-green-issue-002", baseRef: "task/task-phase3-sweep", leaseId: null } } });
+  const base = await runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-stacked-gate", title: "Test PR" }, { runner: fakeRunner([], { baseRefName: "task/task-phase3-sweep" }), dirtyFiles: async () => [] });
+  assert.equal(base.status, "pr_created");
+
+  const gated = await runPrLifecycle({ repoRoot: cwd, command: "gate", initiativeId: "greenfield-scaffold", runId: "pr-stacked-gate" }, {
+    prGate: async () => ({
+      finalStatus: "pending",
+      attempts: [{ checks: [], summary: { passCount: 0, failCount: 0, pendingCount: 0, totalCount: 0 }, attempt: 1, status: "pending" }],
+      commentSummary: { blockingCommentCount: 0, totalCommentCount: 0, benignBotCommentCount: 0, blockingComments: [] },
+      reviewSummary: { reviewDecision: "", changesRequestedCount: 0, approvalsCount: 0, reviews: [] },
+      prContext: { number: 123, state: "OPEN", reviewDecision: "", mergeStateStatus: "CLEAN", url: "https://github.com/SubhajL/ma-code/pull/123" },
+      finalChecks: [],
+      recommendedNextAction: "wait_and_rerun",
+      recommendedNextActionReason: "Checks are still pending or the bounded polling limit was reached before terminal success/failure.",
+    }),
+  });
+
+  assert.equal(gated.status, "gate_passed");
+  assert.match(gated.evidence.join("\n"), /zero-check stacked PR/);
+});
+
 test("merge-ready blocks requested changes, pending checks, and dirty root; passes only when gate and PR are clean", async () => {
   const { cwd } = await writeFixture();
   await runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-ready", title: "Test PR" }, { runner: fakeRunner([]) });
@@ -134,6 +156,21 @@ test("merge-ready blocks requested changes, pending checks, and dirty root; pass
   const ready = await runPrLifecycle({ repoRoot: cwd, command: "merge-ready", initiativeId: "greenfield-scaffold", runId: "pr-ready" }, { runner: fakeRunner([]), dirtyFiles: async () => ["docs/initiatives/greenfield-scaffold/pr-runs/pr-ready.json", "docs/initiatives/greenfield-scaffold/pr-runs/pr-ready.md"] });
   assert.equal(ready.status, "gate_passed");
   assert.equal(ready.lifecycle.mergeReady, true);
+});
+
+test("merge-ready accepts zero-check stacked PRs when gate already passed", async () => {
+  const { cwd } = await writeFixture({ workerOverrides: { worktree: { path: ".", branch: "worker/worker-green-issue-002", baseRef: "task/task-phase3-sweep", leaseId: null } } });
+  const seed = await runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-stacked-ready", title: "Test PR" }, { runner: fakeRunner([], { baseRefName: "task/task-phase3-sweep" }), dirtyFiles: async () => [] });
+  seed.status = "gate_passed";
+  seed.pr.baseRef = "task/task-phase3-sweep";
+  seed.pr.mergeStateStatus = "CLEAN";
+  seed.pr.checks = [];
+  await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.json"), `${JSON.stringify(seed, null, 2)}\n`, "utf8");
+
+  const ready = await runPrLifecycle({ repoRoot: cwd, command: "merge-ready", initiativeId: "greenfield-scaffold", runId: "pr-stacked-ready" }, { runner: fakeRunner([], { baseRefName: "task/task-phase3-sweep" }), dirtyFiles: async () => ["docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.json", "docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.md"] });
+  assert.equal(ready.status, "gate_passed");
+  assert.equal(ready.lifecycle.mergeReady, true);
+  assert.match(ready.evidence.join("\n"), /merge-ready accepted zero-check stacked PR/);
 });
 
 test("merge requires explicit approval and allowed method; sync records synced main SHA", async () => {
