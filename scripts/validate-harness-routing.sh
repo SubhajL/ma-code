@@ -345,18 +345,21 @@ check_2_compile() {
 check_3_phase_lane_unit_tests() {
   local name="3. phase-lane harness-routing unit tests"
   local out="$TMP_ROOT/check_3_phase_lane_unit_tests.txt"
-  local cmd="cd $REPO_ROOT && npx tsx --test tests/extension-units/harness-routing.test.ts"
+  local cmd="npx tsx --test tests/extension-units/harness-routing.test.ts"
+  local display_cmd="cd $REPO_ROOT && $cmd"
 
-  if bash -lc "$cmd" >"$out" 2>&1; then
+  if (cd "$REPO_ROOT" && npx tsx --test tests/extension-units/harness-routing.test.ts) >"$out" 2>&1; then
     local detail="Phase-lane harness-routing unit tests passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- unit tests covered unverified fallback, verified activation, unavailable fallback, unknown lane rejection, and role-only compatibility"
+    append_check_section "$name" "PASS" "$display_cmd" "- unit tests covered unverified fallback, verified activation, unavailable fallback, unknown lane rejection, and role-only compatibility"
   else
     local detail="Phase-lane harness-routing unit tests failed."
+    echo "$name failed while running: $display_cmd" >&2
+    sed -n '1,180p' "$out" >&2
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
-    append_check_section "$name" "FAIL" "$cmd" "- output:
+    append_check_section "$name" "FAIL" "$display_cmd" "- output:
 
 \`\`\`
 $(sed -n '1,180p' "$out")

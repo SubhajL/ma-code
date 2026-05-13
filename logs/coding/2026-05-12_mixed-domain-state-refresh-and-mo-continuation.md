@@ -273,7 +273,7 @@ Review Verdict: no_required_fixes
 - Goal: fix the CI-only harness-routing validator failure so PR #151 can merge without bypassing checks.
 - Discovery path: local reproduction of `./scripts/validate-harness-routing.sh`; targeted reproduction of the validator's temporary-runtime command; direct inspection of `tests/extension-units/harness-routing.test.ts` and `scripts/validate-harness-routing.sh`.
 - Files changed and why:
-  - `scripts/validate-harness-routing.sh` — run the phase-lane harness-routing unit test from repo root instead of a stripped temporary runtime that no longer contains the newly required `afk-orchestration.ts` dependency chain.
+  - `scripts/validate-harness-routing.sh` — run the phase-lane harness-routing unit test directly from repo root in the current shell environment instead of through `bash -lc` against a stripped temporary runtime that no longer contains the newly required `afk-orchestration.ts` dependency chain.
   - `logs/coding/2026-05-12_mixed-domain-state-refresh-and-mo-continuation.md` — record RED/GREEN evidence for the validator fix.
 - Tests added or changed: none.
 - RED command and key failure reason:
