@@ -104,3 +104,85 @@
   - `bash scripts/validate-core-workflows.sh`
   - `git diff --check`
 Review Verdict: no_required_fixes
+
+## 2026-05-13T22:17:00Z
+- Goal: test whether the landed queue->worker handoff automation can now YOLO-drain `mixed-domain-harness-optimization` and then `greenfield-scaffold` from fresh `main`.
+- Discovery path:
+  - Re-read `logs/CURRENT.md` and the active planning log `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Verified `main` was synced at `c979875` after PR #154.
+  - Created a fresh execution worktree/branch from `main`: `task/task-1778681880000-yolo-afk-drain` at `/Users/subhajlimanond/dev/ma-code-worktrees/20260513T221800Z-yolo-afk-drain`.
+  - Chose to stop on the first real blocker instead of blindly continuing across both initiatives.
+- Files changed and why:
+  - Runtime artifacts only in the execution worktree for the attempted mixed-domain run:
+    - `docs/initiatives/mixed-domain-harness-optimization/afk-runs/afk-20260513t221451z.json`
+    - `docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-20260513t221451z.json`
+    - `docs/initiatives/mixed-domain-harness-optimization/pr-runs/pr-worker-20260513t221451z.json`
+    - `docs/initiatives/mixed-domain-harness-optimization/pr-runs/pr-worker-20260513t221451z.md`
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the new automation attempt and blocker evidence.
+- Tests added or changed: none; this unit was a live automation attempt against landed runtime code.
+- Exact RED command and key failure reason:
+  - `npm --silent run harness:orchestrate -- continue --initiative mixed-domain-harness-optimization --max-slices 10 --max-steps 12 --max-runtime-seconds 900 --auto-land --approval-ref human-2026-05-13-yolo-afk --json`
+  - The run stopped blocked on the first slice after selecting `issue-004` again.
+  - Key observed reasons:
+    - stale initiative frontier: `afk-20260513t221451z.json` still reported `eligibleIssues=[issue-004]` even though the issue-004 fix is already on `main`.
+    - linked task validation still did not reach PR-lifecycle readiness: `pr-worker-20260513t221451z.json` reported `taskReady: false` with blocker `active task evidence is missing or validation did not pass.`
+    - root runtime task evidence confirmed the linked task existed but had `validation.decision = pending`, not `pass`.
+    - the generated worker branch had no issue-specific delta relative to the fresh base (`git diff task/task-1778681880000-yolo-afk-drain..HEAD` was empty), so this would not have produced a meaningful PR even if the task gate passed.
+- Exact GREEN command:
+  - none for the YOLO-drain attempt; I stopped at the first blocker and did not claim initiative completion.
+- Other validation commands run:
+  - `git status -sb`
+  - `gh pr view 154 --json ...` (to confirm the landing fix was on `main`)
+  - focused artifact inspection of the generated AFK/worker/PR run files
+  - runtime task-state inspection in `.pi/agent/state/runtime/tasks.json`
+- Wiring verification evidence:
+  - The landed PR-lifecycle fix is active on `main`; the fresh execution worktree started from `c979875` and the new run exercised that code path.
+  - The failure moved forward from the old manual-PR blocker to two deeper runtime-state gaps:
+    - worker-linked task validation is still not promoted to `pass` automatically for PR lifecycle readiness.
+    - initiative completion/frontier state is stale enough to re-select already-landed mixed-domain `issue-004`.
+- Behavior changes and risk notes:
+  - We cannot honestly YOLO-finish both initiatives yet.
+  - Greenfield was not attempted after the mixed-domain blocker because this is now the second distinct blocker on the same higher-level completion task, so escalation is safer than improvising more live runs.
+- Follow-ups / known gaps:
+  - Next likely fixes are:
+    - teach worker execution / task lifecycle to mark the linked task validation decision `pass` when Phase C validation + review pass, or relax PR lifecycle to consume equivalent worker artifact proof safely.
+    - refresh initiative completion tracking so already-landed mixed-domain slices are not re-queued as eligible issues.
+
+## 2026-05-13T22:56:28Z
+- Goal: implement the two remaining automation-gap fixes so queue->worker continuation can advance past mixed-domain `issue-004` and keep dependency frontier state moving without manual PR bookkeeping.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, and the active planning log.
+  - Used direct inspection and exact-string search in `.pi/agent/extensions/worker-execution.ts`, `.pi/agent/extensions/afk-orchestration.ts`, `tests/extension-units/worker-execution.test.ts`, and `tests/extension-units/afk-orchestration.test.ts`.
+  - Verified the stale mixed-domain frontier on fresh `main` via `harness:orchestrate continue` artifacts and `issues.json` inspection before editing.
+- Files changed and why:
+  - `.pi/agent/extensions/worker-execution.ts` — when a Phase C run reaches `review_ready` with passing validation and `no_required_fixes`, the linked task is now also validated with decision `pass` so PR lifecycle task readiness can observe completion-gate proof instead of remaining stuck at `pending`.
+  - `.pi/agent/extensions/afk-orchestration.ts` — AFK frontier evaluation now treats merged/synced PR-lifecycle artifacts in `pr-runs/*.json` as durable done signals for dependency resolution inside the active execution branch.
+  - `tests/extension-units/worker-execution.test.ts` — added an assertion that the linked task validation decision becomes `pass` at the review-ready boundary.
+  - `tests/extension-units/afk-orchestration.test.ts` — added regression coverage that a merged PR-lifecycle artifact marks a planned issue done and unlocks the next dependent AFK issue.
+  - `docs/initiatives/mixed-domain-harness-optimization/issues.json` — repaired current durable initiative state on `main` by marking already-landed `issue-004` as `done` so fresh branches no longer re-queue it.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded RED/GREEN evidence and follow-up validation.
+- Tests added or changed:
+  - `merged PR lifecycle artifacts mark planned AFK issues done for frontier selection`
+  - existing worker-execution review-ready test now asserts linked task `validation.decision === "pass"`
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts`
+  - Failures were for the intended reasons:
+    - worker-execution test saw linked task validation remain `pending` instead of `pass`
+    - AFK frontier test showed a merged PR artifact did not unlock the dependent issue
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts`
+- Other validation commands run:
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts; done`
+  - `npm --silent run harness:afk-orchestrate -- dry-run --initiative mixed-domain-harness-optimization --json`
+  - `git diff --check`
+- Wiring verification evidence:
+  - `worker-execution.ts` now emits a task-level `validate` action immediately after the `review` action when Phase C already has passing validation evidence and a `no_required_fixes` review verdict.
+  - `afk-orchestration.ts` now loads merged/synced `pr-runs/*.json` and counts their `sourceIssueId` values as resolved dependencies for subsequent AFK issue selection.
+  - Cheap local frontier proof after the durable issue-state repair: `harness:afk-orchestrate -- dry-run --initiative mixed-domain-harness-optimization --json` now surfaces `issue-005` as the next eligible mixed-domain AFK slice instead of `issue-004`.
+- Behavior changes and risk notes:
+  - This addresses the specific stale-frontier and pending-task-validation blockers observed in the fresh-main YOLO attempt.
+  - Future auto-land continuation inside a single execution branch can now advance dependency chains using merged PR artifacts without requiring immediate docs/status commits after every slice.
+  - I have not yet claimed end-to-end initiative completion; one bounded live rerun is still needed if we want live proof beyond local evidence.
+- Follow-ups / known gaps:
+  - `issue-004` durable state repair is a one-time repo-state correction for already-landed mixed-domain work.
+  - Greenfield and the remaining mixed-domain slices still need actual continuation runs after this fix.

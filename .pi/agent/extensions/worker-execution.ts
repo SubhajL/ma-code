@@ -512,7 +512,7 @@ async function ensureLinkedTask(repoRoot: string, run: WorkerExecutionRun, job: 
   });
 }
 
-async function recordTaskEvidence(repoRoot: string, taskId: string | null, evidence: string[], reviewReady: boolean): Promise<void> {
+async function recordTaskEvidence(repoRoot: string, taskId: string | null, evidence: string[], reviewReady: boolean, validationReady = false): Promise<void> {
   if (!taskId) return;
   const policy = await loadCompletionGatePolicy(repoRoot);
   await mutateTaskState(repoRoot, (state) => {
@@ -521,7 +521,23 @@ async function recordTaskEvidence(repoRoot: string, taskId: string | null, evide
     for (const item of evidence) {
       applyTaskUpdateAction(state, { action: "evidence", id: taskId, evidence: [item] }, policy);
     }
-    if (reviewReady) applyTaskUpdateAction(state, { action: "review", id: taskId, note: "Phase C worker execution reached review-ready boundary." }, policy);
+    if (reviewReady) {
+      applyTaskUpdateAction(state, { action: "review", id: taskId, note: "Phase C worker execution reached review-ready boundary." }, policy);
+      if (validationReady) {
+        applyTaskUpdateAction(state, {
+          action: "validate",
+          id: taskId,
+          validationSource: "validator",
+          validationDecision: "pass",
+          validationChecklist: {
+            acceptance: "met",
+            tests: "met",
+            diff_review: "met",
+            evidence: "met",
+          },
+        }, policy);
+      }
+    }
   });
 }
 
@@ -680,7 +696,7 @@ async function finalizeReviewReadyRun(
     `Review Verdict: ${verdict}`,
     ...salvageTaskEvidence(salvage),
     "Unresolved risks: Phase C stops before PR/merge by design.",
-  ], true);
+  ], true, run.steps.validation.status === "passed" && verdict === "no_required_fixes");
   return run;
 }
 

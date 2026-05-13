@@ -128,6 +128,7 @@ interface LoadedArtifacts {
   sourceArtifacts: AfkSourceArtifacts;
   issues: AfkIssueArtifact[];
   approvals: Map<string, AfkIssueApproval>;
+  mergedIssueIds: Set<string>;
 }
 
 const INITIATIVE_ROOT = "docs/initiatives";
@@ -318,6 +319,19 @@ export function afkRunPath(initiativeId: string, runId: string): string {
   return `${afkRunsDir(initiativeId)}/${assertSlug(runId, "runId")}.json`;
 }
 
+async function loadMergedIssueIds(repoRoot: string, initiativeRoot: string): Promise<Set<string>> {
+  const prRunsDir = resolve(repoRoot, initiativeRoot, "pr-runs");
+  if (!(await exists(prRunsDir))) return new Set<string>();
+  const mergedIssueIds = new Set<string>();
+  for (const entry of await readdir(prRunsDir)) {
+    if (!entry.endsWith(".json")) continue;
+    const parsed = await readJson(join(prRunsDir, entry), `${initiativeRoot}/pr-runs/${entry}`);
+    if (!isRecord(parsed)) continue;
+    if ((parsed.status === "merged" || parsed.status === "synced") && typeof parsed.sourceIssueId === "string") mergedIssueIds.add(parsed.sourceIssueId);
+  }
+  return mergedIssueIds;
+}
+
 async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<LoadedArtifacts> {
   const slug = assertSlug(initiativeId, "initiativeId");
   const initiativeRoot = `${INITIATIVE_ROOT}/${slug}`;
@@ -333,6 +347,7 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
   if (!isRecord(issuesJson) || !Array.isArray(issuesJson.issues)) throw new Error(`${issuesPath} must contain an issues array.`);
   const issues = issuesJson.issues.map(normalizeIssue);
   const approvals = await loadApprovals(repoRoot, approvalsPath);
+  const mergedIssueIds = await loadMergedIssueIds(repoRoot, initiativeRoot);
   const summaries: string[] = [];
   for (const issue of issues) {
     const summaryPath = `${initiativeRoot}/slices/${issue.issueId}.summary.json`;
@@ -349,6 +364,7 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
     },
     issues,
     approvals,
+    mergedIssueIds,
   };
 }
 
@@ -415,8 +431,9 @@ function hasDurableHitlApproval(issue: AfkIssueArtifact | undefined, assessments
   return hitlBounded(issue) ? assessment.approval : undefined;
 }
 
-function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, assessments: Map<string, HitlApprovalAssessment>): boolean {
+function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, assessments: Map<string, HitlApprovalAssessment>, mergedIssueIds: Set<string>): boolean {
   if (!issue) return false;
+  if (mergedIssueIds.has(issue.issueId)) return true;
   const assessment = assessments.get(issue.issueId);
   const satisfiedByStatus = statusDoneOrApproved(issue) && (!assessment || assessment.missingArtifacts.length === 0);
   return satisfiedByStatus || !!hasDurableHitlApproval(issue, assessments);
@@ -503,6 +520,7 @@ async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Pro
   const hitlAssessments = await assessHitlApprovals(repoRoot, artifacts.issues, artifacts.approvals);
   const byId = new Map(artifacts.issues.map((issue) => [issue.issueId, issue]));
   const summarySet = new Set(artifacts.sourceArtifacts.summaries);
+  const mergedIssueIds = artifacts.mergedIssueIds;
   const eligible: AfkIssueArtifact[] = [];
   const eligibleIssues: AfkIssueRecord[] = [];
   const blockedIssues: AfkIssueRecord[] = [];
@@ -517,11 +535,12 @@ async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Pro
     const hitlAssessment = hitlAssessments.get(issue.issueId);
     const durableApproval = hasDurableHitlApproval(issue, hitlAssessments);
     const satisfiedByStatus = statusDoneOrApproved(issue) && (!hitlAssessment || hitlAssessment.missingArtifacts.length === 0);
-    if (satisfiedByStatus || durableApproval) {
+    const satisfiedByMergedPr = mergedIssueIds.has(issue.issueId);
+    if (satisfiedByStatus || durableApproval || satisfiedByMergedPr) {
       doneIssues.push({
         ...recordBase,
         disposition: "done",
-        reasons: [durableApproval ? `Durable HITL approval ${durableApproval.approvalRef} resolves this blocker.` : `Issue status is ${issue.status}.`],
+        reasons: [durableApproval ? `Durable HITL approval ${durableApproval.approvalRef} resolves this blocker.` : satisfiedByMergedPr ? "Merged PR lifecycle artifact marks this issue done." : `Issue status is ${issue.status}.`],
       });
       continue;
     }
@@ -530,7 +549,7 @@ async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Pro
       continue;
     }
     if (issue.type !== "AFK") reasons.push(`Unsupported issue type: ${issue.type || "missing"}.`);
-    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), hitlAssessments));
+    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), hitlAssessments, mergedIssueIds));
     if (unresolved.length > 0) {
       deferredIssues.push({ ...recordBase, disposition: "deferred", reasons: [`Unresolved dependencies: ${unresolved.join(", ")}.`] });
       continue;

@@ -318,9 +318,10 @@ test("provider-failed mixed-domain run with preserved diff and passing local pro
   assert.equal(queue.jobs[0].workerExecution?.salvage?.outcome, "reviewable");
 
   const taskState = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as {
-    tasks: Array<{ id: string; status: string; evidence: string[] }>;
+    tasks: Array<{ id: string; status: string; evidence: string[]; validation?: { decision?: string } }>;
   };
   assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.status, "review");
+  assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.validation?.decision, "pass");
   assert.match((taskState.tasks.find((task) => task.id === result.linkedTaskId)?.evidence ?? []).join("\n"), /salvage/i);
 });
 

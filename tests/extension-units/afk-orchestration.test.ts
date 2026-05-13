@@ -69,6 +69,12 @@ async function writeReviewArtifact(cwd: string, relativePath: string, content = 
   await writeFile(path, content, "utf8");
 }
 
+async function writeMergedPrRun(cwd: string, issueId: string, status: "merged" | "synced" = "merged"): Promise<void> {
+  const path = join(cwd, "docs", "initiatives", "greenfield-scaffold", "pr-runs", `pr-${issueId}.json`);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, `${JSON.stringify({ version: 1, runId: `pr-${issueId}`, initiativeId: "greenfield-scaffold", sourceIssueId: issueId, status }, null, 2)}\n`, "utf8");
+}
+
 const canonicalIssues = () => [
   baseIssue("issue-001", { type: "HITL", status: "planned", validationProof: [], domains: ["docs"], filesToModify: ["docs/foundation.md"], allowedPaths: ["docs"], hitlGates: ["approve foundation"] }),
   baseIssue("issue-002", { dependencies: ["issue-001"], domains: ["frontend"], filesToModify: ["apps/web/src/App.tsx"], allowedPaths: ["apps/web"] }),
@@ -90,6 +96,25 @@ test("dry-run writes no files and keeps HITL/dependency blockers visible", async
   assert.equal(result.explainIssue?.issueId, "issue-002");
   await assert.rejects(readFile(join(cwd, "docs/initiatives/greenfield-scaffold/afk-runs/afk-20260509T000000Z.json"), "utf8"), /ENOENT/);
   await assert.rejects(readFile(join(cwd, ".pi/agent/state/runtime/queue.json"), "utf8"), /ENOENT/);
+});
+
+test("merged PR lifecycle artifacts mark planned AFK issues done for frontier selection", async () => {
+  const issues = [
+    baseIssue("issue-001", { status: "done" }),
+    baseIssue("issue-002", { status: "done", dependencies: ["issue-001"] }),
+    baseIssue("issue-003", { status: "done", dependencies: ["issue-002"] }),
+    baseIssue("issue-004", { dependencies: ["issue-003"] }),
+    baseIssue("issue-005", { dependencies: ["issue-004"] }),
+    baseIssue("issue-006", { dependencies: ["issue-005"] }),
+  ];
+  const cwd = await tempRepo(issues);
+  await writeMergedPrRun(cwd, "issue-004", "merged");
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold" });
+
+  assert.ok(result.doneIssues.some((issue) => issue.issueId === "issue-004"));
+  assert.deepEqual(result.eligibleIssues.map((issue) => issue.issueId), ["issue-005"]);
+  assert.deepEqual(result.deferredIssues.map((issue) => issue.issueId), ["issue-006"]);
 });
 
 test("issue 2 and 3 become eligible after issue 1 is done, while issue 4 waits for 2 and 3", async () => {
