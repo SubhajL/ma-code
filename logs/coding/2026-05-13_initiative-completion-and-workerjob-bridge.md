@@ -187,71 +187,77 @@ Review Verdict: no_required_fixes
   - `issue-004` durable state repair is a one-time repo-state correction for already-landed mixed-domain work.
   - Greenfield and the remaining mixed-domain slices still need actual continuation runs after this fix.
 
-## 2026-05-13T23:07:08Z
-- Goal: run one bounded live mixed-domain continuation attempt after the two automation-gap fixes to confirm the system moves past stale `issue-004` selection and task-ready PR blocking.
+## 2026-05-13T23:04:17Z
+- Goal: implement mixed-domain AFK issue `issue-005` so Phase B parallel decisions use path-level safety analysis instead of simple shared allowed-path-root serialization.
 - Discovery path:
-  - Used the already-prepared execution worktree `task/task-1778681880000-yolo-afk-drain` from fresh `main`.
-  - Kept the live proof bounded to one provider-backed continuation run for one slice.
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, the active coding log, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `.pi/agent/skills/backend-safety/SKILL.md` before editing.
+  - Used direct inspection and exact-string search in `.pi/agent/extensions/afk-orchestration.ts`, `.pi/agent/extensions/slice-dependency-decision.ts`, `tests/extension-units/afk-orchestration.test.ts`, and `tests/extension-units/parallel-worker-lanes.test.ts`.
+  - Confirmed the old AFK implementation only compared `filesToModify` plus normalized `allowedPaths`, which forced sequential execution whenever broad shared roots overlapped.
 - Files changed and why:
-  - Runtime artifacts only:
-    - `docs/initiatives/mixed-domain-harness-optimization/afk-runs/afk-20260513t225717z.json`
-    - `docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-20260513t225717z.json`
-    - `docs/initiatives/mixed-domain-harness-optimization/pr-runs/pr-worker-20260513t225717z.json`
-    - `docs/initiatives/mixed-domain-harness-optimization/pr-runs/pr-worker-20260513t225717z.md`
-  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded live proof and the next newly exposed blocker.
-- Tests added or changed: none; this was a bounded live automation proof run.
-- Exact RED command and key failure reason:
-  - none for this validation unit; the RED/GREEN loop had already completed for the implementation change.
-- Exact GREEN command:
-  - none; live proof produced forward progress but not full initiative completion.
-- Other validation commands run:
-  - `npm --silent run harness:orchestrate -- continue --initiative mixed-domain-harness-optimization --max-slices 1 --max-steps 12 --max-runtime-seconds 900 --auto-land --approval-ref human-2026-05-13-yolo-afk-fix --json`
-  - `gh pr view 155 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,title`
-  - `gh pr checks 155`
-- Wiring verification evidence:
-  - The new live run selected `issue-005`, not `issue-004`.
-  - Worker run `worker-20260513t225717z` reached `review_ready` with linked task `task-1778713037969`.
-  - PR lifecycle run `pr-worker-20260513t225717z` reported `taskReady: true`, `createReady: true`, `blockers: []`, and created PR `#155`.
-  - This is direct live evidence that the two targeted blockers are fixed:
-    - stale mixed-domain frontier no longer re-selects `issue-004`
-    - linked task readiness no longer blocks PR creation for the new slice.
-- Behavior changes and risk notes:
-  - The system now advances to the next mixed-domain slice and creates a bounded PR automatically.
-  - Newly exposed blocker: the run still stops at `pr_created` / open PR state instead of completing merge+landing under the current auto-land invocation; PR `#155` is open and `CLEAN`, with no reported checks on the worker branch.
-  - So the original two gaps are fixed, but full YOLO drain remains blocked by a separate merge-boundary / auto-land continuation behavior.
-- Follow-ups / known gaps:
-  - Next likely fix is in auto-land merge/gate continuation, not the two gaps fixed in this unit.
-  - I did not run repeated live loops after this one bounded proof run.
-
-## 2026-05-13T23:30:00Z
-- Goal: fix the newly exposed auto-land merge continuation blocker for stacked worker PRs that have no GitHub checks.
-- Discovery path:
-  - Inspected `.pi/agent/extensions/pr-lifecycle.ts`, `.pi/agent/extensions/orchestrator-run.ts`, and `scripts/harness-pr-gate.ts` after the live `issue-005` run stalled at `pr_created`.
-  - Verified the concrete blocker with `npm --silent run harness:pr-lifecycle -- gate --initiative mixed-domain-harness-optimization --run-id pr-worker-20260513t225717z --json`, which failed because `gh pr checks` returned `no checks reported` for stacked PR `#155`.
-- Files changed and why:
-  - `scripts/harness-pr-gate.ts` — tolerate GitHub’s `no checks reported` response by treating it as an empty check set instead of throwing.
-  - `.pi/agent/extensions/pr-lifecycle.ts` — treat zero-check stacked PRs against non-protected base branches as gate-pass / merge-ready when merge state is `CLEAN` and review/comment state is clear.
-  - `tests/integration/pr-gate.test.ts` — added coverage that the PR gate helper returns a bounded pending session instead of throwing on `no checks reported`.
-  - `tests/extension-units/pr-lifecycle.test.ts` — added regression coverage for zero-check stacked PRs at both `gate` and `merge-ready` stages.
-  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded RED/GREEN evidence and live follow-up plan.
+  - `.pi/agent/extensions/afk-orchestration.ts` — replaced the pairwise parallel-decision heuristic with `slice-dependency-decision`-backed analysis, preserved conservative blocking for true shared mutation proof, and added exact human-readable safe/blocked explanations.
+  - `tests/extension-units/afk-orchestration.test.ts` — added mixed-domain regressions for both safe shared-root/disjoint-path cases and unsafe exact-overlap cases.
+  - `tests/extension-units/parallel-worker-lanes.test.ts` — added adjacent regression coverage that worker-lane planning still relies on explicit Phase 10 proof refs for mixed-domain-style slices.
 - Tests added or changed:
-  - `PR gate helper treats no-check stacked PRs as pending instead of throwing`
-  - `gate passes zero-check stacked PRs when merge state is clean and review state is clear`
-  - `merge-ready accepts zero-check stacked PRs when gate already passed`
+  - `shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe`
+  - `mixed-domain slices with overlapping explicit mutation paths stay forced sequential with exact blocker output`
+  - `mixed-domain-style slice ids still rely on explicit Phase 10 proof refs`
 - Exact RED command and key failure reason:
-  - `npm --silent run harness:pr-lifecycle -- gate --initiative mixed-domain-harness-optimization --run-id pr-worker-20260513t225717z --json`
-  - Failure reason: `gh pr checks 155 ... failed with code 1: no checks reported on the 'worker/worker-20260513t225717z-issue-005' branch`.
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts --test-name-pattern "shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe"`
+  - Failure was for the intended reason: the AFK decision still returned `forced_sequential` instead of `parallel_candidate` because shared allowed-path roots were treated as an automatic conflict even when the explicit mutating paths were disjoint.
 - Exact GREEN command:
-  - `node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-gate.test.ts`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts --test-name-pattern "shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe"`
 - Other validation commands run:
-  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-gate.test.ts; done`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts --test-name-pattern "mixed-domain slices with overlapping explicit mutation paths stay forced sequential with exact blocker output"`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts; done`
   - `git diff --check`
-  - `npm --silent run harness:pr-lifecycle -- gate --initiative mixed-domain-harness-optimization --run-id pr-worker-20260513t225717z --json`
 - Wiring verification evidence:
-  - The stacked PR gate rerun now succeeds locally instead of erroring, and `pr-worker-20260513t225717z` records `gate_passed` evidence for PR `#155`.
-  - The fix is bounded to non-protected stacked bases; mainline PRs with zero checks do not silently auto-pass.
+  - `afk-orchestration.ts` now feeds eligible issue pairs through `decideSliceParallelism(...)` using AFK issue metadata (`filesToModify`, `allowedPaths`, `schemaPaths`, `migrationPaths`, `configPaths`, `testPaths`, `fixturePaths`) instead of the old shared-root-only check.
+  - Mixed-domain issues with explicit path-level mutation proof now downgrade broad `allowedPaths` to scope-only input for the pairwise decision so shared roots do not mask genuinely disjoint work.
+  - Blocked decisions now surface the exact blocker/path list from slice-dependency analysis; safe decisions now explicitly state when shared allowed-path roots are tolerated because the mutating paths are disjoint.
 - Behavior changes and risk notes:
-  - Auto-land can now continue through PR gate and merge-ready for stacked worker PRs that intentionally lack GitHub branch checks.
-  - This does not change main-branch PR expectations; the zero-check exception is limited to non-protected stacked bases.
-- Follow-ups / known gaps:
-  - Next live step is to merge PR `#155` through the same bounded lifecycle and then try the next mixed-domain slice (`issue-006`).
+  - Safe mixed-domain slices that share `.pi/agent/extensions` or `tests/extension-units` roots can now be marked `parallel_candidate` when their explicit mutation proof is disjoint.
+  - Unsafe overlaps remain `forced_sequential` with exact blocker wording and concrete shared-path output.
+  - Conservative residual risk: this optimization trusts explicit path-level mutation proof for mixed-domain issues; if a future issue understates its concrete mutation footprint, AFK may classify it based on the declared proof rather than the broader root.
+- Follow-ups or known gaps:
+  - This change improves Phase B decision quality only; it does not yet create coordinated mixed-domain sub-lanes or change worker execution semantics.
+  - The adjacent `parallel-worker-lanes` coverage is characterization only; no lane-planner production code changed in this slice.
+
+## Review (2026-05-13T23:04:17Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/20260513T221800Z-yolo-afk-drain-worktrees/worker-20260513t225717z-issue-005`
+- Branch: `worker/worker-20260513t225717z-issue-005`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- .pi/agent/extensions/afk-orchestration.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `git diff --stat -- .pi/agent/extensions/afk-orchestration.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `git diff -- .pi/agent/extensions/afk-orchestration.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The new mixed-domain safe-path optimization relies on accurate per-issue path declarations; keep future issue materialization honest so broad shared roots do not hide undeclared writes.
+
+### Open Questions / Assumptions
+- Assumed it is acceptable for this slice to improve AFK explanation/output without changing worker-lane production logic.
+- Assumed mixed-domain issues that declare explicit mutation paths should treat broad allowed-path roots as scope bounds rather than automatic write conflicts.
+
+### Recommended Tests / Validation
+- `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+- `git diff --check`
+
+### Rollout Notes
+- This is a local Phase B decision change only; no runtime schema, migration, auth, or provider-facing behavior changed.
+- Next live proof, if needed, should come from one bounded AFK dry-run/continue execution after this branch lands rather than repeated validator loops.
+Review Verdict: no_required_fixes

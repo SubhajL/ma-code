@@ -51,6 +51,35 @@ test("plans two independent worker lanes with Phase 10 proof and max parallel 2"
   assert.equal(result.parallelProof.sameSliceParallelism, false);
 });
 
+test("mixed-domain-style slice ids still rely on explicit Phase 10 proof refs", () => {
+  const result = planParallelWorkerLanes({
+    plan: plan({
+      initiativeId: "mixed-domain-harness-optimization",
+      slices: [
+        {
+          ...plan().slices[0],
+          sliceId: "issue-005",
+          title: "Improve mixed-domain parallel safety",
+          artifacts: { frontendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-005.frontend.packet.json" },
+        },
+        {
+          ...plan().slices[1],
+          sliceId: "issue-006",
+          title: "Coordinate mixed-domain sub-lanes",
+          artifacts: { frontendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.frontend.packet.json" },
+        },
+      ],
+      parallelDecisions: [{ sliceIds: ["issue-005", "issue-006"], parallelAllowed: true, blockers: [], source: "phase10:mixed-domain-safe" }],
+    }),
+    maxParallelSlices: 2,
+    activeLeaseScopes: [],
+  });
+
+  assert.deepEqual(result.selectedSliceIds, ["issue-005", "issue-006"]);
+  assert.equal(result.lanes[0].dependencyDecisionRef, "phase10:not_required_single_lane");
+  assert.equal(result.lanes[1].dependencyDecisionRef, "phase10:mixed-domain-safe");
+});
+
 test("respects max parallel, missing Phase 10 proof, HITL gates, and active worker-lane lease conflicts", () => {
   const maxOne = planParallelWorkerLanes({ plan: plan(), maxParallelSlices: 1, activeLeaseScopes: [] });
   assert.deepEqual(maxOne.selectedSliceIds, ["slice-001"]);

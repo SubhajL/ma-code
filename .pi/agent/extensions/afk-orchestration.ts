@@ -9,6 +9,7 @@ import {
 } from "./queue-runner.ts";
 import { buildAfkWorkerExecutionPlan } from "./afk-worker-execution-plan.ts";
 import { VALID_DOMAINS, deriveDomainOwnershipForDomains } from "./domain-ownership.ts";
+import { decideSliceParallelism, type SliceDependencySummary } from "./slice-dependency-decision.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -470,16 +471,74 @@ function pathsOverlap(left: string, right: string): boolean {
   return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
 }
 
-function sharedPaths(left: AfkIssueArtifact, right: AfkIssueArtifact): string[] {
-  const leftPaths = [...normalizeStringArray(left.filesToModify), ...normalizeAllowedPaths(left.allowedPaths)];
-  const rightPaths = [...normalizeStringArray(right.filesToModify), ...normalizeAllowedPaths(right.allowedPaths)];
+function explicitMutationProofPaths(issue: AfkIssueArtifact): string[] {
+  return [
+    ...normalizeStringArray(issue.filesToModify),
+    ...normalizeStringArray(issue.schemaPaths),
+    ...normalizeStringArray(issue.migrationPaths),
+    ...normalizeStringArray(issue.configPaths),
+    ...normalizeStringArray(issue.testPaths),
+    ...normalizeStringArray(issue.fixturePaths),
+  ];
+}
+
+function usesScopeOnlyAllowedPathAnalysis(issue: AfkIssueArtifact): boolean {
+  return new Set(normalizeStringArray(issue.domains).filter((domain) => (VALID_DOMAINS as readonly string[]).includes(domain))).size > 1
+    && explicitMutationProofPaths(issue).length > 0;
+}
+
+function allowedPathsForParallelAnalysis(issue: AfkIssueArtifact): SliceDependencySummary["allowedPaths"] {
+  const scopeOnly = usesScopeOnlyAllowedPathAnalysis(issue);
+  if (!Array.isArray(issue.allowedPaths)) return [];
+  return issue.allowedPaths.flatMap((entry) => {
+    if (typeof entry === "string" && entry.trim()) {
+      const path = entry.trim().replace(/^\.\//, "").replace(/\/$/, "");
+      return path ? [scopeOnly ? { path, access: "read_only", mutating: false } : path] : [];
+    }
+    if (!isRecord(entry) || typeof entry.path !== "string" || !entry.path.trim()) return [];
+    const path = entry.path.trim().replace(/^\.\//, "").replace(/\/$/, "");
+    if (!path) return [];
+    if (scopeOnly) return [{ path, access: "read_only", mutating: false }];
+    const access = typeof entry.access === "string" && entry.access.trim() ? entry.access.trim() : undefined;
+    const mutating = typeof entry.mutating === "boolean" ? entry.mutating : undefined;
+    return [{ path, ...(access ? { access } : {}), ...(mutating === undefined ? {} : { mutating }) }];
+  });
+}
+
+function sharedAllowedPathRoots(left: AfkIssueArtifact, right: AfkIssueArtifact): string[] {
   const shared = new Set<string>();
-  for (const leftPath of leftPaths) {
-    for (const rightPath of rightPaths) {
-      if (pathsOverlap(leftPath, rightPath)) shared.add(`${leftPath} ↔ ${rightPath}`);
+  for (const leftPath of normalizeAllowedPaths(left.allowedPaths)) {
+    for (const rightPath of normalizeAllowedPaths(right.allowedPaths)) {
+      if (pathsOverlap(leftPath, rightPath)) shared.add(leftPath === rightPath ? leftPath : `${leftPath} ↔ ${rightPath}`);
     }
   }
   return [...shared].sort();
+}
+
+function issueParallelSummary(issue: AfkIssueArtifact): SliceDependencySummary {
+  return {
+    sliceId: issue.issueId,
+    filesToModify: normalizeStringArray(issue.filesToModify),
+    allowedPaths: allowedPathsForParallelAnalysis(issue),
+    schemaPaths: normalizeStringArray(issue.schemaPaths),
+    migrationPaths: normalizeStringArray(issue.migrationPaths),
+    configPaths: normalizeStringArray(issue.configPaths),
+    testPaths: normalizeStringArray(issue.testPaths),
+    fixturePaths: normalizeStringArray(issue.fixturePaths),
+  };
+}
+
+function formatParallelBlockerReason(issueIds: string[], decision: ReturnType<typeof decideSliceParallelism>): string {
+  const blockers = decision.blockers.map((blocker) => blocker.paths.length > 0 ? `${blocker.reason} (${blocker.paths.join(", ")}).` : `${blocker.reason}.`);
+  return `Forced sequential for ${issueIds.join(" + ")}: ${blockers.join(" ")}`;
+}
+
+function formatParallelSafeReason(left: AfkIssueArtifact, right: AfkIssueArtifact): string {
+  const allowedRootOverlaps = sharedAllowedPathRoots(left, right);
+  const sharedRootNote = allowedRootOverlaps.length > 0 && (usesScopeOnlyAllowedPathAnalysis(left) || usesScopeOnlyAllowedPathAnalysis(right))
+    ? ` Shared allowed path roots stay parallel-safe because the pair declares disjoint explicit mutating paths: ${allowedRootOverlaps.join(", ")}.`
+    : "";
+  return `Parallel-safe for ${left.issueId} + ${right.issueId}: disjoint explicit mutating paths across filesToModify, schema/migration, config, and test/fixture proof.${sharedRootNote}`;
 }
 
 function buildParallelDecisions(eligibleIssues: AfkIssueArtifact[], maxParallel: number): AfkParallelDecision[] {
@@ -491,18 +550,29 @@ function buildParallelDecisions(eligibleIssues: AfkIssueArtifact[], maxParallel:
     for (let rightIndex = leftIndex + 1; rightIndex < eligibleIssues.length; rightIndex += 1) {
       const left = eligibleIssues[leftIndex];
       const right = eligibleIssues[rightIndex];
-      const shared = sharedPaths(left, right);
-      if (shared.length > 0) {
+      const pairDecision = decideSliceParallelism({ slices: [issueParallelSummary(left), issueParallelSummary(right)] });
+      const blockerPaths = [...new Set(pairDecision.blockers.flatMap((blocker) => blocker.paths))].sort();
+      if (!pairDecision.parallelAllowed) {
         decisions.push({
           issueIds: [left.issueId, right.issueId],
           status: "forced_sequential",
-          reason: "Eligible issues share files or mutating allowed path roots, so Phase B will not mark them as parallel candidates.",
-          sharedPaths: shared,
+          reason: formatParallelBlockerReason([left.issueId, right.issueId], pairDecision),
+          sharedPaths: blockerPaths,
         });
       } else if (maxParallel > 1) {
-        decisions.push({ issueIds: [left.issueId, right.issueId], status: "parallel_candidate", reason: "Eligible issues have disjoint files and allowed paths.", sharedPaths: [] });
+        decisions.push({
+          issueIds: [left.issueId, right.issueId],
+          status: "parallel_candidate",
+          reason: formatParallelSafeReason(left, right),
+          sharedPaths: [],
+        });
       } else {
-        decisions.push({ issueIds: [left.issueId, right.issueId], status: "sequential_default", reason: "maxParallel is 1; eligible issues stay sequential by default.", sharedPaths: [] });
+        decisions.push({
+          issueIds: [left.issueId, right.issueId],
+          status: "sequential_default",
+          reason: `maxParallel is 1, so ${left.issueId} + ${right.issueId} stay sequential by default even though they are parallel-safe. ${formatParallelSafeReason(left, right)}`,
+          sharedPaths: [],
+        });
       }
     }
   }
