@@ -4,7 +4,12 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { resolve, join } from "node:path";
 
-import { assertApplyRepoPreflight, loadProductPipelinePlan } from "../.pi/agent/extensions/product-pipeline.ts";
+import {
+  assertApplyRepoPreflight,
+  buildMixedDomainCoordinators,
+  loadProductPipelinePlan,
+  type ProductPipelineMixedDomainCoordinator,
+} from "../.pi/agent/extensions/product-pipeline.ts";
 import {
   acquireExecutionLease,
   readExecutionLeaseState,
@@ -41,8 +46,19 @@ export interface HarnessParallelWorkerLanesOptions {
   json?: boolean;
 }
 
+export interface HarnessMixedDomainLaneView extends ParallelWorkerLane {
+  parentSliceId?: string | null;
+  laneKind?: "frontend" | "backend" | "bff" | null;
+  parentQueueJobId?: string | null;
+}
+
+export interface HarnessParallelWorkerLaneManifest extends ParallelWorkerLaneManifest {
+  lanes: HarnessMixedDomainLaneView[];
+  coordinators: ProductPipelineMixedDomainCoordinator[];
+}
+
 export interface HarnessParallelWorkerLanesResult {
-  manifest: ParallelWorkerLaneManifest;
+  manifest: HarnessParallelWorkerLaneManifest;
   writtenManifestPath: string | null;
 }
 
@@ -123,7 +139,7 @@ async function pathExists(pathValue: string): Promise<boolean> {
   }
 }
 
-async function assertPacketArtifactsExist(repoRoot: string, lanes: ParallelWorkerLane[]): Promise<void> {
+async function assertPacketArtifactsExist(repoRoot: string, lanes: Array<Pick<ParallelWorkerLane, "sliceId" | "packetPath">>): Promise<void> {
   const missing: string[] = [];
   for (const lane of lanes) {
     if (!lane.packetPath || !(await pathExists(join(repoRoot, lane.packetPath)))) missing.push(`${lane.sliceId}: ${lane.packetPath || "missing packet path"}`);
@@ -131,21 +147,76 @@ async function assertPacketArtifactsExist(repoRoot: string, lanes: ParallelWorke
   if (missing.length > 0) throw new Error(`Refusing apply with missing packet artifacts: ${missing.join("; ")}`);
 }
 
+function slugifySegment(input: string): string {
+  const value = input.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (!value) throw new Error(`Cannot slugify empty lane segment: ${input}`);
+  return value;
+}
+
+function expandManifestWithMixedDomainCoordinators(
+  manifest: ParallelWorkerLaneManifest,
+  coordinators: ProductPipelineMixedDomainCoordinator[],
+): HarnessParallelWorkerLaneManifest {
+  const relevantCoordinators = coordinators.filter((coordinator) => manifest.lanes.some((lane) => lane.sliceId === coordinator.parentSliceId));
+  const coordinatorsBySlice = new Map(relevantCoordinators.map((coordinator) => [coordinator.parentSliceId, coordinator]));
+  const blockers = [...manifest.blockers];
+  const expandedLanes: HarnessMixedDomainLaneView[] = [];
+
+  for (const lane of manifest.lanes) {
+    const coordinator = coordinatorsBySlice.get(lane.sliceId);
+    if (!coordinator) {
+      expandedLanes.push({ ...lane, parentSliceId: null, laneKind: null, parentQueueJobId: null });
+      continue;
+    }
+    if (coordinator.conflictCheck.status !== "passed") {
+      blockers.push(`Mixed-domain coordinator ${coordinator.parentSliceId} requires conflict checks to pass before child lanes can be materialized.`);
+      expandedLanes.push({ ...lane, parentSliceId: coordinator.parentSliceId, laneKind: null, parentQueueJobId: coordinator.parentQueueJobId });
+      continue;
+    }
+
+    const sliceSlug = slugifySegment(coordinator.parentSliceId);
+    for (const childLane of coordinator.childLanes) {
+      const laneSlug = `${sliceSlug}-${childLane.laneKind}`;
+      expandedLanes.push({
+        ...lane,
+        laneId: `lane-${laneSlug}`,
+        packetPath: childLane.packetPath,
+        dependencyDecisionRef: `${lane.dependencyDecisionRef},mixed-domain:${coordinator.parentSliceId}:${childLane.laneKind}`,
+        workerSessionScope: laneSlug,
+        leaseId: `worker_lane-${laneSlug}`,
+        branchName: `worker/${laneSlug}-parallel-lane`,
+        worktreePath: `../ma-code-worktrees/${manifest.initiativeId}-${laneSlug}`,
+        parentSliceId: coordinator.parentSliceId,
+        laneKind: childLane.laneKind,
+        parentQueueJobId: childLane.parentQueueJobId,
+      });
+    }
+  }
+
+  return {
+    ...manifest,
+    lanes: expandedLanes,
+    blockers: [...new Set(blockers)],
+    coordinators: relevantCoordinators,
+  };
+}
+
 function orchestrationScope(initiative: string): string {
   return `parallel-run:${initiative}`;
 }
 
-async function buildManifestFromPlan(options: HarnessParallelWorkerLanesOptions, mode: "dry_run" | "apply" | "status"): Promise<ParallelWorkerLaneManifest> {
+async function buildManifestFromPlan(options: HarnessParallelWorkerLanesOptions, mode: "dry_run" | "apply" | "status"): Promise<HarnessParallelWorkerLaneManifest> {
   const repoRoot = resolve(options.repoRoot ?? process.cwd());
   const plan = await loadProductPipelinePlan({ repoRoot, initiativeId: options.initiative });
   const leases = await readExecutionLeaseState(repoRoot);
-  return buildParallelWorkerLaneManifest({
+  const manifest = buildParallelWorkerLaneManifest({
     plan,
     mode,
     runId: options.runId,
     maxParallelSlices: options.maxParallel,
     activeLeaseScopes: activeLeaseScopesFromRecords(leases.leases),
   });
+  return expandManifestWithMixedDomainCoordinators(manifest, buildMixedDomainCoordinators(plan));
 }
 
 async function runDryRun(options: HarnessParallelWorkerLanesOptions): Promise<HarnessParallelWorkerLanesResult> {
@@ -181,10 +252,10 @@ async function runApply(options: HarnessParallelWorkerLanesOptions): Promise<Har
     for (const lane of manifest.lanes) {
       const session = await startHarnessWorkerSession({
         repoRoot,
-        id: lane.sliceId,
+        id: lane.laneId,
         slug: `${options.initiative}-lane`,
         owner: options.owner,
-        jobId: `parallel:${options.initiative}:${manifest.runId}:${lane.sliceId}`,
+        jobId: `parallel:${options.initiative}:${manifest.runId}:${lane.laneId}`,
         taskId: null,
         baseRef: options.baseRef,
         parentDir: options.parentDir,

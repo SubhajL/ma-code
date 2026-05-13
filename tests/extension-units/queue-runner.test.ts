@@ -1000,6 +1000,60 @@ test("queue runner preserves mixed-domain ownership metadata in generated packet
   assert.equal(queueState.jobs[0]?.packetId, details.packet.packetId);
 });
 
+test("queue runner preserves mixed-domain parent/child coordination in generated child-lane packets", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-mixed-domain-frontend-child",
+        goal: "Implement frontend child lane for mixed-domain vertical slice",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "frontend_worker",
+        workType: "implementation",
+        domains: ["frontend"],
+        allowedPaths: ["apps/web/src/routes"],
+        acceptanceCriteria: ["Child-lane packets keep the parent mixed-domain slice identity visible"],
+        tddSlice: defaultImplementationTddSlice("Implement frontend child lane for mixed-domain vertical slice", ["tests/extension-units/queue-runner.test.ts"]),
+        sliceCoordination: {
+          mode: "child",
+          verticalSliceId: "issue-006",
+          parentSliceId: "issue-006",
+          parentJobId: "job-mixed-domain-parent",
+          laneId: "issue-006:frontend",
+          laneKind: "frontend",
+          reunifyEvidenceIntoParent: true,
+          conflictCheckStatus: "passed",
+          conflictCheckSource: "phase_b_declared_lane_boundaries",
+        },
+      },
+    ],
+  } as any);
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+
+  assert.equal(details.action, "started");
+  assert.deepEqual(details.packet.sliceCoordination, {
+    mode: "child",
+    verticalSliceId: "issue-006",
+    parentSliceId: "issue-006",
+    parentJobId: "job-mixed-domain-parent",
+    laneId: "issue-006:frontend",
+    laneKind: "frontend",
+    childJobIds: [],
+    childLanes: [],
+    reunifyEvidenceIntoParent: true,
+    conflictCheckStatus: "passed",
+    conflictCheckSource: "phase_b_declared_lane_boundaries",
+  });
+});
+
 test("queue runner blocks a quality job when structured worker_to_quality input is missing", async () => {
   const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
 
@@ -1157,6 +1211,132 @@ test("queue runner does not start a new job while the active linked task is stil
   assert.equal(details.linkedTask.id, activeTaskId);
   assert.equal(taskState.tasks.length, 1);
   assert.equal(queueState.jobs.find((job) => job.id === "job-next")?.status, "queued");
+});
+
+test("queue runner blocks parent mixed-domain completion when child evidence is missing", async () => {
+  const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-mixed-domain-frontend-child-done",
+        goal: "Implement frontend child lane",
+        priority: "high",
+        status: "done",
+        team: "build",
+        assignedRole: "frontend_worker",
+        workType: "implementation",
+        domains: ["frontend"],
+        allowedPaths: ["apps/web/src/routes"],
+        linkedTaskId: "task-mixed-domain-child-done",
+        acceptanceCriteria: ["Frontend child lane finished before parent reunification"],
+        tddSlice: defaultImplementationTddSlice("Implement frontend child lane", ["tests/extension-units/queue-runner.test.ts"]),
+        sliceCoordination: {
+          mode: "child",
+          verticalSliceId: "issue-006",
+          parentSliceId: "issue-006",
+          parentJobId: "job-mixed-domain-parent",
+          laneId: "issue-006:frontend",
+          laneKind: "frontend",
+          reunifyEvidenceIntoParent: true,
+          conflictCheckStatus: "passed",
+          conflictCheckSource: "phase_b_declared_lane_boundaries",
+        },
+      },
+      {
+        id: "job-mixed-domain-parent",
+        goal: "Reunify mixed-domain child-lane evidence",
+        priority: "medium",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["backend"],
+        allowedPaths: [".pi/agent/extensions/queue-runner.ts"],
+        acceptanceCriteria: ["Parent completion waits for child evidence and conflict checks"],
+        tddSlice: defaultImplementationTddSlice("Reunify mixed-domain child-lane evidence"),
+        sliceCoordination: {
+          mode: "parent",
+          verticalSliceId: "issue-006",
+          parentSliceId: "issue-006",
+          childJobIds: ["job-mixed-domain-frontend-child-done"],
+          childLanes: [
+            {
+              laneId: "issue-006:frontend",
+              laneKind: "frontend",
+              packetPath: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.frontend.packet.json",
+              allowedPaths: ["apps/web/src/routes"],
+              childJobId: "job-mixed-domain-frontend-child-done",
+            },
+          ],
+          reunifyEvidenceIntoParent: true,
+          conflictCheckStatus: "passed",
+          conflictCheckSource: "phase_b_declared_lane_boundaries",
+        },
+      },
+    ],
+  } as any);
+
+  await writeTaskState(cwd, {
+    version: 1,
+    activeTaskId: null,
+    tasks: [
+      {
+        id: "task-mixed-domain-child-done",
+        title: "Frontend child lane done without evidence",
+        owner: "assistant",
+        status: "done",
+        taskClass: "implementation",
+        acceptance: ["Frontend child lane finished before parent reunification"],
+        evidence: [],
+        notes: [],
+        dependencies: [],
+        retryCount: 0,
+        validation: {
+          tier: "standard",
+          decision: "pass",
+          source: "validator",
+          checklist: null,
+          approvalRef: null,
+          updatedAt: null,
+        },
+        timestamps: {
+          createdAt: "2026-05-13T00:00:00.000Z",
+          updatedAt: "2026-05-13T00:00:00.000Z",
+          completedAt: "2026-05-13T00:00:00.000Z",
+        },
+      } as TaskRecord,
+    ],
+  });
+
+  const started = await runNextQueueJob({ owner: "assistant" });
+  const parentTaskId = (started as any).details.startedJob.linkedTaskId as string;
+  await taskUpdate({ action: "evidence", id: parentTaskId, evidence: ["Changed files: .pi/agent/extensions/queue-runner.ts"] });
+  await taskUpdate({ action: "review", id: parentTaskId });
+  await taskUpdate({
+    action: "validate",
+    id: parentTaskId,
+    validationSource: "validator",
+    validationDecision: "pass",
+    validationChecklist: {
+      acceptance: "met",
+      tests: "met",
+      diff_review: "met",
+      evidence: "met",
+    },
+  });
+  await taskUpdate({ action: "done", id: parentTaskId });
+
+  const finalize = await runNextQueueJob({ owner: "assistant" });
+  const queueState = await readQueueState(cwd);
+
+  assert.equal(finalize.details.action, "blocked");
+  assert.match(String(finalize.details.reason), /child task task-mixed-domain-child-done has no recorded evidence/i);
+  assert.equal(queueState.activeJobId, null);
+  assert.equal(queueState.jobs.find((job) => job.id === "job-mixed-domain-parent")?.status, "blocked");
 });
 
 test("queue runner finalizes an active running job when its linked task reaches done", async () => {
