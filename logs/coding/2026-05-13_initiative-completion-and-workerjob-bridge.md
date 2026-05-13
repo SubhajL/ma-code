@@ -186,3 +186,78 @@ Review Verdict: no_required_fixes
 - Follow-ups / known gaps:
   - `issue-004` durable state repair is a one-time repo-state correction for already-landed mixed-domain work.
   - Greenfield and the remaining mixed-domain slices still need actual continuation runs after this fix.
+
+## 2026-05-13T23:04:17Z
+- Goal: implement mixed-domain AFK issue `issue-005` so Phase B parallel decisions use path-level safety analysis instead of simple shared allowed-path-root serialization.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, the active coding log, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `.pi/agent/skills/backend-safety/SKILL.md` before editing.
+  - Used direct inspection and exact-string search in `.pi/agent/extensions/afk-orchestration.ts`, `.pi/agent/extensions/slice-dependency-decision.ts`, `tests/extension-units/afk-orchestration.test.ts`, and `tests/extension-units/parallel-worker-lanes.test.ts`.
+  - Confirmed the old AFK implementation only compared `filesToModify` plus normalized `allowedPaths`, which forced sequential execution whenever broad shared roots overlapped.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-orchestration.ts` — replaced the pairwise parallel-decision heuristic with `slice-dependency-decision`-backed analysis, preserved conservative blocking for true shared mutation proof, and added exact human-readable safe/blocked explanations.
+  - `tests/extension-units/afk-orchestration.test.ts` — added mixed-domain regressions for both safe shared-root/disjoint-path cases and unsafe exact-overlap cases.
+  - `tests/extension-units/parallel-worker-lanes.test.ts` — added adjacent regression coverage that worker-lane planning still relies on explicit Phase 10 proof refs for mixed-domain-style slices.
+- Tests added or changed:
+  - `shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe`
+  - `mixed-domain slices with overlapping explicit mutation paths stay forced sequential with exact blocker output`
+  - `mixed-domain-style slice ids still rely on explicit Phase 10 proof refs`
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts --test-name-pattern "shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe"`
+  - Failure was for the intended reason: the AFK decision still returned `forced_sequential` instead of `parallel_candidate` because shared allowed-path roots were treated as an automatic conflict even when the explicit mutating paths were disjoint.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts --test-name-pattern "shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe"`
+- Other validation commands run:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts --test-name-pattern "mixed-domain slices with overlapping explicit mutation paths stay forced sequential with exact blocker output"`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts; done`
+  - `git diff --check`
+- Wiring verification evidence:
+  - `afk-orchestration.ts` now feeds eligible issue pairs through `decideSliceParallelism(...)` using AFK issue metadata (`filesToModify`, `allowedPaths`, `schemaPaths`, `migrationPaths`, `configPaths`, `testPaths`, `fixturePaths`) instead of the old shared-root-only check.
+  - Mixed-domain issues with explicit path-level mutation proof now downgrade broad `allowedPaths` to scope-only input for the pairwise decision so shared roots do not mask genuinely disjoint work.
+  - Blocked decisions now surface the exact blocker/path list from slice-dependency analysis; safe decisions now explicitly state when shared allowed-path roots are tolerated because the mutating paths are disjoint.
+- Behavior changes and risk notes:
+  - Safe mixed-domain slices that share `.pi/agent/extensions` or `tests/extension-units` roots can now be marked `parallel_candidate` when their explicit mutation proof is disjoint.
+  - Unsafe overlaps remain `forced_sequential` with exact blocker wording and concrete shared-path output.
+  - Conservative residual risk: this optimization trusts explicit path-level mutation proof for mixed-domain issues; if a future issue understates its concrete mutation footprint, AFK may classify it based on the declared proof rather than the broader root.
+- Follow-ups or known gaps:
+  - This change improves Phase B decision quality only; it does not yet create coordinated mixed-domain sub-lanes or change worker execution semantics.
+  - The adjacent `parallel-worker-lanes` coverage is characterization only; no lane-planner production code changed in this slice.
+
+## Review (2026-05-13T23:04:17Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/20260513T221800Z-yolo-afk-drain-worktrees/worker-20260513t225717z-issue-005`
+- Branch: `worker/worker-20260513t225717z-issue-005`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- .pi/agent/extensions/afk-orchestration.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `git diff --stat -- .pi/agent/extensions/afk-orchestration.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `git diff -- .pi/agent/extensions/afk-orchestration.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The new mixed-domain safe-path optimization relies on accurate per-issue path declarations; keep future issue materialization honest so broad shared roots do not hide undeclared writes.
+
+### Open Questions / Assumptions
+- Assumed it is acceptable for this slice to improve AFK explanation/output without changing worker-lane production logic.
+- Assumed mixed-domain issues that declare explicit mutation paths should treat broad allowed-path roots as scope bounds rather than automatic write conflicts.
+
+### Recommended Tests / Validation
+- `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/parallel-worker-lanes.test.ts`
+- `git diff --check`
+
+### Rollout Notes
+- This is a local Phase B decision change only; no runtime schema, migration, auth, or provider-facing behavior changed.
+- Next live proof, if needed, should come from one bounded AFK dry-run/continue execution after this branch lands rather than repeated validator loops.
+Review Verdict: no_required_fixes

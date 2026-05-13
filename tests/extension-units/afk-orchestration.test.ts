@@ -130,6 +130,68 @@ test("issue 2 and 3 become eligible after issue 1 is done, while issue 4 waits f
   assert.equal(result.parallelDecisions.find((decision) => decision.issueIds.join("+") === "issue-002+issue-003")?.status, "parallel_candidate");
 });
 
+test("shared mixed-domain allowed path roots with disjoint explicit mutation paths stay parallel-safe", async () => {
+  const cwd = await tempRepo([
+    baseIssue("issue-001", { status: "done" }),
+    baseIssue("issue-002", {
+      dependencies: ["issue-001"],
+      title: "Refine AFK mixed-domain analysis",
+      domains: ["backend", "infra"],
+      allowedPaths: [".pi/agent/extensions", "tests/extension-units"],
+      filesToModify: [".pi/agent/extensions/afk-orchestration.ts"],
+      testPaths: ["tests/extension-units/afk-orchestration.test.ts"],
+    }),
+    baseIssue("issue-003", {
+      dependencies: ["issue-001"],
+      title: "Keep lane planning coverage current",
+      domains: ["backend", "infra"],
+      allowedPaths: [".pi/agent/extensions", "tests/extension-units"],
+      filesToModify: [".pi/agent/extensions/parallel-worker-lanes.ts"],
+      testPaths: ["tests/extension-units/parallel-worker-lanes.test.ts"],
+    }),
+  ]);
+  await writeReviewArtifact(cwd, "services/issue-001/index.ts", "export const foundation = true;\n");
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
+  const decision = result.parallelDecisions.find((entry) => entry.issueIds.join("+") === "issue-002+issue-003");
+
+  assert.equal(decision?.status, "parallel_candidate");
+  assert.deepEqual(decision?.sharedPaths, []);
+  assert.match(decision?.reason ?? "", /shared allowed path roots/i);
+  assert.match(decision?.reason ?? "", /disjoint explicit mutating paths/i);
+});
+
+test("mixed-domain slices with overlapping explicit mutation paths stay forced sequential with exact blocker output", async () => {
+  const cwd = await tempRepo([
+    baseIssue("issue-001", { status: "done" }),
+    baseIssue("issue-002", {
+      dependencies: ["issue-001"],
+      title: "Refine AFK mixed-domain analysis",
+      domains: ["backend", "infra"],
+      allowedPaths: [".pi/agent/extensions", "tests/extension-units"],
+      filesToModify: [".pi/agent/extensions/afk-orchestration.ts"],
+      testPaths: ["tests/extension-units/afk-orchestration.test.ts"],
+    }),
+    baseIssue("issue-003", {
+      dependencies: ["issue-001"],
+      title: "Touch the same AFK extension surface",
+      domains: ["backend", "infra"],
+      allowedPaths: [".pi/agent/extensions", "tests/extension-units"],
+      filesToModify: [".pi/agent/extensions/afk-orchestration.ts"],
+      testPaths: ["tests/extension-units/parallel-worker-lanes.test.ts"],
+    }),
+  ]);
+  await writeReviewArtifact(cwd, "services/issue-001/index.ts", "export const foundation = true;\n");
+
+  const result = await runAfkOrchestration({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", maxParallel: 2 });
+  const decision = result.parallelDecisions.find((entry) => entry.issueIds.join("+") === "issue-002+issue-003");
+
+  assert.equal(decision?.status, "forced_sequential");
+  assert.deepEqual(decision?.sharedPaths, [".pi/agent/extensions/afk-orchestration.ts"]);
+  assert.match(decision?.reason ?? "", /share filesToModify paths/i);
+  assert.match(decision?.reason ?? "", /\.pi\/agent\/extensions\/afk-orchestration\.ts/i);
+});
+
 test("issue 4 becomes eligible only after issues 2 and 3 are done", async () => {
   const issues = canonicalIssues();
   issues[0].status = "done";
