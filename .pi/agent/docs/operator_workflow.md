@@ -533,6 +533,7 @@ npm run harness:orchestrate -- dry-run --goal "Build checkout flow for shoppers 
 npm run harness:operator -- orchestrate dry-run --goal "Build checkout flow for shoppers to place orders and complete payments so the team can validate order confirmation acceptance" --json
 npm run harness:orchestrate -- apply --path stitch_prompt --initiative checkout --slice slice-001 --json
 npm run harness:orchestrate -- run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
+npm run harness:orchestrate -- continue --initiative mixed-domain-harness-optimization --max-slices 1 --max-steps 3 --max-runtime-seconds 300 --json
 npm run harness:operator -- orchestrate apply --path screen_approval --action approve --initiative checkout --slice slice-001 --approval-ref human-123 --by reviewer --note "Approved" --json
 npm run harness:operator -- orchestrate run --initiative greenfield-scaffold --max-steps 3 --max-runtime-seconds 300 --json
 ```
@@ -546,6 +547,7 @@ Rules:
 - Screen approval requires `--approval-ref`, reviewer identity, and approval note or rejection reason.
 - AFK queue materialization is apply-only with mandatory `--queue-only`; it does not start queue sessions or workers.
 - `run` requires `--max-steps` and `--max-runtime-seconds`, chooses exactly one of `queue_level`, `worker_job`, or `parallel_lanes`, blocks dirty/protected repo state before delegation, and records `merge.attempted: false`.
+- `continue` requires `--max-slices`, `--max-steps`, and `--max-runtime-seconds`; it uses AFK dry-run plus `apply --queue-only` to pick one eligible issue and delegate that queue job through `worker_job`.
 - Optional PR creation boundary requires `--allow-pr-create --approval-ref <ref>` and still stops before merge.
 - Ambiguous requests return `status: "needs_input"` during dry-run and no delegated command.
 

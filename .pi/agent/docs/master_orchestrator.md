@@ -117,6 +117,7 @@ Phase 4 delegates only bounded foreground execution helper forms:
 - `harness:afk-orchestrate -- run --run --initiative <slug> --max-steps <n> --max-runtime-seconds <n> --json`
 - `harness:worker-execute -- run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> --stop-before-pr --json`
 - `harness:parallel-worker-lanes -- run --initiative <slug> --max-parallel <n> --max-runtime-seconds <n> --worker-command <cmd> --json`
+- `harness:orchestrate -- continue --initiative <slug> --max-slices <n> --max-steps <n> --max-runtime-seconds <n> [--max-parallel <n>] [--auto-land --approval-ref <ref> [--sync-main] [--merge-method squash|merge|rebase]] --json`
 
 ## Apply Write Allowlist
 Every Phase 3 apply path declares required args, exact delegated command construction, approval requirements, next safe action, and allowed write paths in `.pi/agent/extensions/orchestrator-apply-policy.ts`:
@@ -137,6 +138,7 @@ Every Phase 3 apply path declares required args, exact delegated command constru
 - Exactly one lane may run per invocation.
 - Dirty repos and visible protected path mutations block before delegation.
 - Optional PR creation boundary requires `--allow-pr-create --approval-ref <ref>` and still stops before merge.
+- `continue` requires `--initiative`, `--max-slices`, `--max-steps`, and `--max-runtime-seconds`; it dry-runs AFK state, materializes queue jobs via `apply --queue-only`, dispatches exactly one selected queue job through `worker_job`, and stops on review/HITL/blocker/max-slice boundaries.
 - `parallel_lanes` requires explicit `--worker-command`, and the orchestrator rejects unsafe worker commands containing raw git, merge/apply/sync-main, force, or protected runtime paths.
 - `run` records `merge.attempted: false` and does not call merge helpers.
 

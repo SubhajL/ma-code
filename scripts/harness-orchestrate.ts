@@ -25,6 +25,11 @@ import {
   type OrchestratorRunSessionResult,
 } from "../.pi/agent/extensions/orchestrator-run.ts";
 import {
+  runOrchestratorContinue,
+  type OrchestratorContinueRequest,
+  type OrchestratorContinueResult,
+} from "../.pi/agent/extensions/orchestrator-continue.ts";
+import {
   collectOrchestratorEvidence,
   runOrchestratorMergeApply,
   runOrchestratorMergeCheck,
@@ -44,6 +49,7 @@ export type HarnessOrchestrateOptions =
   | { command: "context"; goal?: string; initiative?: string; json?: boolean; repoRoot?: string }
   | ({ command: "apply"; json?: boolean; repoRoot?: string } & OrchestratorApplyRequest)
   | ({ command: "run"; json?: boolean; repoRoot?: string } & OrchestratorRunRequest)
+  | ({ command: "continue"; json?: boolean; repoRoot?: string } & OrchestratorContinueRequest)
   | { command: "evidence"; initiative: string; runId?: string; lifecycleEvidence?: string; codingLog?: string; writeReport?: boolean; json?: boolean; repoRoot?: string }
   | ({ command: "merge-check" | "merge-apply"; json?: boolean; repoRoot?: string } & OrchestratorMergeOptions);
 
@@ -57,6 +63,7 @@ function usage(): string {
     "  harness-orchestrate run --initiative <slug> --max-steps <n> --max-runtime-seconds <n> [--json]",
     "  harness-orchestrate run --initiative <slug> --job-id <id> --max-steps <n> --max-runtime-seconds <n> [--allow-pr-create --approval-ref <ref>] [--auto-land --approval-ref <ref> [--sync-main] [--merge-method squash|merge|rebase]] [--no-auto-land] [--json]",
     "  harness-orchestrate run --lane parallel_lanes --initiative <slug> --max-steps <n> --max-runtime-seconds <n> --max-parallel <n> --worker-command <cmd> [--json]",
+    "  harness-orchestrate continue --initiative <slug> --max-slices <n> --max-steps <n> --max-runtime-seconds <n> [--max-parallel <n>] [--auto-land --approval-ref <ref> [--sync-main] [--merge-method squash|merge|rebase]] [--no-auto-land] [--json]",
     "  harness-orchestrate evidence --initiative <slug> [--run-id <id>] [--lifecycle-evidence <path>] [--write-report] [--json]",
     "  harness-orchestrate merge-check --pr <number> [--method squash|merge|rebase] [--lifecycle-evidence <path>] [--json]",
     "  harness-orchestrate merge-apply --pr <number> --approval-ref <ref> [--method squash|merge|rebase] [--lifecycle-evidence <path>] [--json]",
@@ -80,6 +87,7 @@ function usage(): string {
     "  - apply delegates exactly one allowlisted materialization helper and verifies reported createdFiles against explicit write-path allowlists",
     "  - apply does not run workers, create PRs, merge, sync main, or accept generic command strings",
     "  - run delegates exactly one bounded execution lane and requires max limits; auto-land requires --auto-land --approval-ref and uses PR lifecycle/merge gates",
+    "  - continue selects one eligible AFK issue, materializes queue-only state, delegates the selected queue job through worker_job, and stops on max-slice/blocker/HITL or review boundaries",
     "  - evidence consumes existing run/lifecycle/log artifacts first; optional reports are explicit",
     "  - merge-check and merge-apply delegate only to harness:merge; merge-apply requires --approval-ref",
   ].join("\n");
@@ -124,7 +132,7 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
   const [commandValue, ...rest] = argv;
   if (!commandValue || commandValue === "help" || commandValue === "--help" || commandValue === "-h") throw new Error(usage());
   if (["create", "merge", "sync-main", "git"].includes(commandValue)) rejectUnsafeApplyVerb(commandValue);
-  if (!["classify", "context", "dry-run", "apply", "run", "evidence", "merge-check", "merge-apply"].includes(commandValue)) throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
+  if (!["classify", "context", "dry-run", "apply", "run", "continue", "evidence", "merge-check", "merge-apply"].includes(commandValue)) throw new Error(`Unknown or unsupported command: ${commandValue}\n${usage()}`);
 
   let goal: string | undefined;
   let json = false;
@@ -298,6 +306,54 @@ export function parseHarnessOrchestrateArgs(argv: string[]): HarnessOrchestrateO
     return { command: "run", lane, initiative, jobId, maxSteps, maxRuntimeSeconds, maxParallel, workerCommand, allowPrCreate, autoLand, disableAutoLand, syncMain, mergeMethod, approvalRef, json };
   }
 
+  if (commandValue === "continue") {
+    let initiative: string | undefined;
+    let maxSlices: number | undefined;
+    let maxParallel: number | undefined;
+    let maxSteps: number | undefined;
+    let maxRuntimeSeconds: number | undefined;
+    let autoLand = false;
+    let disableAutoLand = false;
+    let syncMain: boolean | undefined;
+    let mergeMethod: "squash" | "merge" | "rebase" | undefined;
+    let approvalRef: string | undefined;
+
+    for (let index = 0; index < rest.length; index += 1) {
+      const arg = rest[index];
+      if (arg === "--initiative" || arg === "--slug") {
+        initiative = requireValue(rest[++index], arg);
+      } else if (arg === "--max-slices") {
+        maxSlices = positiveInteger(rest[++index], "--max-slices");
+      } else if (arg === "--max-parallel") {
+        maxParallel = positiveInteger(rest[++index], "--max-parallel");
+      } else if (arg === "--max-steps") {
+        maxSteps = positiveInteger(rest[++index], "--max-steps");
+      } else if (arg === "--max-runtime-seconds") {
+        maxRuntimeSeconds = positiveInteger(rest[++index], "--max-runtime-seconds");
+      } else if (arg === "--auto-land") {
+        autoLand = true;
+      } else if (arg === "--no-auto-land") {
+        disableAutoLand = true;
+      } else if (arg === "--sync-main") {
+        syncMain = true;
+      } else if (arg === "--merge-method" || arg === "--method") {
+        const rawMethod = requireValue(rest[++index], arg);
+        if (!["squash", "merge", "rebase"].includes(rawMethod)) throw new Error(`${arg} must be squash, merge, or rebase.`);
+        mergeMethod = rawMethod as "squash" | "merge" | "rebase";
+      } else if (arg === "--approval-ref") {
+        approvalRef = requireValue(rest[++index], "--approval-ref");
+      } else if (arg === "--json") {
+        json = true;
+      } else {
+        throw new Error(`Unknown argument: ${arg}
+${usage()}`);
+      }
+    }
+
+    if (autoLand && disableAutoLand) throw new Error("--auto-land and --no-auto-land cannot be combined.");
+    return { command: "continue", initiative, maxSlices, maxParallel, maxSteps, maxRuntimeSeconds, autoLand, disableAutoLand, syncMain, mergeMethod, approvalRef, json };
+  }
+
   for (let index = 0; index < rest.length; index += 1) {
     const arg = rest[index];
     if (arg === "--goal") goal = requireValue(rest[++index], "--goal");
@@ -387,6 +443,10 @@ export async function runHarnessOrchestrateApply(options: Extract<HarnessOrchest
 
 export async function runHarnessOrchestrateRun(options: Extract<HarnessOrchestrateOptions, { command: "run" }>): Promise<OrchestratorRunSessionResult> {
   return runOrchestratorRun({ ...options, repoRoot: resolve(options.repoRoot ?? process.cwd()) });
+}
+
+export async function runHarnessOrchestrateContinue(options: Extract<HarnessOrchestrateOptions, { command: "continue" }>): Promise<OrchestratorContinueResult> {
+  return runOrchestratorContinue({ ...options, repoRoot: resolve(options.repoRoot ?? process.cwd()) });
 }
 
 export async function runHarnessOrchestrateEvidence(options: Extract<HarnessOrchestrateOptions, { command: "evidence" }>): Promise<OrchestratorEvidenceSummary> {
@@ -495,6 +555,26 @@ function renderRunText(result: OrchestratorRunSessionResult): string {
   ].join("\n");
 }
 
+function renderContinueText(result: OrchestratorContinueResult): string {
+  return [
+    "Harness Orchestrate Continue",
+    `initiative: ${result.initiativeId}`,
+    `status: ${result.status}`,
+    `stopReason: ${result.stopReason}`,
+    `completedSlices: ${result.completedSlices}/${result.maxSlices}`,
+    "selectedIssues:",
+    ...(result.selectedIssues.length > 0 ? result.selectedIssues.map((entry) => `- ${entry}`) : ["- none"]),
+    "selectedQueueJobIds:",
+    ...(result.selectedQueueJobIds.length > 0 ? result.selectedQueueJobIds.map((entry) => `- ${entry}`) : ["- none"]),
+    "delegatedCommands:",
+    ...(result.delegatedCommands.length > 0 ? result.delegatedCommands.map((entry) => `- ${entry}`) : ["- none"]),
+    "blockers:",
+    ...(result.blockers.length > 0 ? result.blockers.map((entry) => `- ${entry}`) : ["- none"]),
+    "nextSafeActions:",
+    ...(result.nextSafeActions.length > 0 ? result.nextSafeActions.map((entry) => `- ${entry}`) : ["- none"]),
+  ].join("\n");
+}
+
 async function main(argv: string[]): Promise<void> {
   const options = parseHarnessOrchestrateArgs(argv);
   if (options.command === "classify") {
@@ -510,6 +590,12 @@ async function main(argv: string[]): Promise<void> {
   if (options.command === "dry-run") {
     const result = await runHarnessOrchestrateDryRun(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderDryRunText(result)}\n`);
+    return;
+  }
+  if (options.command === "continue") {
+    const result = await runHarnessOrchestrateContinue(options);
+    process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderContinueText(result)}\n`);
+    if (result.status === "blocked" || result.status === "failed") process.exitCode = 1;
     return;
   }
   if (options.command === "run") {

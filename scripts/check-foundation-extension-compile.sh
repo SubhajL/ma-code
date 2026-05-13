@@ -44,6 +44,7 @@ cp "$REPO_ROOT/.pi/agent/extensions/orchestrator-classifier.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/orchestrator-dry-run.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/orchestrator-apply-policy.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/orchestrator-run.ts" "$WORKDIR/src/"
+cp "$REPO_ROOT/.pi/agent/extensions/orchestrator-continue.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/orchestrator-evidence.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/git-dirty-runtime-artifacts.ts" "$WORKDIR/src/"
 cp "$REPO_ROOT/.pi/agent/extensions/afk-worker-execution-plan.ts" "$WORKDIR/src/"
@@ -71,7 +72,7 @@ JSON
     cat /tmp/ma-code-foundation-npm-install.log >&2 || true
     npm install --no-audit --no-fund --ignore-scripts
   fi
-  npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/safe-bash.ts src/till-done.ts src/harness-routing.ts src/team-activation.ts src/domain-governance.ts src/domain-ownership.ts src/task-packets.ts src/handoffs.ts src/recovery-policy.ts src/recovery-runtime.ts src/queue-runner.ts src/graphify-adapter.ts src/discovery-policy.ts src/graphify-validation-decision.ts src/graphify-orchestration-decision.ts src/graphify-orchestrator.ts src/execution-leases.ts src/product-slice-lifecycle.ts src/stitch-prompt-generator.ts src/stitch-artifact-adapter.ts src/live-stitch-adapter.ts src/screen-artifact-approval.ts src/slice-contracts.ts src/frontend-packet-generator.ts src/backend-packet-generator.ts src/slice-dependency-decision.ts src/product-pipeline.ts src/parallel-worker-lanes.ts src/issue-materialization.ts src/afk-orchestration.ts src/orchestrator-context.ts src/orchestrator-classifier.ts src/orchestrator-dry-run.ts src/orchestrator-apply-policy.ts src/orchestrator-run.ts src/orchestrator-evidence.ts src/git-dirty-runtime-artifacts.ts src/afk-worker-execution-plan.ts src/tool-result-envelope.ts
+  npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node src/safe-bash.ts src/till-done.ts src/harness-routing.ts src/team-activation.ts src/domain-governance.ts src/domain-ownership.ts src/task-packets.ts src/handoffs.ts src/recovery-policy.ts src/recovery-runtime.ts src/queue-runner.ts src/graphify-adapter.ts src/discovery-policy.ts src/graphify-validation-decision.ts src/graphify-orchestration-decision.ts src/graphify-orchestrator.ts src/execution-leases.ts src/product-slice-lifecycle.ts src/stitch-prompt-generator.ts src/stitch-artifact-adapter.ts src/live-stitch-adapter.ts src/screen-artifact-approval.ts src/slice-contracts.ts src/frontend-packet-generator.ts src/backend-packet-generator.ts src/slice-dependency-decision.ts src/product-pipeline.ts src/parallel-worker-lanes.ts src/issue-materialization.ts src/afk-orchestration.ts src/orchestrator-context.ts src/orchestrator-classifier.ts src/orchestrator-dry-run.ts src/orchestrator-apply-policy.ts src/orchestrator-run.ts src/orchestrator-continue.ts src/orchestrator-evidence.ts src/git-dirty-runtime-artifacts.ts src/afk-worker-execution-plan.ts src/tool-result-envelope.ts
 )
 
 echo "foundation-extension-compile-ok"
