@@ -251,6 +251,152 @@ test("run prefers structured same-runtime worker execution plans over legacy imp
   assert.ok(result.steps.coding.changedFiles.includes("reports/planning/task.md"));
 });
 
+test("provider-failed mixed-domain run with preserved diff and passing local proof is promoted to review_ready", async () => {
+  const cwd = await writeFixture({
+    activeJobId: "afk-greenfield-scaffold-issue-002",
+    issueOverrides: {
+      domains: ["frontend", "backend"],
+      filesToModify: ["apps/web/src/lib/health-client.ts", "services/api/src/routes/health.ts"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes"],
+      validationProof: ["node -e \"process.exit(0)\""],
+    },
+    jobOverrides: {
+      status: "running",
+      domains: ["frontend", "backend"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes"],
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement the bounded mixed-domain health handshake.",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "github-copilot",
+        modelId: "gpt-5.4",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-salvage-review-ready",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    sameRuntimeExecutor: async (worktreePath) => {
+      await mkdir(join(worktreePath, "apps", "web", "src", "lib"), { recursive: true });
+      await mkdir(join(worktreePath, "services", "api", "src", "routes"), { recursive: true });
+      await writeFile(join(worktreePath, "apps", "web", "src", "lib", "health-client.ts"), "export const status = 'ok';\n", "utf8");
+      await writeFile(join(worktreePath, "services", "api", "src", "routes", "health.ts"), "export const status = 'ok';\n", "utf8");
+      return {
+        command: "same_runtime_prompt",
+        exitCode: 1,
+        stdout: "partial diff preserved",
+        stderr: "provider interrupted after writing the mixed-domain diff",
+        durationMs: 1,
+      };
+    },
+  });
+
+  assert.equal(result.status, "review_ready");
+  assert.match(result.stopReason ?? "", /salvaged/i);
+  assert.equal(result.salvage?.outcome, "reviewable");
+  assert.deepEqual(result.salvage?.preservedDiff, [
+    "apps/web/src/lib/health-client.ts",
+    "services/api/src/routes/health.ts",
+  ]);
+  assert.ok((result.salvage?.retainedProof ?? []).some((line) => /node -e/.test(line)));
+  assert.equal(result.steps.validation.status, "passed");
+
+  const queue = await readQueueState(cwd);
+  assert.equal(queue.jobs[0].status, "running");
+  assert.equal(queue.jobs[0].workerExecution?.status, "review_ready");
+  assert.equal(queue.jobs[0].workerExecution?.salvage?.outcome, "reviewable");
+
+  const taskState = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as {
+    tasks: Array<{ id: string; status: string; evidence: string[] }>;
+  };
+  assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.status, "review");
+  assert.match((taskState.tasks.find((task) => task.id === result.linkedTaskId)?.evidence ?? []).join("\n"), /salvage/i);
+});
+
+test("provider-failed mixed-domain run with preserved diff but without passing proof becomes resumable instead of failed", async () => {
+  const cwd = await writeFixture({
+    activeJobId: "afk-greenfield-scaffold-issue-002",
+    issueOverrides: {
+      domains: ["frontend", "backend"],
+      filesToModify: ["apps/web/src/lib/health-client.ts", "services/api/src/routes/health.ts"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes"],
+      validationProof: ["node -e \"process.exit(2)\""],
+    },
+    jobOverrides: {
+      status: "running",
+      domains: ["frontend", "backend"],
+      allowedPaths: ["apps/web/src/lib", "services/api/src/routes"],
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement the bounded mixed-domain health handshake.",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "github-copilot",
+        modelId: "gpt-5.4",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(2)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-salvage-blocked",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    sameRuntimeExecutor: async (worktreePath) => {
+      await mkdir(join(worktreePath, "apps", "web", "src", "lib"), { recursive: true });
+      await mkdir(join(worktreePath, "services", "api", "src", "routes"), { recursive: true });
+      await writeFile(join(worktreePath, "apps", "web", "src", "lib", "health-client.ts"), "export const status = 'ok';\n", "utf8");
+      await writeFile(join(worktreePath, "services", "api", "src", "routes", "health.ts"), "export const status = 'ok';\n", "utf8");
+      return {
+        command: "same_runtime_prompt",
+        exitCode: 1,
+        stdout: "partial diff preserved",
+        stderr: "provider interrupted before validation proof could be established",
+        durationMs: 1,
+      };
+    },
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.doesNotMatch(result.stopReason ?? "", /failed/i);
+  assert.equal(result.salvage?.outcome, "resumable");
+  assert.deepEqual(result.salvage?.preservedDiff, [
+    "apps/web/src/lib/health-client.ts",
+    "services/api/src/routes/health.ts",
+  ]);
+  assert.deepEqual(result.salvage?.retainedProof, []);
+
+  const queue = await readQueueState(cwd);
+  assert.equal(queue.activeJobId, null);
+  assert.equal(queue.jobs[0].status, "blocked");
+  assert.equal(queue.jobs[0].workerExecution?.status, "blocked");
+  assert.equal(queue.jobs[0].workerExecution?.salvage?.outcome, "resumable");
+
+  const taskState = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as {
+    tasks: Array<{ id: string; status: string; evidence: string[] }>;
+  };
+  assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.status, "blocked");
+  assert.match((taskState.tasks.find((task) => task.id === result.linkedTaskId)?.evidence ?? []).join("\n"), /Salvage Outcome: resumable/i);
+});
+
 test("resume refuses terminal worker runs", async () => {
   const cwd = await writeFixture();
   await runWorkerExecution({

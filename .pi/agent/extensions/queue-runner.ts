@@ -119,12 +119,22 @@ export interface QueueJobSource {
   sourceArtifactPaths?: string[];
 }
 
+export interface QueueJobWorkerExecutionSalvage {
+  outcome: "resumable" | "reviewable";
+  detectedAt: string;
+  stage: "implementation_failure" | "runtime_interruption";
+  reason: string;
+  preservedDiff: string[];
+  retainedProof: string[];
+}
+
 export interface QueueJobWorkerExecutionLinkage {
   runArtifactPath: string;
   worktreePath: string | null;
   status: "planned" | "running" | "blocked" | "failed" | "review_ready" | "done";
   lastReason: string | null;
   linkedTaskId: string | null;
+  salvage?: QueueJobWorkerExecutionSalvage | null;
   updatedAt: string;
 }
 
@@ -706,6 +716,18 @@ function compactQueueJob(job: QueueJob | null | undefined): Record<string, unkno
     notes: compactStringList(job.notes, 1, 120),
     sourceArtifactPaths: compactStringList(job.queueJobSource?.sourceArtifactPaths, 3, 120),
     linkedTaskId: job.linkedTaskId ?? null,
+    workerExecution: job.workerExecution
+      ? {
+          status: job.workerExecution.status,
+          runArtifactPath: compactText(job.workerExecution.runArtifactPath, 160),
+          linkedTaskId: job.workerExecution.linkedTaskId,
+          salvageOutcome: job.workerExecution.salvage?.outcome ?? null,
+          salvageReason: compactText(job.workerExecution.salvage?.reason, 160),
+          preservedDiffCount: job.workerExecution.salvage?.preservedDiff.length ?? 0,
+          retainedProofCount: job.workerExecution.salvage?.retainedProof.length ?? 0,
+          updatedAt: job.workerExecution.updatedAt,
+        }
+      : null,
     updatedAt: job.updatedAt ?? null,
   };
 }
