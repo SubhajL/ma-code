@@ -350,16 +350,19 @@ check_3_phase_lane_unit_tests() {
 
   mkdir -p "$runtime_dir/.pi/agent/extensions" "$runtime_dir/tests/extension-units"
   cp "$REPO_ROOT/.pi/agent/extensions/harness-routing.ts" "$runtime_dir/.pi/agent/extensions/harness-routing.ts"
+  cp "$REPO_ROOT/.pi/agent/extensions/domain-ownership.ts" "$runtime_dir/.pi/agent/extensions/domain-ownership.ts"
   cp "$REPO_ROOT/.pi/agent/models.json" "$runtime_dir/.pi/agent/models.json"
   cp "$REPO_ROOT/tests/extension-units/harness-routing.test.ts" "$runtime_dir/tests/extension-units/harness-routing.test.ts"
 
-  if (cd "$REPO_ROOT" && bash -lc "$cmd") >"$out" 2>&1; then
+  if (cd "$runtime_dir" && npx tsx --test tests/extension-units/harness-routing.test.ts) >"$out" 2>&1; then
     local detail="Phase-lane harness-routing unit tests passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
-    append_check_section "$name" "PASS" "$cmd" "- unit tests covered unverified fallback, verified activation, unavailable fallback, unknown lane rejection, and role-only compatibility"
+    append_check_section "$name" "PASS" "$cmd" "- unit tests covered unverified fallback, verified activation, unavailable fallback, unknown lane rejection, role-only compatibility"
   else
     local detail="Phase-lane harness-routing unit tests failed."
+    echo "$name failed while running: $cmd" >&2
+    sed -n '1,180p' "$out" >&2
     record_result "$name" "FAIL" "$detail"
     append_summary_row "$name" "FAIL" "$detail"
     append_check_section "$name" "FAIL" "$cmd" "- output:

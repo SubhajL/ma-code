@@ -52,7 +52,7 @@
       "issueId": "issue-002",
       "title": "Preflight mixed-domain validation contracts before worker execution",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -103,7 +103,7 @@
       "issueId": "issue-003",
       "title": "Add first-class composite mixed-domain worker packet and role semantics",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",

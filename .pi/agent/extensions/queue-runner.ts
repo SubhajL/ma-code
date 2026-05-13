@@ -163,6 +163,7 @@ export interface QueueJob {
   domains?: DomainId[];
   allowedPaths?: string[];
   assignedRole?: HarnessRole;
+  domainOwnership?: TaskPacket["domainOwnership"];
   routeReason?: RouteReason;
   budgetMode?: BudgetMode;
   modelOverride?: string;
@@ -1066,6 +1067,14 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
       DOMAIN_IDS.includes(value as DomainId),
     ),
     allowedPaths: uniqueStrings(job.allowedPaths ?? []),
+    domainOwnership: job.domainOwnership
+      ? {
+          mode: job.domainOwnership.mode,
+          owningDomain: job.domainOwnership.owningDomain,
+          owningRole: job.domainOwnership.owningRole,
+          supportingDomains: uniqueStrings((job.domainOwnership.supportingDomains ?? []) as string[]).filter((value): value is DomainId => DOMAIN_IDS.includes(value as DomainId)),
+        }
+      : null,
     notes: [...(job.notes ?? [])],
     escalationInstructions: job.escalationInstructions && job.escalationInstructions.length > 0 ? uniqueStrings(job.escalationInstructions) : undefined,
     workerExecutionPlan: cloneQueueJobWorkerExecutionPlan(job.workerExecutionPlan),
@@ -1205,7 +1214,7 @@ function resolveJobTeamAndRole(job: QueueJob, teams: Record<TeamId, TeamDefiniti
     throw new Error(`Unknown team: ${chosenTeam}`);
   }
 
-  const assignedRole = job.assignedRole ?? (team.lead as HarnessRole);
+  const assignedRole = job.assignedRole ?? job.domainOwnership?.owningRole ?? (team.lead as HarnessRole);
   ensureRoleBelongsToTeam(team, assignedRole);
 
   return {
@@ -1421,6 +1430,7 @@ function buildPacketInputForJob(job: QueueJob, teamId: TeamId, assignedRole: Har
     scope: job.scope ?? job.goal,
     workType: job.workType ?? defaultWorkTypeForTeam(teamId),
     domains: job.domains,
+    domainOwnership: job.domainOwnership ?? null,
     allowedPaths: job.allowedPaths,
     acceptanceCriteria: job.acceptanceCriteria ?? [],
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),

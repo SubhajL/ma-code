@@ -8,6 +8,7 @@ import {
   type QueueJobStatus,
 } from "./queue-runner.ts";
 import { buildAfkWorkerExecutionPlan } from "./afk-worker-execution-plan.ts";
+import { VALID_DOMAINS, deriveDomainOwnershipForDomains } from "./domain-ownership.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -130,7 +131,6 @@ interface LoadedArtifacts {
 }
 
 const INITIATIVE_ROOT = "docs/initiatives";
-const VALID_DOMAINS = ["frontend", "backend", "infra", "docs", "research"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -432,16 +432,6 @@ function specificHitlApprovalReasons(issue: AfkIssueArtifact, assessment: HitlAp
   return reasons;
 }
 
-function assignedRoleForDomains(domains: string[]): QueueJob["assignedRole"] {
-  if (domains.includes("frontend")) return "frontend_worker";
-  if (domains.includes("backend")) return "backend_worker";
-  if (domains.includes("infra")) return "infra_worker";
-  if (domains.includes("docs")) return "docs_worker";
-  if (domains.includes("research")) return "research_worker";
-  return "backend_worker";
-}
-
-
 function mixedDomainPacketEvidence(issue: AfkIssueArtifact, domains: QueueJob["domains"]): Pick<QueueJob, "migrationPathNote" | "escalationInstructions"> {
   const governedDomains = (domains ?? []).filter((domain) => domain === "frontend" || domain === "backend" || domain === "infra");
   if (new Set(governedDomains).size <= 1) return {};
@@ -582,6 +572,7 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
   const jobId = queueJobId(initiativeId, issue.issueId);
   const tddSlice = buildTddSlice(issue);
   const mixedDomainEvidence = mixedDomainPacketEvidence(issue, domains);
+  const roleAssignment = deriveDomainOwnershipForDomains(domains ?? []);
   return {
     id: jobId,
     goal: issue.whatToBuild || issue.title,
@@ -603,7 +594,8 @@ function buildQueueJob(repoRoot: string, initiativeId: string, issue: AfkIssueAr
     workType: "implementation",
     domains,
     allowedPaths,
-    assignedRole: assignedRoleForDomains(domains ?? []),
+    assignedRole: roleAssignment.assignedRole,
+    domainOwnership: roleAssignment.domainOwnership,
     ...mixedDomainEvidence,
     routeReason: "default",
     budgetMode: "balanced",

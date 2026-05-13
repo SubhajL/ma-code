@@ -870,6 +870,58 @@ test("queue runner can start a quality job from structured worker_to_quality inp
   assert.equal(queueState.jobs[0]?.packetId, details.packet.packetId);
 });
 
+test("queue runner preserves mixed-domain ownership metadata in generated packets", async () => {
+  const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: null,
+    jobs: [
+      {
+        id: "job-mixed-domain",
+        goal: "Coordinate coupled frontend/backend implementation work",
+        priority: "high",
+        status: "queued",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["frontend", "backend"],
+        allowedPaths: ["apps/web/src/lib", "services/api/src/routes"],
+        acceptanceCriteria: ["Mixed-domain ownership metadata survives queue-to-packet generation"],
+        domainOwnership: {
+          mode: "mixed_domain",
+          owningDomain: "backend",
+          owningRole: "backend_worker",
+          supportingDomains: ["frontend"],
+        },
+        escalationInstructions: ["Keep backend ownership explicit and require frontend review before shipping."],
+      },
+    ],
+  });
+
+  const result = await runNextQueueJob({ owner: "assistant" });
+  const details = (result as any).details;
+  const queueState = await readQueueState(cwd);
+
+  assert.equal(details.action, "started");
+  assert.equal(details.packet.assignedRole, "backend_worker");
+  assert.deepEqual(details.packet.domains, ["frontend", "backend"]);
+  assert.deepEqual(details.packet.domainOwnership, {
+    mode: "mixed_domain",
+    owningDomain: "backend",
+    owningRole: "backend_worker",
+    supportingDomains: ["frontend"],
+  });
+  assert.deepEqual(queueState.jobs[0]?.domainOwnership, {
+    mode: "mixed_domain",
+    owningDomain: "backend",
+    owningRole: "backend_worker",
+    supportingDomains: ["frontend"],
+  });
+  assert.equal(queueState.jobs[0]?.packetId, details.packet.packetId);
+});
+
 test("queue runner blocks a quality job when structured worker_to_quality input is missing", async () => {
   const { cwd, runNextQueueJob } = await setupQueueRunnerRepo();
 

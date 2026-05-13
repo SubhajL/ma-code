@@ -324,7 +324,13 @@ test("apply materializes mixed frontend/backend AFK jobs with explicit mixed-dom
   const job = queue.jobs.find((candidate) => candidate.id === "afk-greenfield-scaffold-issue-004");
   assert.ok(job, "expected mixed-domain issue-004 queue job");
   assert.deepEqual(job.domains, ["frontend", "backend"]);
-  assert.equal(job.assignedRole, "frontend_worker");
+  assert.equal(job.assignedRole, "backend_worker");
+  assert.deepEqual(job.domainOwnership, {
+    mode: "mixed_domain",
+    owningDomain: "backend",
+    owningRole: "backend_worker",
+    supportingDomains: ["frontend"],
+  });
   assert.match(job.migrationPathNote ?? "", /mixed-domain/i);
   assert.match((job.escalationInstructions ?? []).join("\n"), /mixed-domain/i);
 });

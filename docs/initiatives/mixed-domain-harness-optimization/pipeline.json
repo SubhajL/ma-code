@@ -28,7 +28,7 @@
     {
       "sliceId": "issue-002",
       "title": "Preflight mixed-domain validation contracts before worker execution",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -50,7 +50,7 @@
     {
       "sliceId": "issue-003",
       "title": "Add first-class composite mixed-domain worker packet and role semantics",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",

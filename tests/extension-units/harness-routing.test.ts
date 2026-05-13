@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+import { deriveDomainOwnershipForDomains } from "../../.pi/agent/extensions/domain-ownership.ts";
 import { parseHarnessRoutingConfig, resolveHarnessRoute } from "../../.pi/agent/extensions/harness-routing.ts";
 
 async function repoConfig() {
@@ -123,4 +124,20 @@ test("parser rejects unverified targets as active fallbacks", async () => {
     () => parseHarnessRoutingConfig(invalidRaw),
     /unverified targetModelRequest cannot also be the active fallbackModelId/,
   );
+});
+
+test("mixed frontend/backend ownership selects backend worker before route resolution", async () => {
+  const config = await repoConfig();
+  const assignment = deriveDomainOwnershipForDomains(["frontend", "backend"]);
+  const result = resolveHarnessRoute(config, { role: assignment.assignedRole, reason: "default", budgetMode: "balanced" });
+
+  assert.equal(assignment.assignedRole, "backend_worker");
+  assert.deepEqual(assignment.domainOwnership, {
+    mode: "mixed_domain",
+    owningDomain: "backend",
+    owningRole: "backend_worker",
+    supportingDomains: ["frontend"],
+  });
+  assert.equal(result.role, "backend_worker");
+  assert.match(result.selectedModelId, /\S/);
 });
