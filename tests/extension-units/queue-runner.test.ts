@@ -557,6 +557,84 @@ test("runtime inspection and task show compact large task history by default", a
   assert.match(fullShow.content[0]?.text ?? "", new RegExp(hugeEvidence));
 });
 
+test("operator inspect queue state surfaces worker-execution salvage metadata in compact summaries", async function () {
+  const { cwd, inspectQueueStateForOperator } = await setupQueueRunnerRepo();
+
+  await writeQueue(cwd, {
+    version: 1,
+    paused: false,
+    activeJobId: "job-salvage-inspect",
+    jobs: [
+      {
+        id: "job-salvage-inspect",
+        goal: "Inspect preserved mixed-domain salvage evidence",
+        priority: "high",
+        status: "running",
+        team: "build",
+        assignedRole: "backend_worker",
+        workType: "implementation",
+        domains: ["frontend", "backend"],
+        allowedPaths: ["apps/web/src/lib", "services/api/src/routes"],
+        acceptanceCriteria: ["Compact queue inspection keeps salvage evidence visible"],
+        workerExecution: {
+          runArtifactPath: "docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-salvage.json",
+          worktreePath: "/tmp/worker-salvage",
+          status: "review_ready",
+          lastReason: "Salvaged preserved mixed-domain diff after implementation interruption.",
+          linkedTaskId: "task-salvage-inspect",
+          salvage: {
+            outcome: "reviewable",
+            detectedAt: "2026-05-13T00:00:00.000Z",
+            stage: "implementation_failure",
+            reason: "Salvaged preserved mixed-domain diff after implementation interruption; local validation proof passed and the lane was promoted to review_ready.",
+            preservedDiff: ["apps/web/src/lib/health-client.ts", "services/api/src/routes/health.ts"],
+            retainedProof: ["node -e \"process.exit(0)\" exited 0"],
+          },
+          updatedAt: "2026-05-13T00:00:00.000Z",
+        },
+      },
+    ],
+  });
+
+  await writeTaskState(cwd, {
+    activeTaskId: "task-salvage-inspect",
+    tasks: [
+      {
+        id: "task-salvage-inspect",
+        title: "Inspect salvage metadata",
+        owner: "assistant",
+        status: "review",
+        taskClass: "implementation",
+        acceptance: ["Compact queue inspection keeps salvage evidence visible"],
+        evidence: ["Salvage Outcome: reviewable"],
+        notes: [],
+        dependencies: [],
+        retryCount: 0,
+        validation: {
+          tier: "standard",
+          decision: "pass",
+          source: "validator",
+          checklist: null,
+          approvalRef: null,
+          updatedAt: null,
+        },
+        timestamps: {
+          createdAt: "2026-05-13T00:00:00.000Z",
+          updatedAt: "2026-05-13T00:00:00.000Z",
+        },
+      } as TaskRecord,
+    ],
+  });
+
+  const inspectResult = await inspectQueueStateForOperator({ recentLimit: 1 });
+  const activeJob = (inspectResult.details as any).summary.activeJob;
+
+  assert.equal(activeJob.workerExecution.status, "review_ready");
+  assert.equal(activeJob.workerExecution.salvageOutcome, "reviewable");
+  assert.equal(activeJob.workerExecution.retainedProofCount, 1);
+  assert.match(String(activeJob.workerExecution.salvageReason), /promoted to review_ready/i);
+});
+
 test("operator pause and resume controls gate queue pickup", async function () {
   const { cwd, runNextQueueJob, pauseQueueForOperator, resumeQueueForOperator } = await setupQueueRunnerRepo();
 

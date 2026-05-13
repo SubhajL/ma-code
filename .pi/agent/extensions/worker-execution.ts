@@ -14,6 +14,7 @@ import {
   readQueueState,
   updateQueueJobWorkerExecution,
   type QueueJob,
+  type QueueJobWorkerExecutionSalvage,
 } from "./queue-runner.ts";
 import {
   acquireWorkerLaneLease,
@@ -97,6 +98,7 @@ export interface WorkerExecutionRun {
     prCreated: boolean;
     reason: string;
   };
+  salvage: QueueJobWorkerExecutionSalvage | null;
   stopReason: string | null;
   nextOperatorAction: string;
   createdAt: string;
@@ -384,6 +386,7 @@ function buildPlannedRun(repoRoot: string, input: WorkerExecutionInput, context:
       prCreated: false,
       reason: allowPrCreate ? `PR creation explicitly allowed by ${input.explicitApprovalRef}.` : "Phase C defaults to --stop-before-pr and does not auto-merge.",
     },
+    salvage: null,
     stopReason: null,
     nextOperatorAction: "Review planned worker execution, then run with explicit bounds when ready.",
     createdAt: now,
@@ -543,7 +546,150 @@ function commandSummary(result: WorkerCommandResult): string {
   return `${result.command} exited ${result.exitCode}${result.stderr ? `: ${result.stderr.slice(0, 200)}` : ""}`;
 }
 
-async function blockRun(repoRoot: string, run: WorkerExecutionRun, reason: string, status: "blocked" | "failed" = "blocked"): Promise<WorkerExecutionRun> {
+function isMixedDomainJob(job: QueueJob): boolean {
+  if (job.domainOwnership?.mode === "mixed_domain") return true;
+  return new Set(normalizeStringArray(job.domains)).size > 1;
+}
+
+function salvageTaskEvidence(salvage: QueueJobWorkerExecutionSalvage | null): string[] {
+  if (!salvage) return [];
+  return [
+    `Salvage Outcome: ${salvage.outcome}`,
+    `Salvage Reason: ${salvage.reason}`,
+    `Salvage Preserved Diff: ${salvage.preservedDiff.join(", ")}`,
+    `Salvage Retained Proof: ${salvage.retainedProof.length > 0 ? salvage.retainedProof.join("; ") : "none"}`,
+  ];
+}
+
+function validationPassed(results: WorkerCommandResult[], commands: string[]): boolean {
+  return commands.length > 0 && results.length === commands.length && results.every((result) => result.exitCode === 0);
+}
+
+async function collectPreservedDiff(worktreePath: string, allowedPaths: string[]): Promise<string[] | null> {
+  const files = await changedFiles(worktreePath);
+  if (files.length === 0) return null;
+  assertChangedFilesAllowed(files, allowedPaths);
+  return files;
+}
+
+async function runValidationProof(worktreePath: string, commands: string[], timeoutSeconds: number): Promise<WorkerCommandResult[]> {
+  const results: WorkerCommandResult[] = [];
+  for (const command of commands) {
+    const result = await runCommand(worktreePath, command, timeoutSeconds);
+    results.push(result);
+    if (result.exitCode !== 0) break;
+  }
+  return results;
+}
+
+async function assessMixedDomainSalvage(input: {
+  job: QueueJob;
+  worktreePath: string | null;
+  allowedPaths: string[];
+  validationCommands: string[];
+  timeoutSeconds: number;
+  stage: QueueJobWorkerExecutionSalvage["stage"];
+  failureReason: string;
+  reviewVerdict: WorkerReviewVerdict;
+}): Promise<{ salvage: QueueJobWorkerExecutionSalvage; validationResults: WorkerCommandResult[] } | null> {
+  if (!isMixedDomainJob(input.job) || !input.worktreePath) return null;
+
+  let preservedDiff: string[] | null = null;
+  try {
+    preservedDiff = await collectPreservedDiff(input.worktreePath, input.allowedPaths);
+  } catch {
+    return null;
+  }
+  if (!preservedDiff) return null;
+
+  const validationResults = await runValidationProof(input.worktreePath, input.validationCommands, input.timeoutSeconds);
+  try {
+    preservedDiff = await collectPreservedDiff(input.worktreePath, input.allowedPaths);
+  } catch {
+    return null;
+  }
+  if (!preservedDiff) return null;
+
+  const reviewable = validationPassed(validationResults, input.validationCommands) && input.reviewVerdict !== "changes_required";
+  const stageLabel = input.stage === "implementation_failure" ? "implementation interruption" : "runtime interruption";
+  const failureDetail = input.failureReason.replace(/^implementation command failed:\s*/i, "").trim();
+  const reason = reviewable
+    ? `Salvaged preserved mixed-domain diff after ${stageLabel}; trigger=${failureDetail}; local validation proof passed and the lane was promoted to review_ready.`
+    : `Salvaged preserved mixed-domain diff after ${stageLabel}; trigger=${failureDetail}; local validation proof is still missing so the lane remains resumable.`;
+
+  return {
+    salvage: {
+      outcome: reviewable ? "reviewable" : "resumable",
+      detectedAt: new Date().toISOString(),
+      stage: input.stage,
+      reason,
+      preservedDiff,
+      retainedProof: validationResults.filter((result) => result.exitCode === 0).map(commandSummary),
+    },
+    validationResults,
+  };
+}
+
+function reviewStepForVerdict(verdict: WorkerReviewVerdict, salvageReason?: string): WorkerExecutionRun["steps"]["review"] {
+  return {
+    status: verdict === "no_required_fixes" ? "passed" : "blocked",
+    verdict,
+    findings: verdict === "no_required_fixes" ? [] : ["Configured review verdict was changes_required."],
+    evidence: [
+      "g-check review verdict recorded by Phase C worker execution artifact.",
+      ...(salvageReason ? [`Salvage path: ${salvageReason}`] : []),
+    ],
+  };
+}
+
+async function finalizeReviewReadyRun(
+  repoRoot: string,
+  run: WorkerExecutionRun,
+  changedFiles: string[],
+  verdict: Exclude<WorkerReviewVerdict, "not_run">,
+  salvage: QueueJobWorkerExecutionSalvage | null = null,
+): Promise<WorkerExecutionRun> {
+  run.status = "review_ready";
+  run.salvage = salvage;
+  run.stopReason = salvage
+    ? `${salvage.reason}${run.prBoundary.stopBeforePr ? " Stop-before-pr boundary reached." : ""}`
+    : run.prBoundary.stopBeforePr
+      ? "stop-before-pr boundary reached"
+      : null;
+  run.nextOperatorAction = salvage
+    ? run.prBoundary.stopBeforePr
+      ? "Inspect the preserved diff and local proof, then continue from the review-ready boundary. Phase C still stops before PR/merge."
+      : "Inspect the preserved diff and local proof before any explicit PR action; merge remains outside Phase C executor."
+    : run.prBoundary.stopBeforePr
+      ? "Run g-check/create manually, then create PR only with explicit approval. Phase C did not auto-merge."
+      : "PR creation was allowed, but merge remains outside Phase C executor.";
+  run.updatedAt = new Date().toISOString();
+  await writeWorkerRun(repoRoot, run);
+  await updateQueueJobWorkerExecution(repoRoot, run.queueJobId, {
+    runArtifactPath: workerRunPath(run.initiativeId, run.runId),
+    worktreePath: run.worktree.path,
+    status: run.status,
+    lastReason: run.stopReason,
+    linkedTaskId: run.linkedTaskId,
+    salvage: run.salvage,
+  });
+  await recordTaskEvidence(repoRoot, run.linkedTaskId, [
+    `Worker run artifact: ${workerRunPath(run.initiativeId, run.runId)}`,
+    `Changed files: ${changedFiles.length > 0 ? changedFiles.join(", ") : "none"}`,
+    `Validation: ${(run.steps.validation.evidence ?? []).join("; ")}`,
+    `Review Verdict: ${verdict}`,
+    ...salvageTaskEvidence(salvage),
+    "Unresolved risks: Phase C stops before PR/merge by design.",
+  ], true);
+  return run;
+}
+
+async function blockRun(
+  repoRoot: string,
+  run: WorkerExecutionRun,
+  reason: string,
+  status: "blocked" | "failed" = "blocked",
+): Promise<WorkerExecutionRun> {
   run.status = status;
   run.stopReason = reason;
   run.updatedAt = new Date().toISOString();
@@ -557,8 +703,12 @@ async function blockRun(repoRoot: string, run: WorkerExecutionRun, reason: strin
     status: run.status,
     lastReason: reason,
     linkedTaskId: run.linkedTaskId,
+    salvage: run.salvage,
   }, status);
-  await finalizeLinkedTask(repoRoot, run.linkedTaskId, status, reason, [`Worker run artifact: ${workerRunPath(run.initiativeId, run.runId)}`]);
+  await finalizeLinkedTask(repoRoot, run.linkedTaskId, status, reason, [
+    `Worker run artifact: ${workerRunPath(run.initiativeId, run.runId)}`,
+    ...salvageTaskEvidence(run.salvage),
+  ]);
   return run;
 }
 
@@ -679,7 +829,40 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     run.steps.coding.evidence = workerExecutionPlan
       ? [`workerExecutionPlan: ${describeWorkerExecutionPlan(workerExecutionPlan)}`, commandSummary(implementation)]
       : [commandSummary(implementation)];
-    if (implementation.exitCode !== 0) return blockRun(repoRoot, run, `implementation command failed: ${commandSummary(implementation)}`, "failed");
+    const verdict = input.reviewVerdict ?? "no_required_fixes";
+    if (implementation.exitCode !== 0) {
+      const failureReason = `implementation command failed: ${commandSummary(implementation)}`;
+      const salvage = await assessMixedDomainSalvage({
+        job: context.job,
+        worktreePath: worktree.path,
+        allowedPaths,
+        validationCommands: run.steps.validation.commands ?? [],
+        timeoutSeconds: input.maxRuntimeSeconds,
+        stage: "implementation_failure",
+        failureReason,
+        reviewVerdict: verdict,
+      });
+      if (salvage) {
+        run.salvage = salvage.salvage;
+        run.steps.coding.changedFiles = salvage.salvage.preservedDiff;
+        run.steps.coding.status = salvage.salvage.outcome === "reviewable" ? "passed" : "blocked";
+        run.steps.coding.greenCommand = salvage.validationResults[0]?.command ?? run.steps.coding.greenCommand;
+        run.steps.coding.greenResult = salvage.validationResults[0] ?? run.steps.coding.greenResult;
+        run.steps.coding.evidence = [...(run.steps.coding.evidence ?? []), `salvage: ${salvage.salvage.reason}`];
+        run.steps.validation = {
+          status: validationPassed(salvage.validationResults, run.steps.validation.commands ?? []) ? "passed" : "blocked",
+          commands: run.steps.validation.commands,
+          results: salvage.validationResults,
+          evidence: salvage.validationResults.map(commandSummary),
+        };
+        run.steps.review = reviewStepForVerdict(verdict, salvage.salvage.reason);
+        if (salvage.salvage.outcome === "reviewable") {
+          return finalizeReviewReadyRun(repoRoot, run, salvage.salvage.preservedDiff, verdict, salvage.salvage);
+        }
+        return blockRun(repoRoot, run, salvage.salvage.reason, "blocked");
+      }
+      return blockRun(repoRoot, run, failureReason, "failed");
+    }
     const files = await changedFiles(worktree.path);
     assertChangedFilesAllowed(files, allowedPaths);
     run.steps.coding.changedFiles = files;
@@ -706,39 +889,42 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     assertChangedFilesAllowed(finalChangedFiles, allowedPaths);
     run.steps.coding.changedFiles = finalChangedFiles;
 
-    const verdict = input.reviewVerdict ?? "no_required_fixes";
-    run.steps.review = {
-      status: verdict === "no_required_fixes" ? "passed" : "blocked",
-      verdict,
-      findings: verdict === "no_required_fixes" ? [] : ["Configured review verdict was changes_required."],
-      evidence: ["g-check review verdict recorded by Phase C worker execution artifact."],
-    };
+    run.steps.review = reviewStepForVerdict(verdict);
     if (verdict === "changes_required") return blockRun(repoRoot, run, "review changes required");
 
-    run.status = "review_ready";
-    run.stopReason = run.prBoundary.stopBeforePr ? "stop-before-pr boundary reached" : null;
-    run.nextOperatorAction = run.prBoundary.stopBeforePr
-      ? "Run g-check/create manually, then create PR only with explicit approval. Phase C did not auto-merge."
-      : "PR creation was allowed, but merge remains outside Phase C executor.";
-    run.updatedAt = new Date().toISOString();
-    await writeWorkerRun(repoRoot, run);
-    await updateQueueJobWorkerExecution(repoRoot, run.queueJobId, {
-      runArtifactPath: workerRunPath(run.initiativeId, run.runId),
-      worktreePath: run.worktree.path,
-      status: run.status,
-      lastReason: run.stopReason,
-      linkedTaskId: run.linkedTaskId,
-    });
-    await recordTaskEvidence(repoRoot, run.linkedTaskId, [
-      `Worker run artifact: ${workerRunPath(run.initiativeId, run.runId)}`,
-      `Changed files: ${finalChangedFiles.length > 0 ? finalChangedFiles.join(", ") : "none"}`,
-      `Validation: ${(run.steps.validation.evidence ?? []).join("; ")}`,
-      `Review Verdict: ${verdict}`,
-      "Unresolved risks: Phase C stops before PR/merge by design.",
-    ], true);
-    return run;
+    return finalizeReviewReadyRun(repoRoot, run, finalChangedFiles, verdict);
   } catch (error) {
-    return blockRun(repoRoot, run, (error as Error).message, "blocked");
+    const failureReason = (error as Error).message;
+    const salvage = await assessMixedDomainSalvage({
+      job: context.job,
+      worktreePath: run.worktree.path,
+      allowedPaths: normalizeAllowedPaths(context.issue.allowedPaths).length > 0 ? normalizeAllowedPaths(context.issue.allowedPaths) : normalizeStringArray(context.job.allowedPaths),
+      validationCommands: run.steps.validation.commands ?? [],
+      timeoutSeconds: input.maxRuntimeSeconds ?? 1,
+      stage: "runtime_interruption",
+      failureReason,
+      reviewVerdict: input.reviewVerdict ?? "no_required_fixes",
+    });
+    if (salvage) {
+      run.salvage = salvage.salvage;
+      run.steps.coding.changedFiles = salvage.salvage.preservedDiff;
+      run.steps.coding.status = salvage.salvage.outcome === "reviewable" ? "passed" : "blocked";
+      run.steps.coding.greenCommand = salvage.validationResults[0]?.command ?? run.steps.coding.greenCommand;
+      run.steps.coding.greenResult = salvage.validationResults[0] ?? run.steps.coding.greenResult;
+      run.steps.coding.evidence = [...(run.steps.coding.evidence ?? []), `salvage: ${salvage.salvage.reason}`];
+      run.steps.validation = {
+        status: validationPassed(salvage.validationResults, run.steps.validation.commands ?? []) ? "passed" : "blocked",
+        commands: run.steps.validation.commands,
+        results: salvage.validationResults,
+        evidence: salvage.validationResults.map(commandSummary),
+      };
+      run.steps.review = reviewStepForVerdict(input.reviewVerdict ?? "no_required_fixes", salvage.salvage.reason);
+      if (salvage.salvage.outcome === "reviewable") {
+        return finalizeReviewReadyRun(repoRoot, run, salvage.salvage.preservedDiff, input.reviewVerdict ?? "no_required_fixes", salvage.salvage);
+      }
+      return blockRun(repoRoot, run, salvage.salvage.reason, "blocked");
+    }
+    return blockRun(repoRoot, run, failureReason, "blocked");
   } finally {
     if (lease) {
       const current = await findWorkerLaneLease(repoRoot, { leaseId: lease.id });
