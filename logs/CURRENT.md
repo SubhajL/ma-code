@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md`
+- `logs/coding/2026-05-13_phase3-initiative-sweep.md`
 
 ## Current planning log
-- `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`
+- `reports/planning/2026-05-13_phase3-initiative-sweep-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`
