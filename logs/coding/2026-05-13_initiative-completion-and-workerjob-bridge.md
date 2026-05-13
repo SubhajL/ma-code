@@ -186,3 +186,72 @@ Review Verdict: no_required_fixes
 - Follow-ups / known gaps:
   - `issue-004` durable state repair is a one-time repo-state correction for already-landed mixed-domain work.
   - Greenfield and the remaining mixed-domain slices still need actual continuation runs after this fix.
+
+## 2026-05-13T23:07:08Z
+- Goal: run one bounded live mixed-domain continuation attempt after the two automation-gap fixes to confirm the system moves past stale `issue-004` selection and task-ready PR blocking.
+- Discovery path:
+  - Used the already-prepared execution worktree `task/task-1778681880000-yolo-afk-drain` from fresh `main`.
+  - Kept the live proof bounded to one provider-backed continuation run for one slice.
+- Files changed and why:
+  - Runtime artifacts only:
+    - `docs/initiatives/mixed-domain-harness-optimization/afk-runs/afk-20260513t225717z.json`
+    - `docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-20260513t225717z.json`
+    - `docs/initiatives/mixed-domain-harness-optimization/pr-runs/pr-worker-20260513t225717z.json`
+    - `docs/initiatives/mixed-domain-harness-optimization/pr-runs/pr-worker-20260513t225717z.md`
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded live proof and the next newly exposed blocker.
+- Tests added or changed: none; this was a bounded live automation proof run.
+- Exact RED command and key failure reason:
+  - none for this validation unit; the RED/GREEN loop had already completed for the implementation change.
+- Exact GREEN command:
+  - none; live proof produced forward progress but not full initiative completion.
+- Other validation commands run:
+  - `npm --silent run harness:orchestrate -- continue --initiative mixed-domain-harness-optimization --max-slices 1 --max-steps 12 --max-runtime-seconds 900 --auto-land --approval-ref human-2026-05-13-yolo-afk-fix --json`
+  - `gh pr view 155 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,title`
+  - `gh pr checks 155`
+- Wiring verification evidence:
+  - The new live run selected `issue-005`, not `issue-004`.
+  - Worker run `worker-20260513t225717z` reached `review_ready` with linked task `task-1778713037969`.
+  - PR lifecycle run `pr-worker-20260513t225717z` reported `taskReady: true`, `createReady: true`, `blockers: []`, and created PR `#155`.
+  - This is direct live evidence that the two targeted blockers are fixed:
+    - stale mixed-domain frontier no longer re-selects `issue-004`
+    - linked task readiness no longer blocks PR creation for the new slice.
+- Behavior changes and risk notes:
+  - The system now advances to the next mixed-domain slice and creates a bounded PR automatically.
+  - Newly exposed blocker: the run still stops at `pr_created` / open PR state instead of completing merge+landing under the current auto-land invocation; PR `#155` is open and `CLEAN`, with no reported checks on the worker branch.
+  - So the original two gaps are fixed, but full YOLO drain remains blocked by a separate merge-boundary / auto-land continuation behavior.
+- Follow-ups / known gaps:
+  - Next likely fix is in auto-land merge/gate continuation, not the two gaps fixed in this unit.
+  - I did not run repeated live loops after this one bounded proof run.
+
+## 2026-05-13T23:30:00Z
+- Goal: fix the newly exposed auto-land merge continuation blocker for stacked worker PRs that have no GitHub checks.
+- Discovery path:
+  - Inspected `.pi/agent/extensions/pr-lifecycle.ts`, `.pi/agent/extensions/orchestrator-run.ts`, and `scripts/harness-pr-gate.ts` after the live `issue-005` run stalled at `pr_created`.
+  - Verified the concrete blocker with `npm --silent run harness:pr-lifecycle -- gate --initiative mixed-domain-harness-optimization --run-id pr-worker-20260513t225717z --json`, which failed because `gh pr checks` returned `no checks reported` for stacked PR `#155`.
+- Files changed and why:
+  - `scripts/harness-pr-gate.ts` — tolerate GitHub’s `no checks reported` response by treating it as an empty check set instead of throwing.
+  - `.pi/agent/extensions/pr-lifecycle.ts` — treat zero-check stacked PRs against non-protected base branches as gate-pass / merge-ready when merge state is `CLEAN` and review/comment state is clear.
+  - `tests/integration/pr-gate.test.ts` — added coverage that the PR gate helper returns a bounded pending session instead of throwing on `no checks reported`.
+  - `tests/extension-units/pr-lifecycle.test.ts` — added regression coverage for zero-check stacked PRs at both `gate` and `merge-ready` stages.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded RED/GREEN evidence and live follow-up plan.
+- Tests added or changed:
+  - `PR gate helper treats no-check stacked PRs as pending instead of throwing`
+  - `gate passes zero-check stacked PRs when merge state is clean and review state is clear`
+  - `merge-ready accepts zero-check stacked PRs when gate already passed`
+- Exact RED command and key failure reason:
+  - `npm --silent run harness:pr-lifecycle -- gate --initiative mixed-domain-harness-optimization --run-id pr-worker-20260513t225717z --json`
+  - Failure reason: `gh pr checks 155 ... failed with code 1: no checks reported on the 'worker/worker-20260513t225717z-issue-005' branch`.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-gate.test.ts`
+- Other validation commands run:
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/worker-execution.test.ts tests/extension-units/afk-orchestration.test.ts tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-gate.test.ts; done`
+  - `git diff --check`
+  - `npm --silent run harness:pr-lifecycle -- gate --initiative mixed-domain-harness-optimization --run-id pr-worker-20260513t225717z --json`
+- Wiring verification evidence:
+  - The stacked PR gate rerun now succeeds locally instead of erroring, and `pr-worker-20260513t225717z` records `gate_passed` evidence for PR `#155`.
+  - The fix is bounded to non-protected stacked bases; mainline PRs with zero checks do not silently auto-pass.
+- Behavior changes and risk notes:
+  - Auto-land can now continue through PR gate and merge-ready for stacked worker PRs that intentionally lack GitHub branch checks.
+  - This does not change main-branch PR expectations; the zero-check exception is limited to non-protected stacked bases.
+- Follow-ups / known gaps:
+  - Next live step is to merge PR `#155` through the same bounded lifecycle and then try the next mixed-domain slice (`issue-006`).

@@ -14,6 +14,10 @@ function fakeGhRunner(responses: unknown[]): { runner: CommandRunner; calls: str
     if (args[0] === "pr" && args[1] === "checks") {
       const response = responses[Math.min(checkIndex, responses.length - 1)];
       checkIndex += 1;
+      if (response && typeof response === "object" && "code" in (response as Record<string, unknown>)) {
+        const record = response as { stdout?: string; stderr?: string; code: number };
+        return { stdout: record.stdout ?? "", stderr: record.stderr ?? "", code: record.code };
+      }
       return { stdout: JSON.stringify(response), stderr: "", code: 0 };
     }
 
@@ -65,6 +69,18 @@ test("PR gate helper polls every 180 seconds without gh --watch until checks pas
   assert.equal(calls.flat().includes("--watch"), false);
   assert.equal(session.commentSummary.blockingCommentCount, 0);
   assert.match(renderPrGateSession(session), /recommended next action: merge_or_sync/);
+});
+
+test("PR gate helper treats no-check stacked PRs as pending instead of throwing", async () => {
+  const { runner, calls } = fakeGhRunner([
+    { stdout: "", stderr: "no checks reported on the 'worker/example' branch", code: 1 },
+  ]);
+
+  const session = await buildPrGateSession({ pr: "63", maxAttempts: 1 }, { runner, sleep: async () => undefined });
+
+  assert.equal(session.finalStatus, "timeout");
+  assert.equal(session.attempts[0]?.summary.totalCount, 0);
+  assert.equal(calls.flat().includes("--watch"), false);
 });
 
 test("PR gate helper stops on failed checks and surfaces non-bot comments", async () => {

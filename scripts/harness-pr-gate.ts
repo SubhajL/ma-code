@@ -211,8 +211,13 @@ async function runJson(runner: CommandRunner, args: string[]): Promise<unknown> 
 }
 
 async function readChecks(pr: string, runner: CommandRunner): Promise<PrGateCheck[]> {
-  const raw = await runJson(runner, ["pr", "checks", pr, "--json", "name,state,workflow,link,description"]);
-  return normalizeChecks(raw);
+  const result = await runner("gh", ["pr", "checks", pr, "--json", "name,state,workflow,link,description"]);
+  if (result.code !== 0) {
+    const detail = result.stderr || result.stdout;
+    if (/no checks reported/i.test(detail)) return [];
+    throw new Error(`gh pr checks ${pr} --json name,state,workflow,link,description failed with code ${result.code}: ${detail}`);
+  }
+  return normalizeChecks(JSON.parse(result.stdout || "null"));
 }
 
 async function readPrContext(pr: string, runner: CommandRunner, includeComments: boolean) {
