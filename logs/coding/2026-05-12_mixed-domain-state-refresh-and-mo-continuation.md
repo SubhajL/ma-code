@@ -201,3 +201,70 @@ Review Verdict: no_required_fixes
 - Follow-ups or known gaps:
   - Active frontier is now `task-1778583265148` / `issue-004`; later slices remain out of scope until that task moves forward.
   - Untracked runtime evidence continues to accumulate under `docs/initiatives/mixed-domain-harness-optimization/{afk-runs,pipeline-runs}`.
+
+## 2026-05-13T03:20:00Z
+- Goal: finalize the clean landing branch for Phase 1, revalidate the recovered mixed-domain frontier, and confirm the durable greenfield AFK frontier before PR/merge.
+- Discovery path: clean worktree branch-off from `task/task-1778579190339-mixed-domain-refresh-continue-mo` at `2be30a7`; local dry-run validation; targeted unit tests; GitHub PR inspection.
+- Files changed and why:
+  - `logs/coding/2026-05-12_mixed-domain-state-refresh-and-mo-continuation.md` — append final validation, greenfield frontier confirmation, and review verdict for the landing branch.
+- Tests added or changed: none.
+- RED command and key failure reason:
+  - none; this landing branch started from the previously recovered GREEN commit set.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/harness-routing.test.ts tests/extension-units/queue-runner.test.ts`
+  - Result: 66 tests passed, 0 failed.
+- Other validation commands run:
+  - `git diff --check main...HEAD`
+  - `npm run -s harness:product-pipeline -- dry-run --initiative mixed-domain-harness-optimization --max-parallel 2 --json`
+  - `npm run -s harness:afk-orchestrate -- dry-run --initiative mixed-domain-harness-optimization --max-parallel 2 --json`
+  - `npm run -s harness:product-pipeline -- dry-run --initiative greenfield-scaffold --max-parallel 2 --json`
+  - `npm run -s harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 2 --json`
+  - `gh pr list --state all --head task/task-1778579190339-mixed-domain-phase1-land --json number,title,state,headRefName,baseRefName,url`
+- Wiring verification evidence:
+  - Mixed-domain product-pipeline dry-run on the landing branch still shows `issue-001`/`issue-002`/`issue-003` done with `issue-004`/`issue-005`/`issue-006` planned.
+  - Mixed-domain AFK dry-run shows `eligibleIssues=[issue-004]`, `doneIssues=[issue-001, issue-002, issue-003]`, and `deferredIssues=[issue-005, issue-006]`.
+  - Greenfield AFK dry-run shows `eligibleIssues=[issue-004, issue-008, issue-015]`, `doneIssues=[issue-001, issue-002, issue-003, issue-005, issue-006, issue-007, issue-009, issue-010, issue-013]`, and deferred downstream slices waiting on those fronts.
+- Behavior changes and risk notes:
+  - This final landing step adds no new runtime/product behavior beyond the recovered mixed-domain work already on the branch; it only records validation and phase-boundary evidence.
+  - Greenfield product-pipeline dry-run still reports all slices as `planned`; the actionable AFK frontier is currently best established by the AFK orchestration dry-run and durable issue summaries rather than the stale pipeline projection.
+- Follow-ups or known gaps:
+  - Phase 2 continuation wrapper work remains out of scope.
+  - Greenfield pipeline/slice-plan refresh is not part of this Phase 1 landing branch.
+
+## Review (2026-05-13 10:22:00 +07) - main...HEAD
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/20260513T000000Z-mixed-domain-phase1-land`
+- Branch: `task/task-1778579190339-mixed-domain-phase1-land`
+- Scope: `main...HEAD`
+- Commands Run: `git diff --stat main...HEAD`; `git diff --check main...HEAD`; `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/harness-routing.test.ts tests/extension-units/queue-runner.test.ts`; `npm run -s harness:product-pipeline -- dry-run --initiative mixed-domain-harness-optimization --max-parallel 2 --json`; `npm run -s harness:afk-orchestrate -- dry-run --initiative mixed-domain-harness-optimization --max-parallel 2 --json`; `npm run -s harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 2 --json`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Required Fixes
+- none
+
+### Optional Improvements
+- none
+
+### Open Questions / Assumptions
+- Phase 1 is treated as: land the recovered mixed-domain issue-002/003 state and record the current greenfield AFK frontier, not repair greenfield's stale product-pipeline projection.
+
+### Recommended Tests / Validation
+- none
+
+### Rollout Notes
+- Merging this branch should advance durable `main` to the mixed-domain `issue-004` frontier while preserving the mixed-domain ownership semantics fix and the logged greenfield frontier evidence.
+
+Review Verdict: no_required_fixes
