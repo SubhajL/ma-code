@@ -212,8 +212,12 @@ function unexpectedDirtyFiles(dirty: string[], expected: string[]): string[] {
   return dirty.filter((file) => !expectedSet.has(file) || isProtectedPath(file));
 }
 
+function isInitiativeRuntimeArtifactPath(file: string): boolean {
+  return /^docs\/initiatives\/[^/]+\/(?:pipeline-runs|afk-runs|worker-runs|pr-runs)(?:\/|$)/.test(file);
+}
+
 function isOwnLifecycleBookkeeping(run: PrLifecycleRun, file: string): boolean {
-  return file === prRunPath(run.initiativeId, run.runId) || file === prRunSummaryPath(run.initiativeId, run.runId);
+  return file === prRunPath(run.initiativeId, run.runId) || file === prRunSummaryPath(run.initiativeId, run.runId) || isInitiativeRuntimeArtifactPath(file);
 }
 
 async function readTaskReady(repoRoot: string, linkedTaskId: string | null, worktreePath?: string | null): Promise<boolean> {
