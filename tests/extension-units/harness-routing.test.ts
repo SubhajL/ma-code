@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { deriveDomainOwnershipForDomains } from "../../.pi/agent/extensions/afk-orchestration.ts";
+import { deriveDomainOwnershipForDomains } from "../../.pi/agent/extensions/domain-ownership.ts";
 import { parseHarnessRoutingConfig, resolveHarnessRoute } from "../../.pi/agent/extensions/harness-routing.ts";
 
 async function repoConfig() {

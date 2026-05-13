@@ -293,3 +293,34 @@ Review Verdict: no_required_fixes
   - The validator now matches how the phase-lane unit test is actually authored and executed in the repo.
 - Follow-ups or known gaps:
   - none.
+
+## 2026-05-13T04:10:00Z
+- Goal: fix the remaining GitHub `Routing Validators` failure so PR #151 can pass without requiring repo-level `node_modules` in the routing-validator job.
+- Discovery path: local PR branch inspection; fresh no-install temp clone reproduction under Node 22; direct inspection of `scripts/validate-harness-routing.sh`, `tests/extension-units/harness-routing.test.ts`, and `afk-orchestration.ts` import dependencies.
+- Files changed and why:
+  - `.pi/agent/extensions/domain-ownership.ts` — extracted lightweight mixed-domain ownership derivation with no heavy runtime dependencies.
+  - `.pi/agent/extensions/afk-orchestration.ts` — reuse the extracted domain-ownership helper instead of keeping the logic embedded in the heavier AFK orchestration module.
+  - `tests/extension-units/harness-routing.test.ts` — import the lightweight helper so the routing unit test no longer drags in `queue-runner.ts` and provider/runtime packages.
+  - `scripts/validate-harness-routing.sh` — run phase-lane routing tests inside the validator temp runtime again and copy `domain-ownership.ts` alongside `harness-routing.ts`.
+  - `logs/coding/2026-05-12_mixed-domain-state-refresh-and-mo-continuation.md` — record the CI-fix RED/GREEN evidence.
+- Tests added or changed: no new tests; existing `tests/extension-units/harness-routing.test.ts` now exercises the same behavior through the extracted helper module.
+- RED command and key failure reason:
+  - `TMP=$(mktemp -d); git clone --branch task/task-1778579190339-mixed-domain-phase1-land --single-branch /Users/subhajlimanond/dev/ma-code "$TMP/repo" && cd "$TMP/repo" && PATH="$(dirname "$(npx --yes node@22 -e 'console.log(process.execPath)')"):$PATH" ./scripts/validate-harness-routing.sh`
+  - Failure reason before the fix: check `3. phase-lane harness-routing unit tests` imported `deriveDomainOwnershipForDomains` from `afk-orchestration.ts`, which pulled in `queue-runner.ts` and failed with `ERR_MODULE_NOT_FOUND` for `@mariozechner/pi-coding-agent` in a no-install CI-style repo checkout.
+- Exact GREEN command:
+  - `SRC=/Users/subhajlimanond/dev/ma-code-worktrees/20260513T000000Z-mixed-domain-phase1-land; TMP=$(mktemp -d); mkdir -p "$TMP/repo"; rsync -a --exclude '.git' --exclude 'node_modules' --exclude 'reports/validation' "$SRC/" "$TMP/repo/" && cd "$TMP/repo" && PATH="$(dirname "$(npx --yes node@22 -e 'console.log(process.execPath)')"):$PATH" ./scripts/validate-harness-routing.sh`
+  - Result: `Harness-routing validation PASS` in a no-install CI-style workspace.
+- Other validation commands run:
+  - `npx tsx --test tests/extension-units/harness-routing.test.ts`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/harness-routing.test.ts tests/extension-units/queue-runner.test.ts`
+  - `./scripts/validate-harness-routing.sh` (3 consecutive passing runs)
+  - `npx tsx --test tests/extension-units/harness-routing.test.ts` (3 consecutive passing runs)
+  - `git diff --check`
+- Wiring verification evidence:
+  - `afk-orchestration.ts` now imports `VALID_DOMAINS` and `deriveDomainOwnershipForDomains` from `./domain-ownership.ts`, so runtime AFK queue-job construction still uses the same ownership logic.
+  - `scripts/validate-harness-routing.sh` now copies both `harness-routing.ts` and `domain-ownership.ts` into the validator temp runtime before executing `tests/extension-units/harness-routing.test.ts`, matching the repo import graph without requiring repo-level installs.
+- Behavior changes and risk notes:
+  - Runtime ownership behavior is intended to remain unchanged; the logic moved into a dedicated helper module to reduce dependency depth.
+  - The validator job should now behave like CI expects: self-contained, temp-runtime based, and independent of repo-root `node_modules`.
+- Follow-ups or known gaps:
+  - Need one more GitHub CI rerun on the updated branch to confirm the PR-level `Routing Validators` check is green.

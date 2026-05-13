@@ -8,6 +8,7 @@ import {
   type QueueJobStatus,
 } from "./queue-runner.ts";
 import { buildAfkWorkerExecutionPlan } from "./afk-worker-execution-plan.ts";
+import { VALID_DOMAINS, deriveDomainOwnershipForDomains } from "./domain-ownership.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -130,7 +131,6 @@ interface LoadedArtifacts {
 }
 
 const INITIATIVE_ROOT = "docs/initiatives";
-const VALID_DOMAINS = ["frontend", "backend", "infra", "docs", "research"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -431,37 +431,6 @@ function specificHitlApprovalReasons(issue: AfkIssueArtifact, assessment: HitlAp
   reasons.push(`Specific human approval required for ${issue.issueId} "${issue.title}" after reviewing: ${reviewTargets}.`);
   return reasons;
 }
-
-const DOMAIN_OWNERSHIP_PRIORITY = ["backend", "infra", "frontend", "docs", "research"] as const;
-
-function assignedRoleForOwnedDomain(domain: string): QueueJob["assignedRole"] {
-  if (domain === "frontend") return "frontend_worker";
-  if (domain === "backend") return "backend_worker";
-  if (domain === "infra") return "infra_worker";
-  if (domain === "docs") return "docs_worker";
-  if (domain === "research") return "research_worker";
-  return "backend_worker";
-}
-
-export function deriveDomainOwnershipForDomains(domains: string[]): {
-  assignedRole: QueueJob["assignedRole"];
-  domainOwnership: QueueJob["domainOwnership"];
-} {
-  const normalized = normalizeStringArray(domains).filter((domain) => (VALID_DOMAINS as readonly string[]).includes(domain)) as NonNullable<QueueJob["domains"]>;
-  const owningDomain = DOMAIN_OWNERSHIP_PRIORITY.find((domain) => normalized.includes(domain as typeof normalized[number])) ?? normalized[0] ?? "backend";
-  const assignedRole = assignedRoleForOwnedDomain(owningDomain);
-  const supportingDomains = normalized.filter((domain) => domain !== owningDomain);
-  return {
-    assignedRole,
-    domainOwnership: {
-      mode: supportingDomains.length > 0 ? "mixed_domain" : "single_domain",
-      owningDomain: owningDomain as NonNullable<QueueJob["domainOwnership"]>["owningDomain"],
-      owningRole: assignedRole,
-      supportingDomains,
-    },
-  };
-}
-
 
 function mixedDomainPacketEvidence(issue: AfkIssueArtifact, domains: QueueJob["domains"]): Pick<QueueJob, "migrationPathNote" | "escalationInstructions"> {
   const governedDomains = (domains ?? []).filter((domain) => domain === "frontend" || domain === "backend" || domain === "infra");
