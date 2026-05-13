@@ -344,16 +344,10 @@ check_2_compile() {
 
 check_3_phase_lane_unit_tests() {
   local name="3. phase-lane harness-routing unit tests"
-  local runtime_dir="$TMP_ROOT/route-runtime"
   local out="$TMP_ROOT/check_3_phase_lane_unit_tests.txt"
-  local cmd="cd $runtime_dir && npx tsx --test tests/extension-units/harness-routing.test.ts"
+  local cmd="cd $REPO_ROOT && npx tsx --test tests/extension-units/harness-routing.test.ts"
 
-  mkdir -p "$runtime_dir/.pi/agent/extensions" "$runtime_dir/tests/extension-units"
-  cp "$REPO_ROOT/.pi/agent/extensions/harness-routing.ts" "$runtime_dir/.pi/agent/extensions/harness-routing.ts"
-  cp "$REPO_ROOT/.pi/agent/models.json" "$runtime_dir/.pi/agent/models.json"
-  cp "$REPO_ROOT/tests/extension-units/harness-routing.test.ts" "$runtime_dir/tests/extension-units/harness-routing.test.ts"
-
-  if (cd "$REPO_ROOT" && bash -lc "$cmd") >"$out" 2>&1; then
+  if bash -lc "$cmd" >"$out" 2>&1; then
     local detail="Phase-lane harness-routing unit tests passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"

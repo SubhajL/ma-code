@@ -268,3 +268,28 @@ LOW
 - Merging this branch should advance durable `main` to the mixed-domain `issue-004` frontier while preserving the mixed-domain ownership semantics fix and the logged greenfield frontier evidence.
 
 Review Verdict: no_required_fixes
+
+## 2026-05-13T03:33:00Z
+- Goal: fix the CI-only harness-routing validator failure so PR #151 can merge without bypassing checks.
+- Discovery path: local reproduction of `./scripts/validate-harness-routing.sh`; targeted reproduction of the validator's temporary-runtime command; direct inspection of `tests/extension-units/harness-routing.test.ts` and `scripts/validate-harness-routing.sh`.
+- Files changed and why:
+  - `scripts/validate-harness-routing.sh` — run the phase-lane harness-routing unit test from repo root instead of a stripped temporary runtime that no longer contains the newly required `afk-orchestration.ts` dependency chain.
+  - `logs/coding/2026-05-12_mixed-domain-state-refresh-and-mo-continuation.md` — record RED/GREEN evidence for the validator fix.
+- Tests added or changed: none.
+- RED command and key failure reason:
+  - `./scripts/validate-harness-routing.sh`
+  - Failure detail: check `3. phase-lane harness-routing unit tests` failed because the temporary runtime execution of `tests/extension-units/harness-routing.test.ts` could not resolve `../../.pi/agent/extensions/afk-orchestration.ts`.
+- Exact GREEN command:
+  - `./scripts/validate-harness-routing.sh`
+  - Result: `Harness-routing validation PASS`.
+- Other validation commands run:
+  - `npx tsx --test tests/extension-units/harness-routing.test.ts`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/harness-routing.test.ts tests/extension-units/queue-runner.test.ts`
+  - `git diff --check`
+- Wiring verification evidence:
+  - The validator still keeps its isolated compile check for `harness-routing.ts` earlier in the script; only the executable unit-test step now runs in the real repo layout required by the updated test imports.
+- Behavior changes and risk notes:
+  - This is a validation-harness-only change; no runtime routing or queue behavior changed.
+  - The validator now matches how the phase-lane unit test is actually authored and executed in the repo.
+- Follow-ups or known gaps:
+  - none.
