@@ -163,6 +163,46 @@ test("create refuses protected branch names", async () => {
   assert.match(result.blockers.join(" "), /protected/);
 });
 
+test("create accepts linked task evidence from the worker worktree runtime", async () => {
+  const { cwd, workerPath } = await writeFixture();
+  const workerWorktree = await mkdtemp(join(tmpdir(), "pr-lifecycle-worker-"));
+  await mkdir(join(workerWorktree, ".pi", "agent", "state", "runtime"), { recursive: true });
+  await writeFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({ version: 1, activeTaskId: null, tasks: [] }, null, 2)}\n`, "utf8");
+  await writeFile(join(workerWorktree, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({ version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: ["Changed files: docs/initiatives/greenfield-scaffold/change.md", "Validation: node -e passed", "Review Verdict: no_required_fixes"], validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] }, null, 2)}\n`, "utf8");
+  const worker = JSON.parse(await readFile(workerPath, "utf8"));
+  worker.worktree.path = workerWorktree;
+  await writeFile(workerPath, `${JSON.stringify(worker, null, 2)}\n`, "utf8");
+
+  const result = await runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-worker-runtime", title: "Test PR" }, { runner: fakeRunner([]), dirtyFiles: async () => [] });
+  assert.equal(result.status, "pr_created");
+  assert.equal(result.lifecycle.taskReady, true);
+});
+
+test("create pushes a missing non-protected base branch before creating the PR", async () => {
+  const { cwd } = await writeFixture({ workerOverrides: { worktree: { path: ".", branch: "worker/worker-green-issue-002", baseRef: "task/task-phase3-sweep", leaseId: null } } });
+  const commands: string[] = [];
+  const runner: CommandRunner = async (command, args) => {
+    commands.push(`${command} ${args.join(" ")}`);
+    if (command === "git" && args[0] === "ls-remote") return { stdout: "", stderr: "", code: 0 };
+    if (command === "git" && args[0] === "rev-parse" && args[1] === "--verify") return { stdout: "base-sha", stderr: "", code: 0 };
+    if (command === "git" && args[0] === "push") return { stdout: "pushed", stderr: "", code: 0 };
+    if (command === "gh" && args[0] === "pr" && args[1] === "create") return { stdout: "https://github.com/SubhajL/ma-code/pull/123", stderr: "", code: 0 };
+    if (command === "gh" && args[0] === "pr" && args[1] === "view") return { stdout: JSON.stringify({ number: 123, url: "https://github.com/SubhajL/ma-code/pull/123", headRefName: "worker/worker-green-issue-002", baseRefName: "task/task-phase3-sweep", reviewDecision: "", mergeStateStatus: "CLEAN" }), stderr: "", code: 0 };
+    return { stdout: "", stderr: "", code: 0 };
+  };
+
+  const result = await runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-stacked-base", title: "Test PR" }, { runner, dirtyFiles: async () => [] });
+  assert.equal(result.status, "pr_created");
+  const basePush = commands.indexOf("git push -u origin task/task-phase3-sweep");
+  const headPush = commands.indexOf("git push -u origin worker/worker-green-issue-002");
+  const prCreateIndex = commands.findIndex((command) => command.startsWith("gh pr create --base task/task-phase3-sweep --head worker/worker-green-issue-002 --title Test PR --body"));
+  assert.notEqual(basePush, -1);
+  assert.notEqual(headPush, -1);
+  assert.notEqual(prCreateIndex, -1);
+  assert.ok(basePush < headPush);
+  assert.ok(headPush < prCreateIndex);
+});
+
 test("close-superseded requires explicit approval", async () => {
   const { cwd } = await writeFixture();
   await assert.rejects(runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-close", closeSuperseded: true }), /--close-superseded requires --close-approval-ref/);

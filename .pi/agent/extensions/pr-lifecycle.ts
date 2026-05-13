@@ -181,6 +181,11 @@ async function runChecked(runner: CommandRunner, commandsRun: string[], command:
   return result.stdout;
 }
 
+async function runObserved(runner: CommandRunner, commandsRun: string[], command: string, args: string[], cwd?: string): ReturnType<CommandRunner> {
+  commandsRun.push(`${command} ${args.join(" ")}`);
+  return runner(command, args, cwd);
+}
+
 function normalizeDirtyFiles(porcelain: string): string[] {
   return porcelain.split("\n").map((line) => line.trimEnd()).filter(Boolean).map((line) => line.slice(3).replace(/^"|"$/g, "")).sort();
 }
@@ -207,17 +212,24 @@ function isOwnLifecycleBookkeeping(run: PrLifecycleRun, file: string): boolean {
   return file === prRunPath(run.initiativeId, run.runId) || file === prRunSummaryPath(run.initiativeId, run.runId);
 }
 
-async function readTaskReady(repoRoot: string, linkedTaskId: string | null): Promise<boolean> {
+async function readTaskReady(repoRoot: string, linkedTaskId: string | null, worktreePath?: string | null): Promise<boolean> {
   if (!linkedTaskId) return false;
-  const path = resolve(repoRoot, ".pi/agent/state/runtime/tasks.json");
-  if (!(await exists(path))) return false;
-  const parsed = JSON.parse(await readFile(path, "utf8")) as { tasks?: Array<Record<string, unknown>> };
-  const task = (parsed.tasks ?? []).find((entry) => entry.id === linkedTaskId);
-  if (!task) return false;
-  const evidence = Array.isArray(task.evidence) ? task.evidence.map(String).join("\n") : "";
-  const acceptance = Array.isArray(task.acceptance) ? task.acceptance : [];
-  const validation = task.validation && typeof task.validation === "object" ? task.validation as Record<string, unknown> : {};
-  return acceptance.length > 0 && /Changed files:/i.test(evidence) && /Validation:/i.test(evidence) && /Review Verdict:\s*no_required_fixes/i.test(evidence) && validation.decision === "pass";
+  const candidateRoots = [repoRoot, worktreePath ? resolve(repoRoot, worktreePath) : null].filter((value): value is string => Boolean(value));
+  const seen = new Set<string>();
+  for (const candidateRoot of candidateRoots) {
+    const path = resolve(candidateRoot, ".pi/agent/state/runtime/tasks.json");
+    if (seen.has(path)) continue;
+    seen.add(path);
+    if (!(await exists(path))) continue;
+    const parsed = JSON.parse(await readFile(path, "utf8")) as { tasks?: Array<Record<string, unknown>> };
+    const task = (parsed.tasks ?? []).find((entry) => entry.id === linkedTaskId);
+    if (!task) continue;
+    const evidence = Array.isArray(task.evidence) ? task.evidence.map(String).join("\n") : "";
+    const acceptance = Array.isArray(task.acceptance) ? task.acceptance : [];
+    const validation = task.validation && typeof task.validation === "object" ? task.validation as Record<string, unknown> : {};
+    if (acceptance.length > 0 && /Changed files:/i.test(evidence) && /Validation:/i.test(evidence) && /Review Verdict:\s*no_required_fixes/i.test(evidence) && validation.decision === "pass") return true;
+  }
+  return false;
 }
 
 function lifecycleFromWorker(worker: WorkerRunArtifact, taskReady: boolean): PrLifecycleRun["lifecycle"] {
@@ -255,7 +267,7 @@ async function buildFromWorker(repoRoot: string, input: PrLifecycleInput, runner
   const worker = JSON.parse(await readFile(resolve(repoRoot, workerRunPath(input.initiativeId, input.workerRunId)), "utf8")) as WorkerRunArtifact;
   const commandsRun: string[] = [];
   const headSha = worker.worktree.path ? await runChecked(runner, commandsRun, "git", ["rev-parse", "HEAD"], worker.worktree.path) : null;
-  const taskReady = await readTaskReady(repoRoot, worker.linkedTaskId);
+  const taskReady = await readTaskReady(repoRoot, worker.linkedTaskId, worker.worktree.path);
   const lifecycle = lifecycleFromWorker(worker, taskReady);
   const now = nowIso();
   const runId = input.runId ?? `pr-${worker.runId}`;
@@ -311,6 +323,17 @@ function allowedMethod(method: unknown): MergeMethod {
   return value as MergeMethod;
 }
 
+async function ensureRemoteBaseBranch(run: PrLifecycleRun, runner: CommandRunner): Promise<void> {
+  const baseRef = run.pr.baseRef ?? run.worktree.baseRef ?? null;
+  if (!baseRef || PROTECTED_BRANCH_NAMES.has(baseRef) || !run.worktree.path) return;
+  const remote = await runObserved(runner, run.commandsRun, "git", ["ls-remote", "--heads", "origin", baseRef], run.worktree.path);
+  if (remote.code !== 0) throw new Error(`git ls-remote --heads origin ${baseRef} failed: ${remote.stderr || remote.stdout}`);
+  if (remote.stdout.trim()) return;
+  const local = await runObserved(runner, run.commandsRun, "git", ["rev-parse", "--verify", `refs/heads/${baseRef}`], run.worktree.path);
+  if (local.code !== 0) throw new Error(`base ref ${baseRef} is not available locally for PR creation.`);
+  await runChecked(runner, run.commandsRun, "git", ["push", "-u", "origin", baseRef], run.worktree.path);
+}
+
 async function createPr(repoRoot: string, run: PrLifecycleRun, input: PrLifecycleInput, deps: PrLifecycleDeps, runner: CommandRunner): Promise<PrLifecycleRun> {
   if (input.closeSuperseded && !input.closeApprovalRef) throw new Error("--close-superseded requires --close-approval-ref.");
   if (!run.lifecycle.createReady || run.blockers.length > 0) return block(run, run.blockers);
@@ -324,6 +347,7 @@ async function createPr(repoRoot: string, run: PrLifecycleRun, input: PrLifecycl
     await runChecked(runner, run.commandsRun, "git", ["add", "--", ...dirty], run.worktree.path);
     await runChecked(runner, run.commandsRun, "git", ["commit", "-m", input.title ?? `Phase D PR lifecycle for ${run.sourceIssueId}`], run.worktree.path);
   }
+  await ensureRemoteBaseBranch(run, runner);
   await runChecked(runner, run.commandsRun, "git", ["push", "-u", "origin", run.worktree.branch ?? "HEAD"], run.worktree.path);
   if (input.closeSuperseded) {
     run.evidence.push(`close-superseded explicitly approved by ${input.closeApprovalRef}`);

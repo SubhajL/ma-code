@@ -50,3 +50,63 @@
 - Next safe actions:
   - Either harden the worker/PR lifecycle so generated worker tasks and evidence are visible from the parent repo runtime, or manually shepherd each review-ready worker branch through commit/review/PR/merge before resuming `continue`.
   - Do not claim `mixed-domain-harness-optimization issue-004` landed yet; it is only review-ready in worker worktree `worker/worker-20260513t132242z-issue-004`.
+
+## 2026-05-13T21:38:39Z
+- Goal: manually shepherd the review-ready `issue-004` worker branch through bounded PR submission after the automated PR lifecycle blocked.
+- Discovery path: followed `g-submit`; verified root/main and worker worktree cleanliness, confirmed no existing PR for `worker/worker-20260513t132242z-issue-004`, and checked compact GitHub state with `gh pr view` / `gh pr list`.
+- Submission actions:
+  - Pushed the missing remote base branch `task/task-1778649000000-phase3-initiative-sweep` so GitHub could target the stacked worker branch against the sweep branch instead of `main`.
+  - Created PR #153: `https://github.com/SubhajL/ma-code/pull/153`
+  - Base/head: `task/task-1778649000000-phase3-initiative-sweep` <- `worker/worker-20260513t132242z-issue-004`
+  - State: `OPEN`, not draft.
+- Validation and checks used for submission evidence:
+  - `node --import tsx --test tests/extension-units/queue-runner.test.ts tests/extension-units/worker-execution.test.ts` exited `0` with `59` passing tests.
+  - `git diff --check task/task-1778649000000-phase3-initiative-sweep..HEAD` exited `0`.
+  - `gh pr checks 153` reported `no checks reported` immediately after PR creation.
+- Remaining risk / next action:
+  - `gh pr view 153 --json ...` reported `mergeStateStatus: DIRTY`, so the worker branch likely needs a bounded non-destructive update against the latest sweep base before merge consideration.
+  - The automated worker->PR lifecycle evidence gap remains unresolved; this manual PR is progress on the slice, not a fix for the harness blocker itself.
+
+## 2026-05-13T21:56:08Z
+- Goal: fix the PR-lifecycle automation gaps that blocked the mixed-domain `issue-004` worker handoff.
+- Discovery path:
+  - Read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, and the active planning log `reports/planning/2026-05-13_phase3-initiative-sweep-plan.md`.
+  - `auggie_discover` was not available in-session, so I used direct inspection and exact-string search in `.pi/agent/extensions/pr-lifecycle.ts`, `.pi/agent/extensions/worker-execution.ts`, the existing worker/pr artifacts, and `tests/extension-units/pr-lifecycle.test.ts`.
+- Files changed and why:
+  - `.pi/agent/extensions/pr-lifecycle.ts` — taught `readTaskReady(...)` to fall back from the parent repo runtime state to the worker worktree runtime state, and added a bounded helper that pushes a missing non-protected stacked base branch before `gh pr create`.
+  - `tests/extension-units/pr-lifecycle.test.ts` — added regression tests for both gaps: worker-worktree task evidence fallback and automatic stacked-base push ordering.
+  - `logs/coding/2026-05-13_phase3-initiative-sweep.md` — recorded RED/GREEN evidence, validation, and review notes.
+- Tests added or changed:
+  - Added `create accepts linked task evidence from the worker worktree runtime`.
+  - Added `create pushes a missing non-protected base branch before creating the PR`.
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts`
+  - Failed for the intended reasons:
+    - `create accepts linked task evidence from the worker worktree runtime` returned `blocked` instead of `pr_created` because `readTaskReady(...)` only looked at the parent repo runtime `tasks.json`.
+    - `create pushes a missing non-protected base branch before creating the PR` had no `git push -u origin task/task-phase3-sweep` in the command log, so stacked-base publication did not happen before `gh pr create`.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts`
+- Other validation commands run:
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/pr-lifecycle.test.ts; done`
+  - `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs node --import tsx --test /Users/subhajlimanond/dev/ma-code-worktrees/20260513T131713Z-phase3-initiative-sweep/tests/integration/pr-lifecycle.test.ts`
+  - `npm --silent run harness:pr-lifecycle -- dry-run --initiative mixed-domain-harness-optimization --worker-run-id worker-20260513t132242z --run-id pr-dry-validate-issue-004 --json`
+  - `git diff --check`
+- Wiring verification evidence:
+  - `buildFromWorker(...)` now passes `worker.worktree.path` into `readTaskReady(...)`, so PR lifecycle readiness can observe the same linked task runtime state that Phase C wrote in the worker worktree.
+  - `createPr(...)` now calls `ensureRemoteBaseBranch(...)` before pushing the worker branch or running `gh pr create`, which keeps stacked PR creation bounded when the local base branch exists but `origin/<baseRef>` does not yet.
+  - Real-artifact dry-run proof: `npm --silent run harness:pr-lifecycle -- dry-run --initiative mixed-domain-harness-optimization --worker-run-id worker-20260513t132242z --run-id pr-dry-validate-issue-004 --json` now reports `taskReady: true`, `createReady: true`, and `blockers: []` for the previously blocked worker run.
+- Behavior changes and risk notes:
+  - PR lifecycle no longer blocks solely because the linked task evidence lives in the worker worktree runtime instead of the parent sweep repo runtime.
+  - PR lifecycle now auto-pushes a missing non-protected stacked base branch, which removes the manual pre-push step that was needed before PR #153.
+  - The new base-branch push remains bounded: protected bases such as `main` are still excluded.
+- Skeptical self-review / QCHECK:
+  - Reviewed for scope creep: changes stay inside PR lifecycle readiness and stacked-base publication; no queue-worker execution behavior changed.
+  - Reviewed for safety: protected branch names still block direct PR creation and are excluded from auto-push.
+  - Reviewed for underimplementation: added regression coverage for both the readiness fallback and the base-push sequence.
+- g-check handoff artifact:
+  - Findings: none at required-fix severity after local review.
+  - Review verdict: `no_required_fixes`.
+  - Required tests: satisfied by targeted unit tests (3 consecutive passes), CLI integration test with explicit `TSX_IMPORT_PATH`, real-artifact dry-run, and `git diff --check`.
+- Follow-ups / known gaps:
+  - I validated the previously blocked worker artifact with a dry-run; I did not create or update another live GitHub PR as part of this fix.
+  - The already-open manual PR #153 may still need separate merge-state cleanup because it was created before this runtime fix.
