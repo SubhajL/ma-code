@@ -36,7 +36,9 @@ import {
 import {
   loadPacketPolicy,
   generateTaskPacket,
+  normalizeMixedDomainSliceCoordination,
   type GeneratedTaskPacket,
+  type MixedDomainSliceCoordination,
   type TaskPacket,
   type TaskPacketInput,
 } from "./task-packets.ts";
@@ -190,6 +192,7 @@ export interface QueueJob {
   scheduledRunKey?: string | null;
   queueJobSource?: QueueJobSource | null;
   workerExecution?: QueueJobWorkerExecutionLinkage | null;
+  sliceCoordination?: MixedDomainSliceCoordination | null;
   linkedTaskId?: string | null;
   packetId?: string | null;
   selectedModelId?: string | null;
@@ -418,6 +421,24 @@ function cloneQueueJobWorkerExecutionPlan(plan: QueueJob["workerExecutionPlan"])
     provider: plan.provider,
     modelId: plan.modelId,
     thinkingLevel: plan.thinkingLevel,
+  };
+}
+
+function cloneQueueJobSliceCoordination(
+  coordination: QueueJob["sliceCoordination"],
+): QueueJob["sliceCoordination"] {
+  const normalized = normalizeMixedDomainSliceCoordination(coordination ?? null);
+  if (!normalized) return null;
+  return {
+    ...normalized,
+    childJobIds: [...normalized.childJobIds],
+    childLanes: normalized.childLanes.map((lane) => ({
+      laneId: lane.laneId,
+      laneKind: lane.laneKind,
+      packetPath: lane.packetPath ?? null,
+      allowedPaths: [...lane.allowedPaths],
+      childJobId: lane.childJobId ?? null,
+    })),
   };
 }
 
@@ -726,6 +747,21 @@ function compactQueueJob(job: QueueJob | null | undefined): Record<string, unkno
           preservedDiffCount: job.workerExecution.salvage?.preservedDiff.length ?? 0,
           retainedProofCount: job.workerExecution.salvage?.retainedProof.length ?? 0,
           updatedAt: job.workerExecution.updatedAt,
+        }
+      : null,
+    sliceCoordination: job.sliceCoordination
+      ? {
+          mode: job.sliceCoordination.mode,
+          verticalSliceId: job.sliceCoordination.verticalSliceId,
+          parentSliceId: job.sliceCoordination.parentSliceId,
+          parentJobId: job.sliceCoordination.parentJobId ?? null,
+          laneId: job.sliceCoordination.laneId ?? null,
+          laneKind: job.sliceCoordination.laneKind ?? null,
+          childJobIds: [...job.sliceCoordination.childJobIds],
+          childLaneCount: job.sliceCoordination.childLanes.length,
+          reunifyEvidenceIntoParent: job.sliceCoordination.reunifyEvidenceIntoParent === true,
+          conflictCheckStatus: job.sliceCoordination.conflictCheckStatus ?? null,
+          conflictCheckSource: compactText(job.sliceCoordination.conflictCheckSource, 120),
         }
       : null,
     updatedAt: job.updatedAt ?? null,
@@ -1101,6 +1137,7 @@ function normalizeQueueJob(job: QueueJob): QueueJob {
     escalationInstructions: job.escalationInstructions && job.escalationInstructions.length > 0 ? uniqueStrings(job.escalationInstructions) : undefined,
     workerExecutionPlan: cloneQueueJobWorkerExecutionPlan(job.workerExecutionPlan),
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),
+    sliceCoordination: cloneQueueJobSliceCoordination(job.sliceCoordination),
     qualityInput: job.qualityInput ?? null,
     graphifyOrchestration: job.graphifyOrchestration ?? null,
     queueJobSource: job.queueJobSource ?? null,
@@ -1453,6 +1490,7 @@ function buildPacketInputForJob(job: QueueJob, teamId: TeamId, assignedRole: Har
     workType: job.workType ?? defaultWorkTypeForTeam(teamId),
     domains: job.domains,
     domainOwnership: job.domainOwnership ?? null,
+    sliceCoordination: cloneQueueJobSliceCoordination(job.sliceCoordination),
     allowedPaths: job.allowedPaths,
     acceptanceCriteria: job.acceptanceCriteria ?? [],
     tddSlice: cloneQueueJobTddSlice(job.tddSlice),
@@ -1527,6 +1565,78 @@ function mapTerminalTaskToJobStatus(task: TaskRecord): Extract<QueueJobStatus, "
     default:
       throw new Error(`Task ${task.id} is not terminal.`);
   }
+}
+
+function evaluateParentCoordinatorCompletion(
+  queueState: QueueState,
+  taskState: TaskState,
+  job: QueueJob,
+): { pass: true } | { pass: false; reason: string } {
+  const coordination = job.sliceCoordination;
+  if (!coordination || coordination.mode !== "parent" || coordination.reunifyEvidenceIntoParent !== true) {
+    return { pass: true };
+  }
+  if (coordination.conflictCheckStatus !== "passed") {
+    return {
+      pass: false,
+      reason: `Parent coordinator ${job.id} requires conflictCheckStatus=passed before reunifying child evidence (current=${coordination.conflictCheckStatus ?? "missing"}).`,
+    };
+  }
+  if (coordination.childJobIds.length === 0) {
+    return {
+      pass: false,
+      reason: `Parent coordinator ${job.id} cannot complete because childJobIds are missing.`,
+    };
+  }
+
+  for (const childJobId of coordination.childJobIds) {
+    const childJob = getJob(queueState, childJobId);
+    if (!childJob) {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child job ${childJobId} was not found.`,
+      };
+    }
+    if (childJob.status !== "done") {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child job ${childJobId} is ${childJob.status}, not done.`,
+      };
+    }
+    if (!childJob.linkedTaskId) {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child job ${childJobId} is missing linkedTaskId evidence.`,
+      };
+    }
+    const childTask = getTask(taskState, childJob.linkedTaskId);
+    if (!childTask) {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child task ${childJob.linkedTaskId} was not found.`,
+      };
+    }
+    if (childTask.status !== "done") {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child task ${childTask.id} is ${childTask.status}, not done.`,
+      };
+    }
+    if ((childTask.evidence ?? []).length === 0) {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child task ${childTask.id} has no recorded evidence.`,
+      };
+    }
+    if (childTask.validation.decision !== "pass") {
+      return {
+        pass: false,
+        reason: `Parent coordinator ${job.id} cannot complete because child task ${childTask.id} validation is ${childTask.validation.decision}.`,
+      };
+    }
+  }
+
+  return { pass: true };
 }
 
 function finalizeRunningJobInState(
@@ -2330,6 +2440,28 @@ async function runQueueStepCore(cwd: string, input: { owner?: string; allowIniti
         };
       }
 
+      if (linkedTask.status === "done") {
+        const parentCompletion = evaluateParentCoordinatorCompletion(coordinatedQueueState, taskState, normalizedJob);
+        if (!parentCompletion.pass) {
+          const stopped = stopLinkedTaskAndQueueJobInState(
+            coordinatedQueueState,
+            taskState,
+            normalizedJob.id,
+            linkedTask.id,
+            "blocked",
+            parentCompletion.reason,
+          );
+          return {
+            type: "stopped-active-job" as const,
+            stopAction: "blocked" as const,
+            finalizedJob: stopped.job,
+            linkedTask: stopped.task,
+            queuePaused: coordinatedQueueState.paused,
+            stopReason: parentCompletion.reason,
+          };
+        }
+      }
+
       const recoveryDecision =
         linkedTask.status === "failed" || linkedTask.status === "blocked"
           ? resolveRecoveryRuntimeDecision(await loadRecoveryPolicy(cwd), await loadHarnessRoutingConfig(cwd), {
@@ -2431,7 +2563,7 @@ async function runQueueStepCore(cwd: string, input: { owner?: string; allowIniti
         action: activeOutcome.stopAction,
         reason:
           activeOutcome.stopAction === "blocked"
-            ? `Active job ${activeOutcome.finalizedJob.id} was blocked together with linked task ${activeOutcome.linkedTask.id}.`
+            ? (activeOutcome.stopReason ?? `Active job ${activeOutcome.finalizedJob.id} was blocked together with linked task ${activeOutcome.linkedTask.id}.`)
             : `Active job ${activeOutcome.finalizedJob.id} was failed together with linked task ${activeOutcome.linkedTask.id}.`,
         queuePaused: activeOutcome.queuePaused,
         activeJobId: null,

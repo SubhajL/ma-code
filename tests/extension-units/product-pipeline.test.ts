@@ -85,6 +85,48 @@ test("detectHitlGate reports unresolved approval gates", () => {
   assert.equal(gate?.status, "waiting_for_human");
 });
 
+test("buildProductPipelineRun captures mixed-domain coordinators with child lane queue jobs and parent reunification", () => {
+  const run = buildProductPipelineRun({
+    plan: {
+      version: 1,
+      initiativeId: "mixed-domain-harness-optimization",
+      maxParallelSlices: 1,
+      slices: [
+        {
+          sliceId: "issue-006",
+          title: "Add coordinated sub-lane execution under one mixed-domain parent slice",
+          status: "ready",
+          currentPhase: "fe_implementation",
+          phaseOrder: [...PRODUCT_PIPELINE_PHASE_ORDER],
+          artifacts: {
+            frontendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.frontend.packet.json",
+            backendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.backend.packet.json",
+            bffPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.bff.packet.json",
+          },
+          hitlGate: null,
+          blockers: [],
+        },
+      ],
+      parallelDecisions: [],
+    },
+    mode: "apply",
+    runId: "run-mixed",
+    now: "2026-05-08T00:00:00.000Z",
+    maxParallelSlices: 1,
+  });
+
+  assert.equal(run.coordinators.length, 1);
+  assert.equal(run.coordinators[0]?.parentSliceId, "issue-006");
+  assert.equal(run.coordinators[0]?.conflictCheck.status, "passed");
+  assert.deepEqual(run.coordinators[0]?.childLanes.map((lane) => lane.laneKind), ["frontend", "backend", "bff"]);
+  assert.deepEqual(run.materializedWork.queueJobIds, [
+    "preview:mixed-domain-harness-optimization:issue-006:frontend",
+    "preview:mixed-domain-harness-optimization:issue-006:backend",
+    "preview:mixed-domain-harness-optimization:issue-006:bff",
+    "preview:mixed-domain-harness-optimization:issue-006:reunify",
+  ]);
+});
+
 test("writeProductPipelineRun writes a durable run artifact outside runtime state", async () => {
   const cwd = await makeTempRepo("product-pipeline-write-");
   const run = buildProductPipelineRun({ plan: plan(), mode: "apply", runId: "run-write", now: "2026-05-08T00:00:00.000Z", maxParallelSlices: 1 });

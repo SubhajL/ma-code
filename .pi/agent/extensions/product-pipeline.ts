@@ -4,6 +4,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
 
 import { PRODUCT_SLICE_PHASE_ORDER, type ProductSlicePhase } from "./product-slice-lifecycle.ts";
+import { type MixedDomainChildLaneKind } from "./task-packets.ts";
 
 const execFile = promisify(execFileCallback);
 
@@ -27,7 +28,29 @@ export interface ProductPipelineSliceArtifacts {
   contract?: string;
   frontendPacket?: string;
   backendPacket?: string;
+  bffPacket?: string;
   [key: string]: string | undefined;
+}
+
+export interface ProductPipelineMixedDomainChildLane {
+  laneId: string;
+  laneKind: MixedDomainChildLaneKind;
+  packetPath: string;
+  queueJobId: string;
+  parentQueueJobId: string;
+}
+
+export interface ProductPipelineMixedDomainCoordinator {
+  parentSliceId: string;
+  verticalSliceId: string;
+  title: string;
+  parentQueueJobId: string;
+  childLanes: ProductPipelineMixedDomainChildLane[];
+  conflictCheck: {
+    status: "pending" | "passed" | "failed";
+    source: string;
+    summary: string;
+  };
 }
 
 export interface ProductPipelineSlicePlan {
@@ -90,6 +113,7 @@ export interface ProductPipelineRun {
   slices: ProductPipelineSlicePlan[];
   sliceDag: ProductPipelineSliceDag[];
   parallelDecisions: ProductPipelineParallelDecision[];
+  coordinators: ProductPipelineMixedDomainCoordinator[];
   materializedWork: ProductPipelineMaterializedWork;
   blockedSlices: Array<{ sliceId: string; blockers: string[] }>;
   activeLanes: string[];
@@ -347,6 +371,75 @@ function materializedQueueJobId(initiativeId: string, slice: ProductPipelineSlic
   return `preview:${initiativeId}:${slice.sliceId}:${slice.currentPhase}`;
 }
 
+function mixedDomainChildLaneEntries(slice: ProductPipelineSlicePlan): Array<{ laneKind: MixedDomainChildLaneKind; packetPath: string }> {
+  const entries: Array<{ laneKind: MixedDomainChildLaneKind; packetPath: string | undefined }> = [
+    { laneKind: "frontend", packetPath: slice.artifacts.frontendPacket },
+    { laneKind: "backend", packetPath: slice.artifacts.backendPacket },
+    { laneKind: "bff", packetPath: slice.artifacts.bffPacket },
+  ];
+  return entries.filter((entry): entry is { laneKind: MixedDomainChildLaneKind; packetPath: string } => typeof entry.packetPath === "string" && entry.packetPath.trim().length > 0);
+}
+
+function parentCoordinatorQueueJobId(initiativeId: string, sliceId: string): string {
+  return `preview:${initiativeId}:${sliceId}:reunify`;
+}
+
+function childCoordinatorQueueJobId(initiativeId: string, sliceId: string, laneKind: MixedDomainChildLaneKind): string {
+  return `preview:${initiativeId}:${sliceId}:${laneKind}`;
+}
+
+export function buildMixedDomainCoordinator(
+  initiativeId: string,
+  slice: ProductPipelineSlicePlan,
+): ProductPipelineMixedDomainCoordinator | null {
+  const childEntries = mixedDomainChildLaneEntries(slice);
+  if (childEntries.length < 2) {
+    return null;
+  }
+  const packetPaths = childEntries.map((entry) => entry.packetPath);
+  const uniquePacketPaths = new Set(packetPaths);
+  const conflictCheckStatus = uniquePacketPaths.size === packetPaths.length ? "passed" : "failed";
+  const parentQueueJobId = parentCoordinatorQueueJobId(initiativeId, slice.sliceId);
+  return {
+    parentSliceId: slice.sliceId,
+    verticalSliceId: slice.sliceId,
+    title: slice.title ?? slice.sliceId,
+    parentQueueJobId,
+    childLanes: childEntries.map((entry) => ({
+      laneId: `${slice.sliceId}:${entry.laneKind}`,
+      laneKind: entry.laneKind,
+      packetPath: entry.packetPath,
+      queueJobId: childCoordinatorQueueJobId(initiativeId, slice.sliceId, entry.laneKind),
+      parentQueueJobId,
+    })),
+    conflictCheck: {
+      status: conflictCheckStatus,
+      source: "packet_artifact_uniqueness",
+      summary: conflictCheckStatus === "passed"
+        ? `Distinct child packet artifacts were declared for ${slice.sliceId}.`
+        : `Duplicate child packet artifacts prevent safe mixed-domain coordination for ${slice.sliceId}.`,
+    },
+  };
+}
+
+export function buildMixedDomainCoordinators(plan: ProductPipelinePlan): ProductPipelineMixedDomainCoordinator[] {
+  return plan.slices
+    .map((slice) => buildMixedDomainCoordinator(plan.initiativeId, slice))
+    .filter((coordinator): coordinator is ProductPipelineMixedDomainCoordinator => coordinator !== null);
+}
+
+function materializedQueueJobIdsForSlice(
+  initiativeId: string,
+  slice: ProductPipelineSlicePlan,
+  coordinators: Map<string, ProductPipelineMixedDomainCoordinator>,
+): string[] {
+  const coordinator = coordinators.get(slice.sliceId);
+  if (!coordinator) {
+    return [materializedQueueJobId(initiativeId, slice)];
+  }
+  return [...coordinator.childLanes.map((lane) => lane.queueJobId), coordinator.parentQueueJobId];
+}
+
 function blockedSlices(plan: ProductPipelinePlan): Array<{ sliceId: string; blockers: string[] }> {
   return plan.slices.flatMap((slice) => {
     const blockers = [...slice.blockers];
@@ -375,6 +468,8 @@ export function buildProductPipelineRun(input: BuildProductPipelineRunInput): Pr
   const maxParallelSlices = Math.max(1, Math.floor(input.maxParallelSlices ?? input.plan.maxParallelSlices ?? 1));
   const ready = computeNextReadySlices(input.plan, maxParallelSlices);
   const blocked = blockedSlices(input.plan);
+  const coordinators = buildMixedDomainCoordinators(input.plan);
+  const coordinatorsBySlice = new Map(coordinators.map((coordinator) => [coordinator.parentSliceId, coordinator]));
   const hasHitlGate = input.plan.slices.some((slice) => !!detectHitlGate(slice));
   const materializedSlices = input.mode === "apply" && !hasHitlGate ? input.plan.slices.filter((slice) => ready.readySliceIds.includes(slice.sliceId)) : [];
   const missingParallelProof = ready.blockers.some((blocker) => blocker.includes("Missing Phase 10"));
@@ -389,7 +484,7 @@ export function buildProductPipelineRun(input: BuildProductPipelineRunInput): Pr
           : "planned";
 
   const materializedWork: ProductPipelineMaterializedWork = {
-    queueJobIds: materializedSlices.map((slice) => materializedQueueJobId(input.plan.initiativeId, slice)),
+    queueJobIds: materializedSlices.flatMap((slice) => materializedQueueJobIdsForSlice(input.plan.initiativeId, slice, coordinatorsBySlice)),
     workerSessionIds: [],
     worktreePaths: [],
   };
@@ -404,9 +499,13 @@ export function buildProductPipelineRun(input: BuildProductPipelineRunInput): Pr
     slices: input.plan.slices.map((slice) => materializedSlices.some((entry) => entry.sliceId === slice.sliceId) ? { ...slice, status: "materialized" } : slice),
     sliceDag: input.plan.slices.map(buildDag),
     parallelDecisions: planParallelDecisions(input.plan),
+    coordinators,
     materializedWork,
     blockedSlices: blocked,
-    activeLanes: [...ready.activeSliceIds, ...materializedSlices.map((slice) => slice.sliceId)],
+    activeLanes: [
+      ...ready.activeSliceIds,
+      ...materializedSlices.flatMap((slice) => coordinatorsBySlice.get(slice.sliceId)?.childLanes.map((lane) => lane.laneId) ?? [slice.sliceId]),
+    ],
     nextOperatorAction: nextOperatorAction(status, ready, blocked),
     lastAction: {
       action: input.mode,
@@ -455,7 +554,13 @@ function parseProductPipelineRun(value: unknown): ProductPipelineRun {
   if (value.mode !== "dry_run" && value.mode !== "apply") throw new Error("Product pipeline run mode is invalid.");
   const plan = parseProductPipelinePlan({ version: 1, initiativeId: value.initiativeId, slices: value.slices, parallelDecisions: value.parallelDecisions, maxParallelSlices: value.maxParallelSlices });
   const rebuilt = buildProductPipelineRun({ plan, mode: value.mode, runId: value.runId, now: isRecord(value.lastAction) && typeof value.lastAction.at === "string" ? value.lastAction.at : new Date(0).toISOString(), maxParallelSlices: Number(value.maxParallelSlices) || 1 });
-  return { ...rebuilt, status: value.status as ProductPipelineStatus, materializedWork: isRecord(value.materializedWork) ? { queueJobIds: asStringArray(value.materializedWork.queueJobIds), workerSessionIds: asStringArray(value.materializedWork.workerSessionIds), worktreePaths: asStringArray(value.materializedWork.worktreePaths) } : rebuilt.materializedWork, nextOperatorAction: typeof value.nextOperatorAction === "string" ? value.nextOperatorAction : rebuilt.nextOperatorAction };
+  return {
+    ...rebuilt,
+    status: value.status as ProductPipelineStatus,
+    coordinators: Array.isArray(value.coordinators) ? rebuilt.coordinators : rebuilt.coordinators,
+    materializedWork: isRecord(value.materializedWork) ? { queueJobIds: asStringArray(value.materializedWork.queueJobIds), workerSessionIds: asStringArray(value.materializedWork.workerSessionIds), worktreePaths: asStringArray(value.materializedWork.worktreePaths) } : rebuilt.materializedWork,
+    nextOperatorAction: typeof value.nextOperatorAction === "string" ? value.nextOperatorAction : rebuilt.nextOperatorAction,
+  };
 }
 
 export async function assertApplyRepoPreflight(repoRoot: string): Promise<void> {
@@ -492,6 +597,10 @@ export function renderProductPipelineRun(run: ProductPipelineRun): string {
   lines.push(...(gates.length > 0 ? gates.map(({ slice, gate }) => `- ${slice.sliceId}: ${gate!.summary} (${gate!.status})`) : ["- none"]));
   lines.push("parallel decisions:");
   lines.push(...(run.parallelDecisions.length > 0 ? run.parallelDecisions.map((decision) => `- ${decision.sliceIds.join(" + ")}: ${decision.parallelAllowed ? "allowed" : "blocked"}${decision.blockers.length > 0 ? ` — ${decision.blockers.join("; ")}` : ""}`) : ["- none"]));
+  lines.push("mixed-domain coordinators:");
+  lines.push(...(run.coordinators.length > 0
+    ? run.coordinators.map((coordinator) => `- ${coordinator.parentSliceId}: ${coordinator.childLanes.map((lane) => `${lane.laneKind}=${lane.laneId}`).join(", ")} — conflict ${coordinator.conflictCheck.status}`)
+    : ["- none"]));
   lines.push("materialized work:");
   lines.push(...(run.materializedWork.queueJobIds.length > 0 ? run.materializedWork.queueJobIds.map((id) => `- queue preview: ${id}`) : ["- none"]));
   lines.push(`next operator action: ${run.nextOperatorAction}`);
