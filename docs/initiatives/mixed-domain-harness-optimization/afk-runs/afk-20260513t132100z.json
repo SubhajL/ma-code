@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "runId": "afk-20260513t132100z",
+  "initiativeId": "mixed-domain-harness-optimization",
+  "mode": "apply",
+  "maxParallel": 1,
+  "sourceArtifacts": {
+    "issues": "docs/initiatives/mixed-domain-harness-optimization/issues.json",
+    "slicePlan": "docs/initiatives/mixed-domain-harness-optimization/slice-plan.json",
+    "pipeline": "docs/initiatives/mixed-domain-harness-optimization/pipeline.json",
+    "summaries": [
+      "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json",
+      "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json",
+      "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json",
+      "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json",
+      "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json",
+      "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json"
+    ]
+  },
+  "eligibleIssues": [
+    {
+      "issueId": "issue-004",
+      "title": "Add salvage-aware recovery for interrupted mixed-domain worker runs",
+      "dependencies": [
+        "issue-003"
+      ],
+      "queueJobId": "afk-mixed-domain-harness-optimization-issue-004",
+      "disposition": "eligible",
+      "reasons": [
+        "AFK issue is queueable."
+      ]
+    }
+  ],
+  "blockedIssues": [],
+  "deferredIssues": [
+    {
+      "issueId": "issue-005",
+      "title": "Improve mixed-domain parallelism beyond shared-path-root serialization",
+      "dependencies": [
+        "issue-004"
+      ],
+      "queueJobId": "afk-mixed-domain-harness-optimization-issue-005",
+      "disposition": "deferred",
+      "reasons": [
+        "Unresolved dependencies: issue-004."
+      ]
+    },
+    {
+      "issueId": "issue-006",
+      "title": "Add coordinated sub-lane execution under one mixed-domain parent slice",
+      "dependencies": [
+        "issue-005"
+      ],
+      "queueJobId": "afk-mixed-domain-harness-optimization-issue-006",
+      "disposition": "deferred",
+      "reasons": [
+        "Unresolved dependencies: issue-005."
+      ]
+    }
+  ],
+  "skippedIssues": [],
+  "doneIssues": [
+    {
+      "issueId": "issue-001",
+      "title": "Approve mixed-domain harness operating contract",
+      "dependencies": [],
+      "queueJobId": "afk-mixed-domain-harness-optimization-issue-001",
+      "disposition": "done",
+      "reasons": [
+        "Issue status is done."
+      ]
+    },
+    {
+      "issueId": "issue-002",
+      "title": "Preflight mixed-domain validation contracts before worker execution",
+      "dependencies": [
+        "issue-001"
+      ],
+      "queueJobId": "afk-mixed-domain-harness-optimization-issue-002",
+      "disposition": "done",
+      "reasons": [
+        "Issue status is done."
+      ]
+    },
+    {
+      "issueId": "issue-003",
+      "title": "Add first-class composite mixed-domain worker packet and role semantics",
+      "dependencies": [
+        "issue-002"
+      ],
+      "queueJobId": "afk-mixed-domain-harness-optimization-issue-003",
+      "disposition": "done",
+      "reasons": [
+        "Issue status is done."
+      ]
+    }
+  ],
+  "parallelDecisions": [
+    {
+      "issueIds": [
+        "issue-004"
+      ],
+      "status": "single",
+      "reason": "Fewer than two eligible AFK issues.",
+      "sharedPaths": []
+    }
+  ],
+  "materializedQueueJobs": [
+    {
+      "id": "afk-mixed-domain-harness-optimization-issue-004",
+      "title": "Add salvage-aware recovery for interrupted mixed-domain worker runs",
+      "status": "queued",
+      "sourceIssueId": "issue-004",
+      "sourceInitiativeId": "mixed-domain-harness-optimization",
+      "taskClass": "implementation",
+      "assignedTeam": "build",
+      "assignedRole": "backend_worker",
+      "acceptanceCriteria": [
+        "Interrupted or provider-failed mixed-domain runs with a valid preserved diff can be resumed or promoted for review.",
+        "Queue and task state no longer remain misleadingly failed when salvage evidence exists.",
+        "Recovery artifacts explain the salvage path and retained proof."
+      ],
+      "domains": [
+        "backend",
+        "infra"
+      ],
+      "allowedPaths": [
+        ".pi/agent/extensions",
+        "tests/extension-units"
+      ],
+      "dependencies": [],
+      "budget": {
+        "maxRetries": 1,
+        "maxRuntimeMinutes": 60,
+        "maxFailedValidations": 1,
+        "maxUnresolvedBlockers": 0
+      },
+      "approvalRequired": false,
+      "stop_conditions": [
+        "approval_boundary_hit"
+      ],
+      "sourceArtifactPaths": [
+        "docs/initiatives/mixed-domain-harness-optimization/issues.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slice-plan.json",
+        "docs/initiatives/mixed-domain-harness-optimization/pipeline.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json",
+        "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json"
+      ],
+      "queueJobSource": {
+        "kind": "issue-materialization",
+        "initiativeId": "mixed-domain-harness-optimization",
+        "issueId": "issue-004",
+        "runId": "afk-20260513t132100z",
+        "sourceArtifactPaths": [
+          "docs/initiatives/mixed-domain-harness-optimization/issues.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slice-plan.json",
+          "docs/initiatives/mixed-domain-harness-optimization/pipeline.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slices/issue-001.summary.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slices/issue-002.summary.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slices/issue-003.summary.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slices/issue-004.summary.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slices/issue-005.summary.json",
+          "docs/initiatives/mixed-domain-harness-optimization/slices/issue-006.summary.json"
+        ]
+      }
+    }
+  ],
+  "startedQueueJobs": [],
+  "lastAction": "No new queue jobs materialized; matching queue jobs already exist.",
+  "nextOperatorAction": "Review queue status, then run a bounded queue session explicitly if desired.",
+  "explainIssue": null
+}

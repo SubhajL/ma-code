@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "runId": "pr-worker-20260513t132100z",
+  "initiativeId": "mixed-domain-harness-optimization",
+  "sourceIssueId": "issue-004",
+  "queueJobId": "afk-mixed-domain-harness-optimization-issue-004",
+  "linkedTaskId": null,
+  "workerRunId": "worker-20260513t132100z",
+  "worktree": {
+    "path": null,
+    "branch": null,
+    "baseRef": "task/task-1778649000000-phase3-initiative-sweep",
+    "headSha": null
+  },
+  "mode": "create",
+  "status": "blocked",
+  "lifecycle": {
+    "planningReady": true,
+    "taskReady": false,
+    "redGreenEvidence": false,
+    "reviewVerdict": null,
+    "validationDecision": "fail",
+    "createReady": false,
+    "mergeReady": false
+  },
+  "pr": {
+    "number": null,
+    "url": null,
+    "headRef": null,
+    "baseRef": "task/task-1778649000000-phase3-initiative-sweep",
+    "reviewDecision": null,
+    "mergeStateStatus": null,
+    "checks": []
+  },
+  "merge": {
+    "method": null,
+    "approvalRef": null,
+    "mergeCommit": null,
+    "syncedMainSha": null
+  },
+  "blockers": [
+    "Phase C worker run is not review_ready/create-ready.",
+    "active task evidence is missing or validation did not pass.",
+    "RED/GREEN evidence is missing.",
+    "changed files evidence is missing.",
+    "validation output is missing or failed.",
+    "g-check verdict no_required_fixes is missing."
+  ],
+  "commandsRun": [],
+  "evidence": [
+    "Worker run artifact: docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-20260513t132100z.json",
+    "Changed files: none",
+    "Validation: pending",
+    "Review Verdict: missing"
+  ],
+  "nextOperatorAction": "Resolve blockers and rerun the PR lifecycle command; failed/blocked state remains visible in pr-runs.",
+  "createdAt": "2026-05-13T13:21:00.894Z",
+  "updatedAt": "2026-05-13T13:21:00.895Z"
+}

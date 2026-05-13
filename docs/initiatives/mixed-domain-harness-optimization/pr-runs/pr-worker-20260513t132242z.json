@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "runId": "pr-worker-20260513t132242z",
+  "initiativeId": "mixed-domain-harness-optimization",
+  "sourceIssueId": "issue-004",
+  "queueJobId": "afk-mixed-domain-harness-optimization-issue-004",
+  "linkedTaskId": "task-1778678562554",
+  "workerRunId": "worker-20260513t132242z",
+  "worktree": {
+    "path": "/Users/subhajlimanond/dev/ma-code-worktrees/20260513T131713Z-phase3-initiative-sweep-worktrees/worker-20260513t132242z-issue-004",
+    "branch": "worker/worker-20260513t132242z-issue-004",
+    "baseRef": "task/task-1778649000000-phase3-initiative-sweep",
+    "headSha": "11d0a61f4b77d38b053e7f4c99757d57a42af6c3"
+  },
+  "mode": "create",
+  "status": "blocked",
+  "lifecycle": {
+    "planningReady": true,
+    "taskReady": false,
+    "redGreenEvidence": true,
+    "reviewVerdict": "no_required_fixes",
+    "validationDecision": "pass",
+    "createReady": false,
+    "mergeReady": false
+  },
+  "pr": {
+    "number": null,
+    "url": null,
+    "headRef": "worker/worker-20260513t132242z-issue-004",
+    "baseRef": "task/task-1778649000000-phase3-initiative-sweep",
+    "reviewDecision": null,
+    "mergeStateStatus": null,
+    "checks": []
+  },
+  "merge": {
+    "method": null,
+    "approvalRef": null,
+    "mergeCommit": null,
+    "syncedMainSha": null
+  },
+  "blockers": [
+    "active task evidence is missing or validation did not pass."
+  ],
+  "commandsRun": [
+    "git rev-parse HEAD"
+  ],
+  "evidence": [
+    "Worker run artifact: docs/initiatives/mixed-domain-harness-optimization/worker-runs/worker-20260513t132242z.json",
+    "Changed files: .pi/agent/extensions/queue-runner.ts, .pi/agent/extensions/worker-execution.ts, logs/coding/2026-05-13_phase3-initiative-sweep.md, tests/extension-units/queue-runner.test.ts, tests/extension-units/worker-execution.test.ts",
+    "Validation: node --import tsx --test tests/extension-units/queue-runner.test.ts tests/extension-units/worker-execution.test.ts exited 0; git diff --check exited 0",
+    "Review Verdict: no_required_fixes"
+  ],
+  "nextOperatorAction": "Resolve blockers and rerun the PR lifecycle command; failed/blocked state remains visible in pr-runs.",
+  "createdAt": "2026-05-13T13:37:38.463Z",
+  "updatedAt": "2026-05-13T13:37:38.463Z"
+}

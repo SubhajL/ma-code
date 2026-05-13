@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "runId": "worker-20260513t132100z",
+  "initiativeId": "mixed-domain-harness-optimization",
+  "sourceIssueId": "issue-004",
+  "queueJobId": "afk-mixed-domain-harness-optimization-issue-004",
+  "linkedTaskId": null,
+  "mode": "run",
+  "status": "blocked",
+  "worktree": {
+    "path": null,
+    "branch": null,
+    "baseRef": "task/task-1778649000000-phase3-initiative-sweep",
+    "leaseId": null
+  },
+  "steps": {
+    "planning": {
+      "status": "passed",
+      "commands": [],
+      "evidence": [
+        "Selected one queue job: afk-mixed-domain-harness-optimization-issue-004",
+        "AFK issue issue-004 passed approval/domain/allowed-path/acceptance/validation eligibility checks.",
+        "Planning step generated a bounded implementation plan from queue job/tddSlice metadata; no provider-backed hidden loop was started."
+      ]
+    },
+    "coding": {
+      "status": "pending",
+      "commands": [],
+      "evidence": []
+    },
+    "validation": {
+      "status": "pending",
+      "commands": [
+        "node --import tsx --test tests/extension-units/queue-runner.test.ts tests/extension-units/worker-execution.test.ts",
+        "git diff --check"
+      ],
+      "evidence": []
+    },
+    "review": {
+      "status": "pending",
+      "commands": [],
+      "evidence": []
+    }
+  },
+  "retryPolicy": {
+    "maxStepRetries": 1,
+    "attempts": {}
+  },
+  "prBoundary": {
+    "stopBeforePr": false,
+    "allowPrCreate": true,
+    "prCreated": false,
+    "reason": "PR creation explicitly allowed by human-2026-05-13-phase3-sweep."
+  },
+  "stopReason": "max step budget too small for Phase C planning/coding/validation/review gates.",
+  "nextOperatorAction": "Fix the blocking contract/configuration issue, then rerun the worker with explicit bounds.",
+  "createdAt": "2026-05-13T13:21:00.662Z",
+  "updatedAt": "2026-05-13T13:21:00.672Z"
+}
