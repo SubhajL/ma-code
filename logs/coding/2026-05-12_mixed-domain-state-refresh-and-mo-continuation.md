@@ -324,3 +324,26 @@ Review Verdict: no_required_fixes
   - The validator job should now behave like CI expects: self-contained, temp-runtime based, and independent of repo-root `node_modules`.
 - Follow-ups or known gaps:
   - Need one more GitHub CI rerun on the updated branch to confirm the PR-level `Routing Validators` check is green.
+
+## 2026-05-13T04:26:00Z
+- Goal: fix the next CI blocker after `Routing Validators` turned green: `Foundation Extension Compile` could not see the newly extracted `domain-ownership.ts` helper in its temporary compile workspace.
+- Discovery path: 3-minute PR poll; GitHub failed-job log inspection via `gh run view --log-failed`; direct inspection of `scripts/check-foundation-extension-compile.sh`; local reproduction with `./scripts/check-foundation-extension-compile.sh`.
+- Files changed and why:
+  - `scripts/check-foundation-extension-compile.sh` — copy `domain-ownership.ts` into the temporary compile workspace and include it in the explicit `tsc` entry list.
+  - `logs/coding/2026-05-12_mixed-domain-state-refresh-and-mo-continuation.md` — record the follow-on CI-fix evidence.
+- Tests added or changed: none.
+- RED command and key failure reason:
+  - `./scripts/check-foundation-extension-compile.sh`
+  - Failure reason: `src/afk-orchestration.ts(11,64): error TS2307: Cannot find module './domain-ownership.ts'` because the compile harness copied `afk-orchestration.ts` but not the newly added helper file.
+- Exact GREEN command:
+  - `./scripts/check-foundation-extension-compile.sh`
+  - Result: `foundation-extension-compile-ok`.
+- Other validation commands run:
+  - `./scripts/validate-harness-routing.sh`
+  - `git diff --check`
+- Wiring verification evidence:
+  - The foundation compile harness now stages `domain-ownership.ts` alongside `afk-orchestration.ts`, so the isolated extension compile surface matches the real source dependency graph.
+- Behavior changes and risk notes:
+  - No product/runtime behavior change; this only keeps the isolated foundation compile harness aligned with the extracted helper dependency.
+- Follow-ups or known gaps:
+  - Need the next GitHub CI rerun to confirm both `Routing Validators` and `Foundation Extension Compile` are green together.
