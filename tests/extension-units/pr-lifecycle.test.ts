@@ -167,7 +167,7 @@ test("merge-ready accepts zero-check stacked PRs when gate already passed", asyn
   seed.pr.checks = [];
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.json"), `${JSON.stringify(seed, null, 2)}\n`, "utf8");
 
-  const ready = await runPrLifecycle({ repoRoot: cwd, command: "merge-ready", initiativeId: "greenfield-scaffold", runId: "pr-stacked-ready" }, { runner: fakeRunner([], { baseRefName: "task/task-phase3-sweep" }), dirtyFiles: async () => ["docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.json", "docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.md"] });
+  const ready = await runPrLifecycle({ repoRoot: cwd, command: "merge-ready", initiativeId: "greenfield-scaffold", runId: "pr-stacked-ready" }, { runner: fakeRunner([], { baseRefName: "task/task-phase3-sweep" }), dirtyFiles: async () => ["docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.json", "docs/initiatives/greenfield-scaffold/pr-runs/pr-stacked-ready.md", "docs/initiatives/greenfield-scaffold/afk-runs/", "docs/initiatives/greenfield-scaffold/worker-runs/"] });
   assert.equal(ready.status, "gate_passed");
   assert.equal(ready.lifecycle.mergeReady, true);
   assert.match(ready.evidence.join("\n"), /merge-ready accepted zero-check stacked PR/);
