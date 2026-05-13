@@ -1,0 +1,91 @@
+{
+  "status": "PASS",
+  "failedChecks": 0,
+  "checks": [
+    {
+      "name": "1. core workflow extensions compile together",
+      "status": "PASS",
+      "detail": "safe-bash, till-done, queue-runner, Graphify orchestration, and the operator-facing operator/status/leases/queue-session/scheduled-workflow/worktree/integrate/worker-session/PR-gate/sync-main helper scripts compile together with their routing/team/packet/handoff/recovery dependencies in an isolated runtime package."
+    },
+    {
+      "name": "2. core workflow integration tests",
+      "status": "PASS",
+      "detail": "integration tests passed for docs-only completion, implementation pass, validation fail visibility, recovery finalization, and safe-bash/provider recovery block handling."
+    },
+    {
+      "name": "3. operator status integration surface",
+      "status": "PASS",
+      "detail": "operator status integration tests passed for readable text output and stable JSON output from the lightweight CLI status surface."
+    },
+    {
+      "name": "4. operator leases integration surface",
+      "status": "PASS",
+      "detail": "operator lease integration tests passed for text/JSON list output and stale-only cleanup that preserves active leases."
+    },
+    {
+      "name": "4a. unified operator control-plane integration surface",
+      "status": "PASS",
+      "detail": "operator control-plane integration tests passed for help, delegated status/queue-session/worktree/leases/worker-session behavior, unknown-subcommand failure, and delegated non-zero exit handling."
+    },
+    {
+      "name": "4b. slice lifecycle integration surface",
+      "status": "PASS",
+      "detail": "slice lifecycle integration tests passed for create_ready, missing GREEN/g-check blockers, merge_ready, and explicit merged/local-main-synced evidence."
+    },
+    {
+      "name": "4c. merge helper integration surface",
+      "status": "PASS",
+      "detail": "merge helper integration tests passed for lifecycle readiness blockers, ready checks, dirty apply blocking, successful apply, and explicit-only sync-main behavior."
+    },
+    {
+      "name": "4. queue session integration surface",
+      "status": "PASS",
+      "detail": "queue session integration tests passed for waiting-point starts, finalize-then-start chaining with invalid-queue skipping, blocked+failed visibility, paused-queue boundaries, recovery-action triage visibility, scheduled-workflow job provenance through sessions, and explicit max-step/max-runtime stopping."
+    },
+    {
+      "name": "5. worktree helper integration surface",
+      "status": "PASS",
+      "detail": "worktree helper integration tests passed for predictable branch/path naming, bounded worktree creation, review-prep inspection, and conservative cleanup blocking."
+    },
+    {
+      "name": "6. worker session integration surface",
+      "status": "PASS",
+      "detail": "worker session integration tests passed for start/status/release, lease metadata, clean cleanup, and dirty-cleanup refusal."
+    },
+    {
+      "name": "6. scheduled workflow integration surface",
+      "status": "PASS",
+      "detail": "scheduled workflow integration tests passed for due/disabled status inspection, explicit materialization, duplicate blocking, and unsupported schedule rejection."
+    },
+    {
+      "name": "7. Graphify adapter fake-binary integration",
+      "status": "PASS",
+      "detail": "Graphify adapter integration test passed with a fake binary, managed artifact output, exclusion arguments, and metadata proof."
+    },
+    {
+      "name": "8. integrate-worktree helper integration surface",
+      "status": "PASS",
+      "detail": "integrate-worktree helper integration tests passed for fast-forward local main integration, tracked-dirt blocking, and allowed generated validation artifacts."
+    },
+    {
+      "name": "8. PR gate helper integration surface",
+      "status": "PASS",
+      "detail": "PR gate helper integration tests passed for no-watch polling, 180-second intervals, terminal pass/fail handling, and comment/review triage."
+    },
+    {
+      "name": "9. sync-main helper integration surface",
+      "status": "PASS",
+      "detail": "sync-main helper integration tests passed for fast-forward-only local main sync, ignored runtime bookkeeping preservation, and non-bookkeeping tracked-dirt blocking."
+    },
+    {
+      "name": "9a. product pipeline E2E pilot validator",
+      "status": "PASS",
+      "detail": "product pipeline E2E pilot passed for checkout-mini success path, HITL visibility, blocked paths, idempotency, reports, and fake-boundary safety."
+    },
+    {
+      "name": "10. operator/control-plane/queue-session/integrate/worker-session/schedule/worktree/PR-gate/sync-main package/docs wiring",
+      "status": "PASS",
+      "detail": "operator wrapper, status, leases, queue-session, integrate, worker-session, scheduled workflow, worktree, PR gate, sync-main, and slice lifecycle helper wiring is present in package scripts, README, and validation/operator docs."
+    }
+  ]
+}

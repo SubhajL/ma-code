@@ -50,6 +50,7 @@ required_files=(
   ".pi/agent/extensions/orchestrator-dry-run.ts"
   ".pi/agent/extensions/orchestrator-apply-policy.ts"
   ".pi/agent/extensions/orchestrator-run.ts"
+  ".pi/agent/extensions/orchestrator-continue.ts"
   ".pi/agent/extensions/orchestrator-evidence.ts"
   ".pi/agent/state/schemas/orchestrator-evidence.schema.json"
   ".pi/agent/docs/master_orchestrator.md"
@@ -58,16 +59,19 @@ required_files=(
   "scripts/validate-orchestrator-dry-run.sh"
   "scripts/validate-orchestrator-apply.sh"
   "scripts/validate-orchestrator-run.sh"
+  "scripts/validate-orchestrator-continue.sh"
   "scripts/validate-orchestrator-evidence.sh"
   "tests/extension-units/orchestrator-classifier.test.ts"
   "tests/extension-units/orchestrator-dry-run.test.ts"
   "tests/extension-units/orchestrator-apply-policy.test.ts"
   "tests/extension-units/orchestrator-run.test.ts"
+  "tests/extension-units/orchestrator-continue.test.ts"
   "tests/extension-units/orchestrator-evidence.test.ts"
   "tests/integration/orchestrator-classifier.test.ts"
   "tests/integration/orchestrator-dry-run.test.ts"
   "tests/integration/orchestrator-apply.test.ts"
   "tests/integration/orchestrator-run.test.ts"
+  "tests/integration/orchestrator-continue.test.ts"
   "tests/integration/orchestrator-evidence.test.ts"
   "scripts/validate-afk-orchestration.sh"
   "tests/extension-units/afk-orchestration.test.ts"
@@ -1432,6 +1436,8 @@ assert "validate:orchestrator-apply" in package_json.get("scripts", {})
 assert "validate:orchestrator-apply" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-run" in package_json.get("scripts", {})
 assert "validate:orchestrator-run" in package_template_json.get("scripts", {})
+assert "validate:orchestrator-continue" in package_json.get("scripts", {})
+assert "validate:orchestrator-continue" in package_template_json.get("scripts", {})
 assert "validate:orchestrator-evidence" in package_json.get("scripts", {})
 assert "validate:orchestrator-evidence" in package_template_json.get("scripts", {})
 orchestrator_evidence_schema = json.loads((root / ".pi/agent/state/schemas/orchestrator-evidence.schema.json").read_text(encoding="utf-8"))
@@ -1441,6 +1447,7 @@ orchestrator_helper = (root / ".pi/agent/extensions/orchestrator-classifier.ts")
 orchestrator_dry_run_helper = (root / ".pi/agent/extensions/orchestrator-dry-run.ts").read_text(encoding="utf-8")
 orchestrator_apply_helper = (root / ".pi/agent/extensions/orchestrator-apply-policy.ts").read_text(encoding="utf-8")
 orchestrator_run_helper = (root / ".pi/agent/extensions/orchestrator-run.ts").read_text(encoding="utf-8")
+orchestrator_continue_helper = (root / ".pi/agent/extensions/orchestrator-continue.ts").read_text(encoding="utf-8")
 orchestrator_evidence_helper = (root / ".pi/agent/extensions/orchestrator-evidence.ts").read_text(encoding="utf-8")
 orchestrator_doc = (root / ".pi/agent/docs/master_orchestrator.md").read_text(encoding="utf-8")
 operator_cli = (root / "scripts/harness-operator.ts").read_text(encoding="utf-8")
@@ -1450,6 +1457,7 @@ assert "classify" in orchestrator_cli
 assert "dry-run" in orchestrator_cli
 assert "apply" in orchestrator_cli
 assert "run" in orchestrator_cli
+assert "continue" in orchestrator_cli
 assert "evidence" in orchestrator_cli
 assert "merge-check" in orchestrator_cli
 assert "merge-apply" in orchestrator_cli
@@ -1462,6 +1470,7 @@ assert "orchestrator-classifier.ts" in foundation_compile_validator
 assert "orchestrator-dry-run.ts" in foundation_compile_validator
 assert "orchestrator-apply-policy.ts" in foundation_compile_validator
 assert "orchestrator-run.ts" in foundation_compile_validator
+assert "orchestrator-continue.ts" in foundation_compile_validator
 assert "orchestrator-evidence.ts" in foundation_compile_validator
 assert "analyzeOrchestratorContext" in orchestrator_context_helper
 assert "greenfield_assumption" in orchestrator_context_helper
@@ -1472,6 +1481,9 @@ for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "
     assert forbidden not in orchestrator_helper
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "gh pr merge", "git merge"]:
     assert forbidden not in orchestrator_dry_run_helper
+assert "apply --queue-only" in orchestrator_continue_helper
+assert "worker_job" in orchestrator_continue_helper
+assert "max_slices" in orchestrator_continue_helper
 for forbidden in ["task_update", "run_next_queue_job", "generate_task_packet", "gh pr merge", "git merge", "harness:merge -- apply", "pr-lifecycle -- create", "worker-execute -- run"]:
     assert forbidden not in orchestrator_apply_helper
 for forbidden in ["task_update", "generate_task_packet", "gh pr merge", "git merge", "harness:merge -- apply"]:
