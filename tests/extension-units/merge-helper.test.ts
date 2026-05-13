@@ -88,6 +88,22 @@ test("check blocks when PR gate did not pass", () => {
   assert.match(result.blockers.join("\n"), /PR gate.*pass/i);
 });
 
+test("apply accepts zero-check stacked PRs and ignores runtime artifact dirt", () => {
+  const result = assessMergeReadiness({
+    policy: parseMergeReleasePolicy(DEFAULT_MERGE_RELEASE_POLICY),
+    mode: "apply",
+    method: "squash",
+    lifecycle: { currentStage: "submitted", target: { stage: "merge_ready", ready: false }, blockingGaps: ["pr_gate_clean requires PR gate clean/pass evidence."] },
+    prGate: { ...passingGate, finalStatus: "timeout", recommendedNextAction: "wait_and_rerun" },
+    pr: { ...readyPr, baseRefName: "task/task-phase3-sweep", reviewDecision: "", mergeStateStatus: "CLEAN" },
+    repo: { ...cleanRepo, dirtyFiles: ["docs/initiatives/greenfield-scaffold/afk-runs/", "docs/initiatives/greenfield-scaffold/pr-runs/"] },
+    syncMainRequested: false,
+  });
+
+  assert.equal(result.ready, true);
+  assert.equal(result.recommendedNextAction, "apply_merge");
+});
+
 test("apply blocks draft PRs, requested changes, blocking comments, and dirty local state", () => {
   const result = assessMergeReadiness({
     policy: parseMergeReleasePolicy(DEFAULT_MERGE_RELEASE_POLICY),
