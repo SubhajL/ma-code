@@ -110,3 +110,51 @@
 - Follow-ups / known gaps:
   - I validated the previously blocked worker artifact with a dry-run; I did not create or update another live GitHub PR as part of this fix.
   - The already-open manual PR #153 may still need separate merge-state cleanup because it was created before this runtime fix.
+
+## 2026-05-13T22:07:10Z
+- Goal: clean up the already-open stacked PR #153, then land the bounded recovery fixes on `origin/main` and local `main` without pulling sweep-only docs/log noise into mainline.
+- Discovery path:
+  - Verified current sweep, worker, and root-main state with `git status -sb`, `git log main..HEAD`, and `gh pr view 153`.
+  - Confirmed PR #153 was dirty only as a stacked PR maintenance problem; the functional fixes themselves were already validated locally.
+  - Chose a bounded integration path: merge the sweep base into the worker branch to clean PR #153, then create a fresh main-target landing branch containing only the runtime/test files from the merged sweep head.
+- Files changed and why:
+  - `logs/coding/2026-05-13_phase3-initiative-sweep.md` — recorded stacked-PR repair, main landing evidence, and merge results.
+  - Main-target landing branch `task/task-1778681040000-pr153-main-land` intentionally changed only runtime/test files:
+    - `.pi/agent/extensions/pr-lifecycle.ts`
+    - `.pi/agent/extensions/queue-runner.ts`
+    - `.pi/agent/extensions/worker-execution.ts`
+    - `tests/extension-units/pr-lifecycle.test.ts`
+    - `tests/extension-units/queue-runner.test.ts`
+    - `tests/extension-units/worker-execution.test.ts`
+  - I deliberately excluded sweep-only planning/coding docs from the main-target landing branch.
+- Tests added or changed:
+  - No new tests beyond the earlier PR-lifecycle regression tests; this unit focused on branch repair, bounded landing, and merge proof.
+- Exact RED command and key failure reason:
+  - No new RED run was practical for the landing-only portion.
+  - Reason: the implementation RED/GREEN loop had already been completed on the sweep branch; this unit was a bounded branch-integration and merge exercise rather than a new behavior change.
+- Exact GREEN command:
+  - `for i in 1 2 3; do node --import tsx --test tests/extension-units/queue-runner.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/pr-lifecycle.test.ts; done`
+- Other validation commands run:
+  - `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs node --import tsx --test tests/integration/pr-lifecycle.test.ts`
+  - `git diff --check`
+  - `gh pr checks 154`
+  - `git rev-list --left-right --count origin/main...main`
+- Wiring verification evidence:
+  - PR #153 was repaired by merging the updated sweep base into `worker/worker-20260513t132242z-issue-004`, resolving the only conflict in the sweep coding log, and pushing the worker branch; `gh pr view 153` then reported `mergeStateStatus: CLEAN` before merge.
+  - PR #153 merged successfully at `2026-05-13T22:02:30Z` into `task/task-1778649000000-phase3-initiative-sweep`.
+  - Fresh main-target PR #154 (`fix(harness): salvage mixed-domain PR handoff and recovery`) carried only the six runtime/test files and merged to `main` at `2026-05-13T22:06:38Z`.
+  - Root local `main` was then fast-forwarded; `HEAD == origin/main == c9798754a471205c3b19c3f487d17fb09e6b9acd` and `git rev-list --left-right --count origin/main...main` returned `0 0`.
+- Behavior changes and risk notes:
+  - The previously blocked stacked PR #153 is now merged.
+  - The recovery + PR-lifecycle fixes are now landed on `origin/main` and local `main` via PR #154.
+  - The worker and sweep worktrees remain available for initiative follow-up, but the mainline code path no longer depends on the temporary manual PR workaround.
+- Skeptical self-review / QCHECK:
+  - Reviewed that the main-target landing branch excluded sweep-only docs/log files and contained only runtime/test files needed for production behavior.
+  - Reviewed that PR #154 waited for GitHub checks to reach pass before merge.
+  - Reviewed that root `main` was synced only after merge completion.
+- g-check handoff artifact:
+  - Findings: none at required-fix severity after bounded landing review.
+  - Review verdict: `no_required_fixes`.
+  - Required tests: satisfied by the 3x targeted unit scope, CLI integration test, GitHub PR check pass on #154, and root-main sync proof.
+- Follow-ups / known gaps:
+  - `worker/worker-20260513t132242z-issue-004` and `task/task-1778681040000-pr153-main-land` remain as non-deleted branches/worktrees for auditability; prune only if you want cleanup.
