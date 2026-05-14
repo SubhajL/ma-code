@@ -12,10 +12,11 @@ if [[ $# -gt 0 ]]; then
   exit 2
 fi
 
+ISSUE_SUMMARY_REL="docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json"
 COMMANDS=(
-  "npm run test:integration -- observability"
-  "npm run test:e2e -- greenfield-smoke"
-  "npm run validate:greenfield-docs"
+  "npm run validate:greenfield-scaffold:unit"
+  "npm run validate:greenfield-scaffold:integration"
+  "npm run validate:greenfield-scaffold:smoke"
 )
 
 has_npm_script() {
@@ -46,9 +47,14 @@ validate_contract() {
   return 1
 }
 
+validate_phase_a_queue_readiness() {
+  node --input-type=module -e 'import { readFileSync } from "node:fs"; const summary = JSON.parse(readFileSync(process.argv[1], "utf8")); const expected = process.argv[2]; if (summary.queueReadiness !== expected) { console.error(`Expected ${process.argv[1]} queueReadiness=${expected} but found ${summary.queueReadiness ?? "<missing>"}`); process.exit(1); }' "$ROOT_DIR/$ISSUE_SUMMARY_REL" "not_ready"
+}
+
 for command in "${COMMANDS[@]}"; do
   validate_contract "$command"
 done
+validate_phase_a_queue_readiness
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   printf 'greenfield-scaffold validation plan\n'

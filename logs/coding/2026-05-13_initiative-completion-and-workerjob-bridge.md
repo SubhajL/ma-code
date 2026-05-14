@@ -790,3 +790,107 @@ Review Verdict: no_required_fixes
 - Risks / follow-ups:
   - Issue-016 itself still needs a rerun on the updated branch to convert the blocked worker into a landed slice.
   - `issue-017` remains the next explicit HITL boundary after `issue-016` completes.
+
+## 2026-05-14T09:17:46Z
+- Goal: bring issue-016 validation contract in line with the bounded slice acceptance by exposing deterministic unit, integration, and smoke commands in order while keeping Phase A `queueReadiness` enforcement cheap.
+- Planning readiness / task context:
+  - Active planning log from `logs/CURRENT.md`: `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct implementation exemption: the user task packet explicitly requested bounded issue-016 implementation with acceptance criteria, allowed paths, and post-change validation.
+- Discovery path:
+  - Re-read `AGENTS.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json`, `package.json`, `scripts/validate-greenfield-scaffold.sh`, `docs/initiatives/greenfield-scaffold/validation.md`, and the existing `scripts/run-{api,web,integration,e2e}-tests.mjs` wrappers.
+  - Used direct local inspection only; no provider-backed discovery or live validation was needed for this package/script/docs slice.
+- Files changed and why:
+  - `package.json` — added the public `validate:greenfield-scaffold:{unit,integration,smoke}` entrypoints so the bounded validator can reference stable developer commands instead of inline ad hoc test invocations.
+  - `scripts/validate-greenfield-scaffold.sh` — replaced the old integration/smoke/docs plan with deterministic unit/integration/smoke ordering and added a cheap guard that fails if `issue-016.summary.json` no longer reports `queueReadiness: "not_ready"`.
+  - `docs/initiatives/greenfield-scaffold/validation.md` — documented the new public commands, bounded order, and the intentional Phase A boundary that keeps docs validation separate for now.
+- Tests added or changed:
+  - none; the required `--dry-run` contract surface was the smallest tracer-bullet TDD check for this bounded slice.
+- Exact RED command and key failure reason:
+  - `bash -lc 'expected=$(cat <<"EOF"
+greenfield-scaffold validation plan
+- npm run validate:greenfield-scaffold:unit
+- npm run validate:greenfield-scaffold:integration
+- npm run validate:greenfield-scaffold:smoke
+EOF
+)
+actual=$(./scripts/validate-greenfield-scaffold.sh --dry-run)
+if [ "$actual" != "$expected" ]; then
+  echo "RED: dry-run plan mismatch" >&2
+  diff -u <(printf "%s\n" "$expected") <(printf "%s\n" "$actual")
+  exit 1
+fi
+'`
+  - Failed for the intended reason: the dry-run plan still emitted direct `test:integration`, `test:e2e`, and `validate:greenfield-docs` commands, so the required unit/integration/smoke contract and bounded order were missing.
+- Exact GREEN command:
+  - `bash -lc 'expected=$(cat <<"EOF"
+greenfield-scaffold validation plan
+- npm run validate:greenfield-scaffold:unit
+- npm run validate:greenfield-scaffold:integration
+- npm run validate:greenfield-scaffold:smoke
+EOF
+)
+actual=$(./scripts/validate-greenfield-scaffold.sh --dry-run)
+if [ "$actual" != "$expected" ]; then
+  echo "plan mismatch" >&2
+  diff -u <(printf "%s\n" "$expected") <(printf "%s\n" "$actual")
+  exit 1
+fi
+printf "%s\n" "$actual"
+'`
+- Other validation commands run:
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `npm run validate:greenfield-scaffold -- --dry-run`
+  - `for i in 1 2 3; do ./scripts/validate-greenfield-scaffold.sh --dry-run; done`
+  - `git diff --check -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+- Wiring verification evidence:
+  - `package.json` now exports the public developer commands `validate:greenfield-scaffold:unit`, `validate:greenfield-scaffold:integration`, and `validate:greenfield-scaffold:smoke`.
+  - `scripts/validate-greenfield-scaffold.sh` resolves those exact package scripts in order and exits early if `docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json` no longer reports `queueReadiness: "not_ready"`.
+  - `docs/initiatives/greenfield-scaffold/validation.md` now matches the package/script wiring and documents that docs validation remains separate until the later docs/readiness slice.
+- Behavior changes and risk notes:
+  - Dry-run now proves the bounded unit -> integration -> smoke order instead of the earlier integration -> smoke -> docs plan.
+  - The validator now enforces the Phase A materialization guard locally and cheaply.
+  - I intentionally did not run the full validation bundle in this slice because the user-scoped proof target was `--dry-run` and the change was limited to command-contract wiring.
+- Follow-ups or known gaps:
+  - `validate:greenfield-docs` remains separate and can be folded into a broader readiness bundle after the later docs/readiness slices land.
+  - The new package scripts were contract-validated through dry-run/public-interface invocation, but the full underlying test bundles were not executed in this bounded issue-016 pass.
+
+## Review (2026-05-14T09:17:46Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t091318z-issue-016`
+- Branch: `worker/worker-20260514t091318z-issue-016`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+  - `git diff --name-only -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+  - `git diff -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `npm run validate:greenfield-scaffold -- --dry-run`
+  - `git diff --check -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumed issue-016 should validate only the bounded unit/integration/smoke developer surface because the issue acceptance does not include docs packaging and issue-018 owns the later documentation package.
+- Assumed dry-run plus package-script invocation is sufficient evidence for this package/script/docs contract slice because the requested proof target was `./scripts/validate-greenfield-scaffold.sh --dry-run`.
+
+### Recommended Tests / Validation
+- `./scripts/validate-greenfield-scaffold.sh --dry-run`
+- `npm run validate:greenfield-scaffold -- --dry-run`
+- If later broader proof is needed after additional slices land, run `./scripts/validate-greenfield-scaffold.sh` once.
+
+### Rollout Notes
+- This change is limited to package-script wiring, a shell validator, and initiative docs under the allowed paths.
+- Queue readiness remains `not_ready`; this slice does not create queue-ready jobs or alter worker/runtime orchestration.
+Review Verdict: no_required_fixes
