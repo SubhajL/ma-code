@@ -342,3 +342,37 @@ Review Verdict: no_required_fixes
 - Risks / follow-ups:
   - PR #157 still needs CI to rerun and merge before `origin/main` and local `main` can be synced.
   - Greenfield continuation remains blocked on the mainline land completing first, per the user-approved sequence.
+## 2026-05-14T07:02:16Z
+- Goal: unblock greenfield continuation from the first worker preflight stop by adding the missing validation wrapper scripts required by the initiative contracts.
+- Active task + acceptance criteria:
+  - Keep `origin/main` and local `main` synced on the landed mixed-domain fixes.
+  - Make greenfield worker preflight accept the queued validation contracts instead of stopping on missing npm script wrappers.
+  - Revalidate locally, then rerun bounded greenfield continuation toward the `issue-017` HITL gate.
+- Discovery / blocker evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 10 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - The first selected greenfield worker (`issue-004`) stopped before coding with:
+    - `Validation contract missing npm script "test:integration" for command: npm run test:integration -- health-handshake`
+  - Initiative validation contracts also reference additional wrapper commands that were absent on this branch:
+    - `npm run test:e2e -- greenfield-smoke`
+    - `npm run validate:greenfield-docs`
+- Files changed and why:
+  - `package.json` — added the missing `test:integration`, `test:e2e`, and `validate:greenfield-docs` scripts.
+  - `scripts/run-api-tests.mjs` — added greenfield aliases for `migrations` and `contracts`.
+  - `scripts/run-web-tests.mjs` — added greenfield aliases for `api-client` and `app-shell`.
+  - `scripts/run-integration-tests.mjs` — added the new integration wrapper for greenfield contract aliases.
+  - `scripts/run-e2e-tests.mjs` — added the new e2e wrapper for `greenfield-smoke`.
+  - `scripts/validate-greenfield-docs.mjs` — added a bounded doc-existence validator for the greenfield docs slice contract.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the blocked continuation evidence and wrapper fix.
+- GREEN evidence:
+  - `npm --silent run test:api -- migrations`
+  - `npm --silent run test:web -- components`
+  - `npm --silent run test:integration -- tests/integration/slice-contracts.test.ts`
+  - `npm --silent run test:e2e -- tests/integration/sync-main.test.ts`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts`
+  - `git diff --check`
+- Wiring verification:
+  - Greenfield worker validation preflight can now find the required wrapper scripts instead of stopping at the package.json contract boundary.
+  - The wrappers preserve the existing alias-driven test entrypoint pattern already used for `test:web` and `test:api`.
+- Risks / follow-ups:
+  - The actual greenfield continue rerun still needs live execution proof after these wrapper changes are committed.
+  - Reaching `issue-018` still depends on the explicit HITL approval gate at `issue-017`.

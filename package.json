@@ -121,7 +121,10 @@
     "test:orchestrator-context": "node --import tsx --test tests/extension-units/orchestrator-context.test.ts tests/integration/orchestrator-context.test.ts",
     "validate:orchestrator-context": "bash scripts/validate-orchestrator-context.sh",
     "test:web": "node scripts/run-web-tests.mjs",
-    "test:api": "node scripts/run-api-tests.mjs"
+    "test:api": "node scripts/run-api-tests.mjs",
+    "test:integration": "node scripts/run-integration-tests.mjs",
+    "test:e2e": "node scripts/run-e2e-tests.mjs",
+    "validate:greenfield-docs": "node scripts/validate-greenfield-docs.mjs"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",
