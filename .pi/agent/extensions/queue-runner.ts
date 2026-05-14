@@ -2443,13 +2443,14 @@ async function runQueueStepCore(cwd: string, input: { owner?: string; allowIniti
       if (linkedTask.status === "done") {
         const parentCompletion = evaluateParentCoordinatorCompletion(coordinatedQueueState, taskState, normalizedJob);
         if (!parentCompletion.pass) {
+          const reason = (parentCompletion as { pass: false; reason: string }).reason;
           const stopped = stopLinkedTaskAndQueueJobInState(
             coordinatedQueueState,
             taskState,
             normalizedJob.id,
             linkedTask.id,
             "blocked",
-            parentCompletion.reason,
+            reason,
           );
           return {
             type: "stopped-active-job" as const,
@@ -2457,7 +2458,7 @@ async function runQueueStepCore(cwd: string, input: { owner?: string; allowIniti
             finalizedJob: stopped.job,
             linkedTask: stopped.task,
             queuePaused: coordinatedQueueState.paused,
-            stopReason: parentCompletion.reason,
+            stopReason: reason,
           };
         }
       }

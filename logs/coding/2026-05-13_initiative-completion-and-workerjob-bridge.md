@@ -313,3 +313,32 @@ Review Verdict: no_required_fixes
 - Follow-ups / known gaps:
   - `mixed-domain-harness-optimization` is now effectively drained in the execution branch/workflow.
   - `greenfield-scaffold` still remains for a separate bounded continuation pass.
+## 2026-05-14T06:25:56Z
+- Goal: unblock PR #157 landing by fixing the CI-only foundation compile/type failures discovered after opening the bounded mainline land PR.
+- Active task + acceptance criteria:
+  - Land `task/task-1778681880000-yolo-afk-drain` to `origin/main`, then sync local `main`.
+  - Keep the fix minimal and bounded to the CI/type breakage.
+  - Reproduce RED locally, patch the branch, and restore GREEN on the exact failing validators before re-attempting land.
+- Files changed and why:
+  - `.pi/agent/extensions/afk-orchestration.ts` — widened the `allowedPaths.flatMap` callback typing and cast validated access literals to `SlicePathAccessProof["access"]` so the foundation compile no longer infers the callback as read-only-only proof objects.
+  - `.pi/agent/extensions/queue-runner.ts` — captured the blocked parent-coordinator completion reason in a narrowed local variable so the compile target accepts the existing blocked-stop behavior.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the CI regression/fix evidence for the mainline land attempt.
+- RED evidence:
+  - Remote CI on PR #157 failed:
+    - `Foundation Extension Compile` with `src/afk-orchestration.ts(493,37): error TS2345 ... access type inferred too narrowly`
+    - `Foundation Extension Compile` with `src/queue-runner.ts(2452,30): error TS2339: Property 'reason' does not exist ...`
+    - `Routing Validators` failed because `./scripts/validate-queue-runner.sh --skip-live` depends on the same compile surface.
+  - Local reproduction:
+    - `bash scripts/check-foundation-extension-compile.sh`
+    - `./scripts/validate-queue-runner.sh --skip-live`
+- GREEN evidence:
+  - `bash scripts/check-foundation-extension-compile.sh`
+  - `./scripts/validate-queue-runner.sh --skip-live`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/queue-runner.test.ts`
+  - `git diff --check`
+- Wiring verification:
+  - The fix does not change queue-runner or AFK orchestration runtime decisions; it only makes the validated access proof typing explicit for the compile target and reuses the already-blocked parent coordinator reason as a narrowed local.
+  - The validator that failed in CI now passes locally on the same branch.
+- Risks / follow-ups:
+  - PR #157 still needs CI to rerun and merge before `origin/main` and local `main` can be synced.
+  - Greenfield continuation remains blocked on the mainline land completing first, per the user-approved sequence.

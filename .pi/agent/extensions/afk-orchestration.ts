@@ -9,7 +9,11 @@ import {
 } from "./queue-runner.ts";
 import { buildAfkWorkerExecutionPlan } from "./afk-worker-execution-plan.ts";
 import { VALID_DOMAINS, deriveDomainOwnershipForDomains } from "./domain-ownership.ts";
-import { decideSliceParallelism, type SliceDependencySummary } from "./slice-dependency-decision.ts";
+import {
+  decideSliceParallelism,
+  type SliceDependencySummary,
+  type SlicePathAccessProof,
+} from "./slice-dependency-decision.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -490,7 +494,7 @@ function usesScopeOnlyAllowedPathAnalysis(issue: AfkIssueArtifact): boolean {
 function allowedPathsForParallelAnalysis(issue: AfkIssueArtifact): SliceDependencySummary["allowedPaths"] {
   const scopeOnly = usesScopeOnlyAllowedPathAnalysis(issue);
   if (!Array.isArray(issue.allowedPaths)) return [];
-  return issue.allowedPaths.flatMap((entry) => {
+  return issue.allowedPaths.flatMap((entry): Array<string | SlicePathAccessProof> => {
     if (typeof entry === "string" && entry.trim()) {
       const path = entry.trim().replace(/^\.\//, "").replace(/\/$/, "");
       return path ? [scopeOnly ? { path, access: "read_only", mutating: false } : path] : [];
@@ -501,7 +505,7 @@ function allowedPathsForParallelAnalysis(issue: AfkIssueArtifact): SliceDependen
     if (scopeOnly) return [{ path, access: "read_only", mutating: false }];
     const access = typeof entry.access === "string" && entry.access.trim() ? entry.access.trim() : undefined;
     const mutating = typeof entry.mutating === "boolean" ? entry.mutating : undefined;
-    return [{ path, ...(access ? { access } : {}), ...(mutating === undefined ? {} : { mutating }) }];
+    return [{ path, ...(access ? { access: access as SlicePathAccessProof["access"] } : {}), ...(mutating === undefined ? {} : { mutating }) }];
   });
 }
 
