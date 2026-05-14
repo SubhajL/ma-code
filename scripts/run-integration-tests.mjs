@@ -3,15 +3,14 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const TEST_DIR = "tests/api";
+const TEST_DIR = "tests/integration";
 const aliases = new Map([
-  ["schema", "tests/api/schema.test.ts"],
-  ["migrations", "tests/api/migrations.test.ts"],
-  ["contracts", "tests/api/contracts.test.ts"],
-  ["seeds", "tests/fixtures/greenfield/seeds.test.ts"],
+  ["auth-boundary", "tests/integration/auth-boundary.test.ts"],
+  ["health-handshake", "tests/integration/health-handshake.test.ts"],
+  ["observability", "tests/integration/observability.test.ts"],
 ]);
 
-function allApiTests() {
+function allIntegrationTests() {
   try {
     return readdirSync(TEST_DIR)
       .map((entry) => join(TEST_DIR, entry))
@@ -23,10 +22,12 @@ function allApiTests() {
 }
 
 const requested = process.argv.slice(2).filter((arg) => arg !== "--");
-const selected = requested.length === 0 ? allApiTests() : requested.map((name) => aliases.get(name) ?? name);
+const selected = requested.length === 0
+  ? allIntegrationTests()
+  : requested.map((name) => aliases.get(name) ?? name);
 
 if (selected.length === 0) {
-  console.error(`No API tests found under ${TEST_DIR}.`);
+  console.error(`No integration tests found under ${TEST_DIR}.`);
   process.exit(1);
 }
 

@@ -3,15 +3,12 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const TEST_DIR = "tests/api";
+const TEST_DIR = "tests/e2e";
 const aliases = new Map([
-  ["schema", "tests/api/schema.test.ts"],
-  ["migrations", "tests/api/migrations.test.ts"],
-  ["contracts", "tests/api/contracts.test.ts"],
-  ["seeds", "tests/fixtures/greenfield/seeds.test.ts"],
+  ["greenfield-smoke", "tests/e2e/greenfield-smoke.test.ts"],
 ]);
 
-function allApiTests() {
+function allE2eTests() {
   try {
     return readdirSync(TEST_DIR)
       .map((entry) => join(TEST_DIR, entry))
@@ -23,10 +20,12 @@ function allApiTests() {
 }
 
 const requested = process.argv.slice(2).filter((arg) => arg !== "--");
-const selected = requested.length === 0 ? allApiTests() : requested.map((name) => aliases.get(name) ?? name);
+const selected = requested.length === 0
+  ? allE2eTests()
+  : requested.map((name) => aliases.get(name) ?? name);
 
 if (selected.length === 0) {
-  console.error(`No API tests found under ${TEST_DIR}.`);
+  console.error(`No e2e tests found under ${TEST_DIR}.`);
   process.exit(1);
 }
 

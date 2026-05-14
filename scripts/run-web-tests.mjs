@@ -5,6 +5,8 @@ import { join } from "node:path";
 
 const TEST_DIR = "tests/web";
 const aliases = new Map([
+  ["api-client", "tests/web/api-client.test.ts"],
+  ["app-shell", "tests/web/app-shell.test.tsx"],
   ["components", "tests/web/components.test.tsx"],
   ["design-tokens", "tests/web/design-tokens.test.ts"],
 ]);

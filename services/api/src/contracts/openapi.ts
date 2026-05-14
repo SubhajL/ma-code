@@ -1,0 +1,307 @@
+import { greenfieldPersistencePlaceholder } from "../db/schema.ts";
+import { createHealthRoute } from "../routes/health.ts";
+
+export interface ApiContractWorkerImplementationDependency {
+  issueId: "issue-008" | "issue-012";
+  reason: string;
+}
+
+const healthRoute = createHealthRoute();
+
+const workerImplementationDependencies: readonly ApiContractWorkerImplementationDependency[] = [
+  {
+    issueId: "issue-008",
+    reason:
+      "The auth placeholder remains a separate worker task; this Phase A artifact only documents the unauthenticated contract boundary.",
+  },
+  {
+    issueId: "issue-012",
+    reason:
+      "The frontend API client scaffold should consume this contract artifact instead of re-declaring endpoint and schema shapes.",
+  },
+];
+
+export const greenfieldOpenApiContract = {
+  openapi: "3.1.0",
+  info: {
+    title: "Greenfield Scaffold API Contract",
+    version: "0.1.0-phase-a",
+    description:
+      "Bounded Phase A API contract artifact for the greenfield scaffold initiative. It documents the implemented health route plus planned auth and scaffold resource placeholders without creating queue-ready jobs.",
+  },
+  servers: [
+    {
+      url: "http://localhost:3000",
+      description: "Local scaffold server placeholder",
+    },
+  ],
+  tags: [
+    {
+      name: "health",
+      description: "Bounded backend health surface already wired in the scaffold server entrypoint.",
+    },
+    {
+      name: "auth",
+      description: "Authentication placeholder boundary documented ahead of the dedicated worker implementation.",
+    },
+    {
+      name: "scaffold",
+      description: "Phase A scaffold resource placeholders backed by the persistence schema placeholder.",
+    },
+  ],
+  "x-greenfield-scaffold": {
+    initiativeId: "greenfield-scaffold",
+    issueId: "issue-011",
+    queueReadiness: "not_ready",
+    phase: "phase_a_materialized",
+    sourceDependencies: ["issue-004", "issue-009"],
+    documentedResourceKinds: greenfieldPersistencePlaceholder.supportedRecordKinds,
+    schemaPath: greenfieldPersistencePlaceholder.schemaPath,
+    workerImplementationDependencies,
+  },
+  paths: {
+    [healthRoute.path]: {
+      get: {
+        tags: ["health"],
+        operationId: "getHealth",
+        summary: "Health check",
+        description: "Documents the health endpoint already exposed by the backend scaffold.",
+        "x-scaffoldStatus": "implemented",
+        responses: {
+          "200": {
+            description: "Service health payload.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/HealthPayload",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/auth/session": {
+      get: {
+        tags: ["auth"],
+        operationId: "getAuthSessionPlaceholder",
+        summary: "Authentication session placeholder",
+        description:
+          "Documents the deterministic unauthenticated auth boundary planned for the greenfield scaffold. Runtime implementation stays deferred to the dedicated worker task.",
+        "x-scaffoldStatus": "planned_placeholder",
+        responses: {
+          "200": {
+            description: "Deterministic unauthenticated placeholder payload once the auth boundary worker lands.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/AuthSessionPlaceholder",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/users": {
+      get: {
+        tags: ["scaffold"],
+        operationId: "listUsers",
+        summary: "List scaffold users",
+        description:
+          "Documents the planned user resource collection shape sourced from the persistence placeholder schema.",
+        "x-scaffoldStatus": "planned_resource",
+        responses: {
+          "200": {
+            description: "User collection shape once a queue-ready implementation exists.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/UserRecord",
+                  },
+                },
+              },
+            },
+          },
+          "501": {
+            description: "Phase A keeps this scaffold resource documented but not implemented.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorEnvelope",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/projects": {
+      get: {
+        tags: ["scaffold"],
+        operationId: "listProjects",
+        summary: "List scaffold projects",
+        description:
+          "Documents the planned project resource collection shape sourced from the persistence placeholder schema.",
+        "x-scaffoldStatus": "planned_resource",
+        responses: {
+          "200": {
+            description: "Project collection shape once a queue-ready implementation exists.",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: {
+                    $ref: "#/components/schemas/ProjectRecord",
+                  },
+                },
+              },
+            },
+          },
+          "501": {
+            description: "Phase A keeps this scaffold resource documented but not implemented.",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorEnvelope",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+  components: {
+    securitySchemes: {
+      sessionCookie: {
+        type: "apiKey",
+        in: "cookie",
+        name: "greenfield_session",
+        description:
+          "Placeholder cookie boundary for the scaffold auth session. Phase A deliberately keeps secrets and real auth configuration out of source.",
+      },
+    },
+    schemas: {
+      HealthPayload: {
+        title: "HealthPayload",
+        type: "object",
+        description: "Payload returned by the implemented scaffold health endpoint.",
+        required: ["ok", "service"],
+        properties: {
+          ok: {
+            type: "boolean",
+            const: true,
+          },
+          service: {
+            type: "string",
+            const: "greenfield-api",
+          },
+        },
+        example: healthRoute.handle().body,
+      },
+      AuthSessionPlaceholder: {
+        title: "AuthSessionPlaceholder",
+        type: "object",
+        description: "Deterministic unauthenticated session payload documented ahead of auth implementation.",
+        required: ["authenticated", "actor"],
+        properties: {
+          authenticated: {
+            type: "boolean",
+            const: false,
+          },
+          actor: {
+            type: "null",
+          },
+        },
+        example: {
+          authenticated: false,
+          actor: null,
+        },
+      },
+      UserRecord: {
+        title: "UserRecord",
+        type: "object",
+        description: "Phase A scaffold user resource shape sourced from the persistence placeholder schema.",
+        "x-schemaPath": greenfieldPersistencePlaceholder.schemaPath,
+        required: ["kind", "id", "email", "displayName", "createdAt"],
+        properties: {
+          kind: {
+            type: "string",
+            const: "user",
+          },
+          id: {
+            type: "string",
+          },
+          email: {
+            type: "string",
+            format: "email",
+          },
+          displayName: {
+            type: "string",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+          },
+        },
+      },
+      ProjectRecord: {
+        title: "ProjectRecord",
+        type: "object",
+        description: "Phase A scaffold project resource shape sourced from the persistence placeholder schema.",
+        "x-schemaPath": greenfieldPersistencePlaceholder.schemaPath,
+        required: ["kind", "id", "ownerUserId", "slug", "name", "createdAt"],
+        properties: {
+          kind: {
+            type: "string",
+            const: "project",
+          },
+          id: {
+            type: "string",
+          },
+          ownerUserId: {
+            type: "string",
+          },
+          slug: {
+            type: "string",
+          },
+          name: {
+            type: "string",
+          },
+          createdAt: {
+            type: "string",
+            format: "date-time",
+          },
+        },
+      },
+      ErrorEnvelope: {
+        title: "ErrorEnvelope",
+        type: "object",
+        description: "Deterministic placeholder error payload for documented-only scaffold resources.",
+        required: ["error", "message"],
+        properties: {
+          error: {
+            type: "string",
+            const: "not_implemented",
+          },
+          message: {
+            type: "string",
+          },
+        },
+        example: {
+          error: "not_implemented",
+          message: "Phase A documents this scaffold resource without enabling queue-ready execution.",
+        },
+      },
+    },
+  },
+} as const;
+
+export type GreenfieldOpenApiContract = typeof greenfieldOpenApiContract;
+
+export function stringifyGreenfieldOpenApiContract(): string {
+  return `${JSON.stringify(greenfieldOpenApiContract, null, 2)}\n`;
+}

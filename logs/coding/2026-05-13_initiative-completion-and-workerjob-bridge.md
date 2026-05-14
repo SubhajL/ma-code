@@ -342,3 +342,555 @@ Review Verdict: no_required_fixes
 - Risks / follow-ups:
   - PR #157 still needs CI to rerun and merge before `origin/main` and local `main` can be synced.
   - Greenfield continuation remains blocked on the mainline land completing first, per the user-approved sequence.
+## 2026-05-14T07:02:16Z
+- Goal: unblock greenfield continuation from the first worker preflight stop by adding the missing validation wrapper scripts required by the initiative contracts.
+- Active task + acceptance criteria:
+  - Keep `origin/main` and local `main` synced on the landed mixed-domain fixes.
+  - Make greenfield worker preflight accept the queued validation contracts instead of stopping on missing npm script wrappers.
+  - Revalidate locally, then rerun bounded greenfield continuation toward the `issue-017` HITL gate.
+- Discovery / blocker evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 10 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - The first selected greenfield worker (`issue-004`) stopped before coding with:
+    - `Validation contract missing npm script "test:integration" for command: npm run test:integration -- health-handshake`
+  - Initiative validation contracts also reference additional wrapper commands that were absent on this branch:
+    - `npm run test:e2e -- greenfield-smoke`
+    - `npm run validate:greenfield-docs`
+- Files changed and why:
+  - `package.json` — added the missing `test:integration`, `test:e2e`, and `validate:greenfield-docs` scripts.
+  - `scripts/run-api-tests.mjs` — added greenfield aliases for `migrations` and `contracts`.
+  - `scripts/run-web-tests.mjs` — added greenfield aliases for `api-client` and `app-shell`.
+  - `scripts/run-integration-tests.mjs` — added the new integration wrapper for greenfield contract aliases.
+  - `scripts/run-e2e-tests.mjs` — added the new e2e wrapper for `greenfield-smoke`.
+  - `scripts/validate-greenfield-docs.mjs` — added a bounded doc-existence validator for the greenfield docs slice contract.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the blocked continuation evidence and wrapper fix.
+- GREEN evidence:
+  - `npm --silent run test:api -- migrations`
+  - `npm --silent run test:web -- components`
+  - `npm --silent run test:integration -- tests/integration/slice-contracts.test.ts`
+  - `npm --silent run test:e2e -- tests/integration/sync-main.test.ts`
+  - `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts`
+  - `git diff --check`
+- Wiring verification:
+  - Greenfield worker validation preflight can now find the required wrapper scripts instead of stopping at the package.json contract boundary.
+  - The wrappers preserve the existing alias-driven test entrypoint pattern already used for `test:web` and `test:api`.
+- Risks / follow-ups:
+  - The actual greenfield continue rerun still needs live execution proof after these wrapper changes are committed.
+  - Reaching `issue-018` still depends on the explicit HITL approval gate at `issue-017`.
+## 2026-05-14T07:16:04Z
+- Goal: unblock greenfield PR creation for the already-completed `issue-004` worker branch without rerunning the whole worker execution path.
+- RED evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 10 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - Worker `worker-20260514t070316z` reached `review_ready`, but PR lifecycle `pr-worker-20260514t070316z` blocked on:
+    - `unexpected dirty or protected worktree files: apps/web/src/lib/, services/api/src/routes/`
+  - Root cause: PR create compared dirty worktree entries to expected changed files by exact string only, so untracked directory entries emitted by `git status --porcelain` did not match expected file paths underneath them.
+- Files changed and why:
+  - `.pi/agent/extensions/pr-lifecycle.ts` — allow dirty directory entries when the expected changed-file evidence points to files underneath those directories.
+  - `tests/extension-units/pr-lifecycle.test.ts` — added a regression test covering untracked directory entries for expected worker changes.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the greenfield PR create blocker and regression coverage.
+- GREEN evidence:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts`
+  - `bash scripts/check-foundation-extension-compile.sh`
+  - `git diff --check`
+- Notes on broader validation:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-lifecycle.test.ts` failed in this environment because the integration fixture could not resolve `node_modules/tsx/dist/loader.mjs` from the temporary CLI fixture path; the new regression itself passed in the targeted unit suite.
+- Wiring verification:
+  - PR create now treats `apps/web/src/lib/` as expected dirt when the worker evidence lists `apps/web/src/lib/health-client.ts`, and similarly for other untracked directories produced by newly created files.
+  - This preserves the safety boundary for truly unexpected or protected paths because the helper still blocks anything outside the expected file roots.
+- Risks / follow-ups:
+  - The fixed PR lifecycle still needs live proof by rerunning `create`/`gate`/`merge` for `worker-20260514t070316z`, then resuming greenfield continuation.
+
+## Review (2026-05-14T07:07:27Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t070316z-issue-004`
+- Branch: `worker/worker-20260514t070316z-issue-004`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status --short -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `git diff --stat -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `git diff -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `npm run test:integration -- health-handshake`
+  - `for i in 1 2; do npm run test:integration -- health-handshake; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Route registration into the broader backend server entrypoint is still deferred because `services/api/src/server.ts` was intentionally out of scope for this bounded issue-004 worker slice.
+
+### Open Questions / Assumptions
+- Assumed the issue-004 acceptance only requires FE/BE handshake proof in integration tests, not broader server-entrypoint registration in this slice.
+- Assumed the minimal lib-level health client is acceptable even though a later greenfield API-client scaffold is planned under `apps/web/src/api`.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- health-handshake`
+- `git diff --check`
+
+### Rollout Notes
+- This slice is additive and read-only at runtime: no auth, persistence, schema, migration, or protected runtime state behavior changed.
+- The integration proof uses a local ephemeral HTTP server rather than any live provider-backed validation.
+Review Verdict: no_required_fixes
+
+## 2026-05-14T07:26:02Z
+- Goal: implement greenfield AFK issue-008 as a bounded auth placeholder boundary with deterministic unauthenticated session state on both backend and frontend surfaces.
+- Lifecycle readiness: direct implementation exemption from the user task packet; acceptance criteria and validation command were explicit in the task before mutation.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `.pi/agent/skills/frontend-safety/SKILL.md` before editing.
+  - Verified the active coding log pointer in `logs/CURRENT.md` and used direct local inspection of existing greenfield integration tests, `docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json`, and current `services/api` / `apps/web` source trees.
+  - `g-coding` was available under `packages/pi-g-skills`; no repo-local `g-coding` copy existed under `.pi/agent/skills` in this worktree.
+- Files changed and why:
+  - `tests/integration/auth-boundary.test.ts` — added behavior-first integration coverage for the backend auth placeholder, then extended it to cover the frontend placeholder and the issue-008 Phase A `queueReadiness: not_ready` guard.
+  - `services/api/src/auth/session.ts` — added the public auth-session placeholder interface returning a deterministic unauthenticated state and runtime-only boundary metadata.
+  - `apps/web/src/auth/session.ts` — added the matching frontend auth-session placeholder boundary without embedding runtime config or secrets in source.
+- Tests added or changed:
+  - `api auth placeholder stays unauthenticated and keeps config outside source`
+  - `web auth placeholder mirrors the unauthenticated boundary and issue-008 stays not_ready`
+- Exact RED command and key failure reason:
+  - `npm run test:integration -- auth-boundary`
+    - RED #1: failed with `ERR_MODULE_NOT_FOUND` because `services/api/src/auth/session.ts` did not exist yet.
+    - RED #2: after the backend placeholder passed, failed with `ERR_MODULE_NOT_FOUND` because `apps/web/src/auth/session.ts` did not exist yet when the frontend/queue-readiness behavior was added.
+- Exact GREEN command:
+  - `npm run test:integration -- auth-boundary`
+    - GREEN: passed after both placeholder modules were added.
+- Other validation commands run:
+  - `for i in 1 2 3; do npm run test:integration -- auth-boundary || exit 1; done`
+  - `git diff --check`
+  - `git status --short --untracked-files=all -- services/api/src/auth/session.ts apps/web/src/auth/session.ts tests/integration/auth-boundary.test.ts`
+- Wiring verification evidence:
+  - The public backend interface is `services/api/src/auth/session.ts`, and the integration test imports it directly via `getAuthSession()` / `describeAuthSessionBoundary()`.
+  - The matching frontend boundary in `apps/web/src/auth/session.ts` returns the same deterministic placeholder state so later UI/auth wiring can depend on a stable unauthenticated contract without introducing runtime config in this slice.
+  - The integration test also reads `docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json` and confirms Phase A materialization remains `queueReadiness: "not_ready"`.
+  - Frontend safety note: this slice adds no route/component/UI wiring, so there are no accessibility, focus, loading, or visual-regression changes to validate yet.
+- Behavior changes and risk notes:
+  - Added placeholder auth boundary modules only; there is still no real credential parsing, provider handshake, or session persistence.
+  - The source-level guard is intentionally narrow: the tests prove these placeholder modules do not read `process.env` or `import.meta.env`, but future real-auth work will still need explicit runtime-secret handling review.
+  - Worker implementation dependencies identified for later work: real auth configuration and secret loading remain Phase B+ concerns, and queue-ready job creation still belongs to the materialization/orchestration boundary rather than this placeholder slice.
+- Follow-ups or known gaps:
+  - Later auth slices will need runtime-backed provider/session wiring, but this issue intentionally stops at a deterministic unauthenticated contract.
+  - Package-local `build` scripts do not yet enumerate these new auth placeholder files; targeted integration coverage was the smallest relevant gate for this bounded slice.
+
+## Review (2026-05-14T07:26:02Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t072156z-issue-008`
+- Branch: `worker/worker-20260514t072156z-issue-008`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status --short --untracked-files=all -- services/api/src/auth/session.ts apps/web/src/auth/session.ts tests/integration/auth-boundary.test.ts`
+  - `npm run test:integration -- auth-boundary`
+  - `for i in 1 2 3; do npm run test:integration -- auth-boundary || exit 1; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumed the placeholder boundary only needs deterministic unauthenticated state plus explicit runtime-config externalization metadata in this slice.
+- Assumed direct source inspection for `process.env` / `import.meta.env` is sufficient proof that this placeholder keeps runtime config out of source for Phase A.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- auth-boundary`
+- `git diff --check`
+
+### Rollout Notes
+- This slice is additive only and introduces no live auth side effects, secrets, route wiring, or protected-path mutations.
+- The frontend file is a non-UI state boundary only, so there is no accessibility rollout concern in this bounded scaffold.
+Review Verdict: no_required_fixes
+
+## 2026-05-14T07:34:37Z
+- Follow-up TDD correction:
+  - Tightened `tests/api/contracts.test.ts` to require the documented health payload schema to match the actual `createHealthRoute().handle().body` shape.
+- RED evidence:
+  - `npm run test:api -- contracts`
+  - Failed for the intended reason: the new contract claimed `status/service/timestamp` while the implemented health route returns `{ ok: true, service: "greenfield-api" }`.
+- Fix:
+  - Updated `services/api/src/contracts/openapi.ts` so `HealthPayload` now reflects the real scaffold health response and regenerated `docs/initiatives/greenfield-scaffold/contracts/api.contract.json` from the same source.
+- GREEN evidence:
+  - `npm run test:api -- contracts`
+  - PASS after aligning the documented health schema with the implemented route payload.
+
+## 2026-05-14T08:52:15Z
+- Goal: implement greenfield-scaffold AFK `issue-012` by adding a bounded frontend API client scaffold that consumes contract-backed types and surfaces deterministic Phase A scaffold errors.
+- Planning readiness / task context:
+  - Active planning log from `logs/CURRENT.md`: `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct implementation was explicitly requested in the worker task packet for bounded issue `issue-012`.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `.pi/agent/skills/frontend-safety/SKILL.md`.
+  - Used direct local inspection of `services/api/src/contracts/openapi.ts`, `docs/initiatives/greenfield-scaffold/slices/issue-012.summary.json`, `scripts/run-web-tests.mjs`, `apps/web/src/lib/health-client.ts`, and existing `tests/web/*.test.ts*` patterns.
+  - Avoided runtime frontend imports from backend Node-only modules by refactoring the client to use a type-only contract import plus local runtime constants validated by tests against the public contract artifact.
+- Files changed and why:
+  - `apps/web/src/api/types.ts` — added contract-derived frontend API endpoint and payload types plus Phase A metadata/constants for queue readiness and worker implementation dependencies.
+  - `apps/web/src/api/client.ts` — added the public frontend API client scaffold, deterministic `ScaffoldApiError`, auth-session placeholder fetch, and documented scaffold-resource error handling for `/users` and `/projects`.
+  - `tests/web/api-client.test.ts` — added behavior-first coverage for deterministic scaffold errors and the documented auth-session placeholder payload.
+- Tests added or changed:
+  - `documented scaffold resources surface a deterministic not-ready error`
+  - `auth session placeholder returns the documented contract payload`
+- RED command and key failure reasons:
+  - `npm run test:web -- api-client`
+  - RED #1: failed with `ERR_MODULE_NOT_FOUND` because `apps/web/src/api/client.ts` did not exist yet.
+  - RED #2: after the first minimal pass, failed because `client.getAuthSession` was not implemented.
+  - RED #3: after tightening the scaffold-error expectation, failed because `ScaffoldApiError` did not yet expose `workerImplementationDependencies`.
+- Exact GREEN command:
+  - `npm run test:web -- api-client`
+  - PASS after adding the client scaffold, auth-session placeholder fetch, deterministic scaffold error shape, and contract-backed Phase A metadata.
+- Other validation commands run:
+  - `for i in 1 2 3; do npm run test:web -- api-client; done`
+  - `git diff --check -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+  - `grep -R "createGreenfieldApiClient\|ScaffoldApiError\|greenfieldApiEndpoints" -n apps/web/src tests/web`
+  - `grep -n "services/api/src/contracts/openapi.ts\|node:fs\|readFileSync" apps/web/src/api/client.ts apps/web/src/api/types.ts`
+- Wiring verification evidence:
+  - `apps/web/src/api/client.ts` is now the public interface for the new scaffolded frontend API client and is exercised directly by `tests/web/api-client.test.ts`.
+  - `grep -R "createGreenfieldApiClient\|ScaffoldApiError\|greenfieldApiEndpoints" -n apps/web/src tests/web` shows the new surface is exported and currently only consumed by the new focused test, so no hidden runtime call sites were widened in this bounded slice.
+  - `grep -n "services/api/src/contracts/openapi.ts\|node:fs\|readFileSync" apps/web/src/api/client.ts apps/web/src/api/types.ts` shows the frontend runtime file no longer imports backend Node-only modules; only `types.ts` keeps a type-only contract import.
+  - The deterministic scaffold error now carries `queueReadiness: "not_ready"` and the contract-declared worker implementation dependencies, preserving the Phase A boundary instead of inventing queue-ready success flows.
+- Behavior changes and risk notes:
+  - Frontend code can now fetch the documented auth-session placeholder payload from `/auth/session` through the new client.
+  - Frontend code now gets a stable `ScaffoldApiError` for documented-but-unimplemented scaffold resources (`/users`, `/projects`) with explicit Phase A `not_ready` metadata.
+  - Low-risk gap: the new `api/client.ts` does not wrap the existing health client yet; `apps/web/src/lib/health-client.ts` remains the health interface until a later bounded slice consolidates them.
+- Follow-ups or known gaps:
+  - If a future slice wants one unified frontend API client entrypoint, it can either wrap or absorb `apps/web/src/lib/health-client.ts` with separate TDD coverage.
+  - Resource-success payload typing for `/users` and `/projects` remains intentionally deferred because Phase A keeps those endpoints documented but not queue-ready.
+
+## Review (2026-05-14T08:52:15Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t073851z-issue-012`
+- Branch: `worker/worker-20260514t073851z-issue-012`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+  - `npm run test:web -- api-client`
+  - `for i in 1 2 3; do npm run test:web -- api-client; done`
+  - `git diff --check -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+  - `grep -R "createGreenfieldApiClient\|ScaffoldApiError\|greenfieldApiEndpoints" -n apps/web/src tests/web`
+  - `grep -n "services/api/src/contracts/openapi.ts\|node:fs\|readFileSync" apps/web/src/api/client.ts apps/web/src/api/types.ts`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The new client intentionally leaves health access on the pre-existing `apps/web/src/lib/health-client.ts` path, so frontend consumers currently have two adjacent API surfaces until a later bounded consolidation slice lands.
+
+### Open Questions / Assumptions
+- Assumed this slice should stay bounded to auth placeholder fetch plus deterministic scaffold-resource errors because Phase A still marks queue readiness `not_ready` and the task packet restricted file ownership to `apps/web/src/api/*` plus the focused web test.
+
+### Recommended Tests / Validation
+- `npm run test:web -- api-client`
+- `for i in 1 2 3; do npm run test:web -- api-client; done`
+- `git diff --check -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+
+### Rollout Notes
+- This slice is Phase A-only and intentionally preserves `queueReadiness: not_ready` semantics.
+- A future Phase B/resource-implementation slice should replace the current `Promise<never>` scaffold-resource methods with real success payload handling once `/users` and `/projects` become queue-ready.
+Review Verdict: no_required_fixes
+
+## 2026-05-14T09:01:27Z
+- Goal: implement greenfield-scaffold AFK `issue-014` by adding a bounded end-to-end smoke scaffold under `tests/e2e` only.
+- Planning readiness / task context:
+  - Active planning log from `logs/CURRENT.md`: `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct implementation was explicitly requested in the worker task packet for bounded issue `issue-014` with allowed paths limited to `tests/e2e`.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `packages/pi-g-skills/skills/g-check/SKILL.md` before editing.
+  - Used direct local inspection of `docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json`, `scripts/run-e2e-tests.mjs`, `apps/web/src/main.tsx`, `apps/web/src/lib/health-client.ts`, `apps/web/src/api/client.ts`, `services/api/src/routes/health.ts`, `services/api/src/db/seeds.ts`, and existing greenfield tests.
+  - Chose a test-only synthetic smoke harness because the task boundary only allowed `tests/e2e`, while the acceptance still required end-to-end proof across the existing app shell, health route, API client placeholder path, and deterministic fixtures.
+- Files changed and why:
+  - `tests/e2e/greenfield-smoke.test.ts` — added behavior-first smoke coverage for app load, health display, and the fixture-backed placeholder flow plus the Phase A `queueReadiness: not_ready` guard.
+  - `tests/e2e/helpers/greenfield.ts` — added a bounded local HTTP smoke harness that serves `/`, `/health`, `/auth/session`, `/users`, and `/projects`, renders a synthetic smoke page from the existing app/API boundaries, and reads the issue summary for Phase A proof.
+- Tests added or changed:
+  - `greenfield smoke loads the app shell over HTTP`
+  - `greenfield smoke displays scaffold health on the loaded page`
+  - `greenfield smoke shows a fixture-backed placeholder flow and keeps phase-a not_ready`
+- Exact RED command and key failure reasons:
+  - `npm run test:e2e -- greenfield-smoke`
+    - RED #1: failed with `ERR_MODULE_NOT_FOUND` because `tests/e2e/helpers/greenfield.ts` did not exist yet.
+    - RED #2: after the minimal app-load helper landed, failed because the returned page markup did not include `Backend health: greenfield-api (ok)` yet.
+    - RED #3: after adding health rendering, failed because `page.issueSummary` and the placeholder-flow behavior were still missing from the helper result.
+- Exact GREEN command:
+  - `npm run test:e2e -- greenfield-smoke`
+  - PASS after the helper server rendered the app shell, fetched `/health`, exercised `/auth/session` plus the `/users` and `/projects` placeholder errors, surfaced deterministic fixture previews, and returned the issue-014 summary proof.
+- Other validation commands run:
+  - `for i in 1 2 3; do npm run test:e2e -- greenfield-smoke || exit 1; done`
+  - `git diff --check -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+- Wiring verification evidence:
+  - `tests/e2e/helpers/greenfield.ts` now composes the existing public seams rather than re-declaring behavior: `bootstrapAppShell()` for app load, `fetchBackendHealth()` plus `createHealthRoute()` for health, `createGreenfieldApiClient()` for `/auth/session` and scaffold placeholder errors, and `readGreenfieldSeedUsers()` / `readGreenfieldSeedProjects()` for deterministic fixture previews.
+  - The smoke test request log proves the synthetic root-page load fans out through the intended HTTP surfaces in-order: `/`, `/health`, `/auth/session`, `/users`, `/projects`.
+  - The same helper reads `docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json` and asserts `queueReadiness === "not_ready"`, keeping the Phase A boundary visible in the public smoke test surface.
+- Behavior changes and risk notes:
+  - Added bounded E2E smoke coverage only; no production app, backend, contract, or fixture files changed in this slice.
+  - The smoke page is intentionally synthetic and test-local because the task packet restricted mutation to `tests/e2e`; it proves the existing boundaries compose correctly but is not yet a browser-driven real UI route.
+  - Low-risk environment note: every `npm run test:e2e -- greenfield-smoke` pass emits Node `DEP0205` `module.register()` deprecation warnings from the current `tsx` loader path, but the test command still passes consistently.
+- Follow-ups or known gaps:
+  - If a later slice adds a real browser-served greenfield UI route for health and placeholder data, this smoke scaffold can be swapped from a synthetic harness to the real route with new TDD coverage.
+  - The placeholder flow intentionally remains `not_ready`; it previews deterministic fixtures alongside the existing documented `501 not_implemented` scaffold-resource behavior rather than inventing queue-ready success endpoints.
+
+## Review (2026-05-14T09:01:50Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t085536z-issue-014`
+- Branch: `worker/worker-20260514t085536z-issue-014`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+  - `git diff --no-index --stat /dev/null tests/e2e/greenfield-smoke.test.ts`
+  - `git diff --no-index --stat /dev/null tests/e2e/helpers/greenfield.ts`
+  - `npm run test:e2e -- greenfield-smoke`
+  - `for i in 1 2 3; do npm run test:e2e -- greenfield-smoke || exit 1; done`
+  - `git diff --check -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The smoke harness is intentionally synthetic and server-side inside `tests/e2e/helpers/greenfield.ts`; it is good bounded proof for the existing Phase A seams, but it is not the same as a future browser-automation route once the real UI expands.
+
+### Open Questions / Assumptions
+- Assumed the task boundary (`tests/e2e` only) means the smoke scaffold should prove composition of existing public modules and HTTP seams without widening scope into production UI/runtime files.
+- Assumed deterministic fixture preview plus documented scaffold `501` errors satisfies the requested “fixture-backed placeholder flow” while Phase A still keeps queue readiness `not_ready`.
+
+### Recommended Tests / Validation
+- `npm run test:e2e -- greenfield-smoke`
+- `for i in 1 2 3; do npm run test:e2e -- greenfield-smoke || exit 1; done`
+- `git diff --check -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+
+### Rollout Notes
+- This slice is test-only and does not alter runtime auth, persistence, schema, queue, or deployment behavior.
+- The new smoke harness preserves the Phase A contract by keeping placeholder resource calls on the `not_implemented` path while showing deterministic local fixture previews.
+Review Verdict: no_required_fixes
+
+## 2026-05-14T09:07:58Z
+- Goal: implement greenfield AFK `issue-015` as a bounded observability/logging scaffold slice that emits structured local/test logs without secrets.
+- Lifecycle readiness: direct implementation requested by the user against `docs/initiatives/greenfield-scaffold/slices/issue-015.summary.json`; no separate planning mutation was needed for this bounded worker slice.
+- Discovery path:
+  - Re-read repo instructions from `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `.pi/agent/skills/backend-safety/SKILL.md`, and `.pi/agent/skills/frontend-safety/SKILL.md` before editing.
+  - Used direct local inspection of `package.json`, `scripts/run-integration-tests.mjs`, existing greenfield integration tests, and the issue-015 summary artifact.
+  - Confirmed the target files were not present yet, so the slice could stay additive inside the allowed paths only.
+- Tracer-bullet behavior:
+  - First behavior proved through the public API logger interface: structured local/test log entries are emitted as JSON and redact secret-shaped fields.
+  - Boundary dependencies intentionally left out of scope: no runtime call-site wiring into the API server or web bootstrap in this Phase A slice; later worker tasks can consume these public logger modules without changing queue readiness.
+- Files changed and why:
+  - `tests/integration/observability.test.ts` — added the smallest integration proof for structured API/web logger output, recursive redaction, source-level env-coupling guardrails, and `queueReadiness: not_ready`.
+  - `services/api/src/observability/logger.ts` — added the public structured logger scaffold for API/local-test usage with JSON emission, level helpers, and secret redaction.
+  - `apps/web/src/observability/client-logger.ts` — added the matching frontend-safe client logger scaffold for local/test usage with the same structured redaction behavior.
+- Tests added or changed:
+  - `observability scaffold emits structured local/test logs without secrets`
+  - `issue-015 remains phase-a bounded with queueReadiness not_ready`
+- Exact RED command and key failure reason:
+  - `npm run test:integration -- observability`
+  - Failed for the intended reason: `ERR_MODULE_NOT_FOUND` because `apps/web/src/observability/client-logger.ts` and the new observability scaffold did not exist yet.
+- Exact GREEN command:
+  - `npm run test:integration -- observability`
+  - PASS: 2 observability integration tests.
+- Other validation commands run:
+  - `for i in 1 2; do npm run test:integration -- observability; done`
+  - `git diff --check`
+  - `git status -sb -- services/api/src/observability/logger.ts apps/web/src/observability/client-logger.ts tests/integration/observability.test.ts`
+  - `rg -n "createLogger|createClientLogger|observability/logger|observability/client-logger" apps services tests -S`
+- Wiring verification evidence:
+  - `scripts/run-integration-tests.mjs` already aliases `observability` to `tests/integration/observability.test.ts`, so the requested validation command exercises the new slice directly.
+  - `tests/integration/observability.test.ts` imports the new public modules from `services/api/src/observability/logger.ts` and `apps/web/src/observability/client-logger.ts`, proving the files are loadable through their intended public paths.
+  - Exact-string search showed no non-test call sites yet; this is intentional Phase A scaffold posture, not an accidental missed import.
+- Behavior changes and risk notes:
+  - API and web scaffolds now emit deterministic JSON log lines for local/test use with recursive secret-field redaction for nested objects and arrays.
+  - The frontend/client file uses injected writers plus console fallbacks only; no route, component, or long-lived client side effect wiring was added in this bounded slice.
+  - Residual risk: secret detection is key-name based, so future consumers should keep sensitive values under clearly named fields until a richer policy exists.
+- Follow-ups or known gaps:
+  - No production/runtime call sites consume these loggers yet; that wiring remains for a later bounded slice.
+  - The API and web logger implementations intentionally duplicate a small sanitizer helper because the issue contract allowed only the three listed files.
+
+## Review (2026-05-14T09:07:58Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t090400z-issue-015`
+- Branch: `worker/worker-20260514t090400z-issue-015`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- services/api/src/observability/logger.ts apps/web/src/observability/client-logger.ts tests/integration/observability.test.ts`
+  - `npm run test:integration -- observability`
+  - `for i in 1 2; do npm run test:integration -- observability; done`
+  - `git diff --check`
+  - `rg -n "createLogger|createClientLogger|observability/logger|observability/client-logger" apps services tests -S`
+  - targeted source review of the three changed files
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Secret redaction currently relies on secret-shaped field names rather than value inspection, so downstream callers should avoid placing sensitive data into generically named fields like `message`.
+
+### Open Questions / Assumptions
+- Assumed this Phase A AFK slice is intentionally scaffold-only and therefore should expose importable logger modules without widening scope into server/bootstrap runtime wiring.
+- Assumed console fallback output is acceptable for local/test scaffold usage because tests inject writers and no production logging sink was requested.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- observability`
+- `for i in 1 2; do npm run test:integration -- observability; done`
+- `git diff --check`
+
+### Rollout Notes
+- This slice adds new observability modules only under the allowed API/web paths and a single integration test.
+- Queue readiness remains `not_ready`; this scaffold does not create queue-ready jobs or new runtime automation.
+Review Verdict: no_required_fixes
+## 2026-05-14T09:12:49Z
+- Goal: unblock issue-016 worker preflight by adding the bounded greenfield validation command contract expected by the initiative.
+- RED evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 1 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - Worker `worker-20260514t091050z` for `issue-016` stopped before coding with:
+    - `Validation contract missing executable "./scripts/validate-greenfield-scaffold.sh" for command: ./scripts/validate-greenfield-scaffold.sh --dry-run`
+- Files changed and why:
+  - `scripts/validate-greenfield-scaffold.sh` — added the bounded validation bundle/dry-run entrypoint expected by the issue contract.
+  - `package.json` — added `validate:greenfield-scaffold` for operator discoverability.
+  - `docs/initiatives/greenfield-scaffold/validation.md` — documented the dry-run/full validation contract and included commands.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the issue-016 validation-contract fix.
+- GREEN evidence:
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `npm --silent run validate:greenfield-scaffold -- --dry-run`
+  - `git diff --check`
+- Wiring verification:
+  - Issue-016 preflight now has a concrete executable target for `./scripts/validate-greenfield-scaffold.sh --dry-run`.
+  - The script keeps `--dry-run` cheap by validating the command contract without executing the full bundle.
+- Risks / follow-ups:
+  - Issue-016 itself still needs a rerun on the updated branch to convert the blocked worker into a landed slice.
+  - `issue-017` remains the next explicit HITL boundary after `issue-016` completes.
+
+## 2026-05-14T09:17:46Z
+- Goal: bring issue-016 validation contract in line with the bounded slice acceptance by exposing deterministic unit, integration, and smoke commands in order while keeping Phase A `queueReadiness` enforcement cheap.
+- Planning readiness / task context:
+  - Active planning log from `logs/CURRENT.md`: `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct implementation exemption: the user task packet explicitly requested bounded issue-016 implementation with acceptance criteria, allowed paths, and post-change validation.
+- Discovery path:
+  - Re-read `AGENTS.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json`, `package.json`, `scripts/validate-greenfield-scaffold.sh`, `docs/initiatives/greenfield-scaffold/validation.md`, and the existing `scripts/run-{api,web,integration,e2e}-tests.mjs` wrappers.
+  - Used direct local inspection only; no provider-backed discovery or live validation was needed for this package/script/docs slice.
+- Files changed and why:
+  - `package.json` — added the public `validate:greenfield-scaffold:{unit,integration,smoke}` entrypoints so the bounded validator can reference stable developer commands instead of inline ad hoc test invocations.
+  - `scripts/validate-greenfield-scaffold.sh` — replaced the old integration/smoke/docs plan with deterministic unit/integration/smoke ordering and added a cheap guard that fails if `issue-016.summary.json` no longer reports `queueReadiness: "not_ready"`.
+  - `docs/initiatives/greenfield-scaffold/validation.md` — documented the new public commands, bounded order, and the intentional Phase A boundary that keeps docs validation separate for now.
+- Tests added or changed:
+  - none; the required `--dry-run` contract surface was the smallest tracer-bullet TDD check for this bounded slice.
+- Exact RED command and key failure reason:
+  - `bash -lc 'expected=$(cat <<"EOF"
+greenfield-scaffold validation plan
+- npm run validate:greenfield-scaffold:unit
+- npm run validate:greenfield-scaffold:integration
+- npm run validate:greenfield-scaffold:smoke
+EOF
+)
+actual=$(./scripts/validate-greenfield-scaffold.sh --dry-run)
+if [ "$actual" != "$expected" ]; then
+  echo "RED: dry-run plan mismatch" >&2
+  diff -u <(printf "%s\n" "$expected") <(printf "%s\n" "$actual")
+  exit 1
+fi
+'`
+  - Failed for the intended reason: the dry-run plan still emitted direct `test:integration`, `test:e2e`, and `validate:greenfield-docs` commands, so the required unit/integration/smoke contract and bounded order were missing.
+- Exact GREEN command:
+  - `bash -lc 'expected=$(cat <<"EOF"
+greenfield-scaffold validation plan
+- npm run validate:greenfield-scaffold:unit
+- npm run validate:greenfield-scaffold:integration
+- npm run validate:greenfield-scaffold:smoke
+EOF
+)
+actual=$(./scripts/validate-greenfield-scaffold.sh --dry-run)
+if [ "$actual" != "$expected" ]; then
+  echo "plan mismatch" >&2
+  diff -u <(printf "%s\n" "$expected") <(printf "%s\n" "$actual")
+  exit 1
+fi
+printf "%s\n" "$actual"
+'`
+- Other validation commands run:
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `npm run validate:greenfield-scaffold -- --dry-run`
+  - `for i in 1 2 3; do ./scripts/validate-greenfield-scaffold.sh --dry-run; done`
+  - `git diff --check -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+- Wiring verification evidence:
+  - `package.json` now exports the public developer commands `validate:greenfield-scaffold:unit`, `validate:greenfield-scaffold:integration`, and `validate:greenfield-scaffold:smoke`.
+  - `scripts/validate-greenfield-scaffold.sh` resolves those exact package scripts in order and exits early if `docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json` no longer reports `queueReadiness: "not_ready"`.
+  - `docs/initiatives/greenfield-scaffold/validation.md` now matches the package/script wiring and documents that docs validation remains separate until the later docs/readiness slice.
+- Behavior changes and risk notes:
+  - Dry-run now proves the bounded unit -> integration -> smoke order instead of the earlier integration -> smoke -> docs plan.
+  - The validator now enforces the Phase A materialization guard locally and cheaply.
+  - I intentionally did not run the full validation bundle in this slice because the user-scoped proof target was `--dry-run` and the change was limited to command-contract wiring.
+- Follow-ups or known gaps:
+  - `validate:greenfield-docs` remains separate and can be folded into a broader readiness bundle after the later docs/readiness slices land.
+  - The new package scripts were contract-validated through dry-run/public-interface invocation, but the full underlying test bundles were not executed in this bounded issue-016 pass.
+
+## Review (2026-05-14T09:17:46Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t091318z-issue-016`
+- Branch: `worker/worker-20260514t091318z-issue-016`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+  - `git diff --name-only -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+  - `git diff -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `npm run validate:greenfield-scaffold -- --dry-run`
+  - `git diff --check -- package.json scripts/validate-greenfield-scaffold.sh docs/initiatives/greenfield-scaffold/validation.md`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumed issue-016 should validate only the bounded unit/integration/smoke developer surface because the issue acceptance does not include docs packaging and issue-018 owns the later documentation package.
+- Assumed dry-run plus package-script invocation is sufficient evidence for this package/script/docs contract slice because the requested proof target was `./scripts/validate-greenfield-scaffold.sh --dry-run`.
+
+### Recommended Tests / Validation
+- `./scripts/validate-greenfield-scaffold.sh --dry-run`
+- `npm run validate:greenfield-scaffold -- --dry-run`
+- If later broader proof is needed after additional slices land, run `./scripts/validate-greenfield-scaffold.sh` once.
+
+### Rollout Notes
+- This change is limited to package-script wiring, a shell validator, and initiative docs under the allowed paths.
+- Queue readiness remains `not_ready`; this slice does not create queue-ready jobs or alter worker/runtime orchestration.
+Review Verdict: no_required_fixes

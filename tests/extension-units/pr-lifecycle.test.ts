@@ -108,6 +108,52 @@ test("create commits, pushes, creates PR artifact and human summary when evidenc
   assert.match(await readFile(join(cwd, "docs/initiatives/greenfield-scaffold/pr-runs/pr-create.md"), "utf8"), /PR Lifecycle Run/);
 });
 
+test("create accepts untracked directory entries when expected changed files live underneath them", async () => {
+  const taskEvidence = [
+    "Changed files: apps/web/src/lib/health-client.ts, logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md, services/api/src/routes/health.ts, tests/integration/health-handshake.test.ts",
+    "Validation: npm run test:integration -- health-handshake exited 0",
+    "Review Verdict: no_required_fixes",
+  ];
+  const { cwd } = await writeFixture({
+    workerOverrides: {
+      steps: {
+        planning: { status: "passed" },
+        coding: {
+          status: "passed",
+          changedFiles: [
+            "apps/web/src/lib/health-client.ts",
+            "logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md",
+            "services/api/src/routes/health.ts",
+            "tests/integration/health-handshake.test.ts",
+          ],
+          redCommand: "node -e \"process.exit(1)\"",
+          redResult: { command: "node -e \"process.exit(1)\"", exitCode: 1, stdout: "", stderr: "", durationMs: 1 },
+          greenCommand: "node -e \"process.exit(0)\"",
+          greenResult: { command: "node -e \"process.exit(0)\"", exitCode: 0, stdout: "", stderr: "", durationMs: 1 },
+        },
+        validation: { status: "passed", evidence: ["ok"], results: [{ command: "ok", exitCode: 0, stdout: "", stderr: "", durationMs: 1 }] },
+        review: { status: "passed", verdict: "no_required_fixes" },
+      },
+    },
+    taskEvidence,
+  });
+  const commands: string[] = [];
+  const result = await runPrLifecycle(
+    { repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-untracked-dirs", title: "Test PR", body: "Body" },
+    {
+      runner: fakeRunner(commands),
+      dirtyFiles: async () => [
+        "apps/web/src/lib/",
+        "logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md",
+        "services/api/src/routes/",
+        "tests/integration/health-handshake.test.ts",
+      ],
+    },
+  );
+  assert.equal(result.status, "pr_created");
+  assert.ok(commands.some((cmd) => cmd.includes("git add -- apps/web/src/lib/ logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md services/api/src/routes/ tests/integration/health-handshake.test.ts")));
+});
+
 test("gate records pass/fail/pending states", async () => {
   const { cwd } = await writeFixture();
   const base = await runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-gate", title: "Test PR" }, { runner: fakeRunner([]) });
