@@ -438,3 +438,51 @@ LOW
 - This slice is additive and read-only at runtime: no auth, persistence, schema, migration, or protected runtime state behavior changed.
 - The integration proof uses a local ephemeral HTTP server rather than any live provider-backed validation.
 Review Verdict: no_required_fixes
+
+## 2026-05-14T07:33:17Z
+- Goal: implement greenfield AFK `issue-011` by adding a bounded API contract artifact for health, auth placeholder, and scaffold resources.
+- Active task + acceptance criteria:
+  - Public interface: `docs/initiatives/greenfield-scaffold/contracts/api.contract.json`.
+  - Keep Phase A materialization bounded with `queueReadiness = not_ready`.
+  - Validation proof required by the task packet: `npm run test:api -- contracts`.
+- Discovery path:
+  - Re-read `logs/CURRENT.md`, the active coding log, `docs/initiatives/greenfield-scaffold/slices/issue-011.summary.json`, `docs/initiatives/greenfield-scaffold/issues.json`, and `.pi/agent/skills/backend-safety/SKILL.md` before editing.
+  - Confirmed the target files did not exist yet and that `scripts/run-api-tests.mjs` already had the `contracts` alias wired.
+  - Reused existing backend scaffolds for alignment: `services/api/src/routes/health.ts` and `services/api/src/db/schema.ts`.
+- Backend-safety notes:
+  - Business rule: publish a truthful Phase A API contract artifact without claiming queue-ready runtime behavior.
+  - Auth/permissions: auth is documentation-only in this slice; no secrets, session config, or runtime auth logic changed.
+  - Side effects: none at runtime because no server routing or request handling changed.
+  - Rollback/mitigation: remove the new contract module/artifact/test if the contract shape proves misleading.
+- Files changed and why:
+  - `tests/api/contracts.test.ts` — added the smallest failing TDD coverage for the missing contract module/artifact and the required Phase A metadata/assertions.
+  - `services/api/src/contracts/openapi.ts` — added the bounded OpenAPI-style scaffold contract export/stringifier, including health, auth placeholder, scaffold resources, and worker implementation dependency markers.
+  - `docs/initiatives/greenfield-scaffold/contracts/api.contract.json` — generated the public contract artifact from the TypeScript source so the documented interface exactly matches the exported contract.
+- RED evidence:
+  - `npm run test:api -- contracts`
+  - Failed for the intended reason: `ERR_MODULE_NOT_FOUND` for `services/api/src/contracts/openapi.ts` because the contract module did not exist yet.
+- GREEN evidence:
+  - `npm run test:api -- contracts`
+  - PASS: 2 contract tests covering Phase A queue-readiness metadata, health/auth/resource coverage, and exact parity between the exported contract and the public JSON artifact.
+- Additional validation:
+  - `git diff --check`
+    - PASS.
+- Wiring verification:
+  - The public artifact is generated from `stringifyGreenfieldOpenApiContract()` so the docs surface and backend contract export stay byte-for-byte aligned.
+  - Health contract wiring is anchored to the existing health route module; scaffold resource metadata is anchored to the existing persistence placeholder schema metadata.
+  - Worker implementation dependencies were explicitly identified in the contract metadata as `issue-008` (auth boundary implementation) and `issue-012` (frontend API client consumption).
+- Risks / known gaps:
+  - The auth and resource endpoints are still documented placeholders; this slice does not implement server routes for them.
+  - Future worker slices must keep the eventual runtime behavior aligned with this artifact or update the contract/test pair together.
+
+## 2026-05-14T07:34:37Z
+- Follow-up TDD correction:
+  - Tightened `tests/api/contracts.test.ts` to require the documented health payload schema to match the actual `createHealthRoute().handle().body` shape.
+- RED evidence:
+  - `npm run test:api -- contracts`
+  - Failed for the intended reason: the new contract claimed `status/service/timestamp` while the implemented health route returns `{ ok: true, service: "greenfield-api" }`.
+- Fix:
+  - Updated `services/api/src/contracts/openapi.ts` so `HealthPayload` now reflects the real scaffold health response and regenerated `docs/initiatives/greenfield-scaffold/contracts/api.contract.json` from the same source.
+- GREEN evidence:
+  - `npm run test:api -- contracts`
+  - PASS after aligning the documented health schema with the implemented route payload.
