@@ -526,3 +526,85 @@ Review Verdict: no_required_fixes
 - GREEN evidence:
   - `npm run test:api -- contracts`
   - PASS after aligning the documented health schema with the implemented route payload.
+
+## 2026-05-14T08:52:15Z
+- Goal: implement greenfield-scaffold AFK `issue-012` by adding a bounded frontend API client scaffold that consumes contract-backed types and surfaces deterministic Phase A scaffold errors.
+- Planning readiness / task context:
+  - Active planning log from `logs/CURRENT.md`: `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct implementation was explicitly requested in the worker task packet for bounded issue `issue-012`.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `.pi/agent/skills/frontend-safety/SKILL.md`.
+  - Used direct local inspection of `services/api/src/contracts/openapi.ts`, `docs/initiatives/greenfield-scaffold/slices/issue-012.summary.json`, `scripts/run-web-tests.mjs`, `apps/web/src/lib/health-client.ts`, and existing `tests/web/*.test.ts*` patterns.
+  - Avoided runtime frontend imports from backend Node-only modules by refactoring the client to use a type-only contract import plus local runtime constants validated by tests against the public contract artifact.
+- Files changed and why:
+  - `apps/web/src/api/types.ts` — added contract-derived frontend API endpoint and payload types plus Phase A metadata/constants for queue readiness and worker implementation dependencies.
+  - `apps/web/src/api/client.ts` — added the public frontend API client scaffold, deterministic `ScaffoldApiError`, auth-session placeholder fetch, and documented scaffold-resource error handling for `/users` and `/projects`.
+  - `tests/web/api-client.test.ts` — added behavior-first coverage for deterministic scaffold errors and the documented auth-session placeholder payload.
+- Tests added or changed:
+  - `documented scaffold resources surface a deterministic not-ready error`
+  - `auth session placeholder returns the documented contract payload`
+- RED command and key failure reasons:
+  - `npm run test:web -- api-client`
+  - RED #1: failed with `ERR_MODULE_NOT_FOUND` because `apps/web/src/api/client.ts` did not exist yet.
+  - RED #2: after the first minimal pass, failed because `client.getAuthSession` was not implemented.
+  - RED #3: after tightening the scaffold-error expectation, failed because `ScaffoldApiError` did not yet expose `workerImplementationDependencies`.
+- Exact GREEN command:
+  - `npm run test:web -- api-client`
+  - PASS after adding the client scaffold, auth-session placeholder fetch, deterministic scaffold error shape, and contract-backed Phase A metadata.
+- Other validation commands run:
+  - `for i in 1 2 3; do npm run test:web -- api-client; done`
+  - `git diff --check -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+  - `grep -R "createGreenfieldApiClient\|ScaffoldApiError\|greenfieldApiEndpoints" -n apps/web/src tests/web`
+  - `grep -n "services/api/src/contracts/openapi.ts\|node:fs\|readFileSync" apps/web/src/api/client.ts apps/web/src/api/types.ts`
+- Wiring verification evidence:
+  - `apps/web/src/api/client.ts` is now the public interface for the new scaffolded frontend API client and is exercised directly by `tests/web/api-client.test.ts`.
+  - `grep -R "createGreenfieldApiClient\|ScaffoldApiError\|greenfieldApiEndpoints" -n apps/web/src tests/web` shows the new surface is exported and currently only consumed by the new focused test, so no hidden runtime call sites were widened in this bounded slice.
+  - `grep -n "services/api/src/contracts/openapi.ts\|node:fs\|readFileSync" apps/web/src/api/client.ts apps/web/src/api/types.ts` shows the frontend runtime file no longer imports backend Node-only modules; only `types.ts` keeps a type-only contract import.
+  - The deterministic scaffold error now carries `queueReadiness: "not_ready"` and the contract-declared worker implementation dependencies, preserving the Phase A boundary instead of inventing queue-ready success flows.
+- Behavior changes and risk notes:
+  - Frontend code can now fetch the documented auth-session placeholder payload from `/auth/session` through the new client.
+  - Frontend code now gets a stable `ScaffoldApiError` for documented-but-unimplemented scaffold resources (`/users`, `/projects`) with explicit Phase A `not_ready` metadata.
+  - Low-risk gap: the new `api/client.ts` does not wrap the existing health client yet; `apps/web/src/lib/health-client.ts` remains the health interface until a later bounded slice consolidates them.
+- Follow-ups or known gaps:
+  - If a future slice wants one unified frontend API client entrypoint, it can either wrap or absorb `apps/web/src/lib/health-client.ts` with separate TDD coverage.
+  - Resource-success payload typing for `/users` and `/projects` remains intentionally deferred because Phase A keeps those endpoints documented but not queue-ready.
+
+## Review (2026-05-14T08:52:15Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t073851z-issue-012`
+- Branch: `worker/worker-20260514t073851z-issue-012`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+  - `npm run test:web -- api-client`
+  - `for i in 1 2 3; do npm run test:web -- api-client; done`
+  - `git diff --check -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+  - `grep -R "createGreenfieldApiClient\|ScaffoldApiError\|greenfieldApiEndpoints" -n apps/web/src tests/web`
+  - `grep -n "services/api/src/contracts/openapi.ts\|node:fs\|readFileSync" apps/web/src/api/client.ts apps/web/src/api/types.ts`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The new client intentionally leaves health access on the pre-existing `apps/web/src/lib/health-client.ts` path, so frontend consumers currently have two adjacent API surfaces until a later bounded consolidation slice lands.
+
+### Open Questions / Assumptions
+- Assumed this slice should stay bounded to auth placeholder fetch plus deterministic scaffold-resource errors because Phase A still marks queue readiness `not_ready` and the task packet restricted file ownership to `apps/web/src/api/*` plus the focused web test.
+
+### Recommended Tests / Validation
+- `npm run test:web -- api-client`
+- `for i in 1 2 3; do npm run test:web -- api-client; done`
+- `git diff --check -- apps/web/src/api/client.ts apps/web/src/api/types.ts tests/web/api-client.test.ts`
+
+### Rollout Notes
+- This slice is Phase A-only and intentionally preserves `queueReadiness: not_ready` semantics.
+- A future Phase B/resource-implementation slice should replace the current `Promise<never>` scaffold-resource methods with real success payload handling once `/users` and `/projects` become queue-ready.
+Review Verdict: no_required_fixes
