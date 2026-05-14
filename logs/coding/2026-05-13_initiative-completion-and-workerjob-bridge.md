@@ -514,3 +514,15 @@ LOW
 - This slice is additive only and introduces no live auth side effects, secrets, route wiring, or protected-path mutations.
 - The frontend file is a non-UI state boundary only, so there is no accessibility rollout concern in this bounded scaffold.
 Review Verdict: no_required_fixes
+
+## 2026-05-14T07:34:37Z
+- Follow-up TDD correction:
+  - Tightened `tests/api/contracts.test.ts` to require the documented health payload schema to match the actual `createHealthRoute().handle().body` shape.
+- RED evidence:
+  - `npm run test:api -- contracts`
+  - Failed for the intended reason: the new contract claimed `status/service/timestamp` while the implemented health route returns `{ ok: true, service: "greenfield-api" }`.
+- Fix:
+  - Updated `services/api/src/contracts/openapi.ts` so `HealthPayload` now reflects the real scaffold health response and regenerated `docs/initiatives/greenfield-scaffold/contracts/api.contract.json` from the same source.
+- GREEN evidence:
+  - `npm run test:api -- contracts`
+  - PASS after aligning the documented health schema with the implemented route payload.
