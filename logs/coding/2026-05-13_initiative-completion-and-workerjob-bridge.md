@@ -376,3 +376,77 @@ Review Verdict: no_required_fixes
 - Risks / follow-ups:
   - The actual greenfield continue rerun still needs live execution proof after these wrapper changes are committed.
   - Reaching `issue-018` still depends on the explicit HITL approval gate at `issue-017`.
+
+## 2026-05-14T07:07:27Z
+- Goal: implement greenfield AFK `issue-004` so the frontend health client can call the backend health endpoint in bounded integration coverage.
+- Lifecycle readiness:
+  - Direct implementation task from the user prompt with explicit acceptance criteria; no separate planning mutation was required for this bounded worker slice.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `.pi/agent/skills/frontend-safety/SKILL.md`, and `.pi/agent/skills/backend-safety/SKILL.md` before editing.
+  - Inspected existing greenfield scaffold files under `apps/web/src`, `services/api/src`, `tests/integration`, the test wrapper scripts in `package.json` / `scripts/run-integration-tests.mjs`, and the issue contract at `docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json`.
+- Files changed and why:
+  - `tests/integration/health-handshake.test.ts` — added the smallest failing integration coverage first: an HTTP handshake test that composes the frontend client with the backend route plus a queue-readiness guard on the durable issue summary.
+  - `apps/web/src/lib/health-client.ts` — added the public frontend health client that performs a GET request to `/health`, requires JSON, and validates the scaffold payload shape deterministically.
+  - `services/api/src/routes/health.ts` — added the bounded backend route module exposing `GET /health` with JSON headers while reusing the existing `healthCheck()` payload.
+- Tests added or changed:
+  - `frontend health client can call the backend health route over HTTP`
+  - `issue-004 remains phase-a bounded with queueReadiness not_ready`
+- Exact RED command and key failure reason:
+  - `npm run test:integration -- health-handshake`
+  - failed for the intended reason: `ERR_MODULE_NOT_FOUND` because `apps/web/src/lib/health-client.ts` did not exist yet when the new integration test imported the public interface.
+- Exact GREEN command:
+  - `npm run test:integration -- health-handshake`
+- Other validation commands run:
+  - `for i in 1 2; do npm run test:integration -- health-handshake; done`
+  - `git diff --check`
+- Wiring verification evidence:
+  - The integration test starts a real local HTTP server, mounts `createHealthRoute()` at `GET /health`, then calls it through `fetchBackendHealth(...)` using the public frontend interface.
+  - The captured request proves the client sends `GET /health` with `accept: application/json` and the validated response proves the backend route reuses the existing `greenfield-api` health payload.
+  - Durable Phase A proof remains intact because `tests/integration/health-handshake.test.ts` re-reads `docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json` and confirms `queueReadiness === "not_ready"` without mutating the materialized issue artifacts.
+- Behavior changes and risk notes:
+  - Added the first bounded FE/BE handshake scaffold only; this does not yet register the route through `services/api/src/server.ts` because that path is outside this worker slice's allowed file scope.
+  - Frontend safety assumption: no UI rendering or accessibility surface changed; the new frontend file is a fetch-only library boundary with deterministic error handling.
+  - Backend safety assumption: no auth, permissions, or persistence behavior changed; the new route is read-only and reuses the existing health payload.
+- Follow-ups or known gaps:
+  - A later backend slice can register `services/api/src/routes/health.ts` into a broader server entrypoint when that file is in scope.
+  - Later greenfield API client work under `apps/web/src/api` may absorb or replace this minimal lib-level helper.
+
+## Review (2026-05-14T07:07:27Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t070316z-issue-004`
+- Branch: `worker/worker-20260514t070316z-issue-004`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status --short -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `git diff --stat -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `git diff -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `npm run test:integration -- health-handshake`
+  - `for i in 1 2; do npm run test:integration -- health-handshake; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Route registration into the broader backend server entrypoint is still deferred because `services/api/src/server.ts` was intentionally out of scope for this bounded issue-004 worker slice.
+
+### Open Questions / Assumptions
+- Assumed the issue-004 acceptance only requires FE/BE handshake proof in integration tests, not broader server-entrypoint registration in this slice.
+- Assumed the minimal lib-level health client is acceptable even though a later greenfield API-client scaffold is planned under `apps/web/src/api`.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- health-handshake`
+- `git diff --check`
+
+### Rollout Notes
+- This slice is additive and read-only at runtime: no auth, persistence, schema, migration, or protected runtime state behavior changed.
+- The integration proof uses a local ephemeral HTTP server rather than any live provider-backed validation.
+Review Verdict: no_required_fixes
