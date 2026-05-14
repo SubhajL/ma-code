@@ -207,9 +207,16 @@ function isProtectedPath(path: string): boolean {
   return PROTECTED_PATH_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
 }
 
+function dirtyPathMatchesExpected(file: string, expected: string[]): boolean {
+  const normalized = file.replace(/\/$/, "");
+  return expected.some((candidate) => {
+    const expectedPath = candidate.replace(/\/$/, "");
+    return expectedPath === normalized || expectedPath.startsWith(`${normalized}/`) || normalized.startsWith(`${expectedPath}/`);
+  });
+}
+
 function unexpectedDirtyFiles(dirty: string[], expected: string[]): string[] {
-  const expectedSet = new Set(expected);
-  return dirty.filter((file) => !expectedSet.has(file) || isProtectedPath(file));
+  return dirty.filter((file) => !dirtyPathMatchesExpected(file, expected) || isProtectedPath(file));
 }
 
 function isInitiativeRuntimeArtifactPath(file: string): boolean {

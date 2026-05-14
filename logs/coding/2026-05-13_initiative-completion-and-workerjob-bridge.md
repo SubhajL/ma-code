@@ -376,3 +376,25 @@ Review Verdict: no_required_fixes
 - Risks / follow-ups:
   - The actual greenfield continue rerun still needs live execution proof after these wrapper changes are committed.
   - Reaching `issue-018` still depends on the explicit HITL approval gate at `issue-017`.
+## 2026-05-14T07:16:04Z
+- Goal: unblock greenfield PR creation for the already-completed `issue-004` worker branch without rerunning the whole worker execution path.
+- RED evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 10 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - Worker `worker-20260514t070316z` reached `review_ready`, but PR lifecycle `pr-worker-20260514t070316z` blocked on:
+    - `unexpected dirty or protected worktree files: apps/web/src/lib/, services/api/src/routes/`
+  - Root cause: PR create compared dirty worktree entries to expected changed files by exact string only, so untracked directory entries emitted by `git status --porcelain` did not match expected file paths underneath them.
+- Files changed and why:
+  - `.pi/agent/extensions/pr-lifecycle.ts` — allow dirty directory entries when the expected changed-file evidence points to files underneath those directories.
+  - `tests/extension-units/pr-lifecycle.test.ts` — added a regression test covering untracked directory entries for expected worker changes.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the greenfield PR create blocker and regression coverage.
+- GREEN evidence:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts`
+  - `bash scripts/check-foundation-extension-compile.sh`
+  - `git diff --check`
+- Notes on broader validation:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-lifecycle.test.ts` failed in this environment because the integration fixture could not resolve `node_modules/tsx/dist/loader.mjs` from the temporary CLI fixture path; the new regression itself passed in the targeted unit suite.
+- Wiring verification:
+  - PR create now treats `apps/web/src/lib/` as expected dirt when the worker evidence lists `apps/web/src/lib/health-client.ts`, and similarly for other untracked directories produced by newly created files.
+  - This preserves the safety boundary for truly unexpected or protected paths because the helper still blocks anything outside the expected file roots.
+- Risks / follow-ups:
+  - The fixed PR lifecycle still needs live proof by rerunning `create`/`gate`/`merge` for `worker-20260514t070316z`, then resuming greenfield continuation.
