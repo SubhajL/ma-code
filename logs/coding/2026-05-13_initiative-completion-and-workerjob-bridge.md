@@ -376,40 +376,28 @@ Review Verdict: no_required_fixes
 - Risks / follow-ups:
   - The actual greenfield continue rerun still needs live execution proof after these wrapper changes are committed.
   - Reaching `issue-018` still depends on the explicit HITL approval gate at `issue-017`.
-
-## 2026-05-14T07:07:27Z
-- Goal: implement greenfield AFK `issue-004` so the frontend health client can call the backend health endpoint in bounded integration coverage.
-- Lifecycle readiness:
-  - Direct implementation task from the user prompt with explicit acceptance criteria; no separate planning mutation was required for this bounded worker slice.
-- Discovery path:
-  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `.pi/agent/skills/frontend-safety/SKILL.md`, and `.pi/agent/skills/backend-safety/SKILL.md` before editing.
-  - Inspected existing greenfield scaffold files under `apps/web/src`, `services/api/src`, `tests/integration`, the test wrapper scripts in `package.json` / `scripts/run-integration-tests.mjs`, and the issue contract at `docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json`.
+## 2026-05-14T07:16:04Z
+- Goal: unblock greenfield PR creation for the already-completed `issue-004` worker branch without rerunning the whole worker execution path.
+- RED evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 10 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - Worker `worker-20260514t070316z` reached `review_ready`, but PR lifecycle `pr-worker-20260514t070316z` blocked on:
+    - `unexpected dirty or protected worktree files: apps/web/src/lib/, services/api/src/routes/`
+  - Root cause: PR create compared dirty worktree entries to expected changed files by exact string only, so untracked directory entries emitted by `git status --porcelain` did not match expected file paths underneath them.
 - Files changed and why:
-  - `tests/integration/health-handshake.test.ts` — added the smallest failing integration coverage first: an HTTP handshake test that composes the frontend client with the backend route plus a queue-readiness guard on the durable issue summary.
-  - `apps/web/src/lib/health-client.ts` — added the public frontend health client that performs a GET request to `/health`, requires JSON, and validates the scaffold payload shape deterministically.
-  - `services/api/src/routes/health.ts` — added the bounded backend route module exposing `GET /health` with JSON headers while reusing the existing `healthCheck()` payload.
-- Tests added or changed:
-  - `frontend health client can call the backend health route over HTTP`
-  - `issue-004 remains phase-a bounded with queueReadiness not_ready`
-- Exact RED command and key failure reason:
-  - `npm run test:integration -- health-handshake`
-  - failed for the intended reason: `ERR_MODULE_NOT_FOUND` because `apps/web/src/lib/health-client.ts` did not exist yet when the new integration test imported the public interface.
-- Exact GREEN command:
-  - `npm run test:integration -- health-handshake`
-- Other validation commands run:
-  - `for i in 1 2; do npm run test:integration -- health-handshake; done`
+  - `.pi/agent/extensions/pr-lifecycle.ts` — allow dirty directory entries when the expected changed-file evidence points to files underneath those directories.
+  - `tests/extension-units/pr-lifecycle.test.ts` — added a regression test covering untracked directory entries for expected worker changes.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the greenfield PR create blocker and regression coverage.
+- GREEN evidence:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts`
+  - `bash scripts/check-foundation-extension-compile.sh`
   - `git diff --check`
-- Wiring verification evidence:
-  - The integration test starts a real local HTTP server, mounts `createHealthRoute()` at `GET /health`, then calls it through `fetchBackendHealth(...)` using the public frontend interface.
-  - The captured request proves the client sends `GET /health` with `accept: application/json` and the validated response proves the backend route reuses the existing `greenfield-api` health payload.
-  - Durable Phase A proof remains intact because `tests/integration/health-handshake.test.ts` re-reads `docs/initiatives/greenfield-scaffold/slices/issue-004.summary.json` and confirms `queueReadiness === "not_ready"` without mutating the materialized issue artifacts.
-- Behavior changes and risk notes:
-  - Added the first bounded FE/BE handshake scaffold only; this does not yet register the route through `services/api/src/server.ts` because that path is outside this worker slice's allowed file scope.
-  - Frontend safety assumption: no UI rendering or accessibility surface changed; the new frontend file is a fetch-only library boundary with deterministic error handling.
-  - Backend safety assumption: no auth, permissions, or persistence behavior changed; the new route is read-only and reuses the existing health payload.
-- Follow-ups or known gaps:
-  - A later backend slice can register `services/api/src/routes/health.ts` into a broader server entrypoint when that file is in scope.
-  - Later greenfield API client work under `apps/web/src/api` may absorb or replace this minimal lib-level helper.
+- Notes on broader validation:
+  - `node --import tsx --test tests/extension-units/pr-lifecycle.test.ts tests/integration/pr-lifecycle.test.ts` failed in this environment because the integration fixture could not resolve `node_modules/tsx/dist/loader.mjs` from the temporary CLI fixture path; the new regression itself passed in the targeted unit suite.
+- Wiring verification:
+  - PR create now treats `apps/web/src/lib/` as expected dirt when the worker evidence lists `apps/web/src/lib/health-client.ts`, and similarly for other untracked directories produced by newly created files.
+  - This preserves the safety boundary for truly unexpected or protected paths because the helper still blocks anything outside the expected file roots.
+- Risks / follow-ups:
+  - The fixed PR lifecycle still needs live proof by rerunning `create`/`gate`/`merge` for `worker-20260514t070316z`, then resuming greenfield continuation.
 
 ## Review (2026-05-14T07:07:27Z) - working-tree
 
