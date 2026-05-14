@@ -62,6 +62,36 @@ export interface DomainOwnership {
   supportingDomains: DomainId[];
 }
 
+export const MIXED_DOMAIN_CHILD_LANE_KINDS = ["frontend", "backend", "bff"] as const;
+export const MIXED_DOMAIN_COORDINATION_MODES = ["parent", "child"] as const;
+export const MIXED_DOMAIN_CONFLICT_CHECK_STATUSES = ["not_required", "pending", "passed", "failed"] as const;
+
+export type MixedDomainChildLaneKind = (typeof MIXED_DOMAIN_CHILD_LANE_KINDS)[number];
+export type MixedDomainCoordinationMode = (typeof MIXED_DOMAIN_COORDINATION_MODES)[number];
+export type MixedDomainConflictCheckStatus = (typeof MIXED_DOMAIN_CONFLICT_CHECK_STATUSES)[number];
+
+export interface MixedDomainChildLaneSummary {
+  laneId: string;
+  laneKind: MixedDomainChildLaneKind;
+  packetPath?: string | null;
+  allowedPaths: string[];
+  childJobId?: string | null;
+}
+
+export interface MixedDomainSliceCoordination {
+  mode: MixedDomainCoordinationMode;
+  verticalSliceId: string;
+  parentSliceId: string;
+  parentJobId?: string | null;
+  laneId?: string | null;
+  laneKind?: MixedDomainChildLaneKind | null;
+  childJobIds: string[];
+  childLanes: MixedDomainChildLaneSummary[];
+  reunifyEvidenceIntoParent?: boolean;
+  conflictCheckStatus?: MixedDomainConflictCheckStatus;
+  conflictCheckSource?: string | null;
+}
+
 export interface GraphifyEvidence {
   graphifyBackedClaim?: boolean;
   claimScope?: "graphify_backed_claim" | "architecture_review" | "other";
@@ -112,6 +142,7 @@ export interface TaskPacket {
   workType: WorkType;
   domains: DomainId[];
   domainOwnership?: DomainOwnership | null;
+  sliceCoordination?: MixedDomainSliceCoordination | null;
   discoverySummary: string[];
   crossModelPlanningNote: string;
   filesToInspect: string[];
@@ -145,6 +176,7 @@ export interface TaskPacketInput {
   workType: WorkType;
   domains?: DomainId[];
   domainOwnership?: DomainOwnership | null;
+  sliceCoordination?: MixedDomainSliceCoordination | null;
   filesToInspect?: string[];
   filesToModify?: string[];
   allowedPaths?: string[];
@@ -176,6 +208,28 @@ export interface GeneratedTaskPacket {
 
 const PACKET_POLICY_PATH = ".pi/agent/packets/packet-policy.json";
 const PACKET_SCHEMA_PATH = ".pi/agent/state/schemas/task-packet.schema.json";
+
+const MixedDomainChildLaneSummarySchema = Type.Object({
+  laneId: Type.String({ minLength: 1 }),
+  laneKind: StringEnum(MIXED_DOMAIN_CHILD_LANE_KINDS),
+  packetPath: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+  allowedPaths: Type.Array(Type.String()),
+  childJobId: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+});
+
+const MixedDomainSliceCoordinationSchema = Type.Object({
+  mode: StringEnum(MIXED_DOMAIN_COORDINATION_MODES),
+  verticalSliceId: Type.String({ minLength: 1 }),
+  parentSliceId: Type.String({ minLength: 1 }),
+  parentJobId: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+  laneId: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+  laneKind: Type.Optional(Type.Union([StringEnum(MIXED_DOMAIN_CHILD_LANE_KINDS), Type.Null()])),
+  childJobIds: Type.Array(Type.String()),
+  childLanes: Type.Array(MixedDomainChildLaneSummarySchema),
+  reunifyEvidenceIntoParent: Type.Optional(Type.Boolean()),
+  conflictCheckStatus: Type.Optional(StringEnum(MIXED_DOMAIN_CONFLICT_CHECK_STATUSES)),
+  conflictCheckSource: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+});
 
 const GraphifyEvidenceSchema = Type.Object({
   graphifyBackedClaim: Type.Optional(Type.Boolean()),
@@ -221,6 +275,7 @@ const GenerateTaskPacketSchema = Type.Object({
   workType: StringEnum(WORK_TYPES),
   domains: Type.Optional(Type.Array(StringEnum(DOMAIN_IDS))),
   domainOwnership: Type.Optional(Type.Union([DomainOwnershipSchema, Type.Null()])),
+  sliceCoordination: Type.Optional(Type.Union([MixedDomainSliceCoordinationSchema, Type.Null()])),
   filesToInspect: Type.Optional(Type.Array(Type.String())),
   filesToModify: Type.Optional(Type.Array(Type.String())),
   allowedPaths: Type.Optional(Type.Array(Type.String())),
@@ -275,6 +330,56 @@ function normalizeDomainOwnership(
     owningRole: assignedRole,
     supportingDomains,
   };
+}
+
+function normalizeMixedDomainChildLaneSummary(raw: MixedDomainChildLaneSummary, index: number): MixedDomainChildLaneSummary {
+  if (!isRecord(raw)) {
+    throw new Error(`sliceCoordination.childLanes[${index}] must be an object.`);
+  }
+  const laneKind = raw.laneKind === undefined || raw.laneKind === null
+    ? null
+    : parseEnumString(raw.laneKind, MIXED_DOMAIN_CHILD_LANE_KINDS, `sliceCoordination.childLanes[${index}].laneKind`);
+  if (!laneKind) {
+    throw new Error(`sliceCoordination.childLanes[${index}].laneKind is required.`);
+  }
+  return {
+    laneId: parseString(raw.laneId, `sliceCoordination.childLanes[${index}].laneId`),
+    laneKind,
+    packetPath: raw.packetPath === undefined || raw.packetPath === null ? null : parseString(raw.packetPath, `sliceCoordination.childLanes[${index}].packetPath`),
+    allowedPaths: uniqueStrings(parseStringArray(raw.allowedPaths)),
+    childJobId: raw.childJobId === undefined || raw.childJobId === null ? null : parseString(raw.childJobId, `sliceCoordination.childLanes[${index}].childJobId`),
+  };
+}
+
+export function normalizeMixedDomainSliceCoordination(raw: MixedDomainSliceCoordination | null | undefined): MixedDomainSliceCoordination | null {
+  if (!raw || !isRecord(raw)) return null;
+  const mode = parseEnumString(raw.mode, MIXED_DOMAIN_COORDINATION_MODES, "sliceCoordination.mode");
+  const coordination: MixedDomainSliceCoordination = {
+    mode,
+    verticalSliceId: parseString(raw.verticalSliceId, "sliceCoordination.verticalSliceId"),
+    parentSliceId: parseString(raw.parentSliceId, "sliceCoordination.parentSliceId"),
+    parentJobId: raw.parentJobId === undefined || raw.parentJobId === null ? null : parseString(raw.parentJobId, "sliceCoordination.parentJobId"),
+    laneId: raw.laneId === undefined || raw.laneId === null ? null : parseString(raw.laneId, "sliceCoordination.laneId"),
+    laneKind: raw.laneKind === undefined || raw.laneKind === null ? null : parseEnumString(raw.laneKind, MIXED_DOMAIN_CHILD_LANE_KINDS, "sliceCoordination.laneKind"),
+    childJobIds: uniqueStrings(parseStringArray(raw.childJobIds)),
+    childLanes: Array.isArray(raw.childLanes) ? raw.childLanes.map((lane, index) => normalizeMixedDomainChildLaneSummary(lane as MixedDomainChildLaneSummary, index)) : [],
+    reunifyEvidenceIntoParent: raw.reunifyEvidenceIntoParent === true,
+    conflictCheckStatus: raw.conflictCheckStatus === undefined || raw.conflictCheckStatus === null
+      ? undefined
+      : parseEnumString(raw.conflictCheckStatus, MIXED_DOMAIN_CONFLICT_CHECK_STATUSES, "sliceCoordination.conflictCheckStatus"),
+    conflictCheckSource: raw.conflictCheckSource === undefined || raw.conflictCheckSource === null ? null : parseString(raw.conflictCheckSource, "sliceCoordination.conflictCheckSource"),
+  };
+
+  if (coordination.mode === "child") {
+    if (!coordination.laneId) throw new Error("sliceCoordination.laneId is required for child coordination.");
+    if (!coordination.laneKind) throw new Error("sliceCoordination.laneKind is required for child coordination.");
+  }
+
+  if (coordination.mode === "parent" && coordination.reunifyEvidenceIntoParent && coordination.childJobIds.length === 0) {
+    throw new Error("sliceCoordination.childJobIds must not be empty when parent coordination reunifies child evidence.");
+  }
+
+  return coordination;
 }
 
 function normalizeGraphifyEvidence(raw: GraphifyEvidence | null | undefined): GraphifyEvidence | null {
@@ -435,6 +540,14 @@ export function validateTaskPacketShape(packet: TaskPacket): void {
     throw new Error("Packet must include at least one allowed path or domain.");
   }
   if (packet.nonGoals.length === 0) throw new Error("nonGoals must not be empty.");
+  if (packet.sliceCoordination) {
+    if (!packet.sliceCoordination.verticalSliceId.trim()) throw new Error("sliceCoordination.verticalSliceId must not be empty.");
+    if (!packet.sliceCoordination.parentSliceId.trim()) throw new Error("sliceCoordination.parentSliceId must not be empty.");
+    if (packet.sliceCoordination.mode === "child") {
+      if (!packet.sliceCoordination.laneId?.trim()) throw new Error("sliceCoordination.laneId must not be empty for child coordination.");
+      if (!packet.sliceCoordination.laneKind) throw new Error("sliceCoordination.laneKind must be set for child coordination.");
+    }
+  }
   if (packet.discoverySummary.length === 0) throw new Error("discoverySummary must not be empty.");
   if (packet.filesToInspect.length === 0) throw new Error("filesToInspect must not be empty.");
   if (packet.acceptanceCriteria.length === 0) throw new Error("acceptanceCriteria must not be empty.");
@@ -481,6 +594,24 @@ export function renderGraphifyEvidence(evidence: GraphifyEvidence | null | undef
   if (evidence.graphifyAdapterAction) lines.push(`graphify adapter action: ${evidence.graphifyAdapterAction}`);
   if (evidence.graphifyArtifactPath) lines.push(`graphify artifact path: ${evidence.graphifyArtifactPath}`);
   for (const note of evidence.sourceVerificationNotes ?? []) lines.push(`source verification note: ${note}`);
+  return renderList(lines);
+}
+
+export function renderMixedDomainSliceCoordination(coordination: MixedDomainSliceCoordination | null | undefined): string {
+  if (!coordination) return "- none";
+  const lines: string[] = [
+    `mode: ${coordination.mode}`,
+    `vertical slice: ${coordination.verticalSliceId}`,
+    `parent slice: ${coordination.parentSliceId}`,
+    `parent job: ${coordination.parentJobId ?? "none"}`,
+    `lane: ${coordination.laneId ?? "none"}`,
+    `lane kind: ${coordination.laneKind ?? "none"}`,
+    `reunify evidence into parent: ${coordination.reunifyEvidenceIntoParent === true}`,
+    `conflict check: ${coordination.conflictCheckStatus ?? "none"}`,
+    `conflict check source: ${coordination.conflictCheckSource ?? "none"}`,
+  ];
+  for (const jobId of coordination.childJobIds) lines.push(`child job: ${jobId}`);
+  for (const lane of coordination.childLanes) lines.push(`child lane: ${lane.laneId} (${lane.laneKind})${lane.packetPath ? ` packet=${lane.packetPath}` : ""}`);
   return renderList(lines);
 }
 
@@ -531,6 +662,9 @@ export function renderTaskPacket(packet: TaskPacket): string {
     "",
     "## Work Type",
     `- ${packet.workType}`,
+    "",
+    "## Slice Coordination",
+    renderMixedDomainSliceCoordination(packet.sliceCoordination),
     "",
     "## Domains",
     renderList(packet.domains),
@@ -686,6 +820,7 @@ export function generateTaskPacket(
     workType: input.workType,
     domains,
     domainOwnership: normalizeDomainOwnership(input.domainOwnership, domains, input.assignedRole),
+    sliceCoordination: normalizeMixedDomainSliceCoordination(input.sliceCoordination),
     discoverySummary: uniqueStrings(input.discoverySummary ?? policy.defaults.discovery_summary),
     crossModelPlanningNote: (input.crossModelPlanningNote ?? policy.defaults.cross_model_planning_note).trim(),
     filesToInspect,

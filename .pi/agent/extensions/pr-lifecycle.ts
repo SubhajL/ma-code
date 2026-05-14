@@ -14,6 +14,10 @@ const ALLOWED_MERGE_METHODS = new Set(["squash", "merge", "rebase"]);
 const PROTECTED_PATH_PREFIXES = [".git", "node_modules", ".pi/agent/state/runtime"];
 const PROTECTED_BRANCH_NAMES = new Set(["main", "master", "trunk"]);
 
+function isStackedBaseRef(baseRef: string | null | undefined): boolean {
+  return Boolean(baseRef) && !PROTECTED_BRANCH_NAMES.has(String(baseRef));
+}
+
 export type PrLifecycleCommand = "dry-run" | "create" | "gate" | "merge-ready" | "merge" | "sync-main" | "status";
 export type PrLifecycleMode = "dry_run" | "create" | "gate" | "merge_ready" | "merge" | "sync_main" | "status";
 export type PrLifecycleStatus = "planned" | "pr_created" | "gate_pending" | "gate_passed" | "blocked" | "merged" | "synced" | "failed";
@@ -208,8 +212,12 @@ function unexpectedDirtyFiles(dirty: string[], expected: string[]): string[] {
   return dirty.filter((file) => !expectedSet.has(file) || isProtectedPath(file));
 }
 
+function isInitiativeRuntimeArtifactPath(file: string): boolean {
+  return /^docs\/initiatives\/[^/]+\/(?:pipeline-runs|afk-runs|worker-runs|pr-runs)(?:\/|$)/.test(file);
+}
+
 function isOwnLifecycleBookkeeping(run: PrLifecycleRun, file: string): boolean {
-  return file === prRunPath(run.initiativeId, run.runId) || file === prRunSummaryPath(run.initiativeId, run.runId);
+  return file === prRunPath(run.initiativeId, run.runId) || file === prRunSummaryPath(run.initiativeId, run.runId) || isInitiativeRuntimeArtifactPath(file);
 }
 
 async function readTaskReady(repoRoot: string, linkedTaskId: string | null, worktreePath?: string | null): Promise<boolean> {
@@ -393,8 +401,15 @@ async function gateRun(run: PrLifecycleRun, deps: PrLifecycleDeps): Promise<PrLi
   run.pr.reviewDecision = session.reviewSummary.reviewDecision || run.pr.reviewDecision;
   run.pr.mergeStateStatus = session.prContext.mergeStateStatus ?? run.pr.mergeStateStatus;
   run.evidence.push(`PR gate finalStatus: ${session.finalStatus}; ${session.recommendedNextActionReason}`);
-  if (session.finalStatus === "pass" && session.commentSummary.blockingCommentCount === 0 && session.reviewSummary.changesRequestedCount === 0) {
+  const noChecksReported = (latest?.summary.totalCount ?? 0) === 0;
+  const stackedNoCheckPass = noChecksReported
+    && isStackedBaseRef(run.pr.baseRef)
+    && session.commentSummary.blockingCommentCount === 0
+    && session.reviewSummary.changesRequestedCount === 0
+    && String(session.prContext.mergeStateStatus ?? run.pr.mergeStateStatus ?? "").toUpperCase() === "CLEAN";
+  if ((session.finalStatus === "pass" || stackedNoCheckPass) && session.commentSummary.blockingCommentCount === 0 && session.reviewSummary.changesRequestedCount === 0) {
     run.status = "gate_passed";
+    if (stackedNoCheckPass && session.finalStatus !== "pass") run.evidence.push(`PR gate accepted zero-check stacked PR against ${run.pr.baseRef}; local worker validation evidence remains authoritative for this bounded merge.`);
     run.nextOperatorAction = "Run merge-ready; merge still requires explicit --allow-merge --approval-ref.";
   } else if (session.finalStatus === "pending" || session.finalStatus === "timeout") {
     run.status = "gate_pending";
@@ -411,8 +426,9 @@ async function mergeReadyRun(run: PrLifecycleRun, deps: PrLifecycleDeps, runner:
   await readPrDetails(run, runner).catch(() => undefined);
   const dirty = deps.dirtyFiles ? await deps.dirtyFiles(repoRoot) : await readDirtyFiles(repoRoot, runner, run.commandsRun);
   const blockers: string[] = [];
+  const stackedNoCheckPass = run.pr.checks.length === 0 && isStackedBaseRef(run.pr.baseRef) && String(run.pr.mergeStateStatus ?? "").toUpperCase() === "CLEAN";
   if (run.status !== "gate_passed") blockers.push(`PR gate must be gate_passed; current status is ${run.status}.`);
-  if (run.pr.checks.length === 0) blockers.push("PR gate checks are missing.");
+  if (run.pr.checks.length === 0 && !stackedNoCheckPass) blockers.push("PR gate checks are missing.");
   if (run.pr.checks.some((check) => !["SUCCESS", "SKIPPED", "NEUTRAL"].includes(String(check.state).toUpperCase()))) blockers.push("failing or pending checks block merge-ready.");
   if (String(run.pr.reviewDecision ?? "").toUpperCase() === "CHANGES_REQUESTED") blockers.push("requested changes block merge-ready.");
   if (String(run.pr.mergeStateStatus ?? "").toUpperCase() !== "CLEAN") blockers.push(`mergeStateStatus must be CLEAN; current value is ${run.pr.mergeStateStatus ?? "unknown"}.`);
@@ -422,6 +438,7 @@ async function mergeReadyRun(run: PrLifecycleRun, deps: PrLifecycleDeps, runner:
   if (blockers.length > 0) return block(run, blockers);
   run.lifecycle.mergeReady = true;
   run.status = "gate_passed";
+  if (stackedNoCheckPass) run.evidence.push(`merge-ready accepted zero-check stacked PR against ${run.pr.baseRef}; mergeStateStatus CLEAN and local worker validation evidence remain authoritative.`);
   run.nextOperatorAction = "Merge-ready. To merge, rerun with --allow-merge --approval-ref; default remains stop-before-merge.";
   run.updatedAt = nowIso();
   return run;

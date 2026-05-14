@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
 import { PRODUCT_PIPELINE_PHASE_ORDER, type ProductPipelinePlan } from "../../.pi/agent/extensions/product-pipeline.ts";
@@ -7,6 +9,8 @@ import {
   planParallelWorkerLanes,
   type ParallelWorkerLaneManifest,
 } from "../../.pi/agent/extensions/parallel-worker-lanes.ts";
+import { runHarnessParallelWorkerLanes } from "../../scripts/harness-parallel-worker-lanes.ts";
+import { makeTempRepo } from "./test-utils.ts";
 
 function plan(overrides: Partial<ProductPipelinePlan> = {}): ProductPipelinePlan {
   return {
@@ -51,6 +55,35 @@ test("plans two independent worker lanes with Phase 10 proof and max parallel 2"
   assert.equal(result.parallelProof.sameSliceParallelism, false);
 });
 
+test("mixed-domain-style slice ids still rely on explicit Phase 10 proof refs", () => {
+  const result = planParallelWorkerLanes({
+    plan: plan({
+      initiativeId: "mixed-domain-harness-optimization",
+      slices: [
+        {
+          ...plan().slices[0],
+          sliceId: "issue-005",
+          title: "Improve mixed-domain parallel safety",
+          artifacts: { frontendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-005.frontend.packet.json" },
+        },
+        {
+          ...plan().slices[1],
+          sliceId: "issue-006",
+          title: "Coordinate mixed-domain sub-lanes",
+          artifacts: { frontendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.frontend.packet.json" },
+        },
+      ],
+      parallelDecisions: [{ sliceIds: ["issue-005", "issue-006"], parallelAllowed: true, blockers: [], source: "phase10:mixed-domain-safe" }],
+    }),
+    maxParallelSlices: 2,
+    activeLeaseScopes: [],
+  });
+
+  assert.deepEqual(result.selectedSliceIds, ["issue-005", "issue-006"]);
+  assert.equal(result.lanes[0].dependencyDecisionRef, "phase10:not_required_single_lane");
+  assert.equal(result.lanes[1].dependencyDecisionRef, "phase10:mixed-domain-safe");
+});
+
 test("respects max parallel, missing Phase 10 proof, HITL gates, and active worker-lane lease conflicts", () => {
   const maxOne = planParallelWorkerLanes({ plan: plan(), maxParallelSlices: 1, activeLeaseScopes: [] });
   assert.deepEqual(maxOne.selectedSliceIds, ["slice-001"]);
@@ -93,4 +126,50 @@ test("manifest uses durable initiative path shape and records parallel proof", (
   assert.equal(manifest.orchestrationLeaseId, "parallel-run:checkout-redesign:run-test");
   assert.equal(manifest.lanes[0].packetPath, "docs/initiatives/checkout-redesign/packets/slice-001.frontend.packet.json");
   assert.equal(manifest.parallelProof.phase10Decision, "allowed");
+});
+
+test("harness parallel worker lanes expands one mixed-domain parent slice into coordinated child lanes", async () => {
+  const cwd = await makeTempRepo("parallel-lanes-mixed-domain-");
+  const initiativeDir = join(cwd, "docs", "initiatives", "mixed-domain-harness-optimization");
+  const packetsDir = join(initiativeDir, "packets");
+  await mkdir(packetsDir, { recursive: true });
+  await writeFile(join(cwd, "docs", "initiatives", "mixed-domain-harness-optimization", "pipeline.json"), `${JSON.stringify({
+    version: 1,
+    initiativeId: "mixed-domain-harness-optimization",
+    maxParallelSlices: 1,
+    slices: [
+      {
+        sliceId: "issue-006",
+        title: "Add coordinated sub-lane execution under one mixed-domain parent slice",
+        status: "ready",
+        currentPhase: "fe_implementation",
+        phaseOrder: PRODUCT_PIPELINE_PHASE_ORDER,
+        artifacts: {
+          frontendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.frontend.packet.json",
+          backendPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.backend.packet.json",
+          bffPacket: "docs/initiatives/mixed-domain-harness-optimization/packets/issue-006.bff.packet.json",
+        },
+        hitlGate: null,
+        blockers: [],
+      },
+    ],
+    parallelDecisions: [],
+  }, null, 2)}\n`, "utf8");
+  await writeFile(join(cwd, "docs", "initiatives", "mixed-domain-harness-optimization", "packets", "issue-006.frontend.packet.json"), "{}\n", "utf8");
+  await writeFile(join(cwd, "docs", "initiatives", "mixed-domain-harness-optimization", "packets", "issue-006.backend.packet.json"), "{}\n", "utf8");
+  await writeFile(join(cwd, "docs", "initiatives", "mixed-domain-harness-optimization", "packets", "issue-006.bff.packet.json"), "{}\n", "utf8");
+
+  const result = await runHarnessParallelWorkerLanes({
+    command: "dry-run",
+    initiative: "mixed-domain-harness-optimization",
+    repoRoot: cwd,
+    maxParallel: 1,
+  });
+  const manifest = result.manifest as any;
+
+  assert.equal(manifest.lanes.length, 3);
+  assert.deepEqual(manifest.lanes.map((lane: any) => lane.laneKind), ["frontend", "backend", "bff"]);
+  assert.equal(manifest.coordinators.length, 1);
+  assert.equal(manifest.coordinators[0].parentSliceId, "issue-006");
+  assert.equal(manifest.coordinators[0].parentQueueJobId, "preview:mixed-domain-harness-optimization:issue-006:reunify");
 });

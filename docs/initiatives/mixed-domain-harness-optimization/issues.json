@@ -146,7 +146,7 @@
       "issueId": "issue-004",
       "title": "Add salvage-aware recovery for interrupted mixed-domain worker runs",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-003"
       ],

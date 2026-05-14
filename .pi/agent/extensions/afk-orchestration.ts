@@ -9,6 +9,11 @@ import {
 } from "./queue-runner.ts";
 import { buildAfkWorkerExecutionPlan } from "./afk-worker-execution-plan.ts";
 import { VALID_DOMAINS, deriveDomainOwnershipForDomains } from "./domain-ownership.ts";
+import {
+  decideSliceParallelism,
+  type SliceDependencySummary,
+  type SlicePathAccessProof,
+} from "./slice-dependency-decision.ts";
 
 export type AfkOrchestrationCommand = "dry-run" | "apply" | "run" | "status";
 export type AfkOrchestrationMode = "dry_run" | "apply" | "run" | "status";
@@ -128,6 +133,7 @@ interface LoadedArtifacts {
   sourceArtifacts: AfkSourceArtifacts;
   issues: AfkIssueArtifact[];
   approvals: Map<string, AfkIssueApproval>;
+  mergedIssueIds: Set<string>;
 }
 
 const INITIATIVE_ROOT = "docs/initiatives";
@@ -318,6 +324,19 @@ export function afkRunPath(initiativeId: string, runId: string): string {
   return `${afkRunsDir(initiativeId)}/${assertSlug(runId, "runId")}.json`;
 }
 
+async function loadMergedIssueIds(repoRoot: string, initiativeRoot: string): Promise<Set<string>> {
+  const prRunsDir = resolve(repoRoot, initiativeRoot, "pr-runs");
+  if (!(await exists(prRunsDir))) return new Set<string>();
+  const mergedIssueIds = new Set<string>();
+  for (const entry of await readdir(prRunsDir)) {
+    if (!entry.endsWith(".json")) continue;
+    const parsed = await readJson(join(prRunsDir, entry), `${initiativeRoot}/pr-runs/${entry}`);
+    if (!isRecord(parsed)) continue;
+    if ((parsed.status === "merged" || parsed.status === "synced") && typeof parsed.sourceIssueId === "string") mergedIssueIds.add(parsed.sourceIssueId);
+  }
+  return mergedIssueIds;
+}
+
 async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<LoadedArtifacts> {
   const slug = assertSlug(initiativeId, "initiativeId");
   const initiativeRoot = `${INITIATIVE_ROOT}/${slug}`;
@@ -333,6 +352,7 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
   if (!isRecord(issuesJson) || !Array.isArray(issuesJson.issues)) throw new Error(`${issuesPath} must contain an issues array.`);
   const issues = issuesJson.issues.map(normalizeIssue);
   const approvals = await loadApprovals(repoRoot, approvalsPath);
+  const mergedIssueIds = await loadMergedIssueIds(repoRoot, initiativeRoot);
   const summaries: string[] = [];
   for (const issue of issues) {
     const summaryPath = `${initiativeRoot}/slices/${issue.issueId}.summary.json`;
@@ -349,6 +369,7 @@ async function loadArtifacts(repoRoot: string, initiativeId: string): Promise<Lo
     },
     issues,
     approvals,
+    mergedIssueIds,
   };
 }
 
@@ -415,8 +436,9 @@ function hasDurableHitlApproval(issue: AfkIssueArtifact | undefined, assessments
   return hitlBounded(issue) ? assessment.approval : undefined;
 }
 
-function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, assessments: Map<string, HitlApprovalAssessment>): boolean {
+function issueResolvedForAfk(issue: AfkIssueArtifact | undefined, assessments: Map<string, HitlApprovalAssessment>, mergedIssueIds: Set<string>): boolean {
   if (!issue) return false;
+  if (mergedIssueIds.has(issue.issueId)) return true;
   const assessment = assessments.get(issue.issueId);
   const satisfiedByStatus = statusDoneOrApproved(issue) && (!assessment || assessment.missingArtifacts.length === 0);
   return satisfiedByStatus || !!hasDurableHitlApproval(issue, assessments);
@@ -453,16 +475,74 @@ function pathsOverlap(left: string, right: string): boolean {
   return a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
 }
 
-function sharedPaths(left: AfkIssueArtifact, right: AfkIssueArtifact): string[] {
-  const leftPaths = [...normalizeStringArray(left.filesToModify), ...normalizeAllowedPaths(left.allowedPaths)];
-  const rightPaths = [...normalizeStringArray(right.filesToModify), ...normalizeAllowedPaths(right.allowedPaths)];
+function explicitMutationProofPaths(issue: AfkIssueArtifact): string[] {
+  return [
+    ...normalizeStringArray(issue.filesToModify),
+    ...normalizeStringArray(issue.schemaPaths),
+    ...normalizeStringArray(issue.migrationPaths),
+    ...normalizeStringArray(issue.configPaths),
+    ...normalizeStringArray(issue.testPaths),
+    ...normalizeStringArray(issue.fixturePaths),
+  ];
+}
+
+function usesScopeOnlyAllowedPathAnalysis(issue: AfkIssueArtifact): boolean {
+  return new Set(normalizeStringArray(issue.domains).filter((domain) => (VALID_DOMAINS as readonly string[]).includes(domain))).size > 1
+    && explicitMutationProofPaths(issue).length > 0;
+}
+
+function allowedPathsForParallelAnalysis(issue: AfkIssueArtifact): SliceDependencySummary["allowedPaths"] {
+  const scopeOnly = usesScopeOnlyAllowedPathAnalysis(issue);
+  if (!Array.isArray(issue.allowedPaths)) return [];
+  return issue.allowedPaths.flatMap((entry): Array<string | SlicePathAccessProof> => {
+    if (typeof entry === "string" && entry.trim()) {
+      const path = entry.trim().replace(/^\.\//, "").replace(/\/$/, "");
+      return path ? [scopeOnly ? { path, access: "read_only", mutating: false } : path] : [];
+    }
+    if (!isRecord(entry) || typeof entry.path !== "string" || !entry.path.trim()) return [];
+    const path = entry.path.trim().replace(/^\.\//, "").replace(/\/$/, "");
+    if (!path) return [];
+    if (scopeOnly) return [{ path, access: "read_only", mutating: false }];
+    const access = typeof entry.access === "string" && entry.access.trim() ? entry.access.trim() : undefined;
+    const mutating = typeof entry.mutating === "boolean" ? entry.mutating : undefined;
+    return [{ path, ...(access ? { access: access as SlicePathAccessProof["access"] } : {}), ...(mutating === undefined ? {} : { mutating }) }];
+  });
+}
+
+function sharedAllowedPathRoots(left: AfkIssueArtifact, right: AfkIssueArtifact): string[] {
   const shared = new Set<string>();
-  for (const leftPath of leftPaths) {
-    for (const rightPath of rightPaths) {
-      if (pathsOverlap(leftPath, rightPath)) shared.add(`${leftPath} ↔ ${rightPath}`);
+  for (const leftPath of normalizeAllowedPaths(left.allowedPaths)) {
+    for (const rightPath of normalizeAllowedPaths(right.allowedPaths)) {
+      if (pathsOverlap(leftPath, rightPath)) shared.add(leftPath === rightPath ? leftPath : `${leftPath} ↔ ${rightPath}`);
     }
   }
   return [...shared].sort();
+}
+
+function issueParallelSummary(issue: AfkIssueArtifact): SliceDependencySummary {
+  return {
+    sliceId: issue.issueId,
+    filesToModify: normalizeStringArray(issue.filesToModify),
+    allowedPaths: allowedPathsForParallelAnalysis(issue),
+    schemaPaths: normalizeStringArray(issue.schemaPaths),
+    migrationPaths: normalizeStringArray(issue.migrationPaths),
+    configPaths: normalizeStringArray(issue.configPaths),
+    testPaths: normalizeStringArray(issue.testPaths),
+    fixturePaths: normalizeStringArray(issue.fixturePaths),
+  };
+}
+
+function formatParallelBlockerReason(issueIds: string[], decision: ReturnType<typeof decideSliceParallelism>): string {
+  const blockers = decision.blockers.map((blocker) => blocker.paths.length > 0 ? `${blocker.reason} (${blocker.paths.join(", ")}).` : `${blocker.reason}.`);
+  return `Forced sequential for ${issueIds.join(" + ")}: ${blockers.join(" ")}`;
+}
+
+function formatParallelSafeReason(left: AfkIssueArtifact, right: AfkIssueArtifact): string {
+  const allowedRootOverlaps = sharedAllowedPathRoots(left, right);
+  const sharedRootNote = allowedRootOverlaps.length > 0 && (usesScopeOnlyAllowedPathAnalysis(left) || usesScopeOnlyAllowedPathAnalysis(right))
+    ? ` Shared allowed path roots stay parallel-safe because the pair declares disjoint explicit mutating paths: ${allowedRootOverlaps.join(", ")}.`
+    : "";
+  return `Parallel-safe for ${left.issueId} + ${right.issueId}: disjoint explicit mutating paths across filesToModify, schema/migration, config, and test/fixture proof.${sharedRootNote}`;
 }
 
 function buildParallelDecisions(eligibleIssues: AfkIssueArtifact[], maxParallel: number): AfkParallelDecision[] {
@@ -474,18 +554,29 @@ function buildParallelDecisions(eligibleIssues: AfkIssueArtifact[], maxParallel:
     for (let rightIndex = leftIndex + 1; rightIndex < eligibleIssues.length; rightIndex += 1) {
       const left = eligibleIssues[leftIndex];
       const right = eligibleIssues[rightIndex];
-      const shared = sharedPaths(left, right);
-      if (shared.length > 0) {
+      const pairDecision = decideSliceParallelism({ slices: [issueParallelSummary(left), issueParallelSummary(right)] });
+      const blockerPaths = [...new Set(pairDecision.blockers.flatMap((blocker) => blocker.paths))].sort();
+      if (!pairDecision.parallelAllowed) {
         decisions.push({
           issueIds: [left.issueId, right.issueId],
           status: "forced_sequential",
-          reason: "Eligible issues share files or mutating allowed path roots, so Phase B will not mark them as parallel candidates.",
-          sharedPaths: shared,
+          reason: formatParallelBlockerReason([left.issueId, right.issueId], pairDecision),
+          sharedPaths: blockerPaths,
         });
       } else if (maxParallel > 1) {
-        decisions.push({ issueIds: [left.issueId, right.issueId], status: "parallel_candidate", reason: "Eligible issues have disjoint files and allowed paths.", sharedPaths: [] });
+        decisions.push({
+          issueIds: [left.issueId, right.issueId],
+          status: "parallel_candidate",
+          reason: formatParallelSafeReason(left, right),
+          sharedPaths: [],
+        });
       } else {
-        decisions.push({ issueIds: [left.issueId, right.issueId], status: "sequential_default", reason: "maxParallel is 1; eligible issues stay sequential by default.", sharedPaths: [] });
+        decisions.push({
+          issueIds: [left.issueId, right.issueId],
+          status: "sequential_default",
+          reason: `maxParallel is 1, so ${left.issueId} + ${right.issueId} stay sequential by default even though they are parallel-safe. ${formatParallelSafeReason(left, right)}`,
+          sharedPaths: [],
+        });
       }
     }
   }
@@ -503,6 +594,7 @@ async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Pro
   const hitlAssessments = await assessHitlApprovals(repoRoot, artifacts.issues, artifacts.approvals);
   const byId = new Map(artifacts.issues.map((issue) => [issue.issueId, issue]));
   const summarySet = new Set(artifacts.sourceArtifacts.summaries);
+  const mergedIssueIds = artifacts.mergedIssueIds;
   const eligible: AfkIssueArtifact[] = [];
   const eligibleIssues: AfkIssueRecord[] = [];
   const blockedIssues: AfkIssueRecord[] = [];
@@ -517,11 +609,12 @@ async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Pro
     const hitlAssessment = hitlAssessments.get(issue.issueId);
     const durableApproval = hasDurableHitlApproval(issue, hitlAssessments);
     const satisfiedByStatus = statusDoneOrApproved(issue) && (!hitlAssessment || hitlAssessment.missingArtifacts.length === 0);
-    if (satisfiedByStatus || durableApproval) {
+    const satisfiedByMergedPr = mergedIssueIds.has(issue.issueId);
+    if (satisfiedByStatus || durableApproval || satisfiedByMergedPr) {
       doneIssues.push({
         ...recordBase,
         disposition: "done",
-        reasons: [durableApproval ? `Durable HITL approval ${durableApproval.approvalRef} resolves this blocker.` : `Issue status is ${issue.status}.`],
+        reasons: [durableApproval ? `Durable HITL approval ${durableApproval.approvalRef} resolves this blocker.` : satisfiedByMergedPr ? "Merged PR lifecycle artifact marks this issue done." : `Issue status is ${issue.status}.`],
       });
       continue;
     }
@@ -530,7 +623,7 @@ async function evaluateIssues(repoRoot: string, artifacts: LoadedArtifacts): Pro
       continue;
     }
     if (issue.type !== "AFK") reasons.push(`Unsupported issue type: ${issue.type || "missing"}.`);
-    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), hitlAssessments));
+    const unresolved = dependencies.filter((dependencyId) => !issueResolvedForAfk(byId.get(dependencyId), hitlAssessments, mergedIssueIds));
     if (unresolved.length > 0) {
       deferredIssues.push({ ...recordBase, disposition: "deferred", reasons: [`Unresolved dependencies: ${unresolved.join(", ")}.`] });
       continue;

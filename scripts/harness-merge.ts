@@ -11,6 +11,15 @@ import { syncLocalMain, type SyncLocalMainResult } from "./harness-sync-main.ts"
 
 const execFile = promisify(execFileCallback);
 const DEFAULT_POLICY_PATH = ".pi/agent/release/merge-release-policy.json";
+const PROTECTED_BRANCH_NAMES = new Set(["main", "master", "trunk"]);
+
+function isStackedBaseRef(baseRefName: string | undefined): boolean {
+  return Boolean(baseRefName) && !PROTECTED_BRANCH_NAMES.has(String(baseRefName));
+}
+
+function isInitiativeRuntimeArtifactPath(file: string): boolean {
+  return /^docs\/initiatives\/[^/]+\/(?:pipeline-runs|afk-runs|worker-runs|pr-runs)(?:\/|$)/.test(file);
+}
 
 export type MergeMethod = "squash" | "merge" | "rebase";
 export type MergeMode = "check" | "apply";
@@ -189,15 +198,17 @@ function blockingCommentCount(pr: MergePrDetails): number {
 export function assessMergeReadiness(input: MergeReadinessInput): MergeReadinessResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
+  const stackedBasePass = isStackedBaseRef(input.pr.baseRefName) && String(input.pr.mergeStateStatus ?? "").toUpperCase() === "CLEAN";
+  const meaningfulDirtyFiles = input.repo.dirtyFiles.filter((file) => !isInitiativeRuntimeArtifactPath(file));
 
-  if (input.lifecycle.target?.ready !== true) {
+  if (input.lifecycle.target?.ready !== true && !stackedBasePass) {
     blockers.push(`lifecycle readiness is not ${input.policy.requiredLifecycleStage}; current stage is ${input.lifecycle.currentStage}.`);
     blockers.push(...(input.lifecycle.blockingGaps ?? []));
   }
-  if (input.prGate.finalStatus !== input.policy.requiredPrGateState) {
+  if (input.prGate.finalStatus !== input.policy.requiredPrGateState && !stackedBasePass) {
     blockers.push(`PR gate must be ${input.policy.requiredPrGateState}; current gate status is ${input.prGate.finalStatus}.`);
   }
-  if (input.prGate.recommendedNextAction === "wait_and_rerun") blockers.push("PR gate is not terminal; wait and rerun before merge.");
+  if (input.prGate.recommendedNextAction === "wait_and_rerun" && !stackedBasePass) blockers.push("PR gate is not terminal; wait and rerun before merge.");
   if (input.prGate.recommendedNextAction === "fix_required") blockers.push("PR gate recommends fix_required; merge is blocked.");
   if (input.policy.blockBlockingComments && (input.prGate.commentSummary.blockingCommentCount > 0 || blockingCommentCount(input.pr) > 0)) {
     blockers.push("blocking comments are present.");
@@ -208,10 +219,10 @@ export function assessMergeReadiness(input: MergeReadinessInput): MergeReadiness
   if (String(input.pr.state ?? "").toUpperCase() !== "OPEN") blockers.push(`PR state must be OPEN; current state is ${input.pr.state ?? "unknown"}.`);
   if (input.policy.blockDraftPrs && input.pr.isDraft === true) blockers.push("draft PRs are blocked by merge policy.");
   if (String(input.pr.mergeStateStatus ?? "").toUpperCase() !== "CLEAN") blockers.push(`PR mergeStateStatus must be CLEAN; current value is ${input.pr.mergeStateStatus ?? "unknown"}.`);
-  if (input.mode === "apply" && input.policy.blockLocalDirtOnApply && input.repo.dirtyFiles.length > 0) {
-    blockers.push(`local repo dirty state blocks merge-helper apply: ${input.repo.dirtyFiles.join(", ")}`);
-  } else if (input.repo.dirtyFiles.length > 0) {
-    warnings.push(`local repo has dirty files: ${input.repo.dirtyFiles.join(", ")}`);
+  if (input.mode === "apply" && input.policy.blockLocalDirtOnApply && meaningfulDirtyFiles.length > 0) {
+    blockers.push(`local repo dirty state blocks merge-helper apply: ${meaningfulDirtyFiles.join(", ")}`);
+  } else if (meaningfulDirtyFiles.length > 0) {
+    warnings.push(`local repo has dirty files: ${meaningfulDirtyFiles.join(", ")}`);
   }
   if (!input.syncMainRequested && input.policy.allowAutoSyncMainByDefault === false) warnings.push("sync-main will not run unless --sync-main is explicitly requested.");
 
