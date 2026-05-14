@@ -608,3 +608,83 @@ LOW
 - This slice is Phase A-only and intentionally preserves `queueReadiness: not_ready` semantics.
 - A future Phase B/resource-implementation slice should replace the current `Promise<never>` scaffold-resource methods with real success payload handling once `/users` and `/projects` become queue-ready.
 Review Verdict: no_required_fixes
+
+## 2026-05-14T09:01:27Z
+- Goal: implement greenfield-scaffold AFK `issue-014` by adding a bounded end-to-end smoke scaffold under `tests/e2e` only.
+- Planning readiness / task context:
+  - Active planning log from `logs/CURRENT.md`: `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct implementation was explicitly requested in the worker task packet for bounded issue `issue-014` with allowed paths limited to `tests/e2e`.
+- Discovery path:
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `packages/pi-g-skills/skills/g-check/SKILL.md` before editing.
+  - Used direct local inspection of `docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json`, `scripts/run-e2e-tests.mjs`, `apps/web/src/main.tsx`, `apps/web/src/lib/health-client.ts`, `apps/web/src/api/client.ts`, `services/api/src/routes/health.ts`, `services/api/src/db/seeds.ts`, and existing greenfield tests.
+  - Chose a test-only synthetic smoke harness because the task boundary only allowed `tests/e2e`, while the acceptance still required end-to-end proof across the existing app shell, health route, API client placeholder path, and deterministic fixtures.
+- Files changed and why:
+  - `tests/e2e/greenfield-smoke.test.ts` — added behavior-first smoke coverage for app load, health display, and the fixture-backed placeholder flow plus the Phase A `queueReadiness: not_ready` guard.
+  - `tests/e2e/helpers/greenfield.ts` — added a bounded local HTTP smoke harness that serves `/`, `/health`, `/auth/session`, `/users`, and `/projects`, renders a synthetic smoke page from the existing app/API boundaries, and reads the issue summary for Phase A proof.
+- Tests added or changed:
+  - `greenfield smoke loads the app shell over HTTP`
+  - `greenfield smoke displays scaffold health on the loaded page`
+  - `greenfield smoke shows a fixture-backed placeholder flow and keeps phase-a not_ready`
+- Exact RED command and key failure reasons:
+  - `npm run test:e2e -- greenfield-smoke`
+    - RED #1: failed with `ERR_MODULE_NOT_FOUND` because `tests/e2e/helpers/greenfield.ts` did not exist yet.
+    - RED #2: after the minimal app-load helper landed, failed because the returned page markup did not include `Backend health: greenfield-api (ok)` yet.
+    - RED #3: after adding health rendering, failed because `page.issueSummary` and the placeholder-flow behavior were still missing from the helper result.
+- Exact GREEN command:
+  - `npm run test:e2e -- greenfield-smoke`
+  - PASS after the helper server rendered the app shell, fetched `/health`, exercised `/auth/session` plus the `/users` and `/projects` placeholder errors, surfaced deterministic fixture previews, and returned the issue-014 summary proof.
+- Other validation commands run:
+  - `for i in 1 2 3; do npm run test:e2e -- greenfield-smoke || exit 1; done`
+  - `git diff --check -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+- Wiring verification evidence:
+  - `tests/e2e/helpers/greenfield.ts` now composes the existing public seams rather than re-declaring behavior: `bootstrapAppShell()` for app load, `fetchBackendHealth()` plus `createHealthRoute()` for health, `createGreenfieldApiClient()` for `/auth/session` and scaffold placeholder errors, and `readGreenfieldSeedUsers()` / `readGreenfieldSeedProjects()` for deterministic fixture previews.
+  - The smoke test request log proves the synthetic root-page load fans out through the intended HTTP surfaces in-order: `/`, `/health`, `/auth/session`, `/users`, `/projects`.
+  - The same helper reads `docs/initiatives/greenfield-scaffold/slices/issue-014.summary.json` and asserts `queueReadiness === "not_ready"`, keeping the Phase A boundary visible in the public smoke test surface.
+- Behavior changes and risk notes:
+  - Added bounded E2E smoke coverage only; no production app, backend, contract, or fixture files changed in this slice.
+  - The smoke page is intentionally synthetic and test-local because the task packet restricted mutation to `tests/e2e`; it proves the existing boundaries compose correctly but is not yet a browser-driven real UI route.
+  - Low-risk environment note: every `npm run test:e2e -- greenfield-smoke` pass emits Node `DEP0205` `module.register()` deprecation warnings from the current `tsx` loader path, but the test command still passes consistently.
+- Follow-ups or known gaps:
+  - If a later slice adds a real browser-served greenfield UI route for health and placeholder data, this smoke scaffold can be swapped from a synthetic harness to the real route with new TDD coverage.
+  - The placeholder flow intentionally remains `not_ready`; it previews deterministic fixtures alongside the existing documented `501 not_implemented` scaffold-resource behavior rather than inventing queue-ready success endpoints.
+
+## Review (2026-05-14T09:01:50Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t085536z-issue-014`
+- Branch: `worker/worker-20260514t085536z-issue-014`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+  - `git diff --no-index --stat /dev/null tests/e2e/greenfield-smoke.test.ts`
+  - `git diff --no-index --stat /dev/null tests/e2e/helpers/greenfield.ts`
+  - `npm run test:e2e -- greenfield-smoke`
+  - `for i in 1 2 3; do npm run test:e2e -- greenfield-smoke || exit 1; done`
+  - `git diff --check -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The smoke harness is intentionally synthetic and server-side inside `tests/e2e/helpers/greenfield.ts`; it is good bounded proof for the existing Phase A seams, but it is not the same as a future browser-automation route once the real UI expands.
+
+### Open Questions / Assumptions
+- Assumed the task boundary (`tests/e2e` only) means the smoke scaffold should prove composition of existing public modules and HTTP seams without widening scope into production UI/runtime files.
+- Assumed deterministic fixture preview plus documented scaffold `501` errors satisfies the requested “fixture-backed placeholder flow” while Phase A still keeps queue readiness `not_ready`.
+
+### Recommended Tests / Validation
+- `npm run test:e2e -- greenfield-smoke`
+- `for i in 1 2 3; do npm run test:e2e -- greenfield-smoke || exit 1; done`
+- `git diff --check -- tests/e2e/greenfield-smoke.test.ts tests/e2e/helpers/greenfield.ts`
+
+### Rollout Notes
+- This slice is test-only and does not alter runtime auth, persistence, schema, queue, or deployment behavior.
+- The new smoke harness preserves the Phase A contract by keeping placeholder resource calls on the `not_implemented` path while showing deterministic local fixture previews.
+Review Verdict: no_required_fixes
