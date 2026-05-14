@@ -688,3 +688,84 @@ LOW
 - This slice is test-only and does not alter runtime auth, persistence, schema, queue, or deployment behavior.
 - The new smoke harness preserves the Phase A contract by keeping placeholder resource calls on the `not_implemented` path while showing deterministic local fixture previews.
 Review Verdict: no_required_fixes
+
+## 2026-05-14T09:07:58Z
+- Goal: implement greenfield AFK `issue-015` as a bounded observability/logging scaffold slice that emits structured local/test logs without secrets.
+- Lifecycle readiness: direct implementation requested by the user against `docs/initiatives/greenfield-scaffold/slices/issue-015.summary.json`; no separate planning mutation was needed for this bounded worker slice.
+- Discovery path:
+  - Re-read repo instructions from `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `.pi/agent/skills/backend-safety/SKILL.md`, and `.pi/agent/skills/frontend-safety/SKILL.md` before editing.
+  - Used direct local inspection of `package.json`, `scripts/run-integration-tests.mjs`, existing greenfield integration tests, and the issue-015 summary artifact.
+  - Confirmed the target files were not present yet, so the slice could stay additive inside the allowed paths only.
+- Tracer-bullet behavior:
+  - First behavior proved through the public API logger interface: structured local/test log entries are emitted as JSON and redact secret-shaped fields.
+  - Boundary dependencies intentionally left out of scope: no runtime call-site wiring into the API server or web bootstrap in this Phase A slice; later worker tasks can consume these public logger modules without changing queue readiness.
+- Files changed and why:
+  - `tests/integration/observability.test.ts` — added the smallest integration proof for structured API/web logger output, recursive redaction, source-level env-coupling guardrails, and `queueReadiness: not_ready`.
+  - `services/api/src/observability/logger.ts` — added the public structured logger scaffold for API/local-test usage with JSON emission, level helpers, and secret redaction.
+  - `apps/web/src/observability/client-logger.ts` — added the matching frontend-safe client logger scaffold for local/test usage with the same structured redaction behavior.
+- Tests added or changed:
+  - `observability scaffold emits structured local/test logs without secrets`
+  - `issue-015 remains phase-a bounded with queueReadiness not_ready`
+- Exact RED command and key failure reason:
+  - `npm run test:integration -- observability`
+  - Failed for the intended reason: `ERR_MODULE_NOT_FOUND` because `apps/web/src/observability/client-logger.ts` and the new observability scaffold did not exist yet.
+- Exact GREEN command:
+  - `npm run test:integration -- observability`
+  - PASS: 2 observability integration tests.
+- Other validation commands run:
+  - `for i in 1 2; do npm run test:integration -- observability; done`
+  - `git diff --check`
+  - `git status -sb -- services/api/src/observability/logger.ts apps/web/src/observability/client-logger.ts tests/integration/observability.test.ts`
+  - `rg -n "createLogger|createClientLogger|observability/logger|observability/client-logger" apps services tests -S`
+- Wiring verification evidence:
+  - `scripts/run-integration-tests.mjs` already aliases `observability` to `tests/integration/observability.test.ts`, so the requested validation command exercises the new slice directly.
+  - `tests/integration/observability.test.ts` imports the new public modules from `services/api/src/observability/logger.ts` and `apps/web/src/observability/client-logger.ts`, proving the files are loadable through their intended public paths.
+  - Exact-string search showed no non-test call sites yet; this is intentional Phase A scaffold posture, not an accidental missed import.
+- Behavior changes and risk notes:
+  - API and web scaffolds now emit deterministic JSON log lines for local/test use with recursive secret-field redaction for nested objects and arrays.
+  - The frontend/client file uses injected writers plus console fallbacks only; no route, component, or long-lived client side effect wiring was added in this bounded slice.
+  - Residual risk: secret detection is key-name based, so future consumers should keep sensitive values under clearly named fields until a richer policy exists.
+- Follow-ups or known gaps:
+  - No production/runtime call sites consume these loggers yet; that wiring remains for a later bounded slice.
+  - The API and web logger implementations intentionally duplicate a small sanitizer helper because the issue contract allowed only the three listed files.
+
+## Review (2026-05-14T09:07:58Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t090400z-issue-015`
+- Branch: `worker/worker-20260514t090400z-issue-015`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status -sb -- services/api/src/observability/logger.ts apps/web/src/observability/client-logger.ts tests/integration/observability.test.ts`
+  - `npm run test:integration -- observability`
+  - `for i in 1 2; do npm run test:integration -- observability; done`
+  - `git diff --check`
+  - `rg -n "createLogger|createClientLogger|observability/logger|observability/client-logger" apps services tests -S`
+  - targeted source review of the three changed files
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Secret redaction currently relies on secret-shaped field names rather than value inspection, so downstream callers should avoid placing sensitive data into generically named fields like `message`.
+
+### Open Questions / Assumptions
+- Assumed this Phase A AFK slice is intentionally scaffold-only and therefore should expose importable logger modules without widening scope into server/bootstrap runtime wiring.
+- Assumed console fallback output is acceptable for local/test scaffold usage because tests inject writers and no production logging sink was requested.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- observability`
+- `for i in 1 2; do npm run test:integration -- observability; done`
+- `git diff --check`
+
+### Rollout Notes
+- This slice adds new observability modules only under the allowed API/web paths and a single integration test.
+- Queue readiness remains `not_ready`; this scaffold does not create queue-ready jobs or new runtime automation.
+Review Verdict: no_required_fixes
