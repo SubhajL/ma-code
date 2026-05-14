@@ -398,3 +398,43 @@ Review Verdict: no_required_fixes
   - This preserves the safety boundary for truly unexpected or protected paths because the helper still blocks anything outside the expected file roots.
 - Risks / follow-ups:
   - The fixed PR lifecycle still needs live proof by rerunning `create`/`gate`/`merge` for `worker-20260514t070316z`, then resuming greenfield continuation.
+
+## Review (2026-05-14T07:07:27Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t070316z-issue-004`
+- Branch: `worker/worker-20260514t070316z-issue-004`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status --short -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `git diff --stat -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `git diff -- apps/web/src/lib/health-client.ts services/api/src/routes/health.ts tests/integration/health-handshake.test.ts`
+  - `npm run test:integration -- health-handshake`
+  - `for i in 1 2; do npm run test:integration -- health-handshake; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Route registration into the broader backend server entrypoint is still deferred because `services/api/src/server.ts` was intentionally out of scope for this bounded issue-004 worker slice.
+
+### Open Questions / Assumptions
+- Assumed the issue-004 acceptance only requires FE/BE handshake proof in integration tests, not broader server-entrypoint registration in this slice.
+- Assumed the minimal lib-level health client is acceptable even though a later greenfield API-client scaffold is planned under `apps/web/src/api`.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- health-handshake`
+- `git diff --check`
+
+### Rollout Notes
+- This slice is additive and read-only at runtime: no auth, persistence, schema, migration, or protected runtime state behavior changed.
+- The integration proof uses a local ephemeral HTTP server rather than any live provider-backed validation.
+Review Verdict: no_required_fixes
