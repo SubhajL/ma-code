@@ -769,3 +769,24 @@ LOW
 - This slice adds new observability modules only under the allowed API/web paths and a single integration test.
 - Queue readiness remains `not_ready`; this scaffold does not create queue-ready jobs or new runtime automation.
 Review Verdict: no_required_fixes
+## 2026-05-14T09:12:49Z
+- Goal: unblock issue-016 worker preflight by adding the bounded greenfield validation command contract expected by the initiative.
+- RED evidence:
+  - `npm --silent run harness:orchestrate -- continue --initiative greenfield-scaffold --max-slices 1 --max-steps 12 --max-runtime-seconds 1800 --max-parallel 2 --auto-land --approval-ref user-prompt-2026-05-14-land-main-then-finish-greenfield --merge-method squash --json`
+  - Worker `worker-20260514t091050z` for `issue-016` stopped before coding with:
+    - `Validation contract missing executable "./scripts/validate-greenfield-scaffold.sh" for command: ./scripts/validate-greenfield-scaffold.sh --dry-run`
+- Files changed and why:
+  - `scripts/validate-greenfield-scaffold.sh` — added the bounded validation bundle/dry-run entrypoint expected by the issue contract.
+  - `package.json` — added `validate:greenfield-scaffold` for operator discoverability.
+  - `docs/initiatives/greenfield-scaffold/validation.md` — documented the dry-run/full validation contract and included commands.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — recorded the issue-016 validation-contract fix.
+- GREEN evidence:
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `npm --silent run validate:greenfield-scaffold -- --dry-run`
+  - `git diff --check`
+- Wiring verification:
+  - Issue-016 preflight now has a concrete executable target for `./scripts/validate-greenfield-scaffold.sh --dry-run`.
+  - The script keeps `--dry-run` cheap by validating the command contract without executing the full bundle.
+- Risks / follow-ups:
+  - Issue-016 itself still needs a rerun on the updated branch to convert the blocked worker into a landed slice.
+  - `issue-017` remains the next explicit HITL boundary after `issue-016` completes.

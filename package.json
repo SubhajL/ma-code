@@ -124,7 +124,8 @@
     "test:api": "node scripts/run-api-tests.mjs",
     "test:integration": "node scripts/run-integration-tests.mjs",
     "test:e2e": "node scripts/run-e2e-tests.mjs",
-    "validate:greenfield-docs": "node scripts/validate-greenfield-docs.mjs"
+    "validate:greenfield-docs": "node scripts/validate-greenfield-docs.mjs",
+    "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",
