@@ -439,41 +439,81 @@ LOW
 - The integration proof uses a local ephemeral HTTP server rather than any live provider-backed validation.
 Review Verdict: no_required_fixes
 
-## 2026-05-14T07:33:17Z
-- Goal: implement greenfield AFK `issue-011` by adding a bounded API contract artifact for health, auth placeholder, and scaffold resources.
-- Active task + acceptance criteria:
-  - Public interface: `docs/initiatives/greenfield-scaffold/contracts/api.contract.json`.
-  - Keep Phase A materialization bounded with `queueReadiness = not_ready`.
-  - Validation proof required by the task packet: `npm run test:api -- contracts`.
+## 2026-05-14T07:26:02Z
+- Goal: implement greenfield AFK issue-008 as a bounded auth placeholder boundary with deterministic unauthenticated session state on both backend and frontend surfaces.
+- Lifecycle readiness: direct implementation exemption from the user task packet; acceptance criteria and validation command were explicit in the task before mutation.
 - Discovery path:
-  - Re-read `logs/CURRENT.md`, the active coding log, `docs/initiatives/greenfield-scaffold/slices/issue-011.summary.json`, `docs/initiatives/greenfield-scaffold/issues.json`, and `.pi/agent/skills/backend-safety/SKILL.md` before editing.
-  - Confirmed the target files did not exist yet and that `scripts/run-api-tests.mjs` already had the `contracts` alias wired.
-  - Reused existing backend scaffolds for alignment: `services/api/src/routes/health.ts` and `services/api/src/db/schema.ts`.
-- Backend-safety notes:
-  - Business rule: publish a truthful Phase A API contract artifact without claiming queue-ready runtime behavior.
-  - Auth/permissions: auth is documentation-only in this slice; no secrets, session config, or runtime auth logic changed.
-  - Side effects: none at runtime because no server routing or request handling changed.
-  - Rollback/mitigation: remove the new contract module/artifact/test if the contract shape proves misleading.
+  - Re-read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, and `.pi/agent/skills/frontend-safety/SKILL.md` before editing.
+  - Verified the active coding log pointer in `logs/CURRENT.md` and used direct local inspection of existing greenfield integration tests, `docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json`, and current `services/api` / `apps/web` source trees.
+  - `g-coding` was available under `packages/pi-g-skills`; no repo-local `g-coding` copy existed under `.pi/agent/skills` in this worktree.
 - Files changed and why:
-  - `tests/api/contracts.test.ts` — added the smallest failing TDD coverage for the missing contract module/artifact and the required Phase A metadata/assertions.
-  - `services/api/src/contracts/openapi.ts` — added the bounded OpenAPI-style scaffold contract export/stringifier, including health, auth placeholder, scaffold resources, and worker implementation dependency markers.
-  - `docs/initiatives/greenfield-scaffold/contracts/api.contract.json` — generated the public contract artifact from the TypeScript source so the documented interface exactly matches the exported contract.
-- RED evidence:
-  - `npm run test:api -- contracts`
-  - Failed for the intended reason: `ERR_MODULE_NOT_FOUND` for `services/api/src/contracts/openapi.ts` because the contract module did not exist yet.
-- GREEN evidence:
-  - `npm run test:api -- contracts`
-  - PASS: 2 contract tests covering Phase A queue-readiness metadata, health/auth/resource coverage, and exact parity between the exported contract and the public JSON artifact.
-- Additional validation:
+  - `tests/integration/auth-boundary.test.ts` — added behavior-first integration coverage for the backend auth placeholder, then extended it to cover the frontend placeholder and the issue-008 Phase A `queueReadiness: not_ready` guard.
+  - `services/api/src/auth/session.ts` — added the public auth-session placeholder interface returning a deterministic unauthenticated state and runtime-only boundary metadata.
+  - `apps/web/src/auth/session.ts` — added the matching frontend auth-session placeholder boundary without embedding runtime config or secrets in source.
+- Tests added or changed:
+  - `api auth placeholder stays unauthenticated and keeps config outside source`
+  - `web auth placeholder mirrors the unauthenticated boundary and issue-008 stays not_ready`
+- Exact RED command and key failure reason:
+  - `npm run test:integration -- auth-boundary`
+    - RED #1: failed with `ERR_MODULE_NOT_FOUND` because `services/api/src/auth/session.ts` did not exist yet.
+    - RED #2: after the backend placeholder passed, failed with `ERR_MODULE_NOT_FOUND` because `apps/web/src/auth/session.ts` did not exist yet when the frontend/queue-readiness behavior was added.
+- Exact GREEN command:
+  - `npm run test:integration -- auth-boundary`
+    - GREEN: passed after both placeholder modules were added.
+- Other validation commands run:
+  - `for i in 1 2 3; do npm run test:integration -- auth-boundary || exit 1; done`
   - `git diff --check`
-    - PASS.
-- Wiring verification:
-  - The public artifact is generated from `stringifyGreenfieldOpenApiContract()` so the docs surface and backend contract export stay byte-for-byte aligned.
-  - Health contract wiring is anchored to the existing health route module; scaffold resource metadata is anchored to the existing persistence placeholder schema metadata.
-  - Worker implementation dependencies were explicitly identified in the contract metadata as `issue-008` (auth boundary implementation) and `issue-012` (frontend API client consumption).
-- Risks / known gaps:
-  - The auth and resource endpoints are still documented placeholders; this slice does not implement server routes for them.
-  - Future worker slices must keep the eventual runtime behavior aligned with this artifact or update the contract/test pair together.
+  - `git status --short --untracked-files=all -- services/api/src/auth/session.ts apps/web/src/auth/session.ts tests/integration/auth-boundary.test.ts`
+- Wiring verification evidence:
+  - The public backend interface is `services/api/src/auth/session.ts`, and the integration test imports it directly via `getAuthSession()` / `describeAuthSessionBoundary()`.
+  - The matching frontend boundary in `apps/web/src/auth/session.ts` returns the same deterministic placeholder state so later UI/auth wiring can depend on a stable unauthenticated contract without introducing runtime config in this slice.
+  - The integration test also reads `docs/initiatives/greenfield-scaffold/slices/issue-008.summary.json` and confirms Phase A materialization remains `queueReadiness: "not_ready"`.
+  - Frontend safety note: this slice adds no route/component/UI wiring, so there are no accessibility, focus, loading, or visual-regression changes to validate yet.
+- Behavior changes and risk notes:
+  - Added placeholder auth boundary modules only; there is still no real credential parsing, provider handshake, or session persistence.
+  - The source-level guard is intentionally narrow: the tests prove these placeholder modules do not read `process.env` or `import.meta.env`, but future real-auth work will still need explicit runtime-secret handling review.
+  - Worker implementation dependencies identified for later work: real auth configuration and secret loading remain Phase B+ concerns, and queue-ready job creation still belongs to the materialization/orchestration boundary rather than this placeholder slice.
+- Follow-ups or known gaps:
+  - Later auth slices will need runtime-backed provider/session wiring, but this issue intentionally stops at a deterministic unauthenticated contract.
+  - Package-local `build` scripts do not yet enumerate these new auth placeholder files; targeted integration coverage was the smallest relevant gate for this bounded slice.
+
+## Review (2026-05-14T07:26:02Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-worktrees/worker-20260514t072156z-issue-008`
+- Branch: `worker/worker-20260514t072156z-issue-008`
+- Scope: `working-tree`
+- Commands Run:
+  - `git status --short --untracked-files=all -- services/api/src/auth/session.ts apps/web/src/auth/session.ts tests/integration/auth-boundary.test.ts`
+  - `npm run test:integration -- auth-boundary`
+  - `for i in 1 2 3; do npm run test:integration -- auth-boundary || exit 1; done`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumed the placeholder boundary only needs deterministic unauthenticated state plus explicit runtime-config externalization metadata in this slice.
+- Assumed direct source inspection for `process.env` / `import.meta.env` is sufficient proof that this placeholder keeps runtime config out of source for Phase A.
+
+### Recommended Tests / Validation
+- `npm run test:integration -- auth-boundary`
+- `git diff --check`
+
+### Rollout Notes
+- This slice is additive only and introduces no live auth side effects, secrets, route wiring, or protected-path mutations.
+- The frontend file is a non-UI state boundary only, so there is no accessibility rollout concern in this bounded scaffold.
+Review Verdict: no_required_fixes
 
 ## 2026-05-14T07:34:37Z
 - Follow-up TDD correction:
