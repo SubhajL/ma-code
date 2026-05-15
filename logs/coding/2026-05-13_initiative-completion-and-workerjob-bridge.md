@@ -894,3 +894,102 @@ LOW
 - This change is limited to package-script wiring, a shell validator, and initiative docs under the allowed paths.
 - Queue readiness remains `not_ready`; this slice does not create queue-ready jobs or alter worker/runtime orchestration.
 Review Verdict: no_required_fixes
+
+## 2026-05-15T06:05:20Z
+- Goal: finish the remaining greenfield scaffold HITL/docs boundary by preparing the readiness checklist, recording the explicit issue-017 approval, and landing the issue-018 docs package from a fresh post-merge branch.
+- Lifecycle readiness: using active planning log `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`; continuing bounded implementation under task branch `task/task-1778741651-greenfield-finish-hitl-docs` after PR #165 merged to `main`.
+- Discovery path: direct local inspection only (`AGENTS.md`, `README.md`, `logs/CURRENT.md`, current coding log, `docs/initiatives/greenfield-scaffold/{issues.json,slices/issue-017.summary.json,slices/issue-018.summary.json,foundation-contract.md,navigation.md,validation.md,afk-approvals.json}`, `scripts/validate-greenfield-docs.mjs`, `scripts/harness-afk-orchestrate.ts`, `.pi/agent/extensions/afk-orchestration.ts`); reused prior AFK artifacts to confirm the blocker text; Auggie unavailable in-session.
+- Files changed and why:
+  - none yet; discovery + RED capture only.
+- Tests added or changed:
+  - none yet.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && npm run validate:greenfield-docs`
+  - failed because `docs/initiatives/greenfield-scaffold/README.md` and `docs/initiatives/greenfield-scaffold/backout.md` do not exist yet.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && out=$(npm --silent run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 3 --json) && printf '%s' "$out" >/tmp/greenfield-afk-dryrun-red.json && node - <<'NODE' ... NODE`
+  - dry-run showed `issue-017` as `skipped` because `docs/initiatives/greenfield-scaffold/readiness-checklist.md` is a required/missing approval artifact and specific human approval is still required before `issue-018` can proceed.
+- Exact GREEN command:
+  - pending implementation.
+- Other validation commands run:
+  - `git pull --ff-only origin main`
+  - `gh pr view 165 --json mergedAt,mergeCommit,headRefOid,baseRefOid,url,title,number,state`
+- Wiring verification evidence:
+  - verified `scripts/validate-greenfield-docs.mjs` is the issue-018 proof entrypoint from `package.json` and `docs/initiatives/greenfield-scaffold/validation.md`.
+  - verified `.pi/agent/extensions/afk-orchestration.ts` treats durable HITL approvals + required artifacts as sufficient to resolve `issue-017` for downstream AFK dependency checks.
+- Behavior changes and risk notes:
+  - none yet.
+  - main risk is approval semantics: the current user instruction may need to be treated as the explicit issue-017 approval artifact unless a separate post-checklist signoff is required.
+- Follow-ups or known gaps:
+  - author the checklist/docs, record the issue-017 approval artifact, rerun AFK dry-run, then rerun docs validation and diff checks.
+
+## 2026-05-15T06:08:15Z
+- Goal: implement the final greenfield readiness/docs artifacts and verify that the remaining AFK frontier is unblocked.
+- Files changed and why:
+  - `README.md` — added a root-level pointer to the greenfield scaffold docs set.
+  - `docs/initiatives/greenfield-scaffold/readiness-checklist.md` — added the issue-017 readiness gate with approval, validation, and rollout-boundary context.
+  - `docs/initiatives/greenfield-scaffold/README.md` — added the docs package overview for scaffold purpose, validation, and related artifacts.
+  - `docs/initiatives/greenfield-scaffold/backout.md` — added bounded rollback guidance for the scaffold baseline.
+  - `docs/initiatives/greenfield-scaffold/afk-approvals.json` — recorded the explicit issue-017 approval artifact from the current user instruction.
+- Tests added or changed:
+  - none; bounded docs/update slice.
+- Exact RED command and key failure reason:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && npm run validate:greenfield-docs`
+  - failed before implementation because the greenfield docs package files did not exist.
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && out=$(npm --silent run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 3 --json) && printf '%s' "$out" >/tmp/greenfield-afk-dryrun-red.json && node - <<'NODE' ... NODE`
+  - showed `issue-017` as `skipped` because `docs/initiatives/greenfield-scaffold/readiness-checklist.md` was missing and no durable approval artifact existed for that HITL gate.
+- Exact GREEN command:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && npm run validate:greenfield-docs && npm run validate:greenfield-docs && npm run validate:greenfield-docs`
+  - all three consecutive runs printed `greenfield-docs-ok` after the docs package landed.
+- Other validation commands run:
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && out=$(npm --silent run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 3 --json) && printf '%s' "$out" >/tmp/greenfield-afk-dryrun-green.json && node - <<'NODE' ... NODE`
+  - `cd /Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs && ./scripts/validate-greenfield-scaffold.sh --dry-run && git diff --check`
+- Wiring verification evidence:
+  - AFK dry-run now reports `issue-017` as `done` with reason `Durable HITL approval user-prompt-2026-05-15-continue-until-finish-greenfield resolves this blocker.`
+  - the same AFK dry-run reports `issue-018` as `eligible` with reason `AFK issue is queueable.` proving the approval/checklist wiring now unblocks the final docs slice dependency chain.
+  - `scripts/validate-greenfield-docs.mjs` still resolves through `package.json` and now passes with the newly created docs files in place.
+- Behavior changes and risk notes:
+  - operators now have a durable greenfield docs package (`README.md`, readiness checklist, backout guide) and root README pointer.
+  - durable approval for `issue-017` is now recorded under `docs/initiatives/greenfield-scaffold/afk-approvals.json`.
+  - residual semantic risk: the approval artifact relies on the current user instruction as the explicit signoff for `issue-017`; if a separate post-checklist acknowledgement is required, that artifact should be amended.
+- Follow-ups or known gaps:
+  - perform formal `g-check` review on this bounded diff.
+  - if the branch is to be landed, create a bounded commit/PR after review.
+
+## Review (2026-05-15T06:09:12Z) - greenfield HITL/docs working tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code-worktrees/task-1778741651-greenfield-finish-hitl-docs`
+- Branch: `task/task-1778741651-greenfield-finish-hitl-docs`
+- Scope: working tree
+- Commands Run:
+  - `git status --short`
+  - `git diff --stat`
+  - `git diff -- README.md docs/initiatives/greenfield-scaffold/afk-approvals.json docs/initiatives/greenfield-scaffold/README.md docs/initiatives/greenfield-scaffold/backout.md docs/initiatives/greenfield-scaffold/readiness-checklist.md logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md`
+  - `npm run validate:greenfield-docs` (3 consecutive runs)
+  - `npm --silent run harness:afk-orchestrate -- dry-run --initiative greenfield-scaffold --max-parallel 3 --json`
+  - `./scripts/validate-greenfield-scaffold.sh --dry-run`
+  - `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- The issue-017 approval artifact treats the current user instruction as the durable signoff. That is acceptable for this bounded finish path because the user explicitly asked to continue after the HITL blocker was surfaced, but if policy later requires a separate post-checklist acknowledgement, `docs/initiatives/greenfield-scaffold/afk-approvals.json` should be amended.
+
+### Open Questions / Assumptions
+- Assumed the current user instruction is sufficient explicit human approval for issue-017 once `docs/initiatives/greenfield-scaffold/readiness-checklist.md` exists.
+
+### Recommended Tests / Validation
+- none beyond the validations already run for this docs-only slice.
+
+### Rollout Notes
+- Change is docs/approval only; no runtime code paths changed.
+- `queueReadiness` remains `not_ready`; future queue-ready conversion remains explicitly out of scope.
+Review Verdict: no_required_fixes
