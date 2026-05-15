@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "taskId": "task-1778849744848",
+  "directImplementationExemption": true,
+  "planning": {
+    "acceptanceCriteria": [
+      "Poll PR #167 until mergeable and land it via the approved merge path.",
+      "Sync local main to the landed origin/main state."
+    ],
+    "tddSlice": "PR merge readiness evidence bundle for bounded landing"
+  },
+  "task": {
+    "acceptanceCriteria": [
+      "Poll PR #167 until mergeable or terminally blocked.",
+      "Land PR #167 to origin/main when gates pass.",
+      "Sync local main to the landed origin/main state."
+    ],
+    "validationDecision": "pass"
+  },
+  "redGreenEvidence": {
+    "red": true,
+    "green": true
+  },
+  "review": {
+    "verdict": "no_required_fixes"
+  },
+  "creation": {
+    "branch": "task/task-pi-domain-ownership-factory-fix-root-20260515",
+    "commit": "68a2791"
+  },
+  "pr": {
+    "url": "https://github.com/SubhajL/ma-code/pull/167",
+    "state": "OPEN"
+  },
+  "prGate": {
+    "status": "pass",
+    "mergeStateStatus": "CLEAN"
+  }
+}

@@ -993,3 +993,141 @@ LOW
 - Change is docs/approval only; no runtime code paths changed.
 - `queueReadiness` remains `not_ready`; future queue-ready conversion remains explicitly out of scope.
 Review Verdict: no_required_fixes
+
+## 2026-05-15T12:20:02Z
+- Goal: inspect the prepared domain-ownership extension autoload fix on `task/task-pi-domain-ownership-factory-fix-root-20260515`, preserve the evidence in the tracked Pi coding log, and create one clean bounded commit.
+- Discovery path:
+  - Read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, and `packages/pi-g-skills/skills/g-create/SKILL.md`.
+  - Used direct local inspection for this commit-only continuation: `git status --short --branch`, `git diff -- .pi/agent/extensions/domain-ownership.ts`, `.pi/settings.json`, `tests/extension-units/extension-factory-exports.test.ts`, and `rg` call-site checks under `.pi/agent/extensions/`.
+  - Consulted prior scratch evidence in `coding-logs/2026-05-15-00-00-00 Coding Log (pi-domain-ownership-factory-fix).md` to preserve the original RED failure before committing; left `.codex/` and `coding-logs/` untracked and out of the review set.
+- Lifecycle planning readiness:
+  - Active planning log pointer remains `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct-implementation exemption for new planning work: the user explicitly approved “do the next step and commit it cleanly” for an already prepared local fix.
+- Files changed and why:
+  - `.pi/agent/extensions/domain-ownership.ts` — add a no-op default export so the helper-only module satisfies the auto-loaded extension factory contract.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append bounded commit/validation evidence for this work.
+- Tests added or changed:
+  - none; reused `tests/extension-units/extension-factory-exports.test.ts`, which covers the loader contract for top-level extensions.
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts`
+  - Failed because `domain-ownership.ts` was a top-level auto-loaded extension module with no default factory export: `Expected every auto-loaded extension module to export a default factory function. Missing: domain-ownership.ts`.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts`
+  - Reconfirmed GREEN three consecutive times during commit prep.
+- Other validation commands run:
+  - `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts && node --import tsx --test tests/extension-units/extension-factory-exports.test.ts && node --import tsx --test tests/extension-units/extension-factory-exports.test.ts` -> PASS.
+  - `git diff --check` -> PASS.
+  - `npm run test:extensions` -> FAIL on pre-existing routing expectation drift outside this loader-only change: three `tests/extension-units/orchestration-helpers.test.ts` assertions still expect `openai-codex/gpt-5.4-mini`, and two `tests/extension-units/recovery-runtime.test.ts` assertions still expect `anthropic/claude-opus-4-5` / `anthropic`.
+- Wiring verification evidence:
+  - `.pi/settings.json` still auto-loads `"agent/extensions"`.
+  - `tests/extension-units/extension-factory-exports.test.ts` enumerates every top-level `.ts` file under `.pi/agent/extensions/` and asserts each exports a default factory function.
+  - `.pi/agent/extensions/afk-orchestration.ts` still imports `deriveDomainOwnershipForDomains` as a named helper; the new default export is loader-only and does not alter existing call sites.
+- Behavior changes and risk notes:
+  - No domain ownership logic changed; only the loader compatibility contract for a helper-only module was restored.
+  - The full extension suite still has unrelated routing-expectation failures, so the targeted loader test is the authoritative GREEN proof for this fix.
+- Follow-ups or known gaps:
+  - Update the stale routing expectation tests separately before treating `npm run test:extensions` as fully green.
+  - Untracked scratch artifacts `.codex/coding-log.current` and `coding-logs/2026-05-15-00-00-00 Coding Log (pi-domain-ownership-factory-fix).md` were intentionally left out of the commit.
+
+## Review (2026-05-15T12:20:02Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code`
+- Branch: `task/task-pi-domain-ownership-factory-fix-root-20260515`
+- Scope: `working-tree`
+- Commands Run: `git diff --stat`; `git diff -- .pi/agent/extensions/domain-ownership.ts`; `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts` (x3); `npm run test:extensions`; `git diff --check`; `rg -n 'deriveDomainOwnershipForDomains|domain-ownership' .pi/agent -g '!state/runtime/**'`; inspected `.pi/settings.json`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Required Fixes
+- none
+
+### Optional Improvements
+- Refresh the stale routing expectation tests in `tests/extension-units/orchestration-helpers.test.ts` and `tests/extension-units/recovery-runtime.test.ts` in a separate bounded change.
+
+### Open Questions / Assumptions
+- Assumed helper-only modules under `.pi/agent/extensions/` are intentionally allowed to export a no-op default factory, matching the existing loader contract and prior repo fixes for similar regressions.
+
+### Recommended Tests / Validation
+- Keep `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts` in the fast validation path for extension-module extractions.
+- After the unrelated routing expectations are updated, rerun `npm run test:extensions` to restore a fully green extension suite.
+
+### Rollout Notes
+- Safe, minimal loader-compatibility fix; no runtime task schema, provider routing logic, or persisted state behavior changed.
+Review Verdict: no_required_fixes
+
+## 2026-05-15T12:27:23Z
+- Goal: submit the committed domain-ownership loader fix from `task/task-pi-domain-ownership-factory-fix-root-20260515`, capture PR/CI evidence, and attempt the next bounded merge step without bypassing harness merge controls.
+- Discovery path:
+  - Read `logs/CURRENT.md` and `packages/pi-g-skills/skills/g-submit/SKILL.md`.
+  - Inspected compact repo/PR state with `git status --short --branch`, `git branch -vv`, `git rev-list --left-right --count origin/main...HEAD`, `gh pr status`, `gt status`, `gt ls`, `git ls-remote --heads origin task/task-pi-domain-ownership-factory-fix-root-20260515`, and `gh auth status`.
+  - Used compact PR inspection after submission via `gh pr view 167 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,title`, `gh pr checks 167`, and `npm run harness:merge -- check --pr 167`.
+- Lifecycle planning readiness:
+  - Active planning log pointer remains `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct-implementation exemption for new planning work remains the explicit user request to submit/PR/merge an already prepared bounded fix branch.
+- Files changed and why:
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append submission, PR, CI, and merge-readiness evidence for this branch.
+- Tests added or changed:
+  - none.
+- Exact RED command and key failure reason:
+  - none for this submission-only step; implementation RED/GREEN evidence was already captured for the code change in the prior entry.
+- Exact GREEN command:
+  - none for this submission-only step; the relevant code-change GREEN remains `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts`.
+- Other validation commands run:
+  - `npm run harness:slice-lifecycle -- check --stage created` -> FAIL because the lifecycle helper still reports the slice at `coding_green` and missing `review_ready` / `create_ready` prerequisites.
+  - `gh pr checks 167` -> exit 8 while checks are still pending; current snapshot showed `Repo Static Checks` PASS and `Dependency Review`, `CodeQL`, `Foundation Extension Compile`, and `Routing Validators` pending.
+  - `npm run harness:merge -- check --pr 167` -> FAIL; merge helper reports `ready: no`, recommended next action `wait_for_gate`, current stage `coding_green`, missing `review_ready` / `create_ready`, missing submitted evidence in lifecycle state, and local dirty warnings for untracked `.codex/` and `coding-logs/`.
+- Wiring verification evidence:
+  - Submitted PR head is `task/task-pi-domain-ownership-factory-fix-root-20260515` against base `main`.
+  - Branch now tracks `origin/task/task-pi-domain-ownership-factory-fix-root-20260515` after `git push -u origin ...`.
+  - GitHub PR opened successfully at `https://github.com/SubhajL/ma-code/pull/167`.
+- Behavior changes and risk notes:
+  - No code behavior changed during submission; this step only pushed the existing fix and opened PR #167.
+  - Merge was not performed because repository merge controls still report the PR as not ready and CI was still pending.
+- Follow-ups or known gaps:
+  - Wait for PR #167 checks to finish, then satisfy lifecycle/quality gating (`review_ready`, `checked`, `create_ready`, submitted evidence) before re-attempting the merge helper.
+  - Untracked local scratch directories `.codex/` and `coding-logs/` keep the repo non-clean for merge-helper purposes unless intentionally excluded or cleaned in a separate approved step.
+
+## 2026-05-15T13:00:54Z
+- Goal: record the now-clean PR-gate state and explicit lifecycle markers needed for bounded merge-helper landing of PR #167.
+- Files changed and why:
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append explicit creation/submission/PR-gate evidence for lifecycle helper consumption.
+- Tests added or changed:
+  - none.
+- Exact RED command and key failure reason:
+  - none for this merge-readiness bookkeeping step; implementation RED evidence remains captured earlier in this log.
+- Exact GREEN command:
+  - `gh pr checks 167`
+  - Current check snapshot is green enough for landing: `CodeQL`, `Dependency Review`, `Foundation Extension Compile`, `Repo Static Checks`, and `Routing Validators` all reported `pass`.
+- Other validation commands run:
+  - `gh pr view 167 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,title` -> `mergeStateStatus` is `CLEAN`.
+  - `npm run harness:merge -- check --pr 167` -> still blocked only on lifecycle readiness / local dirty-state prerequisites before this explicit evidence append.
+- Wiring verification evidence:
+  - PR #167 still targets base `main` from head `task/task-pi-domain-ownership-factory-fix-root-20260515`.
+- Behavior changes and risk notes:
+  - No product behavior changed; this entry only makes merge-readiness evidence explicit.
+- Follow-ups or known gaps:
+  - Merge-helper apply still requires a clean local repo at execution time.
+
+## Creation
+- Branch/commit artifact is ready for landing.
+- Branch: `task/task-pi-domain-ownership-factory-fix-root-20260515`
+- Commit: `e384c84`
+
+## Submission
+- PR #167: OPEN
+- URL: https://github.com/SubhajL/ma-code/pull/167
+- State: OPEN
+- mergeStateStatus CLEAN
+- Checks: pass
