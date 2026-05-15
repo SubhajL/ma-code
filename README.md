@@ -25,6 +25,12 @@ This includes:
 - harness docs
 - intake trigger policy metadata
 
+## Greenfield scaffold docs
+- Initiative overview: `docs/initiatives/greenfield-scaffold/README.md`
+- Readiness gate: `docs/initiatives/greenfield-scaffold/readiness-checklist.md`
+- Backout guide: `docs/initiatives/greenfield-scaffold/backout.md`
+- Validation bundle: `docs/initiatives/greenfield-scaffold/validation.md`
+
 ## Current status
 This is a **repo-local harness foundation with first live runtime controls**, not a finished full harness.
 

@@ -7,6 +7,13 @@
       "approvedBy": "human:subhajlimanond",
       "approvedAt": "2026-05-11T03:29:27Z",
       "note": "Approved issue-005 after reviewing docs/initiatives/greenfield-scaffold/navigation.md; continue AFK issues until the next HITL boundary via MO."
+    },
+    {
+      "issueId": "issue-017",
+      "approvalRef": "user-prompt-2026-05-15-continue-until-finish-greenfield",
+      "approvedBy": "human:subhajlimanond",
+      "approvedAt": "2026-05-15T06:05:20Z",
+      "note": "User explicitly instructed the harness to continue until finish after the remaining issue-017 HITL gate was surfaced; this approval unblocks the final scaffold docs package anchored by docs/initiatives/greenfield-scaffold/readiness-checklist.md."
     }
   ]
 }
