@@ -5,20 +5,66 @@ const requiredFiles = [
   "README.md",
   "docs/initiatives/greenfield-scaffold/README.md",
   "docs/initiatives/greenfield-scaffold/backout.md",
+  "docs/initiatives/greenfield-scaffold/readiness-checklist.md",
+  "docs/initiatives/greenfield-scaffold/afk-approvals.json",
+  "docs/initiatives/greenfield-scaffold/issues.json",
+  "docs/initiatives/greenfield-scaffold/pipeline.json",
+  "docs/initiatives/greenfield-scaffold/slice-plan.json",
 ];
 
-const missing = [];
+const failures = [];
 for (const path of requiredFiles) {
   try {
     accessSync(path, constants.R_OK);
-    if (readFileSync(path, "utf8").trim().length === 0) missing.push(`${path} is empty`);
   } catch {
-    missing.push(`${path} is missing`);
+    failures.push(`${path} is missing`);
   }
 }
 
-if (missing.length > 0) {
-  console.error(missing.join("\n"));
+function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    failures.push(`${path} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    return undefined;
+  }
+}
+
+const pipeline = readJson("docs/initiatives/greenfield-scaffold/pipeline.json");
+if (pipeline) {
+  if (pipeline.status !== "done") failures.push("greenfield pipeline status must be done");
+  const incomplete = (pipeline.slices ?? []).filter((slice) => slice.status !== "done").map((slice) => slice.sliceId ?? "<unknown>");
+  if (incomplete.length > 0) failures.push(`greenfield pipeline has incomplete slices: ${incomplete.join(", ")}`);
+}
+
+const slicePlan = readJson("docs/initiatives/greenfield-scaffold/slice-plan.json");
+if (slicePlan) {
+  if (slicePlan.status !== "done") failures.push("greenfield slice-plan status must be done");
+  const incomplete = (slicePlan.slices ?? []).filter((slice) => slice.status !== "done").map((slice) => slice.sliceId ?? "<unknown>");
+  if (incomplete.length > 0) failures.push(`greenfield slice-plan has incomplete slices: ${incomplete.join(", ")}`);
+}
+
+const issues = readJson("docs/initiatives/greenfield-scaffold/issues.json");
+if (issues) {
+  const incomplete = (issues.issues ?? []).filter((issue) => {
+    if (issue.type === "HITL") return issue.status !== "approved";
+    return issue.status !== "done";
+  }).map((issue) => `${issue.issueId}:${issue.status}`);
+  if (incomplete.length > 0) failures.push(`greenfield issues are not complete/approved: ${incomplete.join(", ")}`);
+}
+
+const approvals = readJson("docs/initiatives/greenfield-scaffold/afk-approvals.json");
+if (approvals && !(approvals.approvals ?? []).some((approval) => approval.issueId === "issue-017")) {
+  failures.push("issue-017 approval is missing from afk-approvals.json");
+}
+
+const readiness = readFileSync("docs/initiatives/greenfield-scaffold/readiness-checklist.md", "utf8");
+if (!/Greenfield initiative status/i.test(readiness) || !/complete/i.test(readiness)) {
+  failures.push("readiness checklist must state the Greenfield initiative completion status");
+}
+
+if (failures.length > 0) {
+  console.error(failures.join("\n"));
   process.exit(1);
 }
 

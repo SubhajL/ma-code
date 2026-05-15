@@ -1131,3 +1131,116 @@ Review Verdict: no_required_fixes
 - State: OPEN
 - mergeStateStatus CLEAN
 - Checks: pass
+
+## Review (2026-05-15T22:19:37Z) - initiative-status-as-is
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code`
+- Branch: `task/task-1778883440308-review-greenfield-scaffold-and-mixed-domain-init`
+- Scope: greenfield scaffold and mixed-domain harness initiative status review
+- Commands Run: `git status --short --branch`; `git rev-list --left-right --count origin/main...main`; `find docs/initiatives/* -maxdepth`; `rg greenfield/mixed-domain status terms`; `node` summaries over initiative source and slice JSON; `inspect_queue_state`; `npm run validate:greenfield-docs`; `./scripts/validate-greenfield-scaffold.sh --dry-run`; `./scripts/validate-greenfield-scaffold.sh`; `node --import tsx --test tests/extension-units/queue-runner.test.ts tests/extension-units/product-pipeline.test.ts tests/extension-units/parallel-worker-lanes.test.ts`; `node --import tsx --test tests/extension-units/afk-orchestration.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/harness-routing.test.ts`; `git diff --check`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- Mixed-domain initiative is not proven fully finished by canonical initiative state: `pipeline.json` and `slice-plan.json` still show issue-004, issue-005, and issue-006 as `planned` even though their summary artifacts and tests exist.
+
+MEDIUM
+- Greenfield scaffold is complete for the documented Phase A scaffold baseline, but not complete as a queue-ready/Phase B initiative: every greenfield slice summary still reports `queueReadiness: not_ready`, and runtime queue state still has blocked historical jobs for `afk-greenfield-scaffold-issue-002` and `afk-greenfield-scaffold-issue-003`.
+- Mixed-domain queue readiness is also intentionally `not_ready` across all six slice summaries; no evidence was found that it is ready for autonomous queue execution.
+
+LOW
+- Local working tree still has untracked scratch artifacts (`.codex/`, `coding-logs/`, and stale duplicate `reports/lifecycle/task-1778849744848-merge-evidence.json`) that do not affect tracked `main` but can confuse cleanliness-sensitive helpers.
+
+### Open Questions / Assumptions
+- Assumed “finished” means more than source files compiling: canonical initiative/pipeline state, validation, and runtime queue visibility should agree.
+- Assumed Phase A greenfield completion does not imply Phase B queue-ready conversion because docs explicitly preserve `queueReadiness: not_ready`.
+
+### Recommended Tests / Validation
+- Greenfield evidence: `npm run validate:greenfield-docs` -> PASS; `./scripts/validate-greenfield-scaffold.sh --dry-run` -> PASS; `./scripts/validate-greenfield-scaffold.sh` -> PASS.
+- Mixed-domain evidence: targeted extension suites for issue-004 through issue-006 surfaces passed; `git diff --check` passed.
+- Before declaring mixed-domain truly finished, update/reconcile `pipeline.json` and `slice-plan.json`, then rerun the mixed-domain validation commands from issue-004/005/006 summaries.
+
+### Rollout Notes
+- Greenfield can be called “Phase A scaffold complete, not queue-ready.”
+- Mixed-domain should be called “implemented/validated in code, but initiative bookkeeping not finished.”
+Review Verdict: changes_required
+
+## 2026-05-15T22:58:33Z
+- Goal: complete the recommended Greenfield initiative reconciliation now that the user confirmed queue-ready work is complete, while preserving Phase A materialization guardrails.
+- Discovery path:
+  - Auggie discovery timed out; used local `read`, `rg`, `find`, targeted `node` JSON summaries, and validation script inspection.
+  - Confirmed `scripts/validate-greenfield-docs.mjs` previously only checked file existence and did not enforce initiative completion state.
+  - Confirmed Greenfield tests/schema still intentionally expect materialized `queueReadiness: not_ready`; this remains a historical/autonomous-worker guardrail rather than the completion status field.
+- Files changed and why:
+  - `scripts/validate-greenfield-docs.mjs` — promote docs validation into a completion-state guard that requires Greenfield `issues.json`, `pipeline.json`, and `slice-plan.json` to be complete/approved.
+  - `docs/initiatives/greenfield-scaffold/issues.json` — mark AFK issues `done` and HITL issues `approved`.
+  - `docs/initiatives/greenfield-scaffold/pipeline.json` — add top-level `status: done` and mark all slices `done`.
+  - `docs/initiatives/greenfield-scaffold/slice-plan.json` — mark top-level and all slices `done`.
+  - `docs/initiatives/greenfield-scaffold/README.md`, `readiness-checklist.md`, `backout.md` — state the Greenfield scaffold initiative is complete for the bounded baseline while preserving historical `queueReadiness: not_ready` guardrails and requiring fresh approval for future expanded runtime/production scope.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append this RED/GREEN and review evidence.
+- Tests added or changed:
+  - Changed `npm run validate:greenfield-docs` to fail if canonical Greenfield initiative completion state drifts.
+- Exact RED command and key failure reason:
+  - `npm run validate:greenfield-docs`
+  - Failed because Greenfield `pipeline.json` and `slice-plan.json` were not `done`, all slices were still `planned`, several `issues.json` entries were not complete/approved, and the readiness checklist lacked an explicit Greenfield initiative completion statement.
+- Exact GREEN command:
+  - `npm run validate:greenfield-docs` -> PASS (`greenfield-docs-ok`).
+- Other validation commands run:
+  - `npm run validate:greenfield-docs && npm run validate:greenfield-docs && npm run validate:greenfield-docs` -> PASS three consecutive runs.
+  - `./scripts/validate-greenfield-scaffold.sh` -> PASS.
+  - `git diff --check` -> PASS.
+  - JSON status summary -> `issues.json` has `{"approved":3,"done":15}`, `pipeline.json` top `done` with 18 done slices, `slice-plan.json` top `done` with 18 done slices.
+- Wiring verification evidence:
+  - `package.json` already wires `npm run validate:greenfield-docs` to `scripts/validate-greenfield-docs.mjs`.
+  - `docs/initiatives/greenfield-scaffold/slices/issue-018.summary.json` expects `npm run validate:greenfield-docs`, so the final Greenfield docs slice now enforces completion state.
+- Behavior changes and risk notes:
+  - Greenfield can now be considered complete for the approved bounded scaffold baseline.
+  - `queueReadiness: not_ready` remains in materialized slice artifacts and tests by design to prevent accidental autonomous worker execution; future production/runtime expansion still needs a new explicit approval.
+  - Runtime queue still has historical blocked jobs for old issue-002/003 materialization; these are not directly edited because protected runtime state must not be mutated via raw JSON.
+- Follow-ups or known gaps:
+  - If operators want a completely clean runtime dashboard, reconcile obsolete blocked queue jobs through a dedicated runtime maintenance tool/path rather than raw state edits.
+  - Mixed-domain initiative remains separately incomplete until its `pipeline.json`/`slice-plan.json` planned issue-004/005/006 statuses are reconciled.
+
+## Review (2026-05-15T22:59:37Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code`
+- Branch: `task/task-1778883440308-review-greenfield-scaffold-and-mixed-domain-init`
+- Scope: working-tree Greenfield completion reconciliation
+- Commands Run: `git diff --name-only`; `git diff --stat`; targeted diffs for Greenfield docs/status JSON and `scripts/validate-greenfield-docs.mjs`; `npm run validate:greenfield-docs`; `npm run validate:greenfield-docs` three consecutive runs; `./scripts/validate-greenfield-scaffold.sh`; `git diff --check`; JSON status summary for `issues.json`, `pipeline.json`, and `slice-plan.json`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Historical runtime queue state still contains blocked Greenfield jobs for old issue-002/003 materialization. This does not invalidate the tracked initiative completion change, but operators should reconcile it through a runtime maintenance path if they require a clean dashboard.
+
+### Required Fixes
+- none
+
+### Optional Improvements
+- Add a dedicated queue/runtime reconciliation tool for obsolete initiative-materialization jobs so future reviews do not depend on raw protected runtime state edits.
+
+### Open Questions / Assumptions
+- Assumed the user's statement that queue-ready has completed authorizes marking the approved Greenfield initiative complete in tracked initiative state.
+- Assumed materialized `queueReadiness: not_ready` fields should remain as historical/autonomous-worker guardrails because current tests and materialization schema intentionally enforce that value.
+
+### Recommended Tests / Validation
+- `npm run validate:greenfield-docs`
+- `./scripts/validate-greenfield-scaffold.sh`
+- `git diff --check`
+
+### Rollout Notes
+- Greenfield is now represented as complete for the bounded scaffold baseline in tracked initiative state.
+- Future production launch, deployment changes, or expanded runtime scope still require a fresh approval and new queue-readiness decision.
+Review Verdict: no_required_fixes

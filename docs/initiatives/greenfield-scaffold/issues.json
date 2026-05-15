@@ -130,7 +130,7 @@
       "issueId": "issue-004",
       "title": "Wire frontend/backend health handshake",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-002",
         "issue-003"
@@ -293,7 +293,7 @@
       "issueId": "issue-008",
       "title": "Scaffold authentication placeholder boundary",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-003"
       ],
@@ -424,7 +424,7 @@
       "issueId": "issue-011",
       "title": "Add API contract artifacts",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-004",
         "issue-009"
@@ -468,7 +468,7 @@
       "issueId": "issue-012",
       "title": "Generate frontend API client scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-011"
       ],
@@ -554,7 +554,7 @@
       "issueId": "issue-014",
       "title": "Add end-to-end smoke scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-007",
         "issue-012",
@@ -596,7 +596,7 @@
       "issueId": "issue-015",
       "title": "Add observability/logging scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-003"
       ],
@@ -639,7 +639,7 @@
       "issueId": "issue-016",
       "title": "Add developer validation commands",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-014",
         "issue-015"
@@ -683,7 +683,7 @@
       "issueId": "issue-017",
       "title": "Approve release/readiness checklist",
       "type": "HITL",
-      "status": "planned",
+      "status": "approved",
       "dependencies": [
         "issue-016"
       ],
@@ -719,7 +719,7 @@
       "issueId": "issue-018",
       "title": "Finalize scaffold documentation package",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "dependencies": [
         "issue-017"
       ],

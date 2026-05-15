@@ -6,7 +6,7 @@
     {
       "sliceId": "issue-001",
       "title": "Approve greenfield scaffold foundation contract",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -34,7 +34,7 @@
     {
       "sliceId": "issue-002",
       "title": "Scaffold repository app shell",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -56,7 +56,7 @@
     {
       "sliceId": "issue-003",
       "title": "Scaffold backend service shell",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -78,7 +78,7 @@
     {
       "sliceId": "issue-004",
       "title": "Wire frontend/backend health handshake",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -100,7 +100,7 @@
     {
       "sliceId": "issue-005",
       "title": "Approve product navigation and information architecture",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -128,7 +128,7 @@
     {
       "sliceId": "issue-006",
       "title": "Create design token scaffold",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -150,7 +150,7 @@
     {
       "sliceId": "issue-007",
       "title": "Create shared component primitives",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -172,7 +172,7 @@
     {
       "sliceId": "issue-008",
       "title": "Scaffold authentication placeholder boundary",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -194,7 +194,7 @@
     {
       "sliceId": "issue-009",
       "title": "Define persistence schema placeholder",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -216,7 +216,7 @@
     {
       "sliceId": "issue-010",
       "title": "Add first migration scaffold",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -238,7 +238,7 @@
     {
       "sliceId": "issue-011",
       "title": "Add API contract artifacts",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -260,7 +260,7 @@
     {
       "sliceId": "issue-012",
       "title": "Generate frontend API client scaffold",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -282,7 +282,7 @@
     {
       "sliceId": "issue-013",
       "title": "Create fixture and seed data scaffold",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -304,7 +304,7 @@
     {
       "sliceId": "issue-014",
       "title": "Add end-to-end smoke scaffold",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -326,7 +326,7 @@
     {
       "sliceId": "issue-015",
       "title": "Add observability/logging scaffold",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -348,7 +348,7 @@
     {
       "sliceId": "issue-016",
       "title": "Add developer validation commands",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -370,7 +370,7 @@
     {
       "sliceId": "issue-017",
       "title": "Approve release/readiness checklist",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -398,7 +398,7 @@
     {
       "sliceId": "issue-018",
       "title": "Finalize scaffold documentation package",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -427,5 +427,6 @@
       "workerSessionIds": [],
       "worktreePaths": []
     }
-  }
+  },
+  "status": "done"
 }
