@@ -1066,3 +1066,35 @@ LOW
 ### Rollout Notes
 - Safe, minimal loader-compatibility fix; no runtime task schema, provider routing logic, or persisted state behavior changed.
 Review Verdict: no_required_fixes
+
+## 2026-05-15T12:27:23Z
+- Goal: submit the committed domain-ownership loader fix from `task/task-pi-domain-ownership-factory-fix-root-20260515`, capture PR/CI evidence, and attempt the next bounded merge step without bypassing harness merge controls.
+- Discovery path:
+  - Read `logs/CURRENT.md` and `packages/pi-g-skills/skills/g-submit/SKILL.md`.
+  - Inspected compact repo/PR state with `git status --short --branch`, `git branch -vv`, `git rev-list --left-right --count origin/main...HEAD`, `gh pr status`, `gt status`, `gt ls`, `git ls-remote --heads origin task/task-pi-domain-ownership-factory-fix-root-20260515`, and `gh auth status`.
+  - Used compact PR inspection after submission via `gh pr view 167 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,title`, `gh pr checks 167`, and `npm run harness:merge -- check --pr 167`.
+- Lifecycle planning readiness:
+  - Active planning log pointer remains `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct-implementation exemption for new planning work remains the explicit user request to submit/PR/merge an already prepared bounded fix branch.
+- Files changed and why:
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append submission, PR, CI, and merge-readiness evidence for this branch.
+- Tests added or changed:
+  - none.
+- Exact RED command and key failure reason:
+  - none for this submission-only step; implementation RED/GREEN evidence was already captured for the code change in the prior entry.
+- Exact GREEN command:
+  - none for this submission-only step; the relevant code-change GREEN remains `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts`.
+- Other validation commands run:
+  - `npm run harness:slice-lifecycle -- check --stage created` -> FAIL because the lifecycle helper still reports the slice at `coding_green` and missing `review_ready` / `create_ready` prerequisites.
+  - `gh pr checks 167` -> exit 8 while checks are still pending; current snapshot showed `Repo Static Checks` PASS and `Dependency Review`, `CodeQL`, `Foundation Extension Compile`, and `Routing Validators` pending.
+  - `npm run harness:merge -- check --pr 167` -> FAIL; merge helper reports `ready: no`, recommended next action `wait_for_gate`, current stage `coding_green`, missing `review_ready` / `create_ready`, missing submitted evidence in lifecycle state, and local dirty warnings for untracked `.codex/` and `coding-logs/`.
+- Wiring verification evidence:
+  - Submitted PR head is `task/task-pi-domain-ownership-factory-fix-root-20260515` against base `main`.
+  - Branch now tracks `origin/task/task-pi-domain-ownership-factory-fix-root-20260515` after `git push -u origin ...`.
+  - GitHub PR opened successfully at `https://github.com/SubhajL/ma-code/pull/167`.
+- Behavior changes and risk notes:
+  - No code behavior changed during submission; this step only pushed the existing fix and opened PR #167.
+  - Merge was not performed because repository merge controls still report the PR as not ready and CI was still pending.
+- Follow-ups or known gaps:
+  - Wait for PR #167 checks to finish, then satisfy lifecycle/quality gating (`review_ready`, `checked`, `create_ready`, submitted evidence) before re-attempting the merge helper.
+  - Untracked local scratch directories `.codex/` and `coding-logs/` keep the repo non-clean for merge-helper purposes unless intentionally excluded or cleaned in a separate approved step.
