@@ -993,3 +993,76 @@ LOW
 - Change is docs/approval only; no runtime code paths changed.
 - `queueReadiness` remains `not_ready`; future queue-ready conversion remains explicitly out of scope.
 Review Verdict: no_required_fixes
+
+## 2026-05-15T12:20:02Z
+- Goal: inspect the prepared domain-ownership extension autoload fix on `task/task-pi-domain-ownership-factory-fix-root-20260515`, preserve the evidence in the tracked Pi coding log, and create one clean bounded commit.
+- Discovery path:
+  - Read `AGENTS.md`, `README.md`, `logs/CURRENT.md`, and `packages/pi-g-skills/skills/g-create/SKILL.md`.
+  - Used direct local inspection for this commit-only continuation: `git status --short --branch`, `git diff -- .pi/agent/extensions/domain-ownership.ts`, `.pi/settings.json`, `tests/extension-units/extension-factory-exports.test.ts`, and `rg` call-site checks under `.pi/agent/extensions/`.
+  - Consulted prior scratch evidence in `coding-logs/2026-05-15-00-00-00 Coding Log (pi-domain-ownership-factory-fix).md` to preserve the original RED failure before committing; left `.codex/` and `coding-logs/` untracked and out of the review set.
+- Lifecycle planning readiness:
+  - Active planning log pointer remains `reports/planning/2026-05-13_initiative-completion-and-workerjob-bridge-plan.md`.
+  - Direct-implementation exemption for new planning work: the user explicitly approved “do the next step and commit it cleanly” for an already prepared local fix.
+- Files changed and why:
+  - `.pi/agent/extensions/domain-ownership.ts` — add a no-op default export so the helper-only module satisfies the auto-loaded extension factory contract.
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append bounded commit/validation evidence for this work.
+- Tests added or changed:
+  - none; reused `tests/extension-units/extension-factory-exports.test.ts`, which covers the loader contract for top-level extensions.
+- Exact RED command and key failure reason:
+  - `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts`
+  - Failed because `domain-ownership.ts` was a top-level auto-loaded extension module with no default factory export: `Expected every auto-loaded extension module to export a default factory function. Missing: domain-ownership.ts`.
+- Exact GREEN command:
+  - `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts`
+  - Reconfirmed GREEN three consecutive times during commit prep.
+- Other validation commands run:
+  - `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts && node --import tsx --test tests/extension-units/extension-factory-exports.test.ts && node --import tsx --test tests/extension-units/extension-factory-exports.test.ts` -> PASS.
+  - `git diff --check` -> PASS.
+  - `npm run test:extensions` -> FAIL on pre-existing routing expectation drift outside this loader-only change: three `tests/extension-units/orchestration-helpers.test.ts` assertions still expect `openai-codex/gpt-5.4-mini`, and two `tests/extension-units/recovery-runtime.test.ts` assertions still expect `anthropic/claude-opus-4-5` / `anthropic`.
+- Wiring verification evidence:
+  - `.pi/settings.json` still auto-loads `"agent/extensions"`.
+  - `tests/extension-units/extension-factory-exports.test.ts` enumerates every top-level `.ts` file under `.pi/agent/extensions/` and asserts each exports a default factory function.
+  - `.pi/agent/extensions/afk-orchestration.ts` still imports `deriveDomainOwnershipForDomains` as a named helper; the new default export is loader-only and does not alter existing call sites.
+- Behavior changes and risk notes:
+  - No domain ownership logic changed; only the loader compatibility contract for a helper-only module was restored.
+  - The full extension suite still has unrelated routing-expectation failures, so the targeted loader test is the authoritative GREEN proof for this fix.
+- Follow-ups or known gaps:
+  - Update the stale routing expectation tests separately before treating `npm run test:extensions` as fully green.
+  - Untracked scratch artifacts `.codex/coding-log.current` and `coding-logs/2026-05-15-00-00-00 Coding Log (pi-domain-ownership-factory-fix).md` were intentionally left out of the commit.
+
+## Review (2026-05-15T12:20:02Z) - working-tree
+
+### Reviewed
+- Repo: `/Users/subhajlimanond/dev/ma-code`
+- Branch: `task/task-pi-domain-ownership-factory-fix-root-20260515`
+- Scope: `working-tree`
+- Commands Run: `git diff --stat`; `git diff -- .pi/agent/extensions/domain-ownership.ts`; `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts` (x3); `npm run test:extensions`; `git diff --check`; `rg -n 'deriveDomainOwnershipForDomains|domain-ownership' .pi/agent -g '!state/runtime/**'`; inspected `.pi/settings.json`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Required Fixes
+- none
+
+### Optional Improvements
+- Refresh the stale routing expectation tests in `tests/extension-units/orchestration-helpers.test.ts` and `tests/extension-units/recovery-runtime.test.ts` in a separate bounded change.
+
+### Open Questions / Assumptions
+- Assumed helper-only modules under `.pi/agent/extensions/` are intentionally allowed to export a no-op default factory, matching the existing loader contract and prior repo fixes for similar regressions.
+
+### Recommended Tests / Validation
+- Keep `node --import tsx --test tests/extension-units/extension-factory-exports.test.ts` in the fast validation path for extension-module extractions.
+- After the unrelated routing expectations are updated, rerun `npm run test:extensions` to restore a fully green extension suite.
+
+### Rollout Notes
+- Safe, minimal loader-compatibility fix; no runtime task schema, provider routing logic, or persisted state behavior changed.
+Review Verdict: no_required_fixes
