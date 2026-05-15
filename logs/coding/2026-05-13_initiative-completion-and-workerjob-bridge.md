@@ -1098,3 +1098,36 @@ Review Verdict: no_required_fixes
 - Follow-ups or known gaps:
   - Wait for PR #167 checks to finish, then satisfy lifecycle/quality gating (`review_ready`, `checked`, `create_ready`, submitted evidence) before re-attempting the merge helper.
   - Untracked local scratch directories `.codex/` and `coding-logs/` keep the repo non-clean for merge-helper purposes unless intentionally excluded or cleaned in a separate approved step.
+
+## 2026-05-15T13:00:54Z
+- Goal: record the now-clean PR-gate state and explicit lifecycle markers needed for bounded merge-helper landing of PR #167.
+- Files changed and why:
+  - `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` — append explicit creation/submission/PR-gate evidence for lifecycle helper consumption.
+- Tests added or changed:
+  - none.
+- Exact RED command and key failure reason:
+  - none for this merge-readiness bookkeeping step; implementation RED evidence remains captured earlier in this log.
+- Exact GREEN command:
+  - `gh pr checks 167`
+  - Current check snapshot is green enough for landing: `CodeQL`, `Dependency Review`, `Foundation Extension Compile`, `Repo Static Checks`, and `Routing Validators` all reported `pass`.
+- Other validation commands run:
+  - `gh pr view 167 --json number,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,title` -> `mergeStateStatus` is `CLEAN`.
+  - `npm run harness:merge -- check --pr 167` -> still blocked only on lifecycle readiness / local dirty-state prerequisites before this explicit evidence append.
+- Wiring verification evidence:
+  - PR #167 still targets base `main` from head `task/task-pi-domain-ownership-factory-fix-root-20260515`.
+- Behavior changes and risk notes:
+  - No product behavior changed; this entry only makes merge-readiness evidence explicit.
+- Follow-ups or known gaps:
+  - Merge-helper apply still requires a clean local repo at execution time.
+
+## Creation
+- Branch/commit artifact is ready for landing.
+- Branch: `task/task-pi-domain-ownership-factory-fix-root-20260515`
+- Commit: `e384c84`
+
+## Submission
+- PR #167: OPEN
+- URL: https://github.com/SubhajL/ma-code/pull/167
+- State: OPEN
+- mergeStateStatus CLEAN
+- Checks: pass
