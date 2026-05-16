@@ -128,7 +128,8 @@
     "validate:greenfield-scaffold:integration": "npm run test:integration -- health-handshake auth-boundary observability",
     "validate:greenfield-scaffold:smoke": "npm run test:e2e -- greenfield-smoke",
     "validate:greenfield-docs": "node scripts/validate-greenfield-docs.mjs",
-    "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh"
+    "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh",
+    "validate:greenfield-phase-b": "node scripts/validate-greenfield-phase-b.mjs"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",
