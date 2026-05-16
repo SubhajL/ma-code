@@ -6,6 +6,7 @@ const requiredFiles = [
   "docs/initiatives/greenfield-scaffold/README.md",
   "docs/initiatives/greenfield-scaffold/backout.md",
   "docs/initiatives/greenfield-scaffold/phase-b-queue-readiness.md",
+  "docs/initiatives/greenfield-scaffold/phase-c-worker-execution-proof.json",
   "docs/initiatives/greenfield-scaffold/readiness-checklist.md",
   "docs/initiatives/greenfield-scaffold/afk-approvals.json",
   "docs/initiatives/greenfield-scaffold/issues.json",
@@ -57,6 +58,12 @@ if (issues) {
 const approvals = readJson("docs/initiatives/greenfield-scaffold/afk-approvals.json");
 if (approvals && !(approvals.approvals ?? []).some((approval) => approval.issueId === "issue-017")) {
   failures.push("issue-017 approval is missing from afk-approvals.json");
+}
+
+const phaseC = readJson("docs/initiatives/greenfield-scaffold/phase-c-worker-execution-proof.json");
+if (phaseC) {
+  if (phaseC.phase !== "C_worker_execution_proof") failures.push("phase-c proof artifact must declare phase C_worker_execution_proof");
+  if ((phaseC.proofJobs ?? []).length !== 1) failures.push("phase-c proof artifact must contain exactly one proof job");
 }
 
 const readiness = readFileSync("docs/initiatives/greenfield-scaffold/readiness-checklist.md", "utf8");

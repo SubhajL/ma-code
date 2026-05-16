@@ -1,53 +1,42 @@
 # Greenfield Phase C Worker Execution Proof Plan
 
 - Date: 2026-05-16
-- Task: `task-1778907456348`
+- Task: `task-1778908809726`
 - Coding log: `logs/coding/2026-05-16_greenfield-phase-c-worker-execution-proof.md`
-- Intake: direct planning request; no implementation in this task.
-- Decision: Phase B is complete for candidate-only queue-readiness semantics; Phase C should not start live execution until the worker-execution gate is green.
+- Intake: direct implementation request after Phase B completion analysis.
 
-## Discovery evidence
-- Auggie attempted first and timed out; local `read`/`rg`/targeted command discovery used as fallback.
-- Phase B artifacts exist on `origin/main` and `HEAD`: `docs/initiatives/greenfield-scaffold/phase-b-queue-readiness.md`, `scripts/validate-greenfield-phase-b.mjs`, `tests/integration/greenfield-phase-b-queue-readiness.test.ts`, and Phase B planning/coding logs.
-- `node scripts/validate-greenfield-phase-b.mjs --json` reports `queueReadiness: candidate_only`, `workerExecution: disabled`, `runtimeMutation: disabled`, `candidateCount: 3`, and `errors: []`.
-- `npm run validate:greenfield-phase-b` passed.
-- `npm run validate:greenfield-docs` passed.
-- Queue state has no queued/running jobs; existing Greenfield issue-materialization jobs are done.
-- Greenfield issue, slice-plan, and pipeline artifacts list issue-001 through issue-018 complete/done, while source `queueReadiness` remains `not_ready` by Phase B design.
-- `npm run test:worker-execution` currently fails one integration test: `CLI dry-run/status/explain-run and run enforce Phase C boundaries`, expected `review_ready`, actual `blocked`, at `tests/integration/worker-execution.test.ts:84`.
+## Refactor target
+- Target module/subsystem: worker execution boundary for Greenfield Phase C proof.
+- Primary interface: `scripts/harness-worker-execute.ts` / `runWorkerExecution`.
+- Supporting seam: Greenfield Phase C proof artifact and validator.
 
-## Recommendation
-- Treat Phase B as done for its defined scope: safe candidate-only queue-readiness semantics, no runtime mutation, no autonomous execution.
-- Do not begin a live Phase C worker run until `npm run test:worker-execution` / `npm run validate:worker-execution` pass.
-- Create a distinct Phase C runtime issue/backlog item; do not reopen or rematerialize the completed Greenfield product scaffold issues directly.
-- Materialize exactly one synthetic/proof Phase C queue job after the Phase C issue has acceptance criteria and worker-execution gates are green.
-- Preserve Phase B validator semantics; add Phase C-specific validation rather than changing Phase B from `workerExecution: disabled`.
+## Current friction
+- Worker execution gate was red because the CLI fixture expected `review_ready` for a queue job with no `implementationCommand` or `workerExecutionPlan`.
+- Phase B correctly remains candidate-only, so Phase C needs separate proof metadata rather than mutating historical queue-readiness artifacts.
+
+## Deep-module analysis
+- Module: worker execution runner.
+- Interface: bounded CLI commands (`dry-run`, `run`, `status`, `explain-run`) plus queue job metadata.
+- Seam: proof job artifact supplies the execution command and validation contract; runner keeps safety enforcement behind its interface.
+- Adapter: `scripts/validate-greenfield-phase-c.mjs` adapts Greenfield Phase B candidate artifacts into a deterministic Phase C proof contract.
+- Depth/leverage/locality: keep safety complexity inside worker execution and validators; callers provide metadata only.
+- Deletion test: removing the Phase C proof artifact would push provenance, allowed-path, PR-boundary, and validation decisions into ad hoc caller logic.
+
+## Dependency classification
+- In-process: worker execution extension, queue job type/schema, validator scripts.
+- Local-substitutable: test fixture repo and local node implementation command.
+- Remote but owned: GitHub PR/checks for final landing.
+- True external: GitHub account/Actions availability and branch protection.
 
 ## First TDD slice
-- Tracer behavior: one explicit Phase C command/flow converts a Phase B candidate reference into one bounded `worker_job` proof and stops at review/proof without autoland.
-- Public interface: existing `npm run harness:worker-execute -- ...` / `scripts/harness-worker-execute.ts` path, or a minimal wrapper only if existing wiring cannot express candidate-derived proof jobs.
-- Boundary dependencies: queue runner/materialization, worker execution artifact writer, allowed-path guard, HITL/approval checks, task packet generation, and validation scripts.
-- Mock/fake plan: integration fixture initiative/candidate and fake worker command that writes allowed proof only; no live provider loop for RED/GREEN.
-- Out of scope: product scaffold expansion, daemonized AFK loops, multi-job draining, autoland/merge, direct runtime JSON edits, and bypassing HITL gates.
+- Add failing integration coverage for `scripts/validate-greenfield-phase-c.mjs` before the script/artifact exists.
+- Implement the smallest proof artifact and validator to pass.
+- Correctly rebaseline worker-execution CLI fixture so review-ready requires an implementation command supplied by the proof job/queue job metadata.
 
 ## Acceptance criteria
-- Existing worker-execution failing integration is fixed or explicitly rebaselined for the right reason.
-- Phase C has a distinct issue/backlog artifact with acceptance and proof expectations.
-- One candidate-derived proof job can be materialized through normal tooling with `queueJobSource`/provenance, allowed paths, approval/HITL policy, and validation expectations.
-- One bounded worker execution path reaches review/proof state and writes a worker-run artifact.
-- No source Greenfield `queueReadiness: not_ready` artifacts are silently flipped to executable jobs.
-- Phase B validations remain green and continue reporting `workerExecution: disabled` for Phase B.
-
-## Validation commands
-- `npm run test:worker-execution`
-- `npm run validate:worker-execution`
-- `npm run validate:greenfield-phase-b`
-- `npm run validate:greenfield-docs`
-- `node --import tsx --test tests/integration/queue-reconcile.test.ts tests/integration/afk-orchestration.test.ts` when materialization logic changes
-- `git diff --check`
-
-## Risks
-- Starting Phase C while worker-execution tests are red would turn a known boundary failure into live runtime risk.
-- Reusing completed product issues directly could blur product completion with runtime proof work.
-- Changing Phase B validator to report execution enabled would weaken the phase boundary; prefer a Phase C validator or proof artifact.
-- Current branch has unrelated model-settings delta and an existing dirty coding log; implementation should use a clean task branch/worktree.
+- `npm run validate:greenfield-phase-c` passes and reports exactly one proof job.
+- `npm run validate:worker-execution` passes.
+- `npm run validate:greenfield-phase-b` still passes and continues to preserve Phase B boundaries.
+- `npm run validate:greenfield-docs` and `npm run validate:greenfield-scaffold` pass.
+- `git diff --check` passes.
+- PR is created; normal merge/local-main sync is attempted only if checks allow it without bypassing protections.

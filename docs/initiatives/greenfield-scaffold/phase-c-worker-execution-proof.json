@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "initiativeId": "greenfield-scaffold",
+  "phase": "C_worker_execution_proof",
+  "status": "proof_job_materialized",
+  "sourcePhaseBQueueReadiness": "candidate_only",
+  "liveWorkerExecutionReady": false,
+  "issue": {
+    "issueId": "phase-c-worker-execution-proof",
+    "title": "Greenfield Scaffold Phase C: autonomous worker execution proof",
+    "type": "runtime_safety",
+    "status": "planned",
+    "acceptanceCriteria": [
+      "Use the Phase B candidate-only queue-readiness contract without mutating source queueReadiness artifacts.",
+      "Materialize exactly one bounded proof job derived from a Phase B candidate.",
+      "Run through the worker_job execution boundary with explicit allowed paths and validation commands.",
+      "Stop at review/proof without creating a PR or autolanding from inside the worker run."
+    ],
+    "nonGoals": [
+      "No product scaffold expansion.",
+      "No daemonized AFK loop.",
+      "No direct edits to .pi/agent/state/runtime/*.json.",
+      "No autoland or PR creation from the worker execution proof."
+    ]
+  },
+  "proofJobs": [
+    {
+      "id": "phase-c-greenfield-worker-proof-issue-002",
+      "sourceCandidateId": "issue-002",
+      "status": "materialized_proof_only",
+      "goal": "Prove one bounded Phase C worker_job execution path from a Phase B Greenfield candidate.",
+      "priority": "medium",
+      "team": "build",
+      "taskClass": "implementation",
+      "workType": "implementation",
+      "domains": ["docs"],
+      "allowedPaths": ["docs/initiatives/greenfield-scaffold"],
+      "assignedRole": "docs_worker",
+      "queueJobSource": {
+        "kind": "issue-materialization",
+        "initiativeId": "greenfield-scaffold",
+        "issueId": "issue-002",
+        "sourceArtifactPaths": [
+          "docs/initiatives/greenfield-scaffold/issues.json",
+          "docs/initiatives/greenfield-scaffold/slice-plan.json",
+          "docs/initiatives/greenfield-scaffold/phase-b-queue-readiness.md",
+          "docs/initiatives/greenfield-scaffold/phase-c-worker-execution-proof.json"
+        ]
+      },
+      "implementationCommand": "node -e \"require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/phase-c-worker-proof.md','# Phase C Worker Proof\\n\\n- status: review_ready_boundary\\n- sourceCandidateId: issue-002\\n')\"",
+      "validationCommands": [
+        "npm run validate:greenfield-phase-c"
+      ],
+      "prBoundary": {
+        "stopBeforePr": true,
+        "allowPrCreate": false,
+        "reason": "Phase C proof stops at review/proof and does not create or merge a PR from the worker run."
+      },
+      "tddSlice": {
+        "firstTracerBehavior": "A Phase B candidate reference produces one bounded worker_job proof and stops before PR/autoland.",
+        "publicInterface": "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id phase-c-greenfield-worker-proof-issue-002 --max-steps <n> --max-runtime-seconds <n>",
+        "testSurface": [
+          "tests/integration/greenfield-phase-c-worker-proof.test.ts",
+          "tests/integration/worker-execution.test.ts"
+        ],
+        "boundaryDependencies": [
+          "Phase B candidate-only contract",
+          "worker execution CLI",
+          "allowed-path guard",
+          "validation command preflight"
+        ],
+        "mockPlan": "Use a local node command that writes one proof markdown file under the Greenfield docs allowed path.",
+        "outOfScopeBehaviors": [
+          "live provider-backed coding loop",
+          "product feature work",
+          "autoland",
+          "multi-job drain"
+        ]
+      }
+    }
+  ]
+}

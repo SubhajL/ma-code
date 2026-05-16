@@ -1,26 +1,49 @@
 # Coding Log — Greenfield Phase C worker execution proof
 
 - Date: 2026-05-16
-- Task: `task-1778907456348`
+- Task: `task-1778908809726`
 - Planning log: `reports/planning/2026-05-16_greenfield-phase-c-worker-execution-proof-plan.md`
-- Status: planning only
+- Status: implementation
 
-## 2026-05-16 - Phase B completion / Phase C readiness analysis
-- Used `g-planning`; no implementation performed.
-- Discovery path: Auggie first, timed out; local targeted inspection and validation fallback.
-- Phase B assessment: complete for candidate-only queue-readiness semantics.
-- Phase C gate: not ready for live execution until worker-execution validation failure is fixed.
-- Issue/materialization decision: create a distinct Phase C runtime proof issue; materialize exactly one synthetic/proof job after gates pass, not the old completed Greenfield product issues.
+## 2026-05-16 - RED
+- Discovery path: Auggie attempted first and timed out; local targeted inspection used.
+- Baseline failure: `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs npm run test:worker-execution` failed in `tests/integration/worker-execution.test.ts:84`; expected `review_ready`, actual `blocked`.
+- Added `tests/integration/greenfield-phase-c-worker-proof.test.ts` before the validator existed.
+- RED command: `node --import tsx --test tests/integration/greenfield-phase-c-worker-proof.test.ts` failed because `scripts/validate-greenfield-phase-c.mjs` did not exist.
 
-## Evidence
-- `node scripts/validate-greenfield-phase-b.mjs --json` reported `queueReadiness: candidate_only`, `workerExecution: disabled`, `runtimeMutation: disabled`, `candidateCount: 3`, `errors: []`.
-- `npm run validate:greenfield-phase-b` passed.
+## 2026-05-16 - GREEN
+- Added `docs/initiatives/greenfield-scaffold/phase-c-worker-execution-proof.json` with one proof-only materialized job derived from Phase B candidate `issue-002`.
+- Added `scripts/validate-greenfield-phase-c.mjs` and `npm run validate:greenfield-phase-c`.
+- Updated Greenfield docs validation to require/check the Phase C proof artifact.
+- Correctly rebaselined the worker-execution CLI fixture so `review_ready` is proven by queue job metadata containing a bounded `implementationCommand`; jobs with no implementation command/plan remain blocked by production logic.
+
+## Validation
+- `npm run validate:greenfield-phase-c` passed.
 - `npm run validate:greenfield-docs` passed.
-- `inspect_queue_state recentLimit=1` showed no queued/running jobs and no active queue job.
-- `npm run test:worker-execution` failed one test: `CLI dry-run/status/explain-run and run enforce Phase C boundaries`; expected `review_ready`, actual `blocked`, at `tests/integration/worker-execution.test.ts:84`.
-- Second-model check agreed Phase B is complete for candidate semantics and worker-execution failure blocks Phase C live start; rejected changing Phase B validator semantics to execution-enabled.
+- `npm run validate:greenfield-phase-b` passed.
+- `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs npm run test:worker-execution` passed.
+- `node --import tsx --test tests/integration/greenfield-phase-c-worker-proof.test.ts` passed.
+- `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs npm run validate:worker-execution` passed.
+- `npm run validate:greenfield-scaffold` passed.
+- `git diff --check` passed.
 
-## Known gaps
-- No Phase C issue/backlog artifact created yet.
-- No Phase C proof job materialized yet.
-- Existing branch has unrelated model-settings delta and a pre-existing dirty Phase B coding log; implementation should start from a clean task branch/worktree.
+## Risks / gaps
+- The Phase C proof job is materialized as a repo artifact, not inserted into `.pi/agent/state/runtime/queue.json`; this preserves the no-direct-runtime-JSON boundary.
+- Final PR merge may still be blocked by remote GitHub checks/account policy; do not use admin bypass.
+
+## Review (g-check) - 2026-05-16
+- Scope: working-tree diff for Phase C worker execution proof artifact, validator, tests, and logs.
+- Finding: no required fixes.
+- Checked boundaries:
+  - No `.pi/agent/state/runtime/*.json` files changed.
+  - Phase B validator remains unchanged and still reports worker execution disabled for Phase B.
+  - Worker execution production behavior still blocks jobs without an implementation command or execution plan; the integration fixture now supplies the missing command.
+  - Phase C proof job is proof-only and stop-before-PR.
+- Required tests: already covered by validation section above.
+
+## Submission - 2026-05-16
+- PR: https://github.com/SubhajL/ma-code/pull/170
+- Base/head: `main` <- `task/task-1778908809726-greenfield-phase-c-worker-proof`
+- Initial PR state: open, non-draft, mergeStateStatus `BLOCKED`.
+- Remote check blocker: GitHub Actions jobs fail before start with account billing-lock annotation: `The job was not started because your account is locked due to a billing issue.`
+- Landing decision: did not merge and did not bypass branch protection/admin checks.

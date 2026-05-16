@@ -561,3 +561,86 @@ nothing to commit, working tree clean; no active Graphite stack submission used)
 - Merge was not attempted inside g-submit.
 - Local main was not synced.
 - Next: inspect/resolve PR mergeStateStatus DIRTY before merge consideration, then use bounded merge helper only after PR gate is clean.
+
+## Merge Conflict Resolution (g-coding) - 2026-05-17 06:56:14 +0700
+
+### Goal
+- Resolve PR #171 mergeStateStatus DIRTY by merging origin/main into task/task-1778906201439-sync-main-and-model-settings without editing main directly.
+
+### Discovery Path
+- Auggie-first discovery attempted and fell back because Auggie credits are exhausted.
+- Local inspection used `git fetch origin main`, `git rev-list --left-right --count HEAD...origin/main`, `git merge-tree --messages HEAD origin/main`, `gh pr view 171`, and conflict-stage inspection with `git show :2:` / `git show :3:`.
+
+### Conflict Resolution
+- `logs/CURRENT.md`: kept the active Phase C.1 log/planning pointers from this branch.
+- `package.json`: combined both sides, preserving task queue materialization scripts and adding `validate:greenfield-phase-c` from `origin/main`.
+- `logs/coding/2026-05-16_greenfield-phase-c-worker-execution-proof.md`: accepted `origin/main` completed Phase C evidence over this branch's older planning-only add/add copy.
+- `reports/planning/2026-05-16_greenfield-phase-c-worker-execution-proof-plan.md`: accepted `origin/main` completed Phase C plan over this branch's older planning-only add/add copy.
+
+### TDD / Validation
+- RED: not applicable; this was merge-conflict resolution of already-reviewed branches, not a new behavior slice.
+- GREEN / validation commands:
+  - `git diff --check`
+  - `node -e "JSON.parse(require('fs').readFileSync('package.json','utf8')); console.log('package json ok')"`
+  - `npm run validate:harness-routing`
+  - `npm run test:task-queue-materialization`
+  - `npm run validate:greenfield-phase-c`
+  - `npm run validate:worker-execution`
+  - `npm run validate:greenfield-phase-b`
+  - `npm run validate:greenfield-docs`
+  - `npm run validate:greenfield-scaffold`
+
+### Wiring Verification
+- Package scripts now expose both `harness:task-queue-materialize` / `test:task-queue-materialization` and `validate:greenfield-phase-c`.
+- Phase C files from `origin/main` remain present while Phase C.1 queue materialization files remain present on this branch.
+
+### Risks / Follow-ups
+- Must push merge resolution and re-check PR merge state before any merge/local-main sync.
+
+
+## Review (2026-05-17 06:56:45 +0700) - staged merge-conflict resolution for PR #171
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code
+- Branch: task/task-1778906201439-sync-main-and-model-settings
+- Scope: staged merge resolution after merging origin/main into PR #171 branch
+- Commands Run:
+  - git status --short --untracked-files=all
+  - git diff --cached --name-only
+  - sed -n '128,142p' package.json
+  - git diff --cached --name-only -z | xargs -0 grep -n '<<<<<<<\|=======\|>>>>>>>' || true
+  - git diff --cached --check
+  - git diff --cached -- package.json logs/CURRENT.md logs/coding/2026-05-16_greenfield-phase-c-worker-execution-proof.md reports/planning/2026-05-16_greenfield-phase-c-worker-execution-proof-plan.md logs/coding/2026-05-16_greenfield-phase-c1-runtime-queue-proof.md
+  - npm run validate:harness-routing
+  - npm run test:task-queue-materialization
+  - npm run validate:greenfield-phase-c
+  - npm run validate:worker-execution
+  - npm run validate:greenfield-phase-b
+  - npm run validate:greenfield-docs
+  - npm run validate:greenfield-scaffold
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: for the add/add Phase C log and plan conflicts, origin/main is authoritative because it contains the completed/landed Phase C worker proof while this branch carried an older planning-only copy.
+- Assumption: keeping logs/CURRENT pointed at the active Phase C.1 log is intended for this branch.
+
+### Recommended Tests / Validation
+- Already run: routing validation, task queue materialization test, Phase C validator, worker execution validator, Phase B validator, greenfield docs validator, greenfield scaffold validator.
+- After pushing: re-check PR #171 mergeStateStatus and reported checks before merge.
+
+### Rollout Notes
+- Push the merge-resolution commit to PR #171, then use the bounded merge helper only if GitHub reports a clean/pass merge gate.
+
+Review Verdict: no_required_fixes
