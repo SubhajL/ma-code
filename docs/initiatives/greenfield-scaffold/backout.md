@@ -1,13 +1,13 @@
 # Greenfield Scaffold Backout
 
 ## Purpose
-- Document the bounded rollback path for the current greenfield scaffold baseline.
-- Keep rollback expectations explicit before the scaffold advances beyond Phase A.
+- Document the bounded rollback path for the completed greenfield scaffold baseline.
+- Keep rollback expectations explicit before any future production launch, deployment change, or expanded runtime scope.
 
 ## When to back out
 - A newly landed scaffold slice breaks the validation bundle or smoke proof.
 - The documented scaffold surface drifts from the shipped placeholder behavior.
-- Future rollout work accidentally changes queue readiness or worker behavior without the required HITL approval.
+- Future rollout work accidentally changes worker behavior, deployment posture, or historical `queueReadiness: not_ready` guardrails without a new HITL approval.
 
 ## Backout steps
 - Revert the most recent bounded greenfield scaffold PR or commit instead of hand-editing generated state.

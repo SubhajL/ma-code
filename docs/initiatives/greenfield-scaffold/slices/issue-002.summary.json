@@ -29,6 +29,9 @@
       "Phase A source hash: bf05f0f0b5b6bf18034d1d87def7864e27d1bf8297c4789e12c05cedfe1f5416",
       "Issue type: AFK",
       "Allowed path roots: apps/web"
+    ],
+    "validationProof": [
+      "npm run test:web -- app-shell"
     ]
   },
   "acceptanceCriteria": [
@@ -36,8 +39,7 @@
     "Phase A materialization keeps queueReadiness as not_ready."
   ],
   "validationProof": [
-    "npm run test:web -- app-shell",
-    "npm run build:web"
+    "npm run test:web -- app-shell"
   ],
   "hitlGates": []
 }

@@ -1,14 +1,14 @@
 {
   "version": 1,
   "initiativeId": "greenfield-scaffold",
-  "status": "planned",
+  "status": "done",
   "slices": [
     {
       "sliceId": "issue-001",
       "issueId": "issue-001",
       "title": "Approve greenfield scaffold foundation contract",
       "type": "HITL",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -50,7 +50,7 @@
       "issueId": "issue-002",
       "title": "Scaffold repository app shell",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -98,7 +98,7 @@
       "issueId": "issue-003",
       "title": "Scaffold backend service shell",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -146,7 +146,7 @@
       "issueId": "issue-004",
       "title": "Wire frontend/backend health handshake",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -197,7 +197,7 @@
       "issueId": "issue-005",
       "title": "Approve product navigation and information architecture",
       "type": "HITL",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -241,7 +241,7 @@
       "issueId": "issue-006",
       "title": "Create design token scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -290,7 +290,7 @@
       "issueId": "issue-007",
       "title": "Create shared component primitives",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -340,7 +340,7 @@
       "issueId": "issue-008",
       "title": "Scaffold authentication placeholder boundary",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -390,7 +390,7 @@
       "issueId": "issue-009",
       "title": "Define persistence schema placeholder",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -442,7 +442,7 @@
       "issueId": "issue-010",
       "title": "Add first migration scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -494,7 +494,7 @@
       "issueId": "issue-011",
       "title": "Add API contract artifacts",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -545,7 +545,7 @@
       "issueId": "issue-012",
       "title": "Generate frontend API client scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -594,7 +594,7 @@
       "issueId": "issue-013",
       "title": "Create fixture and seed data scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -647,7 +647,7 @@
       "issueId": "issue-014",
       "title": "Add end-to-end smoke scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -697,7 +697,7 @@
       "issueId": "issue-015",
       "title": "Add observability/logging scaffold",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -747,7 +747,7 @@
       "issueId": "issue-016",
       "title": "Add developer validation commands",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -798,7 +798,7 @@
       "issueId": "issue-017",
       "title": "Approve release/readiness checklist",
       "type": "HITL",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",
@@ -842,7 +842,7 @@
       "issueId": "issue-018",
       "title": "Finalize scaffold documentation package",
       "type": "AFK",
-      "status": "planned",
+      "status": "done",
       "currentPhase": "stitch_prompt",
       "phaseOrder": [
         "stitch_prompt",

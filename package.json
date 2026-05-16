@@ -129,7 +129,9 @@
     "validate:greenfield-scaffold:smoke": "npm run test:e2e -- greenfield-smoke",
     "validate:greenfield-docs": "node scripts/validate-greenfield-docs.mjs",
     "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh",
-    "validate:greenfield-phase-b": "node scripts/validate-greenfield-phase-b.mjs"
+    "validate:greenfield-phase-b": "node scripts/validate-greenfield-phase-b.mjs",
+    "harness:queue-reconcile": "node --import tsx scripts/harness-queue-reconcile.ts",
+    "harness:task-reconcile": "node --import tsx scripts/harness-task-reconcile.ts"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",
