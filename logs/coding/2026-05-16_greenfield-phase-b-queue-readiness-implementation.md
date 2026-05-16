@@ -291,3 +291,96 @@ LOW
 - Current working branch is `task/task-1778906201439-sync-main-and-model-settings`, not `main`.
 
 Review Verdict: no_required_fixes
+
+## Review (2026-05-16 11:49:52 +07) - PR #141
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code
+- Branch: task/task-1778906201439-sync-main-and-model-settings
+- Scope: PR #141 merge-worthiness review
+- Commands Run:
+  - `git status -sb && git branch --show-current && git rev-parse main origin/main HEAD`
+  - `gh pr view 141 --json number,title,url,state,isDraft,mergeStateStatus,headRefName,baseRefName,headRefOid,baseRefOid,updatedAt,createdAt,commits,files,additions,deletions,changedFiles,reviews,statusCheckRollup ...`
+  - `git fetch origin main pull/141/head:refs/tmp/pr141 --no-tags --force`
+  - `git rev-parse origin/main refs/tmp/pr141 && git merge-base origin/main refs/tmp/pr141`
+  - `gh pr view 141 --json files --jq '.files[].path'`
+  - `gh pr view 141 --json commits --jq '.commits[] | [.oid,.messageHeadline] | @tsv'`
+  - `git diff --stat origin/main...refs/tmp/pr141`
+  - `git diff --name-only 442ab63e48a6728f48ea93a558e4ac6e17cd8870..origin/main`
+  - `comm -12 /tmp/pr141-files.txt /tmp/main-since-pr141-base-files.txt`
+  - `git diff --check origin/main...refs/tmp/pr141`
+  - `git merge-tree --write-tree origin/main refs/tmp/pr141`
+  - `git cat-file -e origin/main:<path>` / `git cat-file -e refs/tmp/pr141:<path>` for same-runtime worker files
+  - `git grep -n 'buildAfkWorkerExecutionPlan\|run_same_runtime_probe\|workerExecutionPlan\|worker-same-runtime' origin/main ...`
+  - `git cherry -v origin/main refs/tmp/pr141`
+  - `gh pr view 142 --json number,title,state,mergedAt,mergeCommit,headRefName,baseRefName,url`
+  - `gh pr checks 141`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- PR #141 should not be merged as-is. It is based on old main commit `442ab63`, touches 22 files, and `git merge-tree --write-tree origin/main refs/tmp/pr141` reports conflicts in `.pi/settings.json`, `logs/CURRENT.md`, `logs/coding/2026-05-11_afk-worker-command-fix.md`, `reports/planning/2026-05-11_afk-worker-command-fix-plan.md`, `scripts/check-foundation-extension-compile.sh`, `tests/extension-units/worker-execution.test.ts`, and `tests/integration/core-workflows.test.ts`. Merging it now would require non-trivial conflict resolution across runtime, validation, and log/planning artifacts.
+- PR #141 appears superseded by merged PR #142: `gh pr view 142` shows `feat(afk): add same-runtime worker execution plans` merged at `f403be3` on 2026-05-11. Current `origin/main` already contains the central files/symbols from PR #141, including `.pi/agent/extensions/afk-worker-execution-plan.ts`, `.pi/agent/extensions/worker-same-runtime-execution.ts`, and `tests/extension-units/worker-same-runtime-execution.test.ts`.
+- Comparing `origin/main..refs/tmp/pr141` shows PR #141 would remove newer main-side queue/runtime fields such as `domainOwnership`, `escalationInstructions`, `sliceCoordination`, and parent coordinator completion checks from `.pi/agent/extensions/queue-runner.ts`. That would regress later harness work if applied naively.
+
+MEDIUM
+- All 22 files changed by PR #141 also changed on main since PR #141's base (`comm -12` overlap count: 22). Even if manually rebased, it needs a full stale-branch reassessment rather than a simple merge.
+- PR #141 checks are green, but those checks are from the stale PR branch state and do not prove it is safe against current `origin/main`.
+
+LOW
+- PR #141 remains open and non-draft despite being superseded/stale; this creates operator confusion when checking open PRs.
+
+### Open Questions / Assumptions
+- Assumption: PR #142 is the intended replacement for PR #141 because it has the same feature title/scope and is already merged.
+- Assumption: current `origin/main` should be preserved over stale PR #141 changes where runtime and validation behavior diverge.
+
+### Recommended Tests / Validation
+- Do not merge PR #141 as-is.
+- Recommended action: close PR #141 as superseded by PR #142.
+- If any specific PR #141 commit is believed still valuable, cherry-pick only that behavior onto a fresh branch from `origin/main`, then rerun targeted worker execution tests, queue/core workflow tests, and validator scripts.
+
+### Rollout Notes
+- Compact status: PR #141 checks report pass, but merge-tree conflict evidence and supersession by PR #142 make it not worth merging.
+- Suggested closing note: "Superseded by #142 and current main; stale branch conflicts with later queue/runtime changes. Closing rather than merging."
+
+Review Verdict: changes_required
+
+## Submission/PR Maintenance (2026-05-16 11:52:33 +07) - close PR #141
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code
+- Branch: task/task-1778906201439-sync-main-and-model-settings
+- Scope: close stale/superseded PR #141 after merge-worthiness review
+- Commands Run:
+  - `git status -sb && git branch --show-current && gh pr view 141 --json number,state,url,title,headRefName,baseRefName,isDraft,mergeStateStatus`
+  - `gh pr close 141 --comment "Closing as superseded by #142 and current main..."`
+  - `gh pr view 141 --json number,state,closed,closedAt,url,title`
+  - `gh pr list --state open --json number,title,url --limit 20`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- Existing active coding log has local evidence changes from recent review/maintenance tasks; keep or commit separately according to the model-settings branch submission plan.
+
+### Open Questions / Assumptions
+- Assumption: the operator request explicitly authorized closing PR #141 after the prior review recommendation.
+
+### Recommended Tests / Validation
+- Not applicable; no code changed.
+- Verification command confirmed PR #141 is `CLOSED` and `gh pr list --state open` returns `[]`.
+
+### Rollout Notes
+- Closed PR: https://github.com/SubhajL/ma-code/pull/141
+- Close reason posted: superseded by #142/current main; stale branch conflicts with later queue/runtime changes; cherry-pick onto a fresh branch if any specific commit is still needed.
+
+Review Verdict: no_required_fixes

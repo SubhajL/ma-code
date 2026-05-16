@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-16_greenfield-phase-b-queue-readiness-implementation.md`
+- `logs/coding/2026-05-16_greenfield-phase-c1-runtime-queue-proof.md`
 
 ## Current planning log
-- `reports/planning/2026-05-16_greenfield-phase-b-queue-readiness-implementation-plan.md`
+- `reports/planning/2026-05-16_greenfield-phase-c1-runtime-queue-proof-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

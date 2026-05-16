@@ -131,7 +131,9 @@
     "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh",
     "validate:greenfield-phase-b": "node scripts/validate-greenfield-phase-b.mjs",
     "harness:queue-reconcile": "node --import tsx scripts/harness-queue-reconcile.ts",
-    "harness:task-reconcile": "node --import tsx scripts/harness-task-reconcile.ts"
+    "harness:task-reconcile": "node --import tsx scripts/harness-task-reconcile.ts",
+    "harness:task-queue-materialize": "node --import tsx scripts/harness-task-queue-materialize.ts",
+    "test:task-queue-materialization": "node --import tsx --test tests/extension-units/task-queue-materialization.test.ts"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

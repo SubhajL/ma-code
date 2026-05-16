@@ -1519,24 +1519,23 @@ assert "Phase 11 product pipeline runtime" in product_planning_doc
 assert "Phase 11 product pipeline runtime" in readme_doc
 phase_profiles = models_json.get("phase_routing_profiles", {})
 assert set(phase_profiles) == {"screen_design", "frontend_implementation", "backend_implementation"}
-for lane, expected_target, expected_fallback in [
-    ("screen_design", "opus-4.7", "anthropic/claude-opus-4-5"),
-    ("frontend_implementation", "opus-4.7", "anthropic/claude-opus-4-5"),
-    ("backend_implementation", "gpt-5.5", "github-copilot/gpt-5.4"),
+for lane, expected_target, expected_model, expected_fallback in [
+    ("screen_design", "gpt-5.5", "openai-codex/gpt-5.5", "openai-codex/gpt-5.5"),
+    ("frontend_implementation", "gpt-5.3-codex-spark", "openai-codex/gpt-5.3-codex-spark", "openai-codex/gpt-5.5"),
+    ("backend_implementation", "gpt-5.3-codex-spark", "openai-codex/gpt-5.3-codex-spark", "openai-codex/gpt-5.5"),
 ]:
     profile = phase_profiles[lane]
     assert profile["targetModelRequest"] == expected_target
-    assert profile["verificationStatus"] in {"unverified", "verified", "unavailable"}
-    assert profile["verificationStatus"] != "verified"
-    assert profile["verifiedModelId"] is None
+    assert profile["verificationStatus"] == "verified"
+    assert profile["verifiedModelId"] == expected_model
     assert profile["fallbackModelId"] == expected_fallback
-    assert profile["targetModelRequest"] != profile["fallbackModelId"]
+    assert profile["thinking"] == "high"
     assert profile["thinking"] in profile["allowedThinking"]
     assert profile["activation"] == "fallback_until_verified"
 for needle in [
     "phaseLane",
     "phase_routing_profiles",
-    "Unverified requested model IDs cannot become active defaults",
+    "Verified requested model IDs can become active defaults",
     "does not create task packets",
     "does not create queue jobs",
     "worker sessions",
@@ -1545,7 +1544,7 @@ for needle in [
 for needle in [
     "phaseLane",
     "phase_routing_profiles",
-    "unverified requested models remain desired targets only",
+    "verified requested models can become active defaults",
     "no task packets",
     "queue jobs",
     "worker sessions",

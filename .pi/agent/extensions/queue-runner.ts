@@ -114,9 +114,10 @@ export interface QueueGraphifyOrchestrationStepSummary {
 }
 
 export interface QueueJobSource {
-  kind: "issue-materialization";
+  kind: "issue-materialization" | "task-materialization";
   initiativeId: string;
   issueId: string;
+  taskId?: string;
   runId?: string;
   sourceArtifactPaths?: string[];
 }
@@ -203,6 +204,32 @@ export interface QueueJob {
   startedAt?: string;
   finishedAt?: string;
   updatedAt?: string;
+}
+
+export interface TaskQueueMaterializationInput {
+  taskId: string;
+  jobId?: string;
+  initiativeId?: string;
+  issueId?: string;
+  priority?: QueuePriority;
+  scope?: string;
+  allowedPaths: string[];
+  assignedRole: HarnessRole;
+  workType: WorkType;
+  domains?: DomainId[];
+  tddSlice?: TaskPacketInput["tddSlice"];
+  redCommand?: string;
+  implementationCommand?: string;
+  validationCommands?: string[];
+  maxRuntimeMinutes?: number;
+  sourceArtifactPaths?: string[];
+  notes?: string[];
+}
+
+export interface TaskQueueMaterializationResult {
+  created: boolean;
+  job: QueueJob;
+  reason: string;
 }
 
 export interface QueueState {
@@ -589,6 +616,100 @@ async function mutateQueueState<T>(cwd: string, fn: (state: QueueState) => T | P
     const result = await fn(state);
     await writeQueueState(cwd, state);
     return result;
+  });
+}
+
+function validateTaskQueueMaterializationInput(task: TaskRecord, input: TaskQueueMaterializationInput): void {
+  if (task.status !== "queued") throw new Error(`Task ${task.id} must be queued before queue materialization.`);
+  if (task.acceptance.length === 0) throw new Error(`Task ${task.id} must include acceptance criteria before queue materialization.`);
+  if (!input.jobId) throw new Error("jobId is required for explicit queue materialization.");
+  if (!input.maxRuntimeMinutes || input.maxRuntimeMinutes <= 0) throw new Error("maxRuntimeMinutes is required for bounded queue materialization.");
+  if (input.allowedPaths.length === 0) throw new Error("allowedPaths must include at least one path before queue materialization.");
+}
+
+function taskQueueMaterializationTddSlice(task: TaskRecord, input: TaskQueueMaterializationInput): TaskPacketInput["tddSlice"] {
+  return (
+    input.tddSlice ?? {
+      firstTracerBehavior: `Materialize queued task ${task.id} into exactly one runnable queue job.`,
+      publicInterface: "harness:task-queue-materialize / materializeTaskQueueJob",
+      testSurface: ["tests/extension-units/task-queue-materialization.test.ts"],
+      boundaryDependencies: ["runtime task state", "runtime queue state"],
+      mockPlan: "Use isolated runtime state in tests; production callers must use the materializer instead of raw runtime JSON edits.",
+      outOfScopeBehaviors: ["worker execution", "PR creation", "merge", "multi-job drain"],
+    }
+  );
+}
+
+export async function materializeTaskQueueJob(cwd: string, input: TaskQueueMaterializationInput): Promise<TaskQueueMaterializationResult> {
+  const taskState = await readTaskState(cwd);
+  const task = getTask(taskState, input.taskId);
+  if (!task) throw new Error(`Task not found for queue materialization: ${input.taskId}`);
+  validateTaskQueueMaterializationInput(task, input);
+
+  return mutateQueueState(cwd, (state) => {
+    const existing = state.jobs.find(
+      (job) =>
+        job.linkedTaskId === task.id ||
+        (job.queueJobSource?.kind === "task-materialization" && job.queueJobSource.taskId === task.id),
+    );
+    if (existing) {
+      return {
+        created: false,
+        job: normalizeQueueJob(existing),
+        reason: `Task ${task.id} already has a materialized queue job: ${existing.id}`,
+      };
+    }
+
+    const jobId = input.jobId;
+    const conflictingJobId = state.jobs.find((job) => job.id === jobId);
+    if (conflictingJobId) throw new Error(`Queue job id already exists: ${jobId}`);
+
+    const now = new Date().toISOString();
+    const job: QueueJob = normalizeQueueJob({
+      id: jobId,
+      goal: task.title,
+      priority: input.priority ?? "high",
+      status: "queued",
+      scope: input.scope ?? task.title,
+      team: "build",
+      dependencies: task.dependencies ?? [],
+      budget: {
+        maxRuntimeMinutes: input.maxRuntimeMinutes,
+      },
+      stop_conditions: ["approval_boundary_hit"],
+      approvalRequired: false,
+      acceptanceCriteria: [...task.acceptance],
+      taskClass: task.taskClass,
+      workType: input.workType,
+      domains: input.domains,
+      allowedPaths: [...input.allowedPaths],
+      assignedRole: input.assignedRole,
+      redCommand: input.redCommand,
+      implementationCommand: input.implementationCommand,
+      validationCommands: input.validationCommands ? [...input.validationCommands] : undefined,
+      tddSlice: taskQueueMaterializationTddSlice(task, input),
+      queueJobSource: {
+        kind: "task-materialization",
+        initiativeId: input.initiativeId ?? "runtime-tasks",
+        issueId: input.issueId ?? task.id,
+        taskId: task.id,
+        sourceArtifactPaths: input.sourceArtifactPaths,
+      },
+      linkedTaskId: task.id,
+      notes: [
+        "queueJobSource: task-materialization",
+        `Materialized from planning-ready task ${task.id}.`,
+        ...task.notes.map((note) => `task note: ${note}`),
+        ...(input.notes ?? []),
+      ],
+      updatedAt: now,
+    });
+    state.jobs.push(job);
+    return {
+      created: true,
+      job,
+      reason: `Materialized task ${task.id} into queue job ${job.id}.`,
+    };
   });
 }
 

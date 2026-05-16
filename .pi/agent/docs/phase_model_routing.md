@@ -1,38 +1,36 @@
 # Phase Model Routing
 
-Phase 7 adds phase-aware model routing profiles to the existing `resolve_harness_route` surface.
+Phase-aware model routing profiles extend the existing `resolve_harness_route` surface.
 
 ## Purpose
-- Keep role-based routing backward compatible.
+- Keep role-based routing explicit and testable.
 - Let product pipeline phases request different model/reasoning lanes without creating a second routing helper.
-- Represent desired future model targets, such as `opus-4.7` and `gpt-5.5`, without activating them until exact provider/model IDs are verified.
+- Verified requested model IDs can become active defaults only after they are recorded in `.pi/agent/models.json` `phase_routing_profiles` and covered by routing tests.
+- Unverified requested model IDs cannot become active defaults.
 
 ## Phase lanes
 Supported `phaseLane` values:
 - `screen_design`: Stitch prompts, mock screen artifacts, and screen/design reasoning.
-- `frontend_implementation`: frontend implementation work for approved product slices.
-- `backend_implementation`: backend implementation work for product slices with API/data contract expectations.
+- `frontend_implementation`: Frontend implementation planning and UI coding for approved product slices.
+- `backend_implementation`: Backend/API/data implementation for approved product slices.
 
-## Resolution order
-1. Explicit `modelOverride` when existing routing policy allows it.
-2. Verified phase-lane profile when `phaseLane` is present and the requested model has `verificationStatus: verified` plus `verifiedModelId`.
-3. Phase fallback model when the requested target is `unverified` or `unavailable`.
-4. Existing role-based routing behavior when no `phaseLane` is supplied.
-
-## Safety rules
-- Existing calls without `phaseLane` behave as role-only routing did before Phase 7.
-- Unverified requested model IDs cannot become active defaults.
-- Each `phase_routing_profiles` phase profile must include `targetModelRequest`, `verificationStatus`, `verifiedModelId`, `fallbackModelId`, `thinking`, `allowedThinking`, and `activation`.
-- `verifiedModelId` must stay `null` until the requested model is verified through provider/model registry evidence.
-- Unknown phase lanes are rejected safely by the resolver/tool schema.
-- Phase 7 does not create task packets. It does not create queue jobs. It does not create worker sessions, handoffs, or dispatch behavior.
+## Runtime behavior
+- `phaseLane` is an optional input to `resolve_harness_route` and task-packet generation.
+- If a phase profile is `verified`, its `verifiedModelId` is selected.
+- If a phase profile is not verified, the resolver uses `fallbackModelId` and records the fallback reason.
+- Explicit `modelOverride` still takes precedence when allowed by routing policy.
+- The routing helper only returns model-selection metadata; it does not create task packets, does not create queue jobs, and does not create worker sessions.
 
 ## Current defaults
-- `screen_design` requests `opus-4.7` but uses verified fallback `anthropic/claude-opus-4-5` until verified.
-- `frontend_implementation` requests `opus-4.7` but uses verified fallback `anthropic/claude-opus-4-5` until verified.
-- `backend_implementation` requests `gpt-5.5` but uses verified fallback `github-copilot/gpt-5.4` until verified.
+- Global non-g-coding defaults use `openai-codex/gpt-5.5` with `high` thinking.
+- `screen_design` uses verified `openai-codex/gpt-5.5` with `high` thinking.
+- `frontend_implementation` uses verified `openai-codex/gpt-5.3-codex-spark` with `high` thinking.
+- `backend_implementation` uses verified `openai-codex/gpt-5.3-codex-spark` with `high` thinking.
+- Build worker defaults (`frontend_worker`, `backend_worker`, `infra_worker`) use `openai-codex/gpt-5.3-codex-spark` with `high` thinking for g-coding/implementation work.
+- Reviewer, validator, lead, research, docs, and recovery defaults use `openai-codex/gpt-5.5` with `high` thinking unless an explicit allowed override is requested.
 
 ## Future use
-- Phase 8 FE packet generation should pass `phaseLane: frontend_implementation`.
-- Phase 9 BE packet generation should pass `phaseLane: backend_implementation`.
-- Stitch prompt/artifact phases should pass `phaseLane: screen_design`.
+- FE packet generation may pass `phaseLane: frontend_implementation` when it wants the explicit phase profile rather than role default.
+- BE packet generation may pass `phaseLane: backend_implementation` when it wants the explicit phase profile rather than role default.
+- Stitch prompt/artifact phases may pass `phaseLane: screen_design`.
+- No task packets, queue jobs, worker sessions, handoffs, or dispatch behavior are created by this routing documentation alone.
