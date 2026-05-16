@@ -515,3 +515,48 @@ Review Verdict: no_required_fixes
 ### Risks / Follow-ups
 - PR was not created in this step.
 - Rerun g-submit next to push/create PR, then land only through approved PR/Graphite path.
+
+## Submission (g-submit) - 2026-05-17 06:45:41 +0700
+
+### Repo / Stack State
+- Branch: task/task-1778906201439-sync-main-and-model-settings
+- Base: main
+- Submission path: standard GitHub fallback (Passing command through to git...
+Running: "git status"
+
+On branch task/task-1778906201439-sync-main-and-model-settings
+Your branch is up to date with 'origin/task/task-1778906201439-sync-main-and-model-settings'.
+
+nothing to commit, working tree clean passed through to On branch task/task-1778906201439-sync-main-and-model-settings
+Your branch is up to date with 'origin/task/task-1778906201439-sync-main-and-model-settings'.
+
+nothing to commit, working tree clean; no active Graphite stack submission used).
+- Working tree before submission: clean.
+
+### Commands Run
+- git status -sb
+- git branch -vv
+- npm run harness:slice-lifecycle -- check --stage created
+- which gt; which gh
+- gt status
+- gh pr view --json number,url,state,mergeStateStatus,headRefName,baseRefName
+- git push -u origin task/task-1778906201439-sync-main-and-model-settings
+- gh pr create --base main --head task/task-1778906201439-sync-main-and-model-settings --title "feat(harness): add queue proof and routing defaults" --body-file /tmp/ma-code-pr-body.md
+- gh pr view 171 --json number,url,state,mergeStateStatus,headRefName,baseRefName,isDraft,headRefOid,statusCheckRollup
+
+### Submission Evidence
+- PR: https://github.com/SubhajL/ma-code/pull/171
+- PR number: 171
+- State: OPEN
+- Draft: false
+- Head branch: task/task-1778906201439-sync-main-and-model-settings
+- Base branch: main
+- Head SHA at PR creation: 0273e61b82e4c5d872b070812a77b5991d9c8f10
+- mergeStateStatus: DIRTY
+- statusCheckRollup: []
+
+### Decision / Next Action
+- PR was created and pushed.
+- Merge was not attempted inside g-submit.
+- Local main was not synced.
+- Next: inspect/resolve PR  before merge consideration, then use bounded merge helper only after PR gate is clean.
