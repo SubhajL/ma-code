@@ -29,3 +29,7 @@
 - Validation bundle: `validation.md`
 - Readiness gate: `readiness-checklist.md`
 - Backout guidance: `backout.md`
+
+## Phase B queue-readiness contract
+- Phase B is documented in `phase-b-queue-readiness.md`.
+- Phase B produces queue-ready candidate evidence only; it does not enable autonomous worker execution or mutate runtime state.

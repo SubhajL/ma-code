@@ -43,3 +43,8 @@
 - Approval reference: `user-prompt-2026-05-15-continue-until-finish-greenfield`
 - Approved by: `human:subhajlimanond`
 - Note: the user explicitly instructed the harness to continue until finish after the remaining issue-017 HITL gate was surfaced.
+
+## Phase B candidate-only readiness
+- [x] Queue-readiness semantics are documented in `phase-b-queue-readiness.md`.
+- [x] Phase B validation produces candidate evidence without queue materialization or worker execution.
+- [x] Runtime mutation remains out of scope for Phase B.

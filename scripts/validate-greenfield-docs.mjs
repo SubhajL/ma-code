@@ -5,6 +5,7 @@ const requiredFiles = [
   "README.md",
   "docs/initiatives/greenfield-scaffold/README.md",
   "docs/initiatives/greenfield-scaffold/backout.md",
+  "docs/initiatives/greenfield-scaffold/phase-b-queue-readiness.md",
   "docs/initiatives/greenfield-scaffold/readiness-checklist.md",
   "docs/initiatives/greenfield-scaffold/afk-approvals.json",
   "docs/initiatives/greenfield-scaffold/issues.json",
