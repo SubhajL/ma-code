@@ -50,6 +50,7 @@ async function writeFixture(): Promise<string> {
     domains: ["docs"],
     allowedPaths: ["docs/initiatives/greenfield-scaffold"],
     assignedRole: "docs_worker",
+    implementationCommand: "node -e \"require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','phase-c-proof\\n')\"",
     queueJobSource: { kind: "issue-materialization", initiativeId: "greenfield-scaffold", issueId: "issue-002" }
   }] }, null, 2)}\n`, "utf8");
   await git(cwd, ["init", "-b", "main"]);
