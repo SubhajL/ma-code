@@ -40,3 +40,10 @@
   - Worker execution production behavior still blocks jobs without an implementation command or execution plan; the integration fixture now supplies the missing command.
   - Phase C proof job is proof-only and stop-before-PR.
 - Required tests: already covered by validation section above.
+
+## Submission - 2026-05-16
+- PR: https://github.com/SubhajL/ma-code/pull/170
+- Base/head: `main` <- `task/task-1778908809726-greenfield-phase-c-worker-proof`
+- Initial PR state: open, non-draft, mergeStateStatus `BLOCKED`.
+- Remote check blocker: GitHub Actions jobs fail before start with account billing-lock annotation: `The job was not started because your account is locked due to a billing issue.`
+- Landing decision: did not merge and did not bypass branch protection/admin checks.
