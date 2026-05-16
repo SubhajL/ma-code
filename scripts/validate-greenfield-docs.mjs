@@ -5,6 +5,7 @@ const requiredFiles = [
   "README.md",
   "docs/initiatives/greenfield-scaffold/README.md",
   "docs/initiatives/greenfield-scaffold/backout.md",
+  "docs/initiatives/greenfield-scaffold/phase-b-queue-readiness.md",
 ];
 
 const missing = [];

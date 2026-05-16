@@ -37,3 +37,10 @@
 - `--dry-run` verifies that the expected validation entrypoints exist and that `docs/initiatives/greenfield-scaffold/slices/issue-016.summary.json` still reports `queueReadiness: not_ready`.
 - This slice stays Phase A only; it does not create queue-ready jobs or bypass later HITL/readiness work.
 - `validate:greenfield-docs` remains a separate docs-only check and is intentionally outside this bounded scaffold validator.
+
+## Phase B queue-readiness validator
+- Candidate-only proof:
+  - `npm run validate:greenfield-phase-b`
+- Machine-readable proof:
+  - `node scripts/validate-greenfield-phase-b.mjs --json`
+- This validator is read-only and must keep worker execution disabled.
