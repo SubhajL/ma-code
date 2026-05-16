@@ -644,3 +644,34 @@ LOW
 - Push the merge-resolution commit to PR #171, then use the bounded merge helper only if GitHub reports a clean/pass merge gate.
 
 Review Verdict: no_required_fixes
+
+
+## PR Gate Recheck / Merge Helper (g-submit handoff) - 2026-05-17 06:58:00 +0700
+
+### Commands Run
+- `git commit --no-edit`
+- `git push`
+- `gh pr view 171 --json number,url,state,mergeStateStatus,headRefName,baseRefName,isDraft,headRefOid,statusCheckRollup`
+- `gh pr checks 171`
+- `gh run view 25976304025 --json status,conclusion,event,headBranch,headSha,url,createdAt,updatedAt,jobs`
+- `gh run view 25976304027 --json status,conclusion,event,headBranch,headSha,url,createdAt,updatedAt,jobs`
+- `gh run view 25976304025 --log-failed`
+- `gh api repos/SubhajL/ma-code/actions/runs/25976304025/jobs`
+- `gh api repos/SubhajL/ma-code/check-runs/76356892184/annotations`
+- `npm run harness:merge -- check --pr 171`
+
+### Evidence
+- Merge conflict resolution commit pushed: `e924f0c`.
+- PR #171 moved from `mergeStateStatus: DIRTY` to `mergeStateStatus: BLOCKED`.
+- `gh pr checks 171` reported failing checks: CodeQL, Dependency Review, Foundation Extension Compile, Repo Static Checks, Routing Validators.
+- Failed jobs had empty step logs; `gh run view --log-failed` returned `log not found`.
+- GitHub check annotation for Repo Static Checks: `The job was not started because your account is locked due to a billing issue.`
+- `npm run harness:merge -- check --pr 171` reported merge blocked because PR gate status is fail and mergeStateStatus is BLOCKED.
+
+### Decision
+- Dirty merge conflict state is resolved.
+- Merge was not attempted because PR gates are blocked by remote GitHub billing-lock failures.
+- Local main was not synced.
+
+### Next Action
+- Resolve GitHub Actions billing/account lock or obtain explicit approved override through the repo's bounded merge policy; then rerun PR checks and merge helper.
