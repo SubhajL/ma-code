@@ -1244,3 +1244,183 @@ LOW
 - Greenfield is now represented as complete for the bounded scaffold baseline in tracked initiative state.
 - Future production launch, deployment changes, or expanded runtime scope still require a fresh approval and new queue-readiness decision.
 Review Verdict: no_required_fixes
+
+## 2026-05-15T23:42:12Z - Greenfield blocker gap analysis
+- Goal: analyze why Greenfield is not complete despite prior queue-ready/reconciliation claims.
+- Discovery path: read `AGENTS.md`, `README.md`, `logs/CURRENT.md`; Auggie discovery timed out; used direct inspection of `docs/initiatives/greenfield-scaffold/*`, `.pi/agent/state/runtime/queue.json`, `.pi/agent/state/runtime/tasks.json`, `scripts/validate-greenfield-scaffold.sh`, `scripts/harness-worker-execute.ts`, `.pi/agent/extensions/worker-execution.ts`, and queue inspection tools.
+- Files changed and why: `logs/coding/2026-05-13_initiative-completion-and-workerjob-bridge.md` only, to record analysis evidence. No product/runtime implementation changed.
+- Tests added or changed: none.
+- RED command and key failure reason: prior `npm run validate:worker-execution` failed because integration expected `review_ready` but worker run became `blocked` with `No implementation command or queue execution plan is available for issue-002.`
+- GREEN command: none for this analysis-only pass.
+- Other validation commands run: `npm run validate:greenfield-docs` previously passed; `npm run validate:queue-runner` previously passed; `inspect_queue_state recentLimit=5 includeHistory=false` showed two blocked Greenfield queue jobs.
+- Wiring verification evidence: inspected worker execution resolution path; `runWorkerExecution` requires either `implementationCommand` or `workerExecutionPlan`, while the observed integration/queue fixture path lacked both.
+- Behavior changes and risk notes: no behavior changes. Key gap is conceptual: existing Greenfield artifacts intentionally encode Phase A `queueReadiness: not_ready`, and validation currently asserts that state; treating those artifacts as final queue-ready proof contradicts the current validator contract.
+- Follow-ups or known gaps: decide whether Greenfield is a Phase A scaffold (then reconcile stale blocked queue jobs as superseded) or a true queue-ready runtime initiative (then revise validator/artifacts/tests and provide real worker execution plans before marking complete).
+
+## 2026-05-15T23:48:08Z - Greenfield stale queue root-cause inspection
+- Goal: answer which Greenfield queue jobs are stale, whether their root causes can be fixed, whether the issue is harness/runtime or failed product implementation, and why validation still expects `not_ready`.
+- Discovery path: direct inspection of runtime queue/tasks, Greenfield issue/slice artifacts, current scaffold files under `apps/web` and `services/api`, runner scripts, and targeted validation proof commands.
+- Files changed and why: coding log only; no product/runtime implementation changed.
+- Tests added or changed: none.
+- RED commands and key failure reasons:
+  - `npm run test:web -- app-shell` failed: `Could not find 'tests/web/app-shell.test.tsx'`.
+  - `npm run test:api -- health` failed: `Could not find 'health'`.
+- GREEN command: `npm run validate:greenfield-scaffold -- --dry-run` passed, printing the scaffold validation plan.
+- Other validation commands run: `find apps services -maxdepth 3 -type f` showed scaffold files already exist under `apps/web` and `services/api`.
+- Wiring verification evidence: queue jobs `afk-greenfield-scaffold-issue-002` and `afk-greenfield-scaffold-issue-003` remain blocked; issue-002 is linked to blocked task `task-1778403385498`; issue-003 has no linked task. Job notes show runtime/orchestration blockers, not product test failures. The queued validation proof names (`app-shell`, `health`) are stale relative to current runner aliases/files.
+- Behavior changes and risk notes: no behavior changes. Root causes appear split: stale queue/job metadata and runtime orchestration blockers, while product scaffold files likely landed through another path. Current Phase A validators intentionally preserve `queueReadiness: not_ready`.
+- Follow-ups or known gaps: fix by reconciling queue jobs and updating issue validation metadata/validators to match current scaffold semantics; do not treat the blocked queue jobs as evidence that the current product implementation is missing without rerunning the correct current tests.
+
+## 2026-05-15T23:50:18Z - Greenfield Phase B clarification
+- Goal: clarify whether Greenfield Phase B was implemented and separate Phase B queue materialization from autonomous/product execution.
+- Discovery path: exact-string search for `Phase B`, `queueReadiness`, `queued this job`, and materialization references across Greenfield docs, reports, logs, extension code, and tests.
+- Files changed and why: coding log only; no product/runtime implementation changed.
+- Tests added or changed: none.
+- RED command and key failure reason: none for this clarification-only pass; prior stale proof commands remain the relevant RED evidence.
+- GREEN command: none for this clarification-only pass.
+- Other validation commands run: `rg -n "Phase B|Phase A|Phase C|queueReadiness|queue-ready|materiali" ...` and targeted `rg` over issue materialization and Greenfield artifacts.
+- Wiring verification evidence: runtime queue notes prove Phase B-style queue materialization happened for issue-002 and issue-003, but the jobs stayed blocked and did not prove autonomous worker/product execution.
+- Behavior changes and risk notes: no behavior changes. The main confusion is terminology: Phase B queue materialization is not equivalent to Phase C autonomous execution or final queue-ready completion.
+- Follow-ups or known gaps: document/encode phase semantics so completed Phase A/B artifacts cannot be mistaken for fully completed Greenfield execution.
+
+## 2026-05-15T23:58:09Z - Greenfield queue reconciliation implementation
+- Goal: fix stale Greenfield queue metadata through a runtime-safe command and update validation proof commands/artifacts to current executable test names.
+- Discovery path: read `logs/CURRENT.md`; Auggie discovery timed out; used direct inspection of Greenfield artifacts, test runners, package scripts, runtime queue state, and queue/task tools.
+- Files changed and why:
+  - `scripts/harness-queue-reconcile.ts`: added bounded runtime CLI for superseding blocked stale queue jobs only after explicit approval and passing evidence commands.
+  - `tests/integration/queue-reconcile.test.ts`: added regression coverage for successful reconciliation and refusal when evidence fails.
+  - `scripts/run-web-tests.mjs`: remapped `app-shell` alias to current `apps/web/src/App.test.ts`.
+  - `scripts/run-api-tests.mjs`: added `health` alias for current `services/api/src/health.test.ts`.
+  - `package.json`: added `harness:queue-reconcile`; updated `validate:greenfield-scaffold:unit` to include `health` and `app-shell`.
+  - `docs/initiatives/greenfield-scaffold/issues.json`, `slices/issue-002.summary.json`, `slices/issue-003.summary.json`: removed stale nonexistent `build:web` / `build:api` proof commands and kept current executable test proof commands.
+  - `.pi/agent/state/runtime/queue.json`: updated via `npm run harness:queue-reconcile`, not raw JSON editing; jobs `afk-greenfield-scaffold-issue-002` and `afk-greenfield-scaffold-issue-003` moved from blocked to done with evidence notes.
+- Tests added or changed: `tests/integration/queue-reconcile.test.ts`; app/api test aliases updated.
+- RED commands and key failure reasons:
+  - `node --import tsx --test tests/integration/queue-reconcile.test.ts` failed before implementation because `scripts/harness-queue-reconcile.ts` did not exist.
+  - `npm run test:web -- app-shell` failed before alias update with `Could not find 'tests/web/app-shell.test.tsx'`.
+  - `npm run test:api -- health` failed before alias update with `Could not find 'health'`.
+- GREEN commands:
+  - `node --import tsx --test tests/integration/queue-reconcile.test.ts` passed; repeated twice more for 3 total consecutive passes.
+  - `npm run test:web -- app-shell` passed; command passed after alias update and again after unit bundle for repeated proof.
+  - `npm run test:api -- health` passed; command passed after alias update and again after unit bundle for repeated proof.
+  - `npm run validate:greenfield-scaffold:unit` passed with 9 tests.
+  - `npm run validate:greenfield-docs` passed with `greenfield-docs-ok`.
+  - `npm run validate:greenfield-scaffold -- --dry-run` passed.
+- Other validation commands run:
+  - `inspect_queue_state recentLimit=5 includeHistory=false` reports queue `blocked=0`, `done=2` after reconciliation.
+  - Runtime reconciliation commands for issue-002 and issue-003 passed with `ok: true`, previous status `blocked`, new status `done`.
+- Wiring verification evidence:
+  - Package script `harness:queue-reconcile` resolves to `node --import tsx scripts/harness-queue-reconcile.ts` and was used against the live runtime state.
+  - Test-runner aliases now point to existing current test files under `apps/web/src/App.test.ts` and `services/api/src/health.test.ts`.
+  - Greenfield unit validation includes the corrected app-shell and health proofs.
+- Behavior changes and risk notes:
+  - Queue reconciliation is intentionally narrow: only blocked jobs can be superseded, explicit `--approval-ref`, `--reason`, and at least one passing `--evidence-command` are required.
+  - The linked historical task `task-1778403385498` remains blocked because task-state controls do not allow blocked -> done while this session's active task is different; evidence was added and the blocked state remains visible.
+  - `queueReadiness: not_ready` remains intentional Phase A artifact metadata; this change reconciles stale queue jobs and stale proof commands, not Phase A semantics.
+- Follow-ups or known gaps:
+  - Run formal review before claiming full completion.
+  - If desired, add a dedicated task-state reconciliation workflow for historical linked tasks whose queue jobs have been superseded by later evidence.
+
+## Review (2026-05-16 06:59:01 +0700) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code
+- Branch: task/task-1778883440308-review-greenfield-scaffold-and-mixed-domain-init
+- Scope: working-tree changes for Greenfield queue reconciliation and proof-command updates
+- Commands Run: `git status --porcelain=v1`; `git diff --name-only`; `git diff --stat`; `git diff --check`; targeted diff inspection; `node --import tsx --test tests/integration/queue-reconcile.test.ts`; `npm run test:web -- app-shell`; `npm run test:api -- health`; `npm run validate:greenfield-scaffold:unit`; `npm run validate:greenfield-docs`; `npm run validate:greenfield-scaffold -- --dry-run`; `inspect_queue_state recentLimit=5 includeHistory=false`
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- The historical linked task `task-1778403385498` remains blocked because task-state transition rules prevented blocked -> done while this session has a different active task; this is recorded as a visible follow-up rather than bypassed.
+- `queueReadiness: not_ready` remains intentional Phase A metadata and was not changed by this queue reconciliation work.
+
+### Recommended Tests / Validation
+- Keep `node --import tsx --test tests/integration/queue-reconcile.test.ts` in the changed-scope validation set.
+- Keep `npm run validate:greenfield-scaffold:unit` as the proof that `health` and `app-shell` aliases remain wired.
+
+### Rollout Notes
+- Queue reconciliation requires explicit `--approval-ref`, `--reason`, and passing `--evidence-command`; it only reconciles jobs currently in `blocked` status.
+- Runtime queue jobs `afk-greenfield-scaffold-issue-002` and `afk-greenfield-scaffold-issue-003` were reconciled through `npm run harness:queue-reconcile`, not by direct raw JSON editing.
+
+Review Verdict: no_required_fixes
+
+## 2026-05-16T00:11:26Z - Greenfield task reconciliation and final semantics
+- Goal: add a safe task reconciliation workflow for historical blocked tasks, reconcile `task-1778403385498`, classify remaining blocked tasks, run final Greenfield validations, and document final Greenfield meaning.
+- Discovery path: read `logs/CURRENT.md`; Auggie discovery timed out; used local inspection of task schema/state, queue state, Greenfield readiness docs, package scripts, and validation surfaces.
+- Files changed and why:
+  - `scripts/harness-task-reconcile.ts`: added bounded task reconciliation CLI for blocked historical tasks requiring explicit approval and passing evidence commands before marking a task done with overridden validation evidence.
+  - `tests/integration/task-reconcile.test.ts`: added regression tests for blocked-task reconciliation and refusal when evidence fails.
+  - `package.json`: added `harness:task-reconcile` script.
+  - `docs/initiatives/greenfield-scaffold/blocked-task-classification.md`: recorded remaining blocked task classifications after queue/task reconciliation.
+  - `docs/initiatives/greenfield-scaffold/readiness-checklist.md`: documented final Greenfield meaning as Phase A/B scaffold complete with guarded historical artifacts, not a fully autonomous queue-ready execution contract.
+  - `.pi/agent/state/runtime/tasks.json`: updated via `npm run harness:task-reconcile`, not raw JSON editing; `task-1778403385498` moved from blocked to done with overridden validation after `npm run test:web -- app-shell` passed.
+- Tests added or changed: `tests/integration/task-reconcile.test.ts`.
+- RED command and key failure reason: `node --import tsx --test tests/integration/task-reconcile.test.ts` failed before implementation because `scripts/harness-task-reconcile.ts` did not exist.
+- GREEN commands:
+  - `node --import tsx --test tests/integration/task-reconcile.test.ts` passed; repeated twice more for 3 total consecutive passes.
+  - `npm run harness:task-reconcile -- supersede-blocked --task-id task-1778403385498 --approval-ref user-request-2026-05-16-final-greenfield-reconciliation --reason "linked Greenfield queue job afk-greenfield-scaffold-issue-002 was reconciled done with current app-shell evidence" --evidence-command "npm run test:web -- app-shell" --json` passed and returned status `done` / validation `overridden`.
+  - `npm run validate:greenfield-scaffold` passed.
+  - `npm run validate:queue-runner` passed with `Queue-runner validation PASS`.
+  - `npm run validate:greenfield-docs` passed with `greenfield-docs-ok`.
+  - `git diff --check` passed.
+- Other validation commands run:
+  - Runtime state summary: queue counts `{"done":2}`, activeJobId `null`; task counts `{"done":125,"blocked":10,"review":3,"in_progress":1}`; `task-1778403385498=done/overridden`.
+  - Remaining blocked tasks were classified in `blocked-task-classification.md` as historical Greenfield/MO, unrelated historical, or genuinely unresolved Greenfield-adjacent local cleanup.
+- Wiring verification evidence:
+  - `package.json` exposes `harness:task-reconcile` and the script was used against live runtime task state.
+  - The task reconciliation CLI preserves the active task id when reconciling a different historical blocked task.
+  - Greenfield readiness docs now link the final status semantics to the blocked-task classification report.
+- Behavior changes and risk notes:
+  - Task reconciliation is intentionally narrow: blocked tasks only, explicit approval/ref/reason required, and evidence commands must pass before mutation.
+  - Remaining blocked tasks are not all Greenfield blockers; some are unrelated historical runtime/tooling or mixed-domain tasks.
+  - `validate:worker-execution` was not run as a final Greenfield gate because the documented final meaning is not a fully autonomous queue-ready execution contract; worker execution expansion requires new explicit design/approval.
+- Follow-ups or known gaps:
+  - If the operator wants zero blocked tasks globally, reconcile or resolve the remaining ten blocked tasks individually; several are unrelated to Greenfield.
+  - Do not flip historical `queueReadiness: not_ready` without a new queue-readiness contract.
+
+## Review (2026-05-16 07:12:26 +0700) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code
+- Branch: task/task-1778883440308-review-greenfield-scaffold-and-mixed-domain-init
+- Scope: working-tree changes for Greenfield queue/task reconciliation, proof alias updates, blocked-task classification, and final status documentation
+- Commands Run: `git status --short --untracked-files=all`; `git diff --name-only`; `git diff --stat`; targeted inspection of `scripts/harness-task-reconcile.ts`, `scripts/harness-queue-reconcile.ts`, and their integration tests; `node --import tsx --test tests/integration/task-reconcile.test.ts`; `node --import tsx --test tests/integration/queue-reconcile.test.ts`; `npm run validate:greenfield-scaffold`; `npm run validate:queue-runner`; `npm run validate:greenfield-docs`; `git diff --check`; runtime state summary command for queue/task counts
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- `validate:worker-execution` was intentionally not used as a final Greenfield completion gate because the documented final meaning is Phase A/B scaffold completion with guarded artifacts, not a fully autonomous queue-ready execution contract.
+- Ten blocked historical tasks remain globally visible after reconciling `task-1778403385498`; classification is recorded in `docs/initiatives/greenfield-scaffold/blocked-task-classification.md`.
+
+### Recommended Tests / Validation
+- Keep task/queue reconciliation integration tests in future runtime-safety validation when these scripts are touched.
+- Keep `npm run validate:greenfield-scaffold`, `npm run validate:queue-runner`, and `npm run validate:greenfield-docs` as final Greenfield scaffold gates.
+
+### Rollout Notes
+- Both reconciliation commands require explicit approval refs, reasons, and passing evidence commands before mutating runtime state.
+- Historical `queueReadiness: not_ready` remains intentional and should not be flipped without a new queue-readiness design.
+
+Review Verdict: no_required_fixes
