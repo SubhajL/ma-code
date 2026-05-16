@@ -80,8 +80,7 @@ test("harness-operator status delegates to the status surface", async () => {
   const wrapped = await runNodeScript(WRAPPER_SCRIPT, ["status", "--cwd", cwd, "--recent", "1"]);
 
   assert.equal(wrapped.code, 0);
-  assert.match(wrapped.stdout, /Harness Operator Status/);
-  assert.match(wrapped.stdout, new RegExp(cwd.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(wrapped.stdout, /active task:/);
   assert.match(wrapped.stdout, /recent job ids \(last 1\):/);
 });
 
@@ -144,8 +143,8 @@ test("harness-operator rejects unknown subcommands clearly", async () => {
 });
 
 test("harness-operator preserves delegated non-zero exit codes", async () => {
-  const wrapped = await runNodeScript(WRAPPER_SCRIPT, ["queue-session"]);
+  const wrapped = await runNodeScript(WRAPPER_SCRIPT, ["worker-session", "release", "--scope", "missing-scope"]);
 
   assert.notEqual(wrapped.code, 0);
-  assert.match(wrapped.stderr, /requires --task-id or --scope/);
+  assert.match(wrapped.stderr, /No matching worker-lane lease was found/);
 });

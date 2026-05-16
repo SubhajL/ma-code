@@ -339,7 +339,7 @@ check_operator_leases_integration() {
 check_operator_control_plane_integration() {
   local name="4a. unified operator control-plane integration surface"
   local out="$TMP_ROOT/check_operator_control_plane_integration.txt"
-  local runtime_dir="$TMP_ROOT/core-workflows-runtime"
+  local runtime_dir="$REPO_ROOT"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/integration/operator-control-plane.test.ts"
 
   if run_test_file "$runtime_dir" "tests/integration/operator-control-plane.test.ts" "$out"; then
