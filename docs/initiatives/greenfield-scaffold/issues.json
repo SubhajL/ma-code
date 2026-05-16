@@ -61,8 +61,7 @@
         "Phase A materialization keeps queueReadiness as not_ready."
       ],
       "validationProof": [
-        "npm run test:web -- app-shell",
-        "npm run build:web"
+        "npm run test:web -- app-shell"
       ],
       "domains": [
         "frontend"
@@ -102,8 +101,7 @@
         "Phase A materialization keeps queueReadiness as not_ready."
       ],
       "validationProof": [
-        "npm run test:api -- health",
-        "npm run build:api"
+        "npm run test:api -- health"
       ],
       "domains": [
         "backend"

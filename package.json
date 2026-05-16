@@ -124,11 +124,13 @@
     "test:api": "node scripts/run-api-tests.mjs",
     "test:integration": "node scripts/run-integration-tests.mjs",
     "test:e2e": "node scripts/run-e2e-tests.mjs",
-    "validate:greenfield-scaffold:unit": "npm run test:api -- schema migrations contracts seeds && npm run test:web -- design-tokens components api-client",
+    "validate:greenfield-scaffold:unit": "npm run test:api -- schema migrations contracts seeds health && npm run test:web -- design-tokens components api-client app-shell",
     "validate:greenfield-scaffold:integration": "npm run test:integration -- health-handshake auth-boundary observability",
     "validate:greenfield-scaffold:smoke": "npm run test:e2e -- greenfield-smoke",
     "validate:greenfield-docs": "node scripts/validate-greenfield-docs.mjs",
-    "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh"
+    "validate:greenfield-scaffold": "./scripts/validate-greenfield-scaffold.sh",
+    "harness:queue-reconcile": "node --import tsx scripts/harness-queue-reconcile.ts",
+    "harness:task-reconcile": "node --import tsx scripts/harness-task-reconcile.ts"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

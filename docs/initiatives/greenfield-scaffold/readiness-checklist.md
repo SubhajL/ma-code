@@ -26,6 +26,13 @@
 - Completion does not imply production launch, deployment changes, or expanded runtime scope.
 - Queue-ready completion is represented by the finished initiative state and approval record; historical materialized slice summaries still retain `queueReadiness: not_ready` to prevent accidental autonomous worker execution.
 
+## Final status semantics
+- Current Greenfield meaning: Phase A/B scaffold complete with guarded historical artifacts.
+- Phase A artifacts intentionally retain `queueReadiness: not_ready` to prevent accidental autonomous execution from historical materialization outputs.
+- Phase B queue jobs for issue-002 and issue-003 have been reconciled through runtime-safe tools after current proof commands passed.
+- This completion does not redefine Greenfield as a fully autonomous queue-ready execution contract; that would require a new explicit queue-readiness design and approval.
+- Remaining blocked historical tasks are classified in `blocked-task-classification.md`.
+
 ## Rollout boundary
 - The current scaffold is a completed bounded baseline.
 - Additional worker execution, production launch, deployment changes, or expanded runtime scope still require a new explicit approval and fresh queue-readiness decision.

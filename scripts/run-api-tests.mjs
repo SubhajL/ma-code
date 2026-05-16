@@ -9,6 +9,7 @@ const aliases = new Map([
   ["migrations", "tests/api/migrations.test.ts"],
   ["contracts", "tests/api/contracts.test.ts"],
   ["seeds", "tests/fixtures/greenfield/seeds.test.ts"],
+  ["health", "services/api/src/health.test.ts"],
 ]);
 
 function allApiTests() {
