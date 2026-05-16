@@ -552,6 +552,7 @@ nothing to commit, working tree clean; no active Graphite stack submission used)
 - Head branch: task/task-1778906201439-sync-main-and-model-settings
 - Base branch: main
 - Head SHA at PR creation: 0273e61b82e4c5d872b070812a77b5991d9c8f10
+- Current PR head SHA after submission-log push: c954d09ba1b4d23be5d464b5dca601d32f8728db
 - mergeStateStatus: DIRTY
 - statusCheckRollup: []
 
@@ -559,4 +560,4 @@ nothing to commit, working tree clean; no active Graphite stack submission used)
 - PR was created and pushed.
 - Merge was not attempted inside g-submit.
 - Local main was not synced.
-- Next: inspect/resolve PR  before merge consideration, then use bounded merge helper only after PR gate is clean.
+- Next: inspect/resolve PR mergeStateStatus DIRTY before merge consideration, then use bounded merge helper only after PR gate is clean.
