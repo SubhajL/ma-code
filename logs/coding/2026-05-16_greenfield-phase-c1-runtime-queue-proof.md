@@ -699,3 +699,44 @@ Review Verdict: no_required_fixes
 - Boundaries:
   - No PR existed for this branch before submission.
   - No merge performed during prep.
+
+## Submission (g-submit) - 2026-05-17 11:58:30 +0700
+
+### Submitted
+- PR: https://github.com/SubhajL/ma-code/pull/172
+- Base: `main`
+- Head: `task/task-1778916876818-risk2-worker-run-artifact`
+- Commit: `9f2d694 feat(harness): add narrow worker run summaries`
+- State after create: `OPEN`, non-draft, `mergeStateStatus=BLOCKED`
+
+### Commands Run
+- `git status -sb`
+- `git branch -vv`
+- `gh auth status`
+- `npm run harness:slice-lifecycle -- check --stage create_ready` (blocked in isolated worktree; primary runtime task evidence used)
+- `git add .pi/agent/extensions/worker-execution.ts tests/extension-units/worker-execution.test.ts logs/coding/2026-05-16_greenfield-phase-c1-runtime-queue-proof.md`
+- `git commit -m "feat(harness): add narrow worker run summaries"`
+- `npm run harness:slice-lifecycle -- check --stage created` (blocked in isolated worktree; primary runtime task evidence used)
+- `git push -u origin task/task-1778916876818-risk2-worker-run-artifact`
+- `gh pr create --base main --head task/task-1778916876818-risk2-worker-run-artifact --title "feat(harness): add narrow worker run summaries" --body-file /tmp/risk2-pr-body.md`
+- `gh pr view 172 --json number,url,state,mergeStateStatus,headRefName,baseRefName,isDraft,reviewDecision,statusCheckRollup`
+- `gh pr checks 172`
+- `npm run harness:merge -- check --pr 172`
+- `gh run view 25981786263 --json status,conclusion,event,displayTitle,createdAt,updatedAt,url,headBranch,headSha`
+- `gh run view 25981786259 --json status,conclusion,event,displayTitle,createdAt,updatedAt,url,headBranch,headSha`
+
+### PR Gate / Merge Result
+- PR created successfully: https://github.com/SubhajL/ma-code/pull/172
+- Checks reported failures immediately:
+  - CodeQL: fail
+  - Dependency Review: fail
+  - Foundation Extension Compile: fail
+  - Repo Static Checks: fail
+  - Routing Validators: fail
+- `npm run harness:merge -- check --pr 172` blocked merge because `mergeStateStatus` is `BLOCKED`; required state is `CLEAN`.
+- Admin/bypass merge was not run because the bounded merge helper blocks and repo instructions prohibit routing around runtime safety controls.
+- Local sync to main was not run because the PR was not merged.
+
+### Next Action
+- Fix or clear PR gate/check blockers, then rerun `npm run harness:merge -- check --pr 172`.
+- If gates become clean, run `npm run harness:merge -- apply --pr 172 --method squash --sync-main`.
