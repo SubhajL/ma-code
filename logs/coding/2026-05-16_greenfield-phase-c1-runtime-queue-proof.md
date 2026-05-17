@@ -675,3 +675,27 @@ Review Verdict: no_required_fixes
 
 ### Next Action
 - Resolve GitHub Actions billing/account lock or obtain explicit approved override through the repo's bounded merge policy; then rerun PR checks and merge helper.
+
+## 2026-05-17 11:54:12 +07 - Risk 2 PR creation prep
+- Task: `task-1778993615053` in primary runtime state.
+- Request: create PR, admin merge to main, and sync local for Risk 2.
+- Submission branch: `task/task-1778916876818-risk2-worker-run-artifact`.
+- Base: `main` / `origin/main`.
+- Review set:
+  - `.pi/agent/extensions/worker-execution.ts`
+  - `tests/extension-units/worker-execution.test.ts`
+  - `logs/coding/2026-05-16_greenfield-phase-c1-runtime-queue-proof.md`
+- Implementation summary:
+  - Added a narrow worker-run summary artifact at `docs/initiatives/<initiative>/worker-runs/summaries/<runId>.json`.
+  - Summary contains only `version`, `queueJobId`, `sourceIssueId`, implementation/validation commands, validation status, and PR-boundary status.
+  - Existing full worker-run artifact path remains unchanged.
+- Validation carried forward from Risk 2 worktree:
+  - RED: summary-file test failed before implementation with `ENOENT` for `worker-runs/summaries/worker-green.json`.
+  - GREEN: `node --import tsx --test tests/extension-units/worker-execution.test.ts` passed with 15 tests / 0 failures.
+  - GREEN: `npm run validate:greenfield-phase-c` passed with `greenfield-phase-c-ok`.
+  - `git diff --check` passed.
+- Lifecycle preflight:
+  - `npm run harness:slice-lifecycle -- check --stage create_ready` failed in this isolated worktree because the origin-main runtime state does not contain the active primary-runtime task state; submission proceeds with explicit task-state evidence from primary runtime and g-check evidence.
+- Boundaries:
+  - No PR existed for this branch before submission.
+  - No merge performed during prep.
