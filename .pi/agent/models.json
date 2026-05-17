@@ -4,7 +4,7 @@
     "This file is not Pi's provider registry models.json.",
     "Exact provider and model IDs below were verified against `pi --list-models`.",
     "HARNESS-017 executable routing reads this file as the machine-readable routing policy source.",
-    "Phase 7 adds phase_routing_profiles for product pipeline phases; requested unverified models remain desired targets only and use verified fallbackModelId until verified."
+    "Current default harness route is openai-codex/gpt-5.5 with high thinking; implementation/g-coding worker roles route to openai-codex/gpt-5.3-codex-spark with high thinking."
   ],
   "routing_policy": {
     "critical_roles": [
@@ -126,15 +126,17 @@
   },
   "routing_defaults": {
     "orchestrator": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
@@ -142,15 +144,17 @@
       "budget_guidance": "high"
     },
     "planning_lead": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
@@ -158,17 +162,19 @@
       "budget_guidance": "high"
     },
     "build_lead": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
-      "thinking": "low",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
+      "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [
         "github-copilot/gpt-5.4-mini"
@@ -176,15 +182,17 @@
       "budget_guidance": "medium"
     },
     "quality_lead": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
@@ -192,31 +200,35 @@
       "budget_guidance": "high"
     },
     "research_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4-mini",
-      "thinking": "low",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
+      "thinking": "high",
       "allowed_overrides": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4-mini",
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
       "budget_guidance": "low"
     },
     "frontend_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
-      "thinking": "low",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.3-codex-spark",
+      "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.5",
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.3-codex-spark",
+        "openai-codex/gpt-5.5",
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
       ],
@@ -226,15 +238,17 @@
       "budget_guidance": "medium"
     },
     "backend_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
-      "thinking": "low",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.3-codex-spark",
+      "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.5",
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.3-codex-spark",
+        "openai-codex/gpt-5.5",
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-5"
       ],
@@ -244,31 +258,35 @@
       "budget_guidance": "medium_high"
     },
     "infra_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.3-codex-spark",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
-        "anthropic/claude-sonnet-4-6"
+        "openai-codex/gpt-5.5",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
-        "anthropic/claude-opus-4-5",
-        "anthropic/claude-sonnet-4-6"
+        "openai-codex/gpt-5.3-codex-spark",
+        "openai-codex/gpt-5.5",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-5"
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
     },
     "reviewer_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
@@ -276,15 +294,17 @@
       "budget_guidance": "high"
     },
     "validator_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
@@ -292,31 +312,35 @@
       "budget_guidance": "high"
     },
     "docs_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4-mini",
-      "thinking": "low",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
+      "thinking": "high",
       "allowed_overrides": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4-mini",
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
       "budget_guidance": "low"
     },
     "recovery_worker": {
-      "provider": "github-copilot",
-      "default_model": "gpt-5.4",
+      "provider": "openai-codex",
+      "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "github-copilot/gpt-5.4",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
         "anthropic/claude-opus-4-5",
         "anthropic/claude-sonnet-4-6"
       ],
@@ -391,36 +415,34 @@
   "phase_routing_profiles": {
     "screen_design": {
       "intendedUse": "Stitch prompts and screen/design reasoning",
-      "targetModelRequest": "opus-4.7",
-      "verificationStatus": "unverified",
-      "verifiedModelId": null,
-      "fallbackModelId": "anthropic/claude-opus-4-5",
+      "targetModelRequest": "gpt-5.5",
+      "verificationStatus": "verified",
+      "verifiedModelId": "openai-codex/gpt-5.5",
+      "fallbackModelId": "openai-codex/gpt-5.5",
       "thinking": "high",
       "allowedThinking": [
-        "medium",
         "high"
       ],
       "activation": "fallback_until_verified"
     },
     "frontend_implementation": {
       "intendedUse": "Frontend implementation planning and UI coding for approved product slices",
-      "targetModelRequest": "opus-4.7",
-      "verificationStatus": "unverified",
-      "verifiedModelId": null,
-      "fallbackModelId": "anthropic/claude-opus-4-5",
+      "targetModelRequest": "gpt-5.3-codex-spark",
+      "verificationStatus": "verified",
+      "verifiedModelId": "openai-codex/gpt-5.3-codex-spark",
+      "fallbackModelId": "openai-codex/gpt-5.5",
       "thinking": "high",
       "allowedThinking": [
-        "medium",
         "high"
       ],
       "activation": "fallback_until_verified"
     },
     "backend_implementation": {
       "intendedUse": "Backend implementation for product slices with API/data contract expectations",
-      "targetModelRequest": "gpt-5.5",
-      "verificationStatus": "unverified",
-      "verifiedModelId": null,
-      "fallbackModelId": "github-copilot/gpt-5.4",
+      "targetModelRequest": "gpt-5.3-codex-spark",
+      "verificationStatus": "verified",
+      "verifiedModelId": "openai-codex/gpt-5.3-codex-spark",
+      "fallbackModelId": "openai-codex/gpt-5.5",
       "thinking": "high",
       "allowedThinking": [
         "high"

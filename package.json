@@ -132,6 +132,8 @@
     "validate:greenfield-phase-b": "node scripts/validate-greenfield-phase-b.mjs",
     "harness:queue-reconcile": "node --import tsx scripts/harness-queue-reconcile.ts",
     "harness:task-reconcile": "node --import tsx scripts/harness-task-reconcile.ts",
+    "harness:task-queue-materialize": "node --import tsx scripts/harness-task-queue-materialize.ts",
+    "test:task-queue-materialization": "node --import tsx --test tests/extension-units/task-queue-materialization.test.ts",
     "validate:greenfield-phase-c": "node scripts/validate-greenfield-phase-c.mjs"
   },
   "devDependencies": {

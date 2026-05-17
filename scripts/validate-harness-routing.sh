@@ -223,32 +223,32 @@ const cases = [
   {
     name: "planning default",
     input: { role: "planning_lead" },
-    expected: { selectedModelId: "github-copilot/gpt-5.4", source: "default", thinking: "high" },
+    expected: { selectedModelId: "openai-codex/gpt-5.5", source: "default", thinking: "high" },
   },
   {
     name: "critical role not downgraded",
     input: { role: "orchestrator", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "github-copilot/gpt-5.4", source: "default", thinking: "high", blockedContains: "blocked from budget_pressure" },
+    expected: { selectedModelId: "openai-codex/gpt-5.5", source: "default", thinking: "high", blockedContains: "blocked from budget_pressure" },
   },
   {
     name: "backend budget override",
     input: { role: "backend_worker", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "low" },
   },
   {
     name: "build lead budget override",
     input: { role: "build_lead", reason: "budget_pressure", budgetMode: "conserve" },
-    expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "minimal" },
+    expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "low" },
   },
   {
     name: "frontend harder task stronger override",
     input: { role: "frontend_worker", reason: "task_harder", budgetMode: "high" },
-    expected: { selectedModelId: "anthropic/claude-sonnet-4-6", source: "stronger_override", thinking: "high" },
+    expected: { selectedModelId: "openai-codex/gpt-5.5", source: "stronger_override", thinking: "xhigh" },
   },
   {
     name: "provider failure fallback",
-    input: { role: "backend_worker", reason: "provider_failure", failedModels: ["github-copilot/gpt-5.4"] },
-    expected: { selectedModelId: "anthropic/claude-sonnet-4-6", source: "fallback" },
+    input: { role: "backend_worker", reason: "provider_failure", failedModels: ["openai-codex/gpt-5.3-codex-spark"] },
+    expected: { selectedModelId: "openai-codex/gpt-5.5", source: "fallback" },
   },
   {
     name: "explicit allowed override",
@@ -258,17 +258,17 @@ const cases = [
   {
     name: "screen phase fallback",
     input: { role: "planning_lead", phaseLane: "screen_design" },
-    expected: { selectedModelId: "anthropic/claude-opus-4-5", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+    expected: { selectedModelId: "openai-codex/gpt-5.5", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
   },
   {
     name: "frontend phase fallback",
     input: { role: "frontend_worker", phaseLane: "frontend_implementation" },
-    expected: { selectedModelId: "anthropic/claude-opus-4-5", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+    expected: { selectedModelId: "openai-codex/gpt-5.3-codex-spark", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
   },
   {
     name: "backend phase fallback",
     input: { role: "backend_worker", phaseLane: "backend_implementation" },
-    expected: { selectedModelId: "github-copilot/gpt-5.4", source: "phase_fallback", thinking: "high", phaseRoutingSource: "fallback_until_verified", verificationStatus: "unverified" },
+    expected: { selectedModelId: "openai-codex/gpt-5.3-codex-spark", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
   },
 ];
 

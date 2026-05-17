@@ -685,3 +685,7 @@ Intra-slice phases remain sequential. Cross-slice parallelism requires explicit 
 ## Phase 14 product pipeline E2E pilot
 
 Phase 14 is validated by `.pi/agent/docs/product_pipeline_e2e_pilot.md` and `./scripts/validate-product-pipeline-e2e.sh`. The pilot uses the `checkout-mini` fixture in temp repos, writes Markdown/JSON reports under `reports/validation/`, proves success and blocked paths, keeps HITL `waiting_for_human` gates visible, and introduces no daemon/watch mode, no live provider/Stitch call by default, no protected runtime JSON mutation, and no product implementation code outside temp fixtures.
+
+## Phase model routing update
+
+Phase-aware routing uses `phaseLane` and `phase_routing_profiles` from `.pi/agent/models.json`. Verified requested models can become active defaults; verified requested models can become active defaults after tests prove the route. The current implementation keeps `screen_design` on `openai-codex/gpt-5.5` high, routes `frontend_implementation` and `backend_implementation` to `openai-codex/gpt-5.3-codex-spark` high, and documents the same policy in `phase_model_routing.md`. This routing metadata creates no task packets, no queue jobs, and no worker sessions by itself.

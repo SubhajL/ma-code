@@ -13,37 +13,66 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value));
 }
 
-test("backend phase lane uses high-thinking fallback while gpt-5.5 is unverified", async () => {
+const DEFAULT_HIGH_MODEL = "openai-codex/gpt-5.5";
+const CODING_WORKER_MODEL = "openai-codex/gpt-5.3-codex-spark";
+
+test("default g-check and subsequent routes use gpt-5.5 high", async () => {
+  const config = await repoConfig();
+  for (const role of ["reviewer_worker", "validator_worker", "quality_lead", "orchestrator"] as const) {
+    const result = resolveHarnessRoute(config, { role });
+    assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL, `${role} default model`);
+    assert.equal(result.thinking, "high", `${role} default thinking`);
+    assert.equal(result.source, "default", `${role} source`);
+  }
+});
+
+test("g-coding implementation workers use codex spark high by default", async () => {
+  const config = await repoConfig();
+  for (const role of ["frontend_worker", "backend_worker", "infra_worker"] as const) {
+    const result = resolveHarnessRoute(config, { role });
+    assert.equal(result.selectedModelId, CODING_WORKER_MODEL, `${role} default model`);
+    assert.equal(result.selectedProvider, "openai-codex", `${role} provider`);
+    assert.equal(result.thinking, "high", `${role} thinking`);
+    assert.equal(result.source, "default", `${role} source`);
+  }
+});
+
+test("subsequent default review route reverts after g-coding worker route", async () => {
+  const config = await repoConfig();
+  const coding = resolveHarnessRoute(config, { role: "backend_worker" });
+  const review = resolveHarnessRoute(config, { role: "reviewer_worker" });
+
+  assert.equal(coding.selectedModelId, CODING_WORKER_MODEL);
+  assert.equal(coding.thinking, "high");
+  assert.equal(review.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(review.thinking, "high");
+});
+
+test("backend phase lane uses verified g-coding spark high", async () => {
   const result = resolveHarnessRoute(await repoConfig(), {
     role: "backend_worker",
     phaseLane: "backend_implementation",
   });
 
   assert.equal(result.phaseLane, "backend_implementation");
-  assert.equal(result.phaseRoutingSource, "fallback_until_verified");
-  assert.equal(result.requestedModelVerificationStatus, "unverified");
-  assert.equal(result.requestedModelTarget, "gpt-5.5");
-  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4");
+  assert.equal(result.phaseRoutingSource, "verified_model");
+  assert.equal(result.requestedModelVerificationStatus, "verified");
+  assert.equal(result.requestedModelTarget, CODING_WORKER_MODEL.replace("openai-codex/", ""));
+  assert.equal(result.selectedModelId, CODING_WORKER_MODEL);
   assert.equal(result.thinking, "high");
-  assert.notEqual(result.selectedModelId, "github-copilot/gpt-5.5");
-  assert.match(result.policyNotes.join("\n"), /using verified fallback github-copilot\/gpt-5\.4/);
 });
 
-test("screen and frontend phase lanes use verified fallback while opus-4.7 is unverified", async () => {
+test("screen phase uses default gpt-5.5 while frontend implementation uses spark", async () => {
   const config = await repoConfig();
-  for (const [role, phaseLane] of [
-    ["planning_lead", "screen_design"],
-    ["frontend_worker", "frontend_implementation"],
-  ] as const) {
-    const result = resolveHarnessRoute(config, { role, phaseLane });
-    assert.equal(result.phaseLane, phaseLane);
-    assert.equal(result.phaseRoutingSource, "fallback_until_verified");
-    assert.equal(result.requestedModelVerificationStatus, "unverified");
-    assert.equal(result.requestedModelTarget, "opus-4.7");
-    assert.equal(result.selectedModelId, "anthropic/claude-opus-4-5");
-    assert.equal(result.thinking, "high");
-    assert.notEqual(result.selectedModelId, "anthropic/opus-4.7");
-  }
+  const screen = resolveHarnessRoute(config, { role: "planning_lead", phaseLane: "screen_design" });
+  const frontend = resolveHarnessRoute(config, { role: "frontend_worker", phaseLane: "frontend_implementation" });
+
+  assert.equal(screen.phaseRoutingSource, "verified_model");
+  assert.equal(screen.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(screen.thinking, "high");
+  assert.equal(frontend.phaseRoutingSource, "verified_model");
+  assert.equal(frontend.selectedModelId, CODING_WORKER_MODEL);
+  assert.equal(frontend.thinking, "high");
 });
 
 test("verified phase profile activates verifiedModelId", async () => {
@@ -74,7 +103,7 @@ test("unavailable phase profile falls back with warning", async () => {
 
   assert.equal(result.phaseRoutingSource, "fallback_unavailable");
   assert.equal(result.requestedModelVerificationStatus, "unavailable");
-  assert.equal(result.selectedModelId, "anthropic/claude-opus-4-5");
+  assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL);
   assert.match(result.policyNotes.join("\n"), /unavailable/);
 });
 
@@ -82,12 +111,12 @@ test("explicit allowed modelOverride takes precedence over phase lane", async ()
   const result = resolveHarnessRoute(await repoConfig(), {
     role: "backend_worker",
     reason: "human_override",
-    modelOverride: "github-copilot/gpt-5.4",
+    modelOverride: DEFAULT_HIGH_MODEL,
     phaseLane: "backend_implementation",
   });
 
-  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4");
-  assert.equal(result.source, "default");
+  assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(result.source, "explicit_override");
   assert.equal(result.phaseRoutingSource, "explicit_override_precedence");
   assert.match(result.policyNotes.join("\n"), /Explicit model override takes precedence/);
 });
@@ -109,7 +138,7 @@ test("role-only routing remains backward compatible", async () => {
 
   assert.equal(result.selectedModelId, "github-copilot/gpt-5.4-mini");
   assert.equal(result.source, "budget_override");
-  assert.equal(result.thinking, "minimal");
+  assert.equal(result.thinking, "low");
   assert.equal(result.phaseLane, null);
   assert.equal(result.phaseRoutingSource, "none");
   assert.equal(result.requestedModelVerificationStatus, null);
@@ -118,7 +147,9 @@ test("role-only routing remains backward compatible", async () => {
 test("parser rejects unverified targets as active fallbacks", async () => {
   const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
   const invalidRaw = clone(raw);
-  invalidRaw.phase_routing_profiles.backend_implementation.fallbackModelId = "openai-codex/gpt-5.5";
+  invalidRaw.phase_routing_profiles.backend_implementation.verificationStatus = "unverified";
+  invalidRaw.phase_routing_profiles.backend_implementation.verifiedModelId = null;
+  invalidRaw.phase_routing_profiles.backend_implementation.fallbackModelId = CODING_WORKER_MODEL;
 
   assert.throws(
     () => parseHarnessRoutingConfig(invalidRaw),
