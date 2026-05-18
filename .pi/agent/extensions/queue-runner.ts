@@ -197,6 +197,7 @@ export interface QueueJob {
   linkedTaskId?: string | null;
   packetId?: string | null;
   selectedModelId?: string | null;
+  selectedThinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | null;
   initialHandoffId?: string | null;
   lastRecoveryAction?: RuntimeRecoveryDecision["recommendedAction"];
   lastRecoveryReason?: string;
@@ -2071,6 +2072,7 @@ async function markJobRunning(
     target.linkedTaskId = task.id;
     target.packetId = packet.packetId;
     target.selectedModelId = packet.routing.selectedModelId;
+    target.selectedThinkingLevel = packet.routing.thinking;
     target.initialHandoffId = initialHandoff?.handoffId ?? null;
     target.startedAt = target.startedAt ?? nowIso();
     target.updatedAt = nowIso();
@@ -2100,6 +2102,7 @@ function markJobRunningInState(
   target.linkedTaskId = task.id;
   target.packetId = packet.packetId;
   target.selectedModelId = packet.routing.selectedModelId;
+  target.selectedThinkingLevel = packet.routing.thinking;
   target.initialHandoffId = initialHandoff?.handoffId ?? null;
   target.startedAt = target.startedAt ?? nowIso();
   target.updatedAt = nowIso();

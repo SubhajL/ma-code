@@ -22,6 +22,7 @@ export interface HarnessWorkerExecuteOptions {
   implementationCommand?: string;
   validationCommands?: string[];
   reviewVerdict?: "no_required_fixes" | "changes_required";
+  callerModelId?: string;
   stopBeforePr?: boolean;
   allowPrCreate?: boolean;
   explicitApprovalRef?: string;
@@ -76,6 +77,7 @@ function parseArgs(argv: string[]): HarnessWorkerExecuteOptions {
   let implementationCommand: string | undefined;
   const validationCommands: string[] = [];
   let reviewVerdict: "no_required_fixes" | "changes_required" | undefined;
+  let callerModelId: string | undefined;
   let stopBeforePr = true;
   let allowPrCreate = false;
   let explicitApprovalRef: string | undefined;
@@ -95,6 +97,7 @@ function parseArgs(argv: string[]): HarnessWorkerExecuteOptions {
     else if (arg === "--red-command") redCommand = requireValue(rest[++index], "--red-command");
     else if (arg === "--implementation-command") implementationCommand = requireValue(rest[++index], "--implementation-command");
     else if (arg === "--validation-command") validationCommands.push(requireValue(rest[++index], "--validation-command"));
+    else if (arg === "--caller-model-id") callerModelId = requireValue(rest[++index], "--caller-model-id");
     else if (arg === "--review-verdict") {
       const value = requireValue(rest[++index], "--review-verdict");
       if (value !== "no_required_fixes" && value !== "changes_required") throw new Error("--review-verdict must be no_required_fixes or changes_required.");
@@ -131,6 +134,7 @@ function parseArgs(argv: string[]): HarnessWorkerExecuteOptions {
     implementationCommand,
     validationCommands: validationCommands.length > 0 ? validationCommands : undefined,
     reviewVerdict,
+    callerModelId,
     stopBeforePr,
     allowPrCreate,
     explicitApprovalRef,
@@ -155,6 +159,7 @@ export async function runHarnessWorkerExecute(options: HarnessWorkerExecuteOptio
     implementationCommand: options.implementationCommand,
     validationCommands: options.validationCommands,
     reviewVerdict: options.reviewVerdict,
+    callerModelId: options.callerModelId,
     stopBeforePr: options.stopBeforePr,
     allowPrCreate: options.allowPrCreate,
     explicitApprovalRef: options.explicitApprovalRef,

@@ -237,13 +237,14 @@ test("run creates isolated worktree, records RED/GREEN, validation, review, queu
   assert.equal(queue.jobs[0].workerExecution?.runArtifactPath, "docs/initiatives/greenfield-scaffold/worker-runs/worker-green.json");
 
   const summary = JSON.parse(await readFile(join(cwd, "docs/initiatives/greenfield-scaffold/worker-runs/summaries/worker-green.json"), "utf8"));
-  assert.deepEqual(Object.keys(summary).sort(), ["commands", "prBoundaryStatus", "queueJobId", "sourceIssueId", "validationStatus", "version"]);
+  assert.deepEqual(Object.keys(summary).sort(), ["commands", "modelExecution", "prBoundaryStatus", "queueJobId", "sourceIssueId", "validationStatus", "version"]);
   assert.equal(summary.queueJobId, "afk-greenfield-scaffold-issue-002");
   assert.equal(summary.sourceIssueId, "issue-002");
   assert.deepEqual(summary.commands.implementation, result.steps.coding.commands);
   assert.deepEqual(summary.commands.validation, ["node -e \"process.exit(0)\""]);
   assert.equal(summary.validationStatus, "passed");
   assert.equal(summary.prBoundaryStatus, "stop_before_pr");
+  assert.equal(summary.modelExecution.status, "not_required");
 });
 
 test("run uses queue job implementation command fallback and allows Pi log artifacts", async () => {
@@ -269,6 +270,169 @@ test("run uses queue job implementation command fallback and allows Pi log artif
   assert.match(result.steps.coding.greenCommand ?? "", /^node -e/);
   assert.ok(result.steps.coding.changedFiles.includes("logs/CURRENT.md"));
   assert.ok(result.steps.coding.changedFiles.includes("reports/planning/test.md"));
+});
+
+
+test("run blocks selected-model jobs before legacy implementation when no child worker plan exists", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      selectedModelId: "openai-codex/gpt-5.3-codex-spark",
+      implementationCommand: "node -e \"require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','should-not-run\\n')\"",
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-selected-model-no-child",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    callerModelId: "openai-codex/gpt-5.5",
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.stopReason ?? "", /selected model not executed/);
+  assert.equal(result.modelExecution?.callerModelId, "openai-codex/gpt-5.5");
+  assert.equal(result.modelExecution?.selectedModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution?.actualModelId, null);
+  assert.equal(result.modelExecution?.status, "blocked_not_launched");
+});
+
+
+test("run blocks selected-model jobs before mismatched child model execution", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      selectedModelId: "openai-codex/gpt-5.3-codex-spark",
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement docs",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "github-copilot",
+        modelId: "gpt-5.4",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-selected-model-mismatch",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    sameRuntimeExecutor: async () => {
+      throw new Error("mismatched child executor should not be launched");
+    },
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.stopReason ?? "", /selected model not executed/);
+  assert.equal(result.modelExecution.status, "mismatch");
+  assert.equal(result.modelExecution.selectedModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution.plannedModelId, "github-copilot/gpt-5.4");
+  assert.equal(result.modelExecution.actualModelId, null);
+});
+
+test("run records actual child model when selected model execution matches", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      selectedModelId: "openai-codex/gpt-5.3-codex-spark",
+      selectedThinkingLevel: "high",
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement docs",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "openai-codex",
+        modelId: "gpt-5.3-codex-spark",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-selected-model-match",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    callerModelId: "openai-codex/gpt-5.5",
+    reviewVerdict: "no_required_fixes",
+    sameRuntimeExecutor: async (worktreePath, plan) => {
+      assert.equal(plan.provider, "openai-codex");
+      assert.equal(plan.modelId, "gpt-5.3-codex-spark");
+      assert.equal(plan.thinkingLevel, "high");
+      await mkdir(join(worktreePath, "docs", "initiatives", "greenfield-scaffold"), { recursive: true });
+      await writeFile(join(worktreePath, "docs", "initiatives", "greenfield-scaffold", "notes.md"), "ok\n", "utf8");
+      return { command: "same_runtime_prompt", exitCode: 0, stdout: "__PI_OK__\nok", stderr: "", durationMs: 1 };
+    },
+  });
+
+  assert.equal(result.status, "review_ready");
+  assert.equal(result.modelExecution.callerModelId, "openai-codex/gpt-5.5");
+  assert.equal(result.modelExecution.selectedModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution.plannedModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution.actualModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution.actualThinkingLevel, "high");
+  assert.equal(result.modelExecution.status, "matched");
+});
+
+test("run records actual selected child model when child execution fails", async () => {
+  const cwd = await writeFixture({
+    jobOverrides: {
+      selectedModelId: "openai-codex/gpt-5.3-codex-spark",
+      workerExecutionPlan: {
+        strategy: "same_runtime_prompt",
+        prompt: "Implement docs",
+        toolProfile: "coding",
+        includeProjectExtensions: false,
+        includeContextFiles: true,
+        provider: "openai-codex",
+        modelId: "gpt-5.3-codex-spark",
+        thinkingLevel: "high",
+      },
+      validationCommands: ["node -e \"process.exit(0)\""],
+    },
+  });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    runId: "worker-selected-model-child-failure",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+    sameRuntimeExecutor: async () => ({
+      command: "same_runtime_prompt",
+      exitCode: 2,
+      stdout: "",
+      stderr: "provider unavailable",
+      durationMs: 1,
+    }),
+  });
+
+  assert.equal(result.status, "failed");
+  assert.equal(result.modelExecution.selectedModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution.actualModelId, "openai-codex/gpt-5.3-codex-spark");
+  assert.equal(result.modelExecution.actualThinkingLevel, "high");
+  assert.equal(result.modelExecution.status, "matched");
 });
 
 test("run prefers structured same-runtime worker execution plans over legacy implementation commands", async () => {
