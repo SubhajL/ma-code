@@ -67,6 +67,18 @@ export interface WorkerRunStep {
   findings?: string[];
 }
 
+export interface WorkerExecutionModelEvidence {
+  callerModelId: string | null;
+  selectedModelId: string | null;
+  selectedThinkingLevel: string | null;
+  plannedModelId: string | null;
+  plannedThinkingLevel: string | null;
+  actualModelId: string | null;
+  actualThinkingLevel: string | null;
+  status: "not_required" | "pending" | "matched" | "blocked_not_launched" | "mismatch";
+  reason: string;
+}
+
 export interface WorkerExecutionRunSummary {
   version: 1;
   queueJobId: string;
@@ -77,6 +89,7 @@ export interface WorkerExecutionRunSummary {
   };
   validationStatus: WorkerRunStepStatus;
   prBoundaryStatus: "stop_before_pr" | "pr_creation_allowed";
+  modelExecution?: WorkerExecutionModelEvidence;
 }
 
 export interface WorkerExecutionRun {
@@ -110,6 +123,7 @@ export interface WorkerExecutionRun {
     prCreated: boolean;
     reason: string;
   };
+  modelExecution: WorkerExecutionModelEvidence;
   salvage: QueueJobWorkerExecutionSalvage | null;
   stopReason: string | null;
   nextOperatorAction: string;
@@ -279,6 +293,27 @@ export function workerRunSummaryPath(initiativeId: string, runId: string): strin
   return `${workerRunsDir(initiativeId)}/summaries/${assertSlug(runId, "runId")}.json`;
 }
 
+function defaultModelExecutionEvidence(reason = "Worker run artifact predates model execution evidence."): WorkerExecutionModelEvidence {
+  return {
+    callerModelId: null,
+    selectedModelId: null,
+    selectedThinkingLevel: null,
+    plannedModelId: null,
+    plannedThinkingLevel: null,
+    actualModelId: null,
+    actualThinkingLevel: null,
+    status: "not_required",
+    reason,
+  };
+}
+
+function normalizeWorkerExecutionRun(run: WorkerExecutionRun): WorkerExecutionRun {
+  return {
+    ...run,
+    modelExecution: run.modelExecution ?? defaultModelExecutionEvidence(),
+  };
+}
+
 function workerRunSummary(run: WorkerExecutionRun): WorkerExecutionRunSummary {
   return {
     version: 1,
@@ -290,6 +325,7 @@ function workerRunSummary(run: WorkerExecutionRun): WorkerExecutionRunSummary {
     },
     validationStatus: run.steps.validation.status,
     prBoundaryStatus: run.prBoundary.stopBeforePr ? "stop_before_pr" : "pr_creation_allowed",
+    modelExecution: run.modelExecution,
   };
 }
 
@@ -298,14 +334,14 @@ async function readLatestWorkerRun(repoRoot: string, initiativeId: string): Prom
   try {
     const names = (await readdir(dir)).filter((name) => name.endsWith(".json")).sort();
     if (names.length === 0) return null;
-    return JSON.parse(await readFile(join(dir, names[names.length - 1]), "utf8")) as WorkerExecutionRun;
+    return normalizeWorkerExecutionRun(JSON.parse(await readFile(join(dir, names[names.length - 1]), "utf8")) as WorkerExecutionRun);
   } catch {
     return null;
   }
 }
 
 async function readWorkerRun(repoRoot: string, initiativeId: string, runId: string): Promise<WorkerExecutionRun> {
-  return JSON.parse(await readFile(resolve(repoRoot, workerRunPath(initiativeId, runId)), "utf8")) as WorkerExecutionRun;
+  return normalizeWorkerExecutionRun(JSON.parse(await readFile(resolve(repoRoot, workerRunPath(initiativeId, runId)), "utf8")) as WorkerExecutionRun);
 }
 
 async function writeWorkerRun(repoRoot: string, run: WorkerExecutionRun): Promise<void> {
@@ -420,6 +456,7 @@ function buildPlannedRun(repoRoot: string, input: WorkerExecutionInput, context:
       prCreated: false,
       reason: allowPrCreate ? `PR creation explicitly allowed by ${input.explicitApprovalRef}.` : "Phase C defaults to --stop-before-pr and does not auto-merge.",
     },
+    modelExecution: buildInitialModelExecution(input, context.job),
     salvage: null,
     stopReason: null,
     nextOperatorAction: "Review planned worker execution, then run with explicit bounds when ready.",
@@ -501,6 +538,61 @@ function assertChangedFilesAllowed(files: string[], allowedPaths: string[]): voi
     return [];
   });
   if (problems.length > 0) throw new Error(problems.join("; "));
+}
+
+
+function modelIdFromWorkerExecutionPlan(plan: QueueJob["workerExecutionPlan"]): string | null {
+  if (!plan) return null;
+  if (plan.provider && plan.modelId) return `${plan.provider}/${plan.modelId}`;
+  return plan.modelId ?? null;
+}
+
+function buildInitialModelExecution(input: WorkerExecutionInput, job: QueueJob): WorkerExecutionModelEvidence {
+  const plan = resolvedWorkerExecutionPlan(input, job);
+  const selectedModelId = job.selectedModelId ?? null;
+  return {
+    callerModelId: input.callerModelId ?? null,
+    selectedModelId,
+    selectedThinkingLevel: job.selectedThinkingLevel ?? null,
+    plannedModelId: modelIdFromWorkerExecutionPlan(plan),
+    plannedThinkingLevel: plan?.thinkingLevel ?? null,
+    actualModelId: null,
+    actualThinkingLevel: null,
+    status: selectedModelId ? "pending" : "not_required",
+    reason: selectedModelId ? "Selected worker model must be executed by a matching child worker plan before implementation." : "No selected worker model was attached to this queue job.",
+  };
+}
+
+function selectedModelExecutionBlockReason(modelExecution: WorkerExecutionModelEvidence): string | null {
+  if (!modelExecution.selectedModelId) return null;
+  if (!modelExecution.plannedModelId) {
+    modelExecution.status = "blocked_not_launched";
+    modelExecution.reason = `selected model not executed: ${modelExecution.selectedModelId} was selected but no child worker execution plan was available.`;
+    return modelExecution.reason;
+  }
+  if (modelExecution.plannedModelId !== modelExecution.selectedModelId) {
+    modelExecution.status = "mismatch";
+    modelExecution.reason = `selected model not executed: selected ${modelExecution.selectedModelId} but child worker plan would launch ${modelExecution.plannedModelId}.`;
+    return modelExecution.reason;
+  }
+  if (modelExecution.selectedThinkingLevel && modelExecution.plannedThinkingLevel && modelExecution.plannedThinkingLevel !== modelExecution.selectedThinkingLevel) {
+    modelExecution.status = "mismatch";
+    modelExecution.reason = `selected model not executed: selected thinking ${modelExecution.selectedThinkingLevel} but child worker plan would launch ${modelExecution.plannedThinkingLevel}.`;
+    return modelExecution.reason;
+  }
+  modelExecution.status = "pending";
+  modelExecution.reason = `Selected worker model ${modelExecution.selectedModelId} is matched by the child worker plan; awaiting execution.`;
+  return null;
+}
+
+function markModelExecutionActual(modelExecution: WorkerExecutionModelEvidence, plan: QueueJob["workerExecutionPlan"]): void {
+  const actualModelId = modelIdFromWorkerExecutionPlan(plan);
+  modelExecution.actualModelId = actualModelId;
+  modelExecution.actualThinkingLevel = plan?.thinkingLevel ?? null;
+  if (modelExecution.selectedModelId && actualModelId === modelExecution.selectedModelId) {
+    modelExecution.status = "matched";
+    modelExecution.reason = `selected model executed by child worker: ${actualModelId}.`;
+  }
 }
 
 function resolvedRedCommand(input: WorkerExecutionInput, job: QueueJob): string | undefined {
@@ -847,6 +939,25 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
 
   if (input.command === "dry-run") return run;
 
+  const modelExecutionBlockReason = selectedModelExecutionBlockReason(run.modelExecution);
+  if (modelExecutionBlockReason) {
+    run.status = "blocked";
+    run.stopReason = modelExecutionBlockReason;
+    run.steps.coding = {
+      status: "blocked",
+      commands: [],
+      evidence: [
+        modelExecutionBlockReason,
+        `callerModelId: ${run.modelExecution.callerModelId ?? "unknown"}`,
+        `selectedModelId: ${run.modelExecution.selectedModelId ?? "none"}`,
+        `plannedModelId: ${run.modelExecution.plannedModelId ?? "none"}`,
+        `actualModelId: ${run.modelExecution.actualModelId ?? "not_launched"}`,
+      ],
+    };
+    run.nextOperatorAction = "Launch a child worker execution plan with the selected model, or clear the selected model before rerunning.";
+    return blockRun(repoRoot, run, modelExecutionBlockReason, "blocked");
+  }
+
   const sourceSafetyProblems = await sourceWorktreeSafetyProblems(repoRoot);
   if (sourceSafetyProblems.length > 0) {
     const reason = sourceSafetyProblems.join("; ");
@@ -918,6 +1029,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     const implementation = workerExecutionPlan
       ? await runWorkerExecutionPlan(worktree.path, workerExecutionPlan, input.maxRuntimeSeconds, input.sameRuntimeExecutor)
       : await runCommand(worktree.path, implementationCommand!, input.maxRuntimeSeconds);
+    if (workerExecutionPlan) markModelExecutionActual(run.modelExecution, workerExecutionPlan);
     run.steps.coding.evidence = workerExecutionPlan
       ? [`workerExecutionPlan: ${describeWorkerExecutionPlan(workerExecutionPlan)}`, commandSummary(implementation)]
       : [commandSummary(implementation)];
@@ -1037,6 +1149,11 @@ export function renderWorkerExecutionRun(run: WorkerExecutionRun): string {
     `linkedTaskId: ${run.linkedTaskId ?? "none"}`,
     `worktree: ${run.worktree.path ?? "none"}`,
     `branch: ${run.worktree.branch ?? "none"}`,
+    `callerModelId: ${run.modelExecution.callerModelId ?? "unknown"}`,
+    `selectedWorkerModelId: ${run.modelExecution.selectedModelId ?? "none"}`,
+    `plannedWorkerModelId: ${run.modelExecution.plannedModelId ?? "none"}`,
+    `actualWorkerModelId: ${run.modelExecution.actualModelId ?? "none"}`,
+    `modelExecution: ${run.modelExecution.status}`,
     `planning: ${run.steps.planning.status}`,
     `coding: ${run.steps.coding.status}`,
     `validation: ${run.steps.validation.status}`,
