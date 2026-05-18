@@ -167,6 +167,15 @@ test("run creates isolated worktree, records RED/GREEN, validation, review, queu
   const queue = await readQueueState(cwd);
   assert.equal(queue.jobs[0].workerExecution?.status, "review_ready");
   assert.equal(queue.jobs[0].workerExecution?.runArtifactPath, "docs/initiatives/greenfield-scaffold/worker-runs/worker-green.json");
+
+  const summary = JSON.parse(await readFile(join(cwd, "docs/initiatives/greenfield-scaffold/worker-runs/summaries/worker-green.json"), "utf8"));
+  assert.deepEqual(Object.keys(summary).sort(), ["commands", "prBoundaryStatus", "queueJobId", "sourceIssueId", "validationStatus", "version"]);
+  assert.equal(summary.queueJobId, "afk-greenfield-scaffold-issue-002");
+  assert.equal(summary.sourceIssueId, "issue-002");
+  assert.deepEqual(summary.commands.implementation, result.steps.coding.commands);
+  assert.deepEqual(summary.commands.validation, ["node -e \"process.exit(0)\""]);
+  assert.equal(summary.validationStatus, "passed");
+  assert.equal(summary.prBoundaryStatus, "stop_before_pr");
 });
 
 test("run uses queue job implementation command fallback and allows Pi log artifacts", async () => {

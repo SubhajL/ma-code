@@ -67,6 +67,18 @@ export interface WorkerRunStep {
   findings?: string[];
 }
 
+export interface WorkerExecutionRunSummary {
+  version: 1;
+  queueJobId: string;
+  sourceIssueId: string;
+  commands: {
+    implementation: string[];
+    validation: string[];
+  };
+  validationStatus: WorkerRunStepStatus;
+  prBoundaryStatus: "stop_before_pr" | "pr_creation_allowed";
+}
+
 export interface WorkerExecutionRun {
   version: 1;
   runId: string;
@@ -263,6 +275,24 @@ export function workerRunPath(initiativeId: string, runId: string): string {
   return `${workerRunsDir(initiativeId)}/${assertSlug(runId, "runId")}.json`;
 }
 
+export function workerRunSummaryPath(initiativeId: string, runId: string): string {
+  return `${workerRunsDir(initiativeId)}/summaries/${assertSlug(runId, "runId")}.json`;
+}
+
+function workerRunSummary(run: WorkerExecutionRun): WorkerExecutionRunSummary {
+  return {
+    version: 1,
+    queueJobId: run.queueJobId,
+    sourceIssueId: run.sourceIssueId,
+    commands: {
+      implementation: run.steps.coding.commands ?? [],
+      validation: run.steps.validation.commands ?? [],
+    },
+    validationStatus: run.steps.validation.status,
+    prBoundaryStatus: run.prBoundary.stopBeforePr ? "stop_before_pr" : "pr_creation_allowed",
+  };
+}
+
 async function readLatestWorkerRun(repoRoot: string, initiativeId: string): Promise<WorkerExecutionRun | null> {
   const dir = resolve(repoRoot, workerRunsDir(initiativeId));
   try {
@@ -282,6 +312,10 @@ async function writeWorkerRun(repoRoot: string, run: WorkerExecutionRun): Promis
   const pathValue = resolve(repoRoot, workerRunPath(run.initiativeId, run.runId));
   await mkdir(dirname(pathValue), { recursive: true });
   await writeFile(pathValue, stableJson(run), "utf8");
+
+  const summaryPath = resolve(repoRoot, workerRunSummaryPath(run.initiativeId, run.runId));
+  await mkdir(dirname(summaryPath), { recursive: true });
+  await writeFile(summaryPath, stableJson(workerRunSummary(run)), "utf8");
 }
 
 async function loadIssue(repoRoot: string, initiativeId: string, issueId: string): Promise<{ initiativeRoot: string; issue: AfkIssueArtifact }> {
