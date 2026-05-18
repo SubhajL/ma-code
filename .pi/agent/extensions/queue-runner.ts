@@ -2969,8 +2969,10 @@ export async function runBoundedQueueSession(
 ): Promise<BoundedQueueSessionResult> {
   const owner = input.owner?.trim() || "assistant";
   const allowInitialHandoff = input.allowInitialHandoff ?? true;
-  const maxSteps = Math.max(1, Math.min(input.maxSteps ?? 5, 50));
-  const maxRuntimeSeconds = Math.max(1, Math.min(input.maxRuntimeSeconds ?? 60, 600));
+  if (input.maxSteps === undefined) throw new Error("maxSteps is required for bounded queue sessions; refuse implicit daemon-style defaults.");
+  if (input.maxRuntimeSeconds === undefined) throw new Error("maxRuntimeSeconds is required for bounded queue sessions; refuse implicit daemon-style defaults.");
+  const maxSteps = Math.max(1, Math.min(input.maxSteps, 50));
+  const maxRuntimeSeconds = Math.max(1, Math.min(input.maxRuntimeSeconds, 600));
   const recentLimit = Math.max(1, Math.min(input.recentLimit ?? 5, 20));
   const startedAt = nowIso();
   const startedTime = Date.now();
