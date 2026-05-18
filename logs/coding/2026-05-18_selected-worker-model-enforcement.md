@@ -82,3 +82,10 @@
 - Confirmed selected-model jobs with missing or mismatched child plans block before implementation.
 - Confirmed matching child plans record caller, selected, planned, and actual model/thinking evidence.
 - `npm run test:worker-execution` also reaches the same temp CLI fixture dependency-resolution issue in this isolated worktree because `node_modules/tsx/dist/loader.mjs` is absent under the worktree path; targeted node test commands pass using the active runtime's available `tsx` resolution.
+
+## 2026-05-18 18:10:49 +0700 - PR submission summary
+- PR: https://github.com/SubhajL/ma-code/pull/176
+- Base/head: main ← task/task-1779100931059-selected-worker-model-enforcement
+- State: OPEN, non-draft; mergeStateStatus initially BLOCKED.
+- Initial compact checks: Repo Static Checks FAILURE; Dependency Review FAILURE; Foundation Extension Compile FAILURE; CodeQL FAILURE; Routing Validators FAILURE.
+- Submission path: GitHub fallback via `git push -u origin task/task-1779100931059-selected-worker-model-enforcement` and `gh pr create`.
