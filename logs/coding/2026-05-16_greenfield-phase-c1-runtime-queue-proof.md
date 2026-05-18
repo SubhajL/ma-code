@@ -811,3 +811,66 @@ LOW
 ### Rollout Notes
 - Dry-run remains read-only; run/resume now block before source mutation when invoked from main, dirty, conflicted, or detectably stale source worktrees.
 - Review Verdict: no_required_fixes
+
+## 2026-05-18 16:45:47 +0700 - Risk 4 runtime state mutation guard
+
+### Discovery Path
+- Used g-coding in isolated worktree after MO picked up queue-risk4-live-mo-proof.
+- Worktree: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778916876822-risk4
+- Branch: task/task-1778916876822-risk4-runtime-guard
+- Base: origin/main at f258ef2.
+
+### Changes
+- Added task-queue materialization protected path validation for .git, node_modules, .env*, and live runtime state paths.
+- Added unit coverage proving materialization rejects an allowed path under live runtime state and leaves queue state empty.
+
+### RED Evidence
+- `node --import tsx --test tests/extension-units/task-queue-materialization.test.ts` failed after adding the protected-runtime-path test and before implementation; failure showed the new test did not pass yet.
+
+### GREEN Evidence
+- `node --import tsx --test tests/extension-units/task-queue-materialization.test.ts` → pass (5 tests).
+- `node --import tsx --test tests/extension-units/task-queue-materialization.test.ts tests/integration/queue-session.test.ts` → pass (21 tests).
+- `git diff --check` → pass.
+
+### Wiring Verification
+- Guard is inside validateTaskQueueMaterializationInput, so both script and extension callers use the same materialization validation before queue state mutation.
+- Tests continue to use temporary runtime state via writeTaskState/readQueueState fixtures.
+
+### Risks / Follow-ups
+- This guards materialized job allowed paths; it does not claim to police every possible shell command outside approved harness tools.
+
+## Review (2026-05-18 16:45:47 +0700) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778916876822-risk4
+- Branch: task/task-1778916876822-risk4-runtime-guard
+- Scope: working-tree Risk 4 runtime-state guard change
+- Commands Run:
+  - git status --porcelain=v1
+  - git diff --stat
+  - node --import tsx --test tests/extension-units/task-queue-materialization.test.ts
+  - node --import tsx --test tests/extension-units/task-queue-materialization.test.ts tests/integration/queue-session.test.ts
+  - git diff --check
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: Risk 4 scope is task-queue materialization allowed-path safety, not a global shell-command sandbox redesign.
+
+### Recommended Tests / Validation
+- Re-run task-queue materialization and queue-session tests after conflict resolution.
+
+### Rollout Notes
+- Queue materialization now refuses protected runtime state paths before mutating queue state.
+- Review Verdict: no_required_fixes

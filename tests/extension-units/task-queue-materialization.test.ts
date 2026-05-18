@@ -107,6 +107,28 @@ test("materializes one planning-ready task into exactly one MO-compatible queue 
   assert.equal(queue.jobs[0]?.id, "queue-risk-1");
 });
 
+
+test("materialization rejects protected live runtime state allowed paths", async () => {
+  const cwd = await makeRepo("task-queue-materialize-protected-runtime-");
+  const task = queuedImplementationTask("task-protected-runtime");
+  await writeTaskState(cwd, { version: 1, activeTaskId: null, tasks: [task] });
+
+  await assert.rejects(
+    materializeTaskQueueJob(cwd, {
+      taskId: task.id,
+      jobId: "queue-protected-runtime",
+      maxRuntimeMinutes: 15,
+      allowedPaths: [".pi/agent/state/runtime/queue.json"],
+      assignedRole: "infra_worker",
+      workType: "implementation",
+    }),
+    /protected runtime state path/,
+  );
+
+  const queue = await readQueueState(cwd);
+  assert.equal(queue.jobs.length, 0);
+});
+
 test("materialization requires explicit job id and runtime bound", async () => {
   const cwd = await makeRepo("task-queue-materialize-required-");
   const task = queuedImplementationTask("task-risk-required");

@@ -619,12 +619,28 @@ async function mutateQueueState<T>(cwd: string, fn: (state: QueueState) => T | P
   });
 }
 
+const TASK_QUEUE_MATERIALIZATION_PROTECTED_PREFIXES = [".git", "node_modules", ".pi/agent/state/runtime"];
+const TASK_QUEUE_MATERIALIZATION_PROTECTED_EXACT = new Set([".env"]);
+
+function normalizeTaskQueueMaterializationPath(pathValue: string): string {
+  return pathValue.replace(/^\.\//, "").replace(/\/$/, "");
+}
+
+function isProtectedTaskQueueMaterializationPath(pathValue: string): boolean {
+  const normalized = normalizeTaskQueueMaterializationPath(pathValue);
+  if (TASK_QUEUE_MATERIALIZATION_PROTECTED_EXACT.has(normalized)) return true;
+  if (/^\.env(?:\.|$)/.test(normalized)) return true;
+  return TASK_QUEUE_MATERIALIZATION_PROTECTED_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+}
+
 function validateTaskQueueMaterializationInput(task: TaskRecord, input: TaskQueueMaterializationInput): void {
   if (task.status !== "queued") throw new Error(`Task ${task.id} must be queued before queue materialization.`);
   if (task.acceptance.length === 0) throw new Error(`Task ${task.id} must include acceptance criteria before queue materialization.`);
   if (!input.jobId) throw new Error("jobId is required for explicit queue materialization.");
   if (!input.maxRuntimeMinutes || input.maxRuntimeMinutes <= 0) throw new Error("maxRuntimeMinutes is required for bounded queue materialization.");
   if (input.allowedPaths.length === 0) throw new Error("allowedPaths must include at least one path before queue materialization.");
+  const protectedAllowedPath = input.allowedPaths.find(isProtectedTaskQueueMaterializationPath);
+  if (protectedAllowedPath) throw new Error(`Queue materialization refuses protected runtime state path or other protected path in allowedPaths: ${protectedAllowedPath}`);
 }
 
 function taskQueueMaterializationTddSlice(task: TaskRecord, input: TaskQueueMaterializationInput): TaskPacketInput["tddSlice"] {
