@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-18_selected-worker-model-enforcement.md`
+- `logs/coding/2026-05-18_fix-cli-tsx-root-clean.md`
 
 ## Current planning log
-- `reports/planning/2026-05-18_selected-worker-model-enforcement-plan.md`
+- `reports/planning/2026-05-18_fix-cli-tsx-root-clean-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

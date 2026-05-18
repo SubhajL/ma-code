@@ -3,12 +3,30 @@ import { execFile as execFileCallback } from "node:child_process";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
-const tsxImport = process.env.TSX_IMPORT_PATH ?? join(repoRoot, "node_modules", "tsx", "dist", "loader.mjs");
+
+function resolveNodeImportSpecifier(specifier: string): string {
+  try {
+    const resolved = import.meta.resolve(specifier);
+    return resolved.startsWith("file:") ? fileURLToPath(resolved) : resolved;
+  } catch {
+    return specifier;
+  }
+}
+
+function resolvedTsxImport(): string {
+  if (process.env.TSX_IMPORT_PATH) return resolveNodeImportSpecifier(process.env.TSX_IMPORT_PATH);
+  const repoLocalTsx = join(repoRoot, "node_modules", "tsx", "dist", "loader.mjs");
+  const resolved = resolveNodeImportSpecifier("tsx");
+  return resolved === "tsx" ? repoLocalTsx : resolved;
+}
+
+const tsxImport = resolvedTsxImport();
 
 async function git(cwd: string, args: string[]): Promise<void> {
   await execFile("git", args, { cwd });
