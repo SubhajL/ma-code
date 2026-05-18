@@ -47,7 +47,7 @@ function queueJob(overrides: Partial<QueueJob> = {}): QueueJob {
   };
 }
 
-async function writeFixture(options: { issueOverrides?: Record<string, unknown>; jobOverrides?: Partial<QueueJob>; activeJobId?: string | null; packageJson?: Record<string, unknown> | null } = {}): Promise<string> {
+async function writeFixture(options: { issueOverrides?: Record<string, unknown>; jobOverrides?: Partial<QueueJob>; activeJobId?: string | null; packageJson?: Record<string, unknown> | null; checkoutBranch?: string | null } = {}): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), "worker-execution-"));
   await mkdir(join(cwd, "docs", "initiatives", "greenfield-scaffold", "slices"), { recursive: true });
   await mkdir(join(cwd, ".pi", "agent", "state", "runtime"), { recursive: true });
@@ -79,6 +79,7 @@ async function writeFixture(options: { issueOverrides?: Record<string, unknown>;
   await git(cwd, ["config", "user.name", "Test User"]);
   await git(cwd, ["add", "."]);
   await git(cwd, ["commit", "-m", "fixture"]);
+  if (options.checkoutBranch !== null) await git(cwd, ["checkout", "-b", options.checkoutBranch ?? "task/fixture-worker"]);
   return cwd;
 }
 
@@ -108,6 +109,73 @@ test("eligibility rejects HITL, approvalRequired, missing allowed paths, missing
     const result = await runWorkerExecution({ repoRoot: cwd, command: "dry-run", initiativeId: "greenfield-scaffold", queueJobId: "afk-greenfield-scaffold-issue-002" });
     assert.match(result.stopReason ?? "", pattern, name);
   }
+});
+
+
+test("run refuses protected main branch before writing worker artifacts", async () => {
+  const cwd = await writeFixture({ checkoutBranch: null });
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.stopReason ?? "", /refuses protected branch main/);
+  await assert.rejects(readFile(join(cwd, "docs/initiatives/greenfield-scaffold/worker-runs", `${result.runId}.json`), "utf8"), /ENOENT/);
+});
+
+test("run refuses dirty source worktree before creating worker worktree", async () => {
+  const cwd = await writeFixture();
+  await writeFile(join(cwd, "README.md"), "fixture dirty\n", "utf8");
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.stopReason ?? "", /refuses dirty or conflicted source worktree/);
+  await assert.rejects(readFile(join(cwd, "docs/initiatives/greenfield-scaffold/worker-runs", `${result.runId}.json`), "utf8"), /ENOENT/);
+});
+
+test("run refuses stale source branch before worker mutation", async () => {
+  const cwd = await writeFixture({ checkoutBranch: null });
+  const remote = await mkdtemp(join(tmpdir(), "worker-execution-remote-"));
+  await git(remote, ["init", "--bare"]);
+  await git(cwd, ["remote", "add", "origin", remote]);
+  await git(cwd, ["push", "-u", "origin", "main"]);
+  await git(cwd, ["checkout", "-b", "task/stale-worker"]);
+  await git(cwd, ["branch", "--set-upstream-to", "origin/main"]);
+  await git(cwd, ["checkout", "main"]);
+  await writeFile(join(cwd, "remote-change.txt"), "new upstream\n", "utf8");
+  await git(cwd, ["add", "remote-change.txt"]);
+  await git(cwd, ["commit", "-m", "advance origin"]);
+  await git(cwd, ["push", "origin", "main"]);
+  await git(cwd, ["checkout", "task/stale-worker"]);
+
+  const result = await runWorkerExecution({
+    repoRoot: cwd,
+    command: "run",
+    initiativeId: "greenfield-scaffold",
+    queueJobId: "afk-greenfield-scaffold-issue-002",
+    baseRef: "main",
+    maxSteps: 4,
+    maxRuntimeSeconds: 10,
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.match(result.stopReason ?? "", /refuses stale source branch task\/stale-worker/);
 });
 
 test("run defaults worker baseRef to the current branch so worker worktrees inherit task-branch config", async () => {

@@ -433,15 +433,46 @@ async function runGit(cwd: string, args: string[]): Promise<string> {
   return result.stdout.trimEnd();
 }
 
-async function ensureCleanGitWorktree(pathValue: string): Promise<void> {
+async function gitBranchName(pathValue: string): Promise<string> {
+  return (await runGit(pathValue, ["branch", "--show-current"])).trim();
+}
+
+async function dirtyGitWorktreeLines(pathValue: string): Promise<string[]> {
   let porcelain = "";
   try {
     porcelain = await runGit(pathValue, ["status", "--porcelain=v1"]);
   } catch (error) {
     throw new Error(`Unable to inspect git worktree at ${pathValue}: ${(error as Error).message}`);
   }
-  const dirtyLines = filterMeaningfulGitDirtyLines(porcelain.split("\n").map((line) => line.trim()).filter(Boolean));
+  return filterMeaningfulGitDirtyLines(porcelain.split("\n").map((line) => line.trim()).filter(Boolean));
+}
+
+async function ensureCleanGitWorktree(pathValue: string): Promise<void> {
+  const dirtyLines = await dirtyGitWorktreeLines(pathValue);
   if (dirtyLines.length > 0) throw new Error(`Refusing dirty or conflicted worktree at ${pathValue}: ${dirtyLines[0]}`);
+}
+
+async function sourceWorktreeSafetyProblems(repoRoot: string): Promise<string[]> {
+  const problems: string[] = [];
+  const branch = await gitBranchName(repoRoot);
+  if (!branch) problems.push("Worker execution requires a named non-main branch/worktree before run or resume.");
+  if (branch === "main" || branch === "master") problems.push(`Worker execution refuses protected branch ${branch}; create a task branch/worktree first.`);
+
+  const dirtyLines = await dirtyGitWorktreeLines(repoRoot);
+  if (dirtyLines.length > 0) problems.push(`Worker execution refuses dirty or conflicted source worktree: ${dirtyLines[0]}`);
+
+  try {
+    const upstream = (await runGit(repoRoot, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])).trim();
+    if (upstream) {
+      const counts = (await runGit(repoRoot, ["rev-list", "--left-right", "--count", `${upstream}...HEAD`])).trim().split(/\s+/).map((value) => Number.parseInt(value, 10));
+      const behind = counts[0] ?? 0;
+      if (behind > 0) problems.push(`Worker execution refuses stale source branch ${branch || "<detached>"}; branch is ${behind} commit(s) behind ${upstream}. Sync or rebase before running.`);
+    }
+  } catch {
+    // Local-only task branches without an upstream are allowed; they are common for isolated worker worktrees.
+  }
+
+  return problems;
 }
 
 async function createIsolatedWorktree(repoRoot: string, run: WorkerExecutionRun, input: WorkerExecutionInput): Promise<{ path: string; branch: string }> {
@@ -815,6 +846,17 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
   run.nextOperatorAction = "Run with explicit bounds to create an isolated worktree and execute the bounded worker loop.";
 
   if (input.command === "dry-run") return run;
+
+  const sourceSafetyProblems = await sourceWorktreeSafetyProblems(repoRoot);
+  if (sourceSafetyProblems.length > 0) {
+    const reason = sourceSafetyProblems.join("; ");
+    run.status = "blocked";
+    run.stopReason = reason;
+    run.steps.planning = { status: "blocked", evidence: sourceSafetyProblems };
+    run.nextOperatorAction = "Preserve unrelated dirty work, switch to a clean synced task branch/worktree, then rerun worker execution.";
+    return run;
+  }
+
   if (!input.maxSteps || !input.maxRuntimeSeconds) throw new Error("run/resume mode requires --max-steps and --max-runtime-seconds.");
   if (input.maxSteps < 1) throw new Error("--max-steps must be positive.");
   if (input.maxSteps < 4) return blockRun(repoRoot, run, "max step budget too small for Phase C planning/coding/validation/review gates.", "blocked");

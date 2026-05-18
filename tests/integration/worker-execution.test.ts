@@ -58,6 +58,7 @@ async function writeFixture(): Promise<string> {
   await git(cwd, ["config", "user.name", "Test User"]);
   await git(cwd, ["add", "."]);
   await git(cwd, ["commit", "-m", "fixture"]);
+  await git(cwd, ["checkout", "-b", "task/worker-cli-fixture"]);
   return cwd;
 }
 
