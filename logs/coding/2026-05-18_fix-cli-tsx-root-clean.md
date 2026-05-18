@@ -27,3 +27,10 @@
 - GREEN: `npm run test:worker-execution` passed (23 tests).
 - GREEN: `npm run validate:worker-execution` passed; worker-execution unit/integration and queue schema compatibility surfaces passed, including 46 queue-runner tests.
 - GREEN: `git diff --check` passed.
+
+## 2026-05-18 18:28:30 +0700 - PR submission summary
+- PR: https://github.com/SubhajL/ma-code/pull/177
+- Base/head: `main` ← `task/task-1779103309353-fix-worker-cli-tsx`
+- State: OPEN, non-draft; initial mergeStateStatus: BLOCKED.
+- Initial compact checks: Repo Static Checks FAILURE; Dependency Review FAILURE; Foundation Extension Compile FAILURE; CodeQL FAILURE; Routing Validators FAILURE.
+- Submission path: GitHub fallback via `git push -u origin task/task-1779103309353-fix-worker-cli-tsx` and `gh pr create`.
