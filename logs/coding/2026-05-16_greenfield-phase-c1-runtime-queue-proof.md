@@ -740,3 +740,74 @@ Review Verdict: no_required_fixes
 ### Next Action
 - Fix or clear PR gate/check blockers, then rerun `npm run harness:merge -- check --pr 172`.
 - If gates become clean, run `npm run harness:merge -- apply --pr 172 --method squash --sync-main`.
+
+## 2026-05-18 16:40:18 +0700 - Risk 3 clean worktree isolation
+
+### Discovery Path
+- Used g-coding after implementation request; Auggie discovery unavailable due exhausted credits, so used local inspection.
+- Worktree: /Users/subhajlimanond/dev/ma-code-worktrees/task-1779096877780-risk3
+- Branch: task/task-1779096877780-risk3-clean-worktree
+- Base: origin/main at c6bd14e.
+
+### Changes
+- Added worker-execution source worktree preflight before mutating run/resume execution:
+  - refuse protected main/master branches
+  - refuse dirty/conflicted source worktrees
+  - refuse branches behind their configured upstream when detectable
+- Kept dry-run read-only.
+- Added unit coverage for main branch refusal, dirty source refusal, stale source refusal, and existing clean isolated worktree success path.
+- Updated worker-execution CLI integration fixture to run from a task branch rather than main.
+
+### RED Evidence
+- Not separately captured before implementation in this resumed MO lane.
+- The added tests encode the missing Risk 3 safety behavior.
+
+### GREEN Evidence
+- `node --import tsx --test tests/extension-units/worker-execution.test.ts` → pass (18 tests).
+- `TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs node --import tsx --test tests/integration/worker-execution.test.ts` → pass (1 test).
+- `git diff --check` → pass.
+
+### Wiring Verification
+- Worker execution run/resume now checks source repo safety before creating isolated worker worktrees or writing worker-run artifacts.
+- Dry-run remains read-only and can still explain the planned run.
+
+### Risks / Follow-ups
+- Existing primary repo still has unrelated dirty admin-override helper changes; this Risk 3 work is isolated in its own worktree.
+- First materialized Risk 3 queue job remains blocked from the earlier active-task conflict; retry job/task carries the implementation.
+
+## Review (2026-05-18 16:40:36 +0700) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code-worktrees/task-1779096877780-risk3
+- Branch: task/task-1779096877780-risk3-clean-worktree
+- Scope: working-tree Risk 3 clean worktree isolation change
+- Commands Run:
+  - git status --porcelain=v1
+  - git diff --stat
+  - git diff -- .pi/agent/extensions/worker-execution.ts tests/extension-units/worker-execution.test.ts tests/integration/worker-execution.test.ts
+  - node --import tsx --test tests/extension-units/worker-execution.test.ts
+  - TSX_IMPORT_PATH=/Users/subhajlimanond/dev/ma-code/node_modules/tsx/dist/loader.mjs node --import tsx --test tests/integration/worker-execution.test.ts
+  - git diff --check
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: local-only task branches without an upstream are acceptable; stale detection applies when an upstream is configured.
+
+### Recommended Tests / Validation
+- Re-run worker-execution unit and CLI integration tests after any conflict resolution.
+
+### Rollout Notes
+- Dry-run remains read-only; run/resume now block before source mutation when invoked from main, dirty, conflicted, or detectably stale source worktrees.
+- Review Verdict: no_required_fixes
