@@ -34,3 +34,10 @@
 - State: OPEN, non-draft; initial mergeStateStatus: BLOCKED.
 - Initial compact checks: Repo Static Checks FAILURE; Dependency Review FAILURE; Foundation Extension Compile FAILURE; CodeQL FAILURE; Routing Validators FAILURE.
 - Submission path: GitHub fallback via `git push -u origin task/task-1779103309353-fix-worker-cli-tsx` and `gh pr create`.
+
+## 2026-05-18 18:58:23 +0700 - Admin merge preflight
+- User explicitly requested admin merge of PR #177.
+- PR before admin merge: OPEN, non-draft, base/head `main` ← `task/task-1779103309353-fix-worker-cli-tsx`, head `2b24fdde07a7b627a920d398413d122772fe74f8`, mergeStateStatus BLOCKED.
+- Compact checks before admin merge: Repo Static Checks FAILURE; Dependency Review FAILURE; Foundation Extension Compile FAILURE; CodeQL FAILURE; Routing Validators FAILURE.
+- `npm run harness:merge -- check --pr 177` exited non-zero and blocked on missing lifecycle/review evidence, PR gate fail/fix_required, and mergeStateStatus BLOCKED.
+- Proceeding with explicit GitHub admin squash merge per user instruction, not claiming normal merge gate success.
