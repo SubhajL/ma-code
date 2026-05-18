@@ -874,3 +874,67 @@ LOW
 ### Rollout Notes
 - Queue materialization now refuses protected runtime state paths before mutating queue state.
 - Review Verdict: no_required_fixes
+
+## 2026-05-18 16:51:17 +0700 - Risk 5 bounded scheduler guard
+
+### Discovery Path
+- Used g-coding in isolated worktree after MO picked up queue-risk5-live-mo-proof.
+- Worktree: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778916876805-risk5
+- Branch: task/task-1778916876805-risk5-bounded-scheduler
+- Base: origin/main at f8a8f8b.
+
+### Changes
+- Removed implicit maxSteps/maxRuntimeSeconds defaults from runBoundedQueueSession; bounded sessions now require both values explicitly.
+- Added queue-session integration coverage for missing maxSteps and missing maxRuntimeSeconds.
+- Existing coverage continues to verify max-step stop behavior, max-runtime stop behavior, dirty/protected/approval boundaries, worker PR approval boundaries, and task materialization explicit job/runtime requirements.
+
+### RED Evidence
+- `node --import tsx --test --test-name-pattern "bounded queue session requires" tests/integration/queue-session.test.ts` failed after adding the explicit-bounds test and before implementation.
+
+### GREEN Evidence
+- `node --import tsx --test --test-name-pattern "bounded queue session requires" tests/integration/queue-session.test.ts` → pass.
+- `node --import tsx --test tests/integration/queue-session.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/task-queue-materialization.test.ts` → pass (40 tests).
+- `git diff --check` → pass.
+
+### Wiring Verification
+- runBoundedQueueSession now refuses implicit daemon-style bounds before acquiring queue-session leases or starting/finalizing jobs.
+- Existing tool descriptions still state the session is operator-invoked and not a free-running daemon.
+
+### Risks / Follow-ups
+- General autonomous multi-job draining remains out of scope and should require a separate reviewed allowlist/contract.
+
+## Review (2026-05-18 16:51:17 +0700) - working-tree
+
+### Reviewed
+- Repo: /Users/subhajlimanond/dev/ma-code-worktrees/task-1778916876805-risk5
+- Branch: task/task-1778916876805-risk5-bounded-scheduler
+- Scope: working-tree Risk 5 bounded scheduler guard change
+- Commands Run:
+  - git status --porcelain=v1
+  - git diff --stat
+  - node --import tsx --test --test-name-pattern "bounded queue session requires" tests/integration/queue-session.test.ts
+  - node --import tsx --test tests/integration/queue-session.test.ts tests/extension-units/worker-execution.test.ts tests/extension-units/task-queue-materialization.test.ts
+  - git diff --check
+
+### Findings
+CRITICAL
+- none
+
+HIGH
+- none
+
+MEDIUM
+- none
+
+LOW
+- none
+
+### Open Questions / Assumptions
+- Assumption: bounded multi-step sessions remain allowed when an operator explicitly supplies max steps and max runtime; hidden daemon drains remain disallowed.
+
+### Recommended Tests / Validation
+- Re-run queue-session, worker-execution, and task-queue-materialization tests after conflict resolution.
+
+### Rollout Notes
+- Any caller relying on implicit runBoundedQueueSession defaults must now pass explicit maxSteps and maxRuntimeSeconds.
+- Review Verdict: no_required_fixes

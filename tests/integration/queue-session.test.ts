@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import queueRunner from "../../.pi/agent/extensions/queue-runner.ts";
+import queueRunner, { runBoundedQueueSession } from "../../.pi/agent/extensions/queue-runner.ts";
 import tillDone from "../../.pi/agent/extensions/till-done.ts";
 import { materializeScheduledWorkflows } from "../../scripts/harness-scheduled-workflows.ts";
 import {
@@ -505,6 +505,19 @@ test("scheduled-workflow-created jobs can move into bounded queue sessions with 
   assert.equal(view.result.finalInspection.summary.activeJob?.id, "scheduled-repo-audit-run-2026-04-27");
   assert.equal(scheduledJob?.scheduledWorkflowId, "repo-audit-run");
   assert.equal(scheduledJob?.scheduledRunKey, "2026-04-27");
+});
+
+test("bounded queue session requires explicit max steps and runtime", async () => {
+  const { cwd } = await setupQueueSessionRepo("queue-session-explicit-bounds-");
+
+  await assert.rejects(
+    () => runBoundedQueueSession(cwd, { owner: "assistant", maxRuntimeSeconds: 60 } as Parameters<typeof runBoundedQueueSession>[1]),
+    /maxSteps is required/,
+  );
+  await assert.rejects(
+    () => runBoundedQueueSession(cwd, { owner: "assistant", maxSteps: 1 } as Parameters<typeof runBoundedQueueSession>[1]),
+    /maxRuntimeSeconds is required/,
+  );
 });
 
 test("queue session respects max-step limits instead of continuing implicitly", async () => {
