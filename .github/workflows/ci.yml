@@ -42,6 +42,23 @@ jobs:
       - name: Compile foundation runtime extensions
         run: ./scripts/check-foundation-extension-compile.sh
 
+  typecheck-baseline:
+    name: Typecheck Baseline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Install root dependencies
+        run: npm install --no-audit --no-fund --ignore-scripts
+
+      - name: Run typecheck against baseline
+        run: ./scripts/check-typecheck-baseline.sh
+
   routing-validators:
     name: Routing Validators
     runs-on: ubuntu-latest

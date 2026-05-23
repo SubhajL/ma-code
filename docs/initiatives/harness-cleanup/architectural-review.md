@@ -158,8 +158,9 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 | Item | Status | Evidence |
 |---|---|---|
 | `tsc --noEmit` script over all harness TS | **Done** | PR #183 — root `tsconfig.json` + `npm run typecheck`; 45-error baseline known. |
-| Wire `tsc --noEmit` into CI, retire `check-foundation-extension-compile.sh` | **Open** | No GitHub workflow grep hits for `typecheck` or `tsc`. |
-| Treat baseline typecheck errors as production bugs | **Open** | 14-file × 45-error backlog catalogued; not yet burned down. |
+| Wire `tsc --noEmit` into CI | **Done** | `typecheck-baseline` job in `.github/workflows/ci.yml` runs `scripts/check-typecheck-baseline.sh`; fails on regression, passes on burndown with a warning. |
+| Retire `check-foundation-extension-compile.sh` | **Open, gated on burndown** | Kept as belt-and-suspenders until the 45-error baseline reaches 0. |
+| Treat baseline typecheck errors as production bugs | **Open** | 14-file × 45-error backlog catalogued; ratchet at `.typecheck-baseline-count` prevents drift up while burndown happens incrementally. |
 | Coverage / reachability audit | **Done** | PR #181 — [coverage-audit.md](./coverage-audit.md). |
 | `harness:doctor` health-check | **Done** | PR #180. |
 
