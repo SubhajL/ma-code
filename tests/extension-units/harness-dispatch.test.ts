@@ -32,7 +32,10 @@ test("DEFAULT_HARNESS_DISPATCH registers all operator subcommands", () => {
 
 test("HARNESS_IN_PROCESS_SUBCOMMANDS lists subcommands wired to in-process loaders", () => {
   // Anchors the migrated-vs-spawned split so accidental regressions to spawn-mode are visible in tests.
-  assert.deepEqual([...HARNESS_IN_PROCESS_SUBCOMMANDS], ["status", "leases", "queue-session"]);
+  assert.deepEqual(
+    [...HARNESS_IN_PROCESS_SUBCOMMANDS],
+    ["status", "leases", "queue-session", "worktree", "worker-session", "product-pipeline"],
+  );
 });
 
 test("in-process dispatch loads the runner without spawning a child process", async () => {
