@@ -38,7 +38,7 @@ A task is not complete unless it includes:
 - Protected paths include `.env*`, `.git/`, `node_modules/`, and `.pi/agent/state/runtime/`.
 - Do not directly edit `.pi/agent/state/runtime/*.json` as the normal workflow; use runtime task tools.
 - Do not mutate tracked files while on `main`.
-- Destructive shell actions must be blocked or explicitly confirmed by runtime controls.
+- The `safe-bash` extension is a guardrail layer: it catches common-shape destructive shell patterns by regex, but it is not a sandbox and can be bypassed by `bash -c`, `eval`, base64-piped-to-`sh`, command substitution, and similar shell features. Do not treat it as a security boundary, and do not run commands you would not run yourself just because `safe-bash` did not block them.
 - Do not disable tests or checks to make a task pass.
 - Do not rewrite Git history or force-push unless explicitly approved.
 

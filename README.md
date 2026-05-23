@@ -44,8 +44,8 @@ Implemented here:
 - task and queue schemas
 - generated local-only runtime state files
 - live runtime extensions:
-  - `.pi/agent/extensions/safe-bash.ts`
-  - `.pi/agent/extensions/till-done.ts`
+  - `.pi/agent/extensions/safe-bash.ts` — regex guardrail layer, not a sandbox; catches common-shape destructive commands but bypassable via `bash -c`, `eval`, command substitution, etc. See `.pi/agent/extensions/safe-bash.spec.md` for scope and limits.
+  - `.pi/agent/extensions/till-done.ts` — task discipline and completion gates (hard enforcement)
 - live task tool:
   - `task_update`
 - validation runbook and validation script
