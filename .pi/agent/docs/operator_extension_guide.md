@@ -2,13 +2,20 @@
 
 This guide explains the main runtime/helper surfaces from an operator point of view.
 
-## Runtime enforcement extensions
-### `safe-bash.ts`
+## Runtime control extensions
+Two flavors live here. **Hard enforcement** (lease conflicts, completion gates, protected-path writes via the typed `write` tool, dirty-repo blockers) genuinely cannot be bypassed at runtime. **Guardrails** (the `safe-bash` regex layer) catch common-shape mistakes but are not sandboxes and can be bypassed by `bash -c`, `eval`, command substitution, etc. Both are useful; conflating them is not.
+
+### `safe-bash.ts` — guardrail, not sandbox
 Purpose:
-- block unsafe shell behavior
+- catch common-shape destructive shell patterns by regex (`rm -rf`, `git reset --hard`, force push, recursive chown, etc.)
 - block tracked-file mutation on `main`
-- protect protected paths
-- enforce worktree-aware mutation safety
+- protect protected paths against pattern-detectable writes
+- enforce worktree-aware mutation safety for the patterns it matches
+
+Limits:
+- regex-only — bypassable via `bash -c '...'`, `eval`, base64-piped-to-`sh`, command substitution, shell aliases, and similar shell features
+- does not constrain subprocesses spawned by an allowed command
+- treat it as a tripwire complementing task discipline and audit logging, not as a security boundary
 
 ### `till-done.ts`
 Purpose:
