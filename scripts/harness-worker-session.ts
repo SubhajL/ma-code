@@ -255,8 +255,8 @@ function stringOption(options: Record<string, string | boolean>, key: string): s
   return typeof options[key] === "string" ? (options[key] as string) : undefined;
 }
 
-async function main(): Promise<void> {
-  const parsed = parseArgs(process.argv.slice(2));
+async function main(argv: string[]): Promise<void> {
+  const parsed = parseArgs(argv);
   if (!parsed.command || parsed.options.help === true) {
     printUsage();
     return;
@@ -290,10 +290,19 @@ async function main(): Promise<void> {
   process.stdout.write(json ? `${JSON.stringify(result, null, 2)}\n` : renderHarnessWorkerSession(result));
 }
 
+export async function runFromArgv(argv: string[]): Promise<number> {
+  try {
+    await main(argv);
+    return 0;
+  } catch (error) {
+    process.stderr.write(`harness-worker-session failed: ${String(error)}\n`);
+    return 1;
+  }
+}
+
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
 if (isMain) {
-  main().catch((error) => {
-    process.stderr.write(`harness-worker-session failed: ${String(error)}\n`);
-    process.exitCode = 1;
+  runFromArgv(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
   });
 }

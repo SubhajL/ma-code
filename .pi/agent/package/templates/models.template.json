@@ -129,12 +129,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
@@ -145,12 +145,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
@@ -162,12 +162,12 @@
       "thinking": "low",
       "allowed_overrides": [
         "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "anthropic/claude-opus-4-7"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
         "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "anthropic/claude-opus-4-7"
       ],
       "budget_overrides": [
         "openai-codex/gpt-5.4-mini"
@@ -179,12 +179,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
@@ -212,12 +212,12 @@
       "thinking": "low",
       "allowed_overrides": [
         "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "anthropic/claude-opus-4-7"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
         "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "anthropic/claude-opus-4-7"
       ],
       "budget_overrides": [
         "openai-codex/gpt-5.4-mini"
@@ -230,12 +230,12 @@
       "thinking": "low",
       "allowed_overrides": [
         "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "anthropic/claude-opus-4-7"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
         "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-5"
+        "anthropic/claude-opus-4-7"
       ],
       "budget_overrides": [
         "openai-codex/gpt-5.4-mini"
@@ -247,12 +247,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
@@ -263,12 +263,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
@@ -279,12 +279,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],
@@ -311,12 +311,12 @@
       "default_model": "gpt-5.4",
       "thinking": "high",
       "allowed_overrides": [
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
         "openai-codex/gpt-5.4",
-        "anthropic/claude-opus-4-5",
+        "anthropic/claude-opus-4-7",
         "anthropic/claude-sonnet-4-6"
       ],
       "budget_overrides": [],

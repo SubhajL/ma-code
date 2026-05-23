@@ -414,8 +414,8 @@ function parseCommandLine(argv: string[]) {
   return { command, options };
 }
 
-async function main(): Promise<void> {
-  const parsed = parseCommandLine(process.argv.slice(2));
+async function main(argv: string[]): Promise<void> {
+  const parsed = parseCommandLine(argv);
   if (parsed.options.help || !parsed.command) {
     printUsage();
     return;
@@ -486,10 +486,19 @@ async function main(): Promise<void> {
   throw new Error(`Unknown command: ${parsed.command}`);
 }
 
+export async function runFromArgv(argv: string[]): Promise<number> {
+  try {
+    await main(argv);
+    return 0;
+  } catch (error) {
+    process.stderr.write(`harness-worktree failed: ${String(error)}\n`);
+    return 1;
+  }
+}
+
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
 if (isMain) {
-  main().catch((error) => {
-    process.stderr.write(`harness-worktree failed: ${String(error)}\n`);
-    process.exitCode = 1;
+  runFromArgv(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
   });
 }
