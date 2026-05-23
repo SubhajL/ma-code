@@ -73,7 +73,13 @@ Not yet implemented:
 
 `npm run typecheck` runs `tsc --noEmit` against the root `tsconfig.json`, which covers `scripts/`, `.pi/agent/extensions/`, `tests/extension-units/`, and `tests/integration/`. This complements the existing `check-foundation-extension-compile.sh` CI job, which only typechecks a hand-picked subset of 41 extension files and silently leaves `scripts/`, all tests, and several extensions (notably `worker-execution.ts`, `worker-same-runtime-execution.ts`, `pr-lifecycle.ts`, `slice-lifecycle.ts`) unchecked.
 
-The root typecheck is **not wired into CI yet** because it currently reports preexisting errors that need to be fixed in follow-up PRs. Once the baseline is clean, a separate change will (a) add `typecheck` to `.github/workflows/ci.yml` and (b) retire `check-foundation-extension-compile.sh` in favor of the root config.
+The root typecheck is wired into CI via the `typecheck-baseline` job in `.github/workflows/ci.yml`. It runs `scripts/check-typecheck-baseline.sh`, which compares the current error count against the value pinned in `.typecheck-baseline-count` and:
+
+- **fails** if the count goes **up** (regression);
+- **passes with a warning** if the count goes **down** (burndown reminder to ratchet the file lower in a follow-up);
+- **passes silently** when counts match.
+
+This lets the existing baseline (45 errors across 14 files, catalogued in [`docs/initiatives/harness-cleanup/coverage-audit.md`](./docs/initiatives/harness-cleanup/coverage-audit.md)) be burned down incrementally without blocking unrelated PRs, while preventing new errors from sneaking in. Once the baseline reaches 0, `check-foundation-extension-compile.sh` can be retired in favor of the root config.
 
 ## Roadmap status
 Current implementation is best understood as the **first validated Phase A/B foundation slice**.
