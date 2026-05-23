@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "harness:status": "node --import tsx scripts/harness-operator-status.ts",
     "harness:status:json": "node --import tsx scripts/harness-operator-status.ts --json",
     "harness:leases": "node --import tsx scripts/harness-operator-leases.ts",
