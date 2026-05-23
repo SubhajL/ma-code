@@ -169,7 +169,7 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 | # | Item | Status | Where |
 |---|---|---|---|
 | 1 | SQLite migration | **Open** | Scoped at ~5,200 LOC + 20+ tests; [tier-1-status.md](./tier-1-status.md) flags as dedicated PR. |
-| 2 | Sandbox vs invert tool surface | **Open, direction decided** | Invert (typed tools only). Scope-check needed: surface may live in upstream `pi-coding-agent`. |
+| 2 | Sandbox vs invert tool surface | **Open, scope-checked** | Invert (typed tools only). `safe-bash` is local (this repo); `bash` tool is upstream and can only be blocked via interceptor. Plan staged into multi-PR: add typed tools (`git_commit`, `run_test`, etc.) → update prompts → tighten interceptor. See [tier-1-status.md §2](./tier-1-status.md). |
 | 3 | Verify Anthropic prompt caching | **Done** | Upstream `pi-ai` already applies `cache_control`; PR #182 landed consumer-side utility + gap doc. |
 | 4 | In-process dispatch | **Partial** | PR #185 — central dispatch table + 3 of 12 operator subcommands in-process. 9 still spawn-based behind the same table; each is a one-line follow-up PR (switch entry from `spawned()` to `inProcess()` and add `runFromArgv` to the target). |
 

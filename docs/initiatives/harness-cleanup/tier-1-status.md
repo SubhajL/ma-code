@@ -23,16 +23,57 @@ and the test fan-out review together.
 
 ### 2. Sandbox bash exec or invert the tool surface
 
-**Status:** Open. Direction decided: invert (typed tools only).
+**Status:** Open. Direction decided: invert (typed tools only). **Scope
+check complete (2026-05-24): doable in this repo, medium-sized work.**
 
 Deprecate the `safe_bash` escape hatch. Agents go through typed tools
 (`read_file`, `write_file`, `run_test`, `git_commit`, etc.). The existing
 regex guard remains as a warning layer but is already documented as
 non-security ([safety rules in AGENTS.md](../../AGENTS.md), PR #178).
 
-Scope check needed before implementation: confirm whether the tool surface
-lives in this repo or in upstream `@mariozechner/pi-coding-agent`. If the
-latter, this becomes an upstream PR plus a local config change.
+#### Scope check findings
+
+| Question | Answer |
+|---|---|
+| Where is `safe-bash` implemented? | This repo: `.pi/agent/extensions/safe-bash.ts` (799 LOC) |
+| What does it do? | Uses `pi.on("tool_call", ...)` — it is an **interceptor**, not a tool definition |
+| Where is the `bash` tool defined? | Upstream: `@mariozechner/pi-coding-agent/dist/core/tools/bash.js`. Can't remove or replace; can only block at the interceptor |
+| Built-in tools available today | `bash`, `edit`, `edit-diff`, `find`, `grep`, `ls`, `read`, `write` |
+| Custom tool registration possible? | Yes — 10+ harness extensions already register tools via `pi.registerTool(...)` |
+| What typed tools would need to be added? | `run_test`, `git_commit`, `git_branch`, `git_push`, `git_checkout` (file I/O already covered by upstream `read`/`write`/`edit`) |
+
+#### Recommended implementation path
+
+A single big-bang inversion is risky (agents and prompts may rely on
+bash in unexpected places). Stage the migration:
+
+1. **Add typed tools incrementally.** Start with the highest-value ones
+   the harness needs most often: `git_commit`, `git_branch`,
+   `git_checkout`, `run_test`. Each is a new file in
+   `.pi/agent/extensions/` that registers via `pi.registerTool` and
+   wraps the existing `safe_bash`-mediated command. Tests in
+   `tests/extension-units/`.
+2. **Update prompts/skills** to prefer the typed tools over bash for
+   the matching operations.
+3. **Tighten the `safe-bash` interceptor** to block bash invocations
+   that match the now-typed surfaces (e.g. block `git commit` via bash
+   once `git_commit` is the documented path). This is the actual
+   "invert" step — bash becomes the exception, typed tools the norm.
+4. **Audit the residual bash use** that can't be typed (one-off shell
+   utility calls). Either type them or leave them as the documented
+   escape hatch.
+
+Estimated 1-2 focused sessions. Each typed tool is ~50-100 LOC
+including tests; the interceptor tightening is per-pattern review
+work.
+
+#### Decision
+
+Keep item 2 **open** as multi-PR work, not a single big-bang. First
+follow-up PR can be a narrow scope: add one or two typed tools
+(probably `git_commit` and `run_test` as the most-used) plus the
+prompt updates that teach agents to prefer them. The remaining work
+stages incrementally without forcing a single risky cutover.
 
 ### 3. Verify Anthropic prompt caching is on
 
