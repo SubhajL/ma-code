@@ -230,27 +230,32 @@ export function parseHarnessQueueSessionArgs(argv: string[]): HarnessQueueSessio
   return result;
 }
 
-async function main(): Promise<void> {
-  const args = parseHarnessQueueSessionArgs(process.argv.slice(2));
-  if (args.help) {
-    printUsage();
-    return;
-  }
+export async function runFromArgv(argv: string[]): Promise<number> {
+  try {
+    const args = parseHarnessQueueSessionArgs(argv);
+    if (args.help) {
+      printUsage();
+      return 0;
+    }
 
-  assertHarnessQueueSessionCliScope(args);
-  const view = await buildHarnessQueueSession(args);
-  if (args.json) {
-    process.stdout.write(`${JSON.stringify(view, null, 2)}\n`);
-    return;
-  }
+    assertHarnessQueueSessionCliScope(args);
+    const view = await buildHarnessQueueSession(args);
+    if (args.json) {
+      process.stdout.write(`${JSON.stringify(view, null, 2)}\n`);
+      return 0;
+    }
 
-  process.stdout.write(renderHarnessQueueSession(view));
+    process.stdout.write(renderHarnessQueueSession(view));
+    return 0;
+  } catch (error) {
+    process.stderr.write(`harness-queue-session failed: ${String(error)}\n`);
+    return 1;
+  }
 }
 
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
 if (isMain) {
-  main().catch((error) => {
-    process.stderr.write(`harness-queue-session failed: ${String(error)}\n`);
-    process.exitCode = 1;
+  runFromArgv(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
   });
 }
