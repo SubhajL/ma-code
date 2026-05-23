@@ -69,6 +69,12 @@ Not yet implemented:
 - rich UI widgets / dashboard components beyond the lightweight CLI status surface
 - broader automated test suite beyond bounded runtime validation
 
+## Typecheck
+
+`npm run typecheck` runs `tsc --noEmit` against the root `tsconfig.json`, which covers `scripts/`, `.pi/agent/extensions/`, `tests/extension-units/`, and `tests/integration/`. This complements the existing `check-foundation-extension-compile.sh` CI job, which only typechecks a hand-picked subset of 41 extension files and silently leaves `scripts/`, all tests, and several extensions (notably `worker-execution.ts`, `worker-same-runtime-execution.ts`, `pr-lifecycle.ts`, `slice-lifecycle.ts`) unchecked.
+
+The root typecheck is **not wired into CI yet** because it currently reports preexisting errors that need to be fixed in follow-up PRs. Once the baseline is clean, a separate change will (a) add `typecheck` to `.github/workflows/ci.yml` and (b) retire `check-foundation-extension-compile.sh` in favor of the root config.
+
 ## Roadmap status
 Current implementation is best understood as the **first validated Phase A/B foundation slice**.
 That means the repo currently has:

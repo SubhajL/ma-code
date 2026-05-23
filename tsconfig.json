@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["es2022", "dom"],
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false
+  },
+  "include": [
+    "scripts/**/*.ts",
+    ".pi/agent/extensions/**/*.ts",
+    "tests/extension-units/**/*.ts",
+    "tests/integration/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    ".pi/agent/state/runtime",
+    ".pi/agent/extensions/logs",
+    ".pi/agent/extensions/bin",
+    "apps",
+    "services",
+    "packages",
+    "tests/e2e",
+    "tests/web",
+    "tests/api"
+  ]
+}
