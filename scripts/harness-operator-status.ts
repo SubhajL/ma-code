@@ -124,26 +124,31 @@ function parseArgs(argv: string[]): { cwd?: string; recentLimit?: number; json: 
   return result;
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.help) {
-    printUsage();
-    return;
-  }
+export async function runFromArgv(argv: string[]): Promise<number> {
+  try {
+    const args = parseArgs(argv);
+    if (args.help) {
+      printUsage();
+      return 0;
+    }
 
-  const view = await buildHarnessOperatorStatus({ cwd: args.cwd, recentLimit: args.recentLimit });
-  if (args.json) {
-    process.stdout.write(`${JSON.stringify(view, null, 2)}\n`);
-    return;
-  }
+    const view = await buildHarnessOperatorStatus({ cwd: args.cwd, recentLimit: args.recentLimit });
+    if (args.json) {
+      process.stdout.write(`${JSON.stringify(view, null, 2)}\n`);
+      return 0;
+    }
 
-  process.stdout.write(renderHarnessOperatorStatus(view));
+    process.stdout.write(renderHarnessOperatorStatus(view));
+    return 0;
+  } catch (error) {
+    process.stderr.write(`harness-operator-status failed: ${String(error)}\n`);
+    return 1;
+  }
 }
 
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
 if (isMain) {
-  main().catch((error) => {
-    process.stderr.write(`harness-operator-status failed: ${String(error)}\n`);
-    process.exitCode = 1;
+  runFromArgv(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
   });
 }
