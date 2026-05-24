@@ -1,20 +1,10 @@
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-
 import type { HarnessDispatchTable, HarnessRunner } from "./harness-runner.ts";
-import { createSpawnHarnessRunner } from "./harness-runner-spawn.ts";
-
-const SCRIPTS_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function inProcess(loader: () => Promise<{ runFromArgv: HarnessRunner }>): () => Promise<HarnessRunner> {
   return async () => {
     const mod = await loader();
     return mod.runFromArgv;
   };
-}
-
-function spawned(scriptFile: string): () => Promise<HarnessRunner> {
-  return async () => createSpawnHarnessRunner(resolve(SCRIPTS_DIR, scriptFile));
 }
 
 export const DEFAULT_HARNESS_DISPATCH: HarnessDispatchTable = {
@@ -24,12 +14,12 @@ export const DEFAULT_HARNESS_DISPATCH: HarnessDispatchTable = {
   worktree: inProcess(() => import("../harness-worktree.ts")),
   "worker-session": inProcess(() => import("../harness-worker-session.ts")),
   "product-pipeline": inProcess(() => import("../harness-product-pipeline.ts")),
-  "parallel-worker-lanes": spawned("harness-parallel-worker-lanes.ts"),
+  "parallel-worker-lanes": inProcess(() => import("../harness-parallel-worker-lanes.ts")),
   "issue-materialize": inProcess(() => import("../harness-issue-materialize.ts")),
   "afk-orchestrate": inProcess(() => import("../harness-afk-orchestrate.ts")),
-  "worker-execute": spawned("harness-worker-execute.ts"),
+  "worker-execute": inProcess(() => import("../harness-worker-execute.ts")),
   "pr-lifecycle": inProcess(() => import("../harness-pr-lifecycle.ts")),
-  orchestrate: spawned("harness-orchestrate.ts"),
+  orchestrate: inProcess(() => import("../harness-orchestrate.ts")),
 };
 
 export const HARNESS_IN_PROCESS_SUBCOMMANDS: readonly string[] = [
@@ -42,4 +32,7 @@ export const HARNESS_IN_PROCESS_SUBCOMMANDS: readonly string[] = [
   "issue-materialize",
   "afk-orchestrate",
   "pr-lifecycle",
+  "worker-execute",
+  "parallel-worker-lanes",
+  "orchestrate",
 ] as const;

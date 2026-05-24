@@ -44,6 +44,9 @@ test("HARNESS_IN_PROCESS_SUBCOMMANDS lists subcommands wired to in-process loade
       "issue-materialize",
       "afk-orchestrate",
       "pr-lifecycle",
+      "worker-execute",
+      "parallel-worker-lanes",
+      "orchestrate",
     ],
   );
 });
