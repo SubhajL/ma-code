@@ -309,8 +309,29 @@ test("safe-bash blocks leading cd into non-repo context clearly", async () => {
   assert.match(audit, /"action":"blocked"/);
 });
 
-test("safe-bash git commit on main still blocks with branch guidance", async () => {
-  const cwd = await makeTempRepo("safe-bash-main-git-commit-");
+test("safe-bash redirects `git commit` via bash to the typed git_commit tool", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-git-commit-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git commit -m 'checkpoint'" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /git_commit/);
+  assert.match(result.reason, /instead of bash `git commit`/);
+
+  const audit = await readAuditLog(cwd);
+  assert.match(audit, /"action":"blocked"/);
+  assert.match(audit, /git_commit/);
+  assert.doesNotMatch(audit, /"action":"auto-branch"/);
+});
+
+test("safe-bash redirects `git commit` on main to typed tool (no auto-branch attempt)", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-git-commit-main-");
   await seedActiveTask(cwd);
   const pi = new FakePi("main");
   safeBash(pi as any);
@@ -321,18 +342,131 @@ test("safe-bash git commit on main still blocks with branch guidance", async () 
     makeCtx(cwd),
   );
 
-  assert.deepEqual(result, {
-    block: true,
-    reason:
-      "Blocked mutating bash command on `main`. Auto-branch requires an active task and safe repo state (no unexpected dirty tracked files); otherwise create or switch to a non-main branch first. Command is not eligible for automatic branching.",
-  });
+  assert.equal(result.block, true);
+  assert.match(result.reason, /git_commit/);
   assert.equal(pi.getCurrentBranchName(), "main");
 
   const audit = await readAuditLog(cwd);
-  assert.match(audit, /"action":"auto-branch"/);
-  assert.match(audit, /"outcome":"skipped"/);
-  assert.match(audit, /not eligible for automatic branching/);
   assert.match(audit, /"action":"blocked"/);
+  assert.doesNotMatch(audit, /"action":"auto-branch"/);
+});
+
+test("safe-bash does NOT redirect `git commit-tree` (false-positive guard)", async () => {
+  const cwd = await makeTempRepo("safe-bash-commit-tree-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git commit-tree HEAD^{tree} -m msg" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result, undefined);
+});
+
+test("safe-bash still allows `git add` via bash (not yet typed)", async () => {
+  const cwd = await makeTempRepo("safe-bash-git-add-allowed-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git add src/foo.ts" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result, undefined);
+});
+
+test("safe-bash redirects `npm test` via bash to the typed run_test tool", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-npm-test-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "npm test" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /run_test/);
+  assert.match(result.reason, /instead of bash `npm test`/);
+});
+
+test("safe-bash redirects `npm t` (npm test alias) to run_test", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-npm-t-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "npm t" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /run_test/);
+});
+
+test("safe-bash redirects `npm run test:*` to run_test", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-npm-run-test-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "npm run test:extensions" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /run_test/);
+});
+
+test("safe-bash redirects `npm run validate:*` to run_test", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-npm-run-validate-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "npm run validate:harness-routing" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /run_test/);
+});
+
+test("safe-bash redirects `npm run typecheck` to run_test", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-npm-run-typecheck-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "npm run typecheck" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /run_test/);
+});
+
+test("safe-bash does NOT redirect arbitrary npm scripts like `npm run build`", async () => {
+  const cwd = await makeTempRepo("safe-bash-npm-run-build-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "npm run build" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result, undefined);
 });
 
 test("safe-bash blocks hard-dangerous bash commands", async () => {
