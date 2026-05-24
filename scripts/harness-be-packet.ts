@@ -6,7 +6,7 @@ import {
   writeBackendPacketPreview,
   type GeneratedBackendImplementationPacket,
   type WrittenBackendPacketPreview,
-} from "../.pi/agent/extensions/backend-packet-generator.ts";
+} from "../.pi/agent/extensions/packets.ts";
 
 export interface HarnessBackendPacketOptions {
   repoRoot?: string;

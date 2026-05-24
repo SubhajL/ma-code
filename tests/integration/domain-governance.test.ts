@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { parseHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
-import { generateTaskPacket, parsePacketPolicy } from "../../.pi/agent/extensions/task-packets.ts";
+import { generateTaskPacket, parsePacketPolicy } from "../../.pi/agent/extensions/packets.ts";
 import { parseTeamDefinition } from "../../.pi/agent/extensions/team-activation.ts";
 
 const execFile = promisify(execFileCallback);

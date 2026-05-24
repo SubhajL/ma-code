@@ -65,10 +65,12 @@ export interface DomainOwnership {
 export const MIXED_DOMAIN_CHILD_LANE_KINDS = ["frontend", "backend", "bff"] as const;
 export const MIXED_DOMAIN_COORDINATION_MODES = ["parent", "child"] as const;
 export const MIXED_DOMAIN_CONFLICT_CHECK_STATUSES = ["not_required", "pending", "passed", "failed"] as const;
+export const PACKET_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
 
 export type MixedDomainChildLaneKind = (typeof MIXED_DOMAIN_CHILD_LANE_KINDS)[number];
 export type MixedDomainCoordinationMode = (typeof MIXED_DOMAIN_COORDINATION_MODES)[number];
 export type MixedDomainConflictCheckStatus = (typeof MIXED_DOMAIN_CONFLICT_CHECK_STATUSES)[number];
+export type PacketThinkingLevel = (typeof PACKET_THINKING_LEVELS)[number];
 
 export interface MixedDomainChildLaneSummary {
   laneId: string;
@@ -122,6 +124,7 @@ export interface PacketRoutingSummary {
   selectedModelId: string;
   selectedProvider: string;
   selectedModel: string;
+  thinking: PacketThinkingLevel;
   source: string;
   phaseLane?: PhaseLane | null;
   phaseRoutingSource?: string;
@@ -413,6 +416,11 @@ function normalizeTddSlice(raw: TddSlice | null | undefined): TddSlice | null {
   };
 }
 
+function normalizePacketThinkingLevel(raw: string): PacketThinkingLevel {
+  if (PACKET_THINKING_LEVELS.includes(raw as PacketThinkingLevel)) return raw as PacketThinkingLevel;
+  throw new Error(`Invalid routing thinking level: ${raw}`);
+}
+
 function parseString(raw: unknown, fieldName: string): string {
   if (typeof raw !== "string" || raw.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string.`);
@@ -572,6 +580,7 @@ export function validateTaskPacketShape(packet: TaskPacket): void {
     throw new Error("filesToModify must not be empty for build packets that are expected to make changes.");
   }
   if (!packet.routing.selectedModelId.trim()) throw new Error("routing.selectedModelId is required.");
+  if (!packet.routing.thinking.trim()) throw new Error("routing.thinking is required.");
 }
 
 function renderList(lines: string[]): string {
@@ -724,6 +733,7 @@ export function renderTaskPacket(packet: TaskPacket): string {
     `- reason: ${packet.routing.reason}`,
     `- budget mode: ${packet.routing.budgetMode}`,
     `- selected model: ${packet.routing.selectedModelId}`,
+    `- thinking: ${packet.routing.thinking}`,
     `- route source: ${packet.routing.source}`,
     `- phase lane: ${packet.routing.phaseLane ?? "none"}`,
     `- phase routing source: ${packet.routing.phaseRoutingSource ?? "none"}`,
@@ -844,6 +854,7 @@ export function generateTaskPacket(
       selectedModelId: route.selectedModelId,
       selectedProvider: route.selectedProvider,
       selectedModel: route.selectedModel,
+      thinking: normalizePacketThinkingLevel(route.thinking),
       source: route.source,
       phaseLane: route.phaseLane,
       phaseRoutingSource: route.phaseRoutingSource,

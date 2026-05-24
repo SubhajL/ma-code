@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import { parseHarnessRoutingConfig, resolveHarnessRoute } from "../../.pi/agent/extensions/harness-routing.ts";
 import { parseActivationPolicy, parseTeamDefinition, resolveTeamActivation } from "../../.pi/agent/extensions/team-activation.ts";
-import { generateTaskPacket, parsePacketPolicy, validateTaskPacketShape } from "../../.pi/agent/extensions/task-packets.ts";
+import { generateTaskPacket, parsePacketPolicy, validateTaskPacketShape } from "../../.pi/agent/extensions/packets.ts";
 import { generateHandoff, parseHandoffPolicy, validateStructuredHandoff } from "../../.pi/agent/extensions/handoffs.ts";
 
 async function readFixture(relativePath: string): Promise<string> {
@@ -38,9 +38,9 @@ test("harness-routing resolves backend budget pressure to mini model with calibr
     budgetMode: "conserve",
   });
 
-  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4-mini");
+  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4-mini");
   assert.equal(result.source, "budget_override");
-  assert.equal(result.thinking, "minimal");
+  assert.equal(result.thinking, "low");
 });
 
 
@@ -52,7 +52,7 @@ test("harness-routing keeps critical roles at high thinking under cost pressure"
     budgetMode: "conserve",
   });
 
-  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4");
+  assert.equal(result.selectedModelId, "openai-codex/gpt-5.5");
   assert.equal(result.thinking, "high");
   assert.match(result.blockedAdjustments.join("\n"), /budget_pressure/);
 });
@@ -66,9 +66,9 @@ test("harness-routing raises cheaper build-worker defaults back to high thinking
     budgetMode: "high",
   });
 
-  assert.equal(result.selectedModelId, "anthropic/claude-sonnet-4-6");
+  assert.equal(result.selectedModelId, "openai-codex/gpt-5.5");
   assert.equal(result.source, "stronger_override");
-  assert.equal(result.thinking, "high");
+  assert.equal(result.thinking, "xhigh");
 });
 
 test("harness-routing allows build lead budget pressure to use the mini override", async () => {
@@ -79,9 +79,9 @@ test("harness-routing allows build lead budget pressure to use the mini override
     budgetMode: "conserve",
   });
 
-  assert.equal(result.selectedModelId, "openai-codex/gpt-5.4-mini");
+  assert.equal(result.selectedModelId, "github-copilot/gpt-5.4-mini");
   assert.equal(result.source, "budget_override");
-  assert.equal(result.thinking, "minimal");
+  assert.equal(result.thinking, "low");
 });
 
 test("team-activation resolves a planning-first path for ambiguous mixed work", async () => {
@@ -146,7 +146,7 @@ test("task-packets generates a valid packet from real policies", async () => {
   assert.equal(generated.packet.assignedRole, "backend_worker");
   assert.equal(generated.packet.goal, "Prove task packets keep planning-completeness details explicit.");
   assert.deepEqual(generated.packet.filesToModify, ["tests/extension-units/orchestration-helpers.test.ts"]);
-  assert.equal(generated.packet.routing.selectedModelId, "openai-codex/gpt-5.4-mini");
+  assert.equal(generated.packet.routing.selectedModelId, "github-copilot/gpt-5.4-mini");
   assert.match(generated.packet.packetId, /^packet-backend-worker-harness-037-/);
   assert.match(generated.renderedPacket, /## Files to Inspect/);
 });

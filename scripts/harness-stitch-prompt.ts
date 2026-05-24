@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { generateStitchPrompt, writeStitchPromptArtifacts, type StitchPromptResult } from "../.pi/agent/extensions/stitch-prompt-generator.ts";
+import { generateStitchPrompt, writeStitchPromptArtifacts, type StitchPromptResult } from "../.pi/agent/extensions/stitch.ts";
 
 type StitchPromptMode = "dry-run" | "apply";
 

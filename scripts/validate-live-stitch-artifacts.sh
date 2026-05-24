@@ -14,7 +14,7 @@ TSX_IMPORT_PATH="$TSX_IMPORT" node --import "$TSX_IMPORT" --test "$REPO_ROOT/tes
 
 echo "live-stitch-artifact-validator: compile helper and CLI"
 npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
-  "$REPO_ROOT/.pi/agent/extensions/live-stitch-adapter.ts" \
+  "$REPO_ROOT/.pi/agent/extensions/stitch.ts" \
   "$REPO_ROOT/scripts/harness-live-stitch-artifact.ts"
 
 echo "live-stitch-artifact-validator: static docs and wiring"

@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { applyLiveStitchArtifact, planLiveStitchArtifact, writeLiveStitchArtifactArtifacts, type AppliedLiveStitchArtifactResult, type PlannedLiveStitchArtifactResult } from "../.pi/agent/extensions/live-stitch-adapter.ts";
+import { applyLiveStitchArtifact, planLiveStitchArtifact, writeLiveStitchArtifactArtifacts, type AppliedLiveStitchArtifactResult, type PlannedLiveStitchArtifactResult } from "../.pi/agent/extensions/stitch.ts";
 
 type LiveStitchCliMode = "dry-run" | "apply";
 

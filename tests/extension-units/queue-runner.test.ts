@@ -8,7 +8,7 @@ import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/h
 import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 import { writeQueueState as writeQueueStateLib } from "../../.pi/agent/extensions/lib/queue-state.ts";
-import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
+import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/packets.ts";
 import { loadTeamDefinitions } from "../../.pi/agent/extensions/team-activation.ts";
 import tillDone, { readTaskState as readTaskStateLib, writeTaskState, type TaskRecord } from "../../.pi/agent/extensions/till-done.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo, readAuditLog } from "./test-utils.ts";

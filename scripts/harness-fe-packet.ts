@@ -6,7 +6,7 @@ import {
   writeFrontendPacketPreview,
   type GeneratedFrontendImplementationPacket,
   type WrittenFrontendPacketPreview,
-} from "../.pi/agent/extensions/frontend-packet-generator.ts";
+} from "../.pi/agent/extensions/packets.ts";
 
 export interface HarnessFrontendPacketOptions {
   repoRoot?: string;

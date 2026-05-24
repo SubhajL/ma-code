@@ -22,7 +22,10 @@ echo "stitch-prompt-validator: compile helper and CLI"
 WORKDIR="$TMP_ROOT/compile"
 mkdir -p "$WORKDIR/src/.pi/agent/extensions" "$WORKDIR/src/scripts"
 cp "$REPO_ROOT/.pi/agent/extensions/product-slice-lifecycle.ts" "$WORKDIR/src/.pi/agent/extensions/"
+cp "$REPO_ROOT/.pi/agent/extensions/stitch.ts" "$WORKDIR/src/.pi/agent/extensions/"
 cp "$REPO_ROOT/.pi/agent/extensions/stitch-prompt-generator.ts" "$WORKDIR/src/.pi/agent/extensions/"
+cp "$REPO_ROOT/.pi/agent/extensions/stitch-artifact-adapter.ts" "$WORKDIR/src/.pi/agent/extensions/"
+cp "$REPO_ROOT/.pi/agent/extensions/live-stitch-adapter.ts" "$WORKDIR/src/.pi/agent/extensions/"
 cp "$REPO_ROOT/scripts/harness-stitch-prompt.ts" "$WORKDIR/src/scripts/"
 cat > "$WORKDIR/package.json" <<'JSON'
 {
@@ -40,7 +43,7 @@ JSON
   "$NPM_BIN" install --silent >/dev/null 2>&1
   npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
     src/.pi/agent/extensions/product-slice-lifecycle.ts \
-    src/.pi/agent/extensions/stitch-prompt-generator.ts \
+    src/.pi/agent/extensions/stitch.ts \
     src/scripts/harness-stitch-prompt.ts
 )
 

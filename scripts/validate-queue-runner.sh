@@ -176,6 +176,7 @@ setup_temp_runtime() {
   local workdir="$TMP_ROOT/queue-runner-runtime"
   mkdir -p \
     "$workdir/.pi/agent/extensions" \
+    "$workdir/.pi/agent/extensions/lib" \
     "$workdir/.pi/agent/teams" \
     "$workdir/.pi/agent/packets" \
     "$workdir/.pi/agent/handoffs" \
@@ -199,7 +200,8 @@ setup_temp_runtime() {
 }
 JSON
 
-  cp "$REPO_ROOT/.pi/agent/extensions/"{till-done,harness-routing,team-activation,domain-governance,task-packets,handoffs,recovery-policy,recovery-runtime,execution-leases,queue-runner}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/"{till-done,harness-routing,team-activation,domain-governance,packets,task-packets,frontend-packet-generator,backend-packet-generator,handoffs,recovery-policy,recovery-runtime,execution-leases,queue-runner}.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/lib/"{audit-log,queue-state,tasks-state,sqlite-state}.ts "$workdir/.pi/agent/extensions/lib/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-adapter.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-orchestration-decision.ts" "$workdir/.pi/agent/extensions/"

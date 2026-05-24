@@ -32,11 +32,13 @@ required_files=(
   ".pi/agent/extensions/execution-leases.ts"
   ".pi/agent/extensions/slice-lifecycle.ts"
   ".pi/agent/extensions/product-slice-lifecycle.ts"
+  ".pi/agent/extensions/stitch.ts"
   ".pi/agent/extensions/stitch-prompt-generator.ts"
   ".pi/agent/extensions/stitch-artifact-adapter.ts"
   ".pi/agent/extensions/live-stitch-adapter.ts"
   ".pi/agent/extensions/screen-artifact-approval.ts"
   ".pi/agent/extensions/slice-contracts.ts"
+  ".pi/agent/extensions/packets.ts"
   ".pi/agent/extensions/frontend-packet-generator.ts"
   ".pi/agent/extensions/backend-packet-generator.ts"
   ".pi/agent/extensions/slice-dependency-decision.ts"
@@ -77,6 +79,7 @@ required_files=(
   "tests/extension-units/afk-orchestration.test.ts"
   "tests/integration/afk-orchestration.test.ts"
   "tests/extension-units/execution-leases.test.ts"
+  "tests/extension-units/consolidated-modules.test.ts"
   "tests/extension-units/product-slice-lifecycle.test.ts"
   "tests/extension-units/stitch-prompt-generator.test.ts"
   "tests/extension-units/stitch-artifact-adapter.test.ts"
@@ -95,6 +98,7 @@ required_files=(
   "scripts/validate-task-packets.sh"
   "scripts/validate-handoffs.sh"
   "scripts/validate-same-runtime-bridge.sh"
+  ".pi/agent/extensions/recovery.ts"
   "scripts/validate-recovery-policy.sh"
   "scripts/validate-recovery-runtime.sh"
   "scripts/validate-queue-runner.sh"
@@ -319,11 +323,13 @@ graphify_orchestrator_extension = (root / ".pi/agent/extensions/graphify-orchest
 execution_leases_extension = (root / ".pi/agent/extensions/execution-leases.ts").read_text(encoding="utf-8")
 slice_lifecycle_extension = (root / ".pi/agent/extensions/slice-lifecycle.ts").read_text(encoding="utf-8")
 product_slice_lifecycle_extension = (root / ".pi/agent/extensions/product-slice-lifecycle.ts").read_text(encoding="utf-8")
+stitch_extension = (root / ".pi/agent/extensions/stitch.ts").read_text(encoding="utf-8")
 stitch_prompt_generator_extension = (root / ".pi/agent/extensions/stitch-prompt-generator.ts").read_text(encoding="utf-8")
 stitch_artifact_adapter_extension = (root / ".pi/agent/extensions/stitch-artifact-adapter.ts").read_text(encoding="utf-8")
 live_stitch_adapter_extension = (root / ".pi/agent/extensions/live-stitch-adapter.ts").read_text(encoding="utf-8")
 screen_artifact_approval_extension = (root / ".pi/agent/extensions/screen-artifact-approval.ts").read_text(encoding="utf-8")
 slice_contract_extension = (root / ".pi/agent/extensions/slice-contracts.ts").read_text(encoding="utf-8")
+packets_extension = (root / ".pi/agent/extensions/packets.ts").read_text(encoding="utf-8")
 frontend_packet_extension = (root / ".pi/agent/extensions/frontend-packet-generator.ts").read_text(encoding="utf-8")
 backend_packet_extension = (root / ".pi/agent/extensions/backend-packet-generator.ts").read_text(encoding="utf-8")
 slice_dependency_decision_extension = (root / ".pi/agent/extensions/slice-dependency-decision.ts").read_text(encoding="utf-8")
@@ -356,6 +362,7 @@ frontend_packet_doc = (root / ".pi/agent/docs/frontend_packet_generation.md").re
 backend_packet_doc = (root / ".pi/agent/docs/backend_packet_generation.md").read_text(encoding="utf-8")
 product_pipeline_doc = (root / ".pi/agent/docs/product_pipeline_runtime.md").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
+recovery_extension = (root / ".pi/agent/extensions/recovery.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
 queue_runner = (root / ".pi/agent/extensions/queue-runner.ts").read_text(encoding="utf-8")
@@ -365,6 +372,20 @@ foundation_compile_validator = (root / "scripts/check-foundation-extension-compi
 pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
 package_json = json.loads((root / "package.json").read_text(encoding="utf-8"))
 models_json = json.loads((root / ".pi/agent/models.json").read_text(encoding="utf-8"))
+for needle in ["recoveryPolicyExtension", "recoveryRuntimeExtension", "resolveRecoveryRuntimeDecision"]:
+    assert needle in recovery_extension, needle
+for needle in ["taskPacketsExtension", "generateFrontendImplementationPacket", "generateBackendImplementationPacket"]:
+    assert needle in packets_extension, needle
+for needle in ["generateStitchPrompt", "generateMockStitchArtifact", "planLiveStitchArtifact"]:
+    assert needle in stitch_extension, needle
+for rel, needle in [
+    ("scripts/harness-fe-packet.ts", "../.pi/agent/extensions/packets.ts"),
+    ("scripts/harness-be-packet.ts", "../.pi/agent/extensions/packets.ts"),
+    ("scripts/harness-stitch-prompt.ts", "../.pi/agent/extensions/stitch.ts"),
+    ("scripts/harness-stitch-artifact.ts", "../.pi/agent/extensions/stitch.ts"),
+    ("scripts/harness-live-stitch-artifact.ts", "../.pi/agent/extensions/stitch.ts"),
+]:
+    assert needle in (root / rel).read_text(encoding="utf-8"), rel
 assert "tactical vs strategic rule" in workflow_doc.lower()
 for needle in [
     "request-architecture-review.md",

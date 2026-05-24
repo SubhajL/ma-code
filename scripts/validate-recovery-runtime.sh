@@ -177,7 +177,7 @@ PY
 
 setup_temp_runtime() {
   local workdir="$TMP_ROOT/recovery-runtime"
-  mkdir -p "$workdir/src" "$workdir/.pi/agent/recovery" "$workdir/.pi/agent/state/runtime"
+  mkdir -p "$workdir/src/lib" "$workdir/.pi/agent/recovery" "$workdir/.pi/agent/state/runtime"
   cat > "$workdir/package.json" <<'JSON'
 {
   "name": "recovery-runtime-validator",
@@ -195,6 +195,8 @@ setup_temp_runtime() {
 JSON
   cp "$REPO_ROOT/.pi/agent/extensions/recovery-policy.ts" "$workdir/src/recovery-policy.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/recovery-runtime.ts" "$workdir/src/recovery-runtime.ts"
+  cp "$REPO_ROOT/.pi/agent/extensions/lib/tasks-state.ts" "$workdir/src/lib/tasks-state.ts"
+  cp "$REPO_ROOT/.pi/agent/extensions/lib/sqlite-state.ts" "$workdir/src/lib/sqlite-state.ts"
   cp "$REPO_ROOT/.pi/agent/extensions/harness-routing.ts" "$workdir/src/harness-routing.ts"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/recovery/recovery-policy.json" "$workdir/.pi/agent/recovery/recovery-policy.json"
@@ -325,7 +327,7 @@ const cases = [
     },
     expected: {
       recommendedAction: "retry_stronger_model",
-      nextModelId: "anthropic/claude-opus-4-5"
+      nextModelId: "openai-codex/gpt-5.5"
     }
   },
   {
@@ -340,7 +342,7 @@ const cases = [
     },
     expected: {
       recommendedAction: "switch_provider",
-      nextProvider: "anthropic"
+      nextProvider: "openai-codex"
     }
   }
 ];

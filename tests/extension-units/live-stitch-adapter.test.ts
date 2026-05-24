@@ -9,7 +9,7 @@ import {
   planLiveStitchArtifact,
   writeLiveStitchArtifactArtifacts,
   type LiveStitchCommandRunner,
-} from "../../.pi/agent/extensions/live-stitch-adapter.ts";
+} from "../../.pi/agent/extensions/stitch.ts";
 import { makeTempRepo } from "./test-utils.ts";
 
 function sha256(content: string): string {

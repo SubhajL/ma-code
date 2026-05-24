@@ -9,7 +9,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { validateTaskPacketShape } from "../../.pi/agent/extensions/task-packets.ts";
+import { validateTaskPacketShape } from "../../.pi/agent/extensions/packets.ts";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");

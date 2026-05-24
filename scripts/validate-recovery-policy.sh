@@ -228,7 +228,7 @@ const policy = parseRecoveryPolicy(JSON.parse(readFileSync("./recovery-policy.js
 
 const cases = [
   {
-    name: "research provider failure prefers stronger same-provider model",
+    name: "research provider failure switches provider when same-provider stronger unavailable",
     input: {
       role: "research_worker",
       currentModelId: "github-copilot/gpt-5.4-mini",
@@ -237,8 +237,8 @@ const cases = [
     },
     expected: {
       failureClass: "provider_failure",
-      recommendedAction: "retry_stronger_model",
-      strongerModelCandidate: "github-copilot/gpt-5.4",
+      recommendedAction: "switch_provider",
+      providerSwitchCandidate: "openai-codex/gpt-5.5",
       escalationRequired: false,
     },
   },
@@ -253,7 +253,7 @@ const cases = [
     expected: {
       failureClass: "provider_failure",
       recommendedAction: "switch_provider",
-      providerSwitchCandidate: "anthropic/claude-sonnet-4-6",
+      providerSwitchCandidate: "openai-codex/gpt-5.3-codex-spark",
       escalationRequired: false,
     },
   },

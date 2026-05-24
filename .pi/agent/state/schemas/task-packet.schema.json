@@ -251,6 +251,17 @@
         "selectedModel": {
           "type": "string"
         },
+        "thinking": {
+          "type": "string",
+          "enum": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        },
         "source": {
           "type": "string"
         }
