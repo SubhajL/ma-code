@@ -80,17 +80,25 @@ async function main(argv: string[]): Promise<void> {
   process.stdout.write(`${renderIssueMaterializationResult(result)}\n`);
 }
 
+export async function runFromArgv(argv: string[]): Promise<number> {
+  try {
+    await main(argv);
+    return 0;
+  } catch (error: unknown) {
+    const message = (error as Error).message ?? String(error);
+    if (message.includes("Usage:")) {
+      process.stdout.write(`${message}\n`);
+      return 0;
+    }
+    process.stderr.write(`harness-issue-materialize failed: ${message}\n`);
+    return 1;
+  }
+}
+
 const invokedPath = process.argv[1] ? realpathSync(process.argv[1]) : "";
 const modulePath = realpathSync(fileURLToPath(import.meta.url));
 if (invokedPath === modulePath) {
-  main(process.argv.slice(2)).catch((error: unknown) => {
-    const message = (error as Error).message;
-    if (message.includes("Usage:")) {
-      process.stdout.write(`${message}\n`);
-      process.exitCode = 0;
-      return;
-    }
-    process.stderr.write(`harness-issue-materialize failed: ${message}\n`);
-    process.exitCode = 1;
+  runFromArgv(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
   });
 }

@@ -25,10 +25,10 @@ export const DEFAULT_HARNESS_DISPATCH: HarnessDispatchTable = {
   "worker-session": inProcess(() => import("../harness-worker-session.ts")),
   "product-pipeline": inProcess(() => import("../harness-product-pipeline.ts")),
   "parallel-worker-lanes": spawned("harness-parallel-worker-lanes.ts"),
-  "issue-materialize": spawned("harness-issue-materialize.ts"),
-  "afk-orchestrate": spawned("harness-afk-orchestrate.ts"),
+  "issue-materialize": inProcess(() => import("../harness-issue-materialize.ts")),
+  "afk-orchestrate": inProcess(() => import("../harness-afk-orchestrate.ts")),
   "worker-execute": spawned("harness-worker-execute.ts"),
-  "pr-lifecycle": spawned("harness-pr-lifecycle.ts"),
+  "pr-lifecycle": inProcess(() => import("../harness-pr-lifecycle.ts")),
   orchestrate: spawned("harness-orchestrate.ts"),
 };
 
@@ -39,4 +39,7 @@ export const HARNESS_IN_PROCESS_SUBCOMMANDS: readonly string[] = [
   "worktree",
   "worker-session",
   "product-pipeline",
+  "issue-materialize",
+  "afk-orchestrate",
+  "pr-lifecycle",
 ] as const;
