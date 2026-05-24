@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 
-export type GreenfieldPersistenceRecordKind = "user" | "project";
+import type { GreenfieldPersistencePlaceholderSchema } from "../../../../schemas/greenfield/user.types.generated.ts";
+
+export type GreenfieldPersistenceRecord = GreenfieldPersistencePlaceholderSchema;
+export type GreenfieldPersistenceRecordKind = GreenfieldPersistenceRecord["kind"];
 
 export interface WorkerImplementationDependency {
   issueId: "issue-010" | "issue-013";

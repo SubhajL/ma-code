@@ -6,6 +6,7 @@ import { join } from "node:path";
 const TEST_DIR = "tests/api";
 const aliases = new Map([
   ["schema", "tests/api/schema.test.ts"],
+  ["schema-codegen", "tests/api/schema-codegen.test.ts"],
   ["migrations", "tests/api/migrations.test.ts"],
   ["contracts", "tests/api/contracts.test.ts"],
   ["seeds", "tests/fixtures/greenfield/seeds.test.ts"],

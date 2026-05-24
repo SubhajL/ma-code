@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "codegen:schema-types": "node --import tsx scripts/codegen-schema-types.ts",
+    "check:schema-types": "node --import tsx scripts/codegen-schema-types.ts --check",
     "harness:doctor": "node --import tsx scripts/harness-doctor.ts",
     "harness:doctor:json": "node --import tsx scripts/harness-doctor.ts --json",
     "harness:status": "node --import tsx scripts/harness-operator-status.ts",
