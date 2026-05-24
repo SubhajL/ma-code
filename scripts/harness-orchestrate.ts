@@ -575,68 +575,70 @@ function renderContinueText(result: OrchestratorContinueResult): string {
   ].join("\n");
 }
 
-async function main(argv: string[]): Promise<void> {
+async function main(argv: string[]): Promise<number> {
   const options = parseHarnessOrchestrateArgs(argv);
   if (options.command === "classify") {
     const result = await runHarnessOrchestrate(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderClassificationText(result)}\n`);
-    return;
+    return 0;
   }
   if (options.command === "context") {
     const result = await runHarnessOrchestrateContext(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderContextText(result)}\n`);
-    return;
+    return 0;
   }
   if (options.command === "dry-run") {
     const result = await runHarnessOrchestrateDryRun(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderDryRunText(result)}\n`);
-    return;
+    return 0;
   }
   if (options.command === "continue") {
     const result = await runHarnessOrchestrateContinue(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderContinueText(result)}\n`);
-    if (result.status === "blocked" || result.status === "failed") process.exitCode = 1;
-    return;
+    return result.status === "blocked" || result.status === "failed" ? 1 : 0;
   }
   if (options.command === "run") {
     const result = await runHarnessOrchestrateRun(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderRunText(result)}\n`);
-    if (result.status === "blocked" || result.status === "failed") process.exitCode = 1;
-    return;
+    return result.status === "blocked" || result.status === "failed" ? 1 : 0;
   }
   if (options.command === "evidence") {
     const result = await runHarnessOrchestrateEvidence(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderEvidenceText(result)}\n`);
-    if (result.status === "blocked") process.exitCode = 1;
-    return;
+    return result.status === "blocked" ? 1 : 0;
   }
   if (options.command === "merge-check") {
     const result = await runHarnessOrchestrateMergeCheck(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderEvidenceText(result)}\n`);
-    if (result.status === "blocked") process.exitCode = 1;
-    return;
+    return result.status === "blocked" ? 1 : 0;
   }
   if (options.command === "merge-apply") {
     const result = await runHarnessOrchestrateMergeApply(options);
     process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderEvidenceText(result)}\n`);
-    if (result.status !== "merged") process.exitCode = 1;
-    return;
+    return result.status !== "merged" ? 1 : 0;
   }
   const result = await runHarnessOrchestrateApply(options);
   process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : `${renderApplyText(result)}\n`);
-  if (result.status !== "materialized") process.exitCode = 1;
+  return result.status !== "materialized" ? 1 : 0;
+}
+
+export async function runFromArgv(argv: string[]): Promise<number> {
+  try {
+    return await main(argv);
+  } catch (error: unknown) {
+    const message = (error as Error).message ?? String(error);
+    if (message.startsWith("Usage:")) {
+      process.stdout.write(`${message}\n`);
+      return 0;
+    }
+    process.stderr.write(`harness-orchestrate failed: ${message}\n`);
+    return 1;
+  }
 }
 
 const isMain = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false;
 if (isMain) {
-  main(process.argv.slice(2)).catch((error: unknown) => {
-    const message = (error as Error).message;
-    if (message.startsWith("Usage:")) {
-      process.stdout.write(`${message}\n`);
-      process.exitCode = 0;
-      return;
-    }
-    process.stderr.write(`harness-orchestrate failed: ${message}\n`);
-    process.exitCode = 1;
+  runFromArgv(process.argv.slice(2)).then((code) => {
+    process.exitCode = code;
   });
 }
