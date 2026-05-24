@@ -2,6 +2,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import {
+  readQueueState,
+  writeQueueState,
+  type QueueStateShape,
+} from "../.pi/agent/extensions/lib/queue-state.ts";
+
 export const SCHEDULE_TYPES = ["daily", "weekday", "manual-disabled"] as const;
 export const QUEUE_PRIORITIES = ["low", "medium", "high"] as const;
 export const TEAM_IDS = ["planning", "build", "quality", "recovery"] as const;
@@ -25,7 +31,6 @@ export const ROLE_IDS = [
 
 const CONFIG_FILE = ".pi/agent/schedules/scheduled-workflows.json";
 const RUNTIME_STATE_FILE = ".pi/agent/state/runtime/scheduled-workflows.json";
-const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
 
 export type ScheduleType = (typeof SCHEDULE_TYPES)[number];
 export type QueuePriority = (typeof QUEUE_PRIORITIES)[number];
@@ -243,28 +248,12 @@ async function writeJsonFile(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
-async function ensureQueueFile(cwd: string): Promise<QueueState> {
-  const absolute = resolve(cwd, QUEUE_FILE);
-  try {
-    const raw = await readJsonFile(absolute);
-    return validateQueueState(raw);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    const initial: QueueState = { version: 1, paused: false, activeJobId: null, jobs: [] };
-    await writeJsonFile(absolute, initial);
-    return initial;
-  }
+async function loadQueueState(cwd: string): Promise<QueueState> {
+  return (await readQueueState<QueueJobRecord>(cwd)) as QueueState;
 }
 
-function validateQueueState(input: unknown): QueueState {
-  if (!isObject(input)) throw new Error("Queue state must be an object.");
-  if (input.version !== 1) throw new Error("Queue state version must be 1.");
-  if (typeof input.paused !== "boolean") throw new Error("Queue state paused must be boolean.");
-  if (!(typeof input.activeJobId === "string" || input.activeJobId === null)) {
-    throw new Error("Queue state activeJobId must be a string or null.");
-  }
-  if (!Array.isArray(input.jobs)) throw new Error("Queue state jobs must be an array.");
-  return input as unknown as QueueState;
+async function saveQueueState(cwd: string, queue: QueueState): Promise<void> {
+  await writeQueueState<QueueJobRecord>(cwd, queue as QueueStateShape<QueueJobRecord>);
 }
 
 async function loadRuntimeState(cwd: string): Promise<ScheduledWorkflowRuntimeState> {
@@ -520,7 +509,7 @@ export async function buildScheduledWorkflowStatus(options: ScheduledWorkflowSta
   const cwd = resolve(options.cwd ?? process.cwd());
   const now = ensureDate(options.now);
   const config = await loadScheduledWorkflowConfig(cwd);
-  const queue = await ensureQueueFile(cwd);
+  const queue = await loadQueueState(cwd);
   const runtimeState = await loadRuntimeState(cwd);
   const workflows = filterRequestedWorkflows(config.workflows, options.workflowIds);
   const items = buildScheduledWorkflowStatusItems(workflows, runtimeState, queue, now);
@@ -553,7 +542,7 @@ export async function materializeScheduledWorkflows(
   const now = ensureDate(options.now);
   const apply = options.apply === true;
   const config = await loadScheduledWorkflowConfig(cwd);
-  const queue = await ensureQueueFile(cwd);
+  const queue = await loadQueueState(cwd);
   const runtimeState = await loadRuntimeState(cwd);
   const workflows = filterRequestedWorkflows(config.workflows, options.workflowIds);
   const items = buildScheduledWorkflowStatusItems(workflows, runtimeState, queue, now);
@@ -589,7 +578,7 @@ export async function materializeScheduledWorkflows(
 
   await writeJsonFile(resolve(cwd, RUNTIME_STATE_FILE), runtimeState);
   if (apply) {
-    await writeJsonFile(resolve(cwd, QUEUE_FILE), queue);
+    await saveQueueState(cwd, queue);
   }
 
   return {

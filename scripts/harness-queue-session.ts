@@ -1,5 +1,4 @@
 import { execFile as execFileWithCallback } from "node:child_process";
-import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
@@ -34,7 +33,7 @@ export interface HarnessQueueSessionView {
 }
 
 const execFile = promisify(execFileWithCallback);
-const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
+import { readQueueState } from "../.pi/agent/extensions/lib/queue-state.ts";
 const PROTECTED_PATH_PATTERNS = [
   /(^|\/)\.env($|\.)/,
   /(^|\/)\.git(\/|$)/,
@@ -73,9 +72,8 @@ async function listDirtyTrackedFiles(cwd: string): Promise<string[]> {
 
 async function listApprovalBoundaryJobIds(cwd: string): Promise<string[]> {
   try {
-    const raw = await readFile(resolve(cwd, QUEUE_FILE), "utf8");
-    const queue = JSON.parse(raw) as { jobs?: Array<{ id?: string; status?: string; approvalRequired?: boolean }> };
-    return (queue.jobs ?? [])
+    const queue = await readQueueState<{ id?: string; status?: string; approvalRequired?: boolean }>(cwd);
+    return queue.jobs
       .filter((job) => job.approvalRequired && (job.status === "queued" || job.status === "running"))
       .map((job) => job.id ?? "unknown")
       .filter((id) => id.length > 0);

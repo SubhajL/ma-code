@@ -74,6 +74,10 @@ async function writeFixture(options: { issueOverrides?: Record<string, unknown>;
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/pipeline.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json"), "{\"version\":1}\n", "utf8");
   if (options.packageJson) await writeFile(join(cwd, "package.json"), `${JSON.stringify(options.packageJson, null, 2)}\n`, "utf8");
+  // Runtime state is local-only in production; gitignore it so the JSON→SQLite
+  // backfill (which archives the JSON after import) doesn't leave the worktree
+  // dirty for git-status checks.
+  await writeFile(join(cwd, ".gitignore"), ".pi/agent/state/runtime/\n", "utf8");
   await writeFile(join(cwd, ".pi/agent/state/runtime/queue.json"), `${JSON.stringify({ version: 1, paused: false, activeJobId: options.activeJobId ?? null, jobs: [queueJob(options.jobOverrides)] }, null, 2)}\n`, "utf8");
   await git(cwd, ["init", "-b", "main"]);
   await git(cwd, ["config", "user.email", "test@example.com"]);
