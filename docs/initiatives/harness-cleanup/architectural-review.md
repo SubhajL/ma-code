@@ -182,7 +182,12 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
    and keeps the old import paths available for compatibility. The audit
    pre-listed the clusters
    ([coverage-audit.md §5](./coverage-audit.md#5-duplicated-concept-clusters-worth-consolidating-tier-2-input)).
-7. Codegen TS types from JSON schemas — **Open.**
+7. Codegen TS types from JSON schemas — **Done.** This change adds
+   `scripts/codegen-schema-types.ts`, generates
+   `schemas/greenfield/user.types.generated.ts` from the public Greenfield JSON
+   schema, wires API schema/seed record types through the generated output, and
+   adds `npm run codegen:schema-types` / `npm run check:schema-types` drift
+   checks.
 8. Provider / capability abstraction — **Open.** Need to bump
    `claude-opus-4-5` → `claude-opus-4-7` regardless.
 

@@ -1,25 +1,15 @@
 import { readFileSync } from "node:fs";
 
+import type {
+  GreenfieldPersistencePlaceholderSchema,
+  ProjectRecord,
+  UserRecord,
+} from "../../../../schemas/greenfield/user.types.generated.ts";
 import { validatePersistenceRecord } from "./schema.ts";
 
-export interface GreenfieldSeedUserRecord {
-  kind: "user";
-  id: string;
-  email: string;
-  displayName: string;
-  createdAt: string;
-}
-
-export interface GreenfieldSeedProjectRecord {
-  kind: "project";
-  id: string;
-  ownerUserId: string;
-  slug: string;
-  name: string;
-  createdAt: string;
-}
-
-export type GreenfieldSeedRecord = GreenfieldSeedUserRecord | GreenfieldSeedProjectRecord;
+export type GreenfieldSeedUserRecord = UserRecord;
+export type GreenfieldSeedProjectRecord = ProjectRecord;
+export type GreenfieldSeedRecord = GreenfieldPersistencePlaceholderSchema;
 
 export interface GreenfieldSeedWorkerImplementationDependency {
   issueId: "issue-014";
