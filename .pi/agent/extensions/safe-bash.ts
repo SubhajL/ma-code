@@ -45,6 +45,26 @@ const HARD_BLOCK_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\bchown\b[^\n]*\s-R\b/i, reason: "recursive chown is blocked" },
 ];
 
+const TYPED_TOOL_REDIRECT_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
+  {
+    pattern: /\bgit\s+commit(?:\s|$)/i,
+    reason:
+      "use the typed `git_commit` tool instead of bash `git commit` (refuses main and protected paths, no --no-verify; see .pi/agent/extensions/git-commit.ts)",
+  },
+  {
+    pattern: /\bnpm\s+(?:t|test)(?:\s|$)/i,
+    reason: "use the typed `run_test` tool instead of bash `npm test`",
+  },
+  {
+    pattern: /\bnpm\s+run\s+(?:test|validate):[a-z0-9_:-]+/i,
+    reason: "use the typed `run_test` tool instead of bash `npm run test:* / validate:*`",
+  },
+  {
+    pattern: /\bnpm\s+run\s+typecheck(?:\s|$)/i,
+    reason: "use the typed `run_test` tool instead of bash `npm run typecheck`",
+  },
+];
+
 const WARN_PATTERNS: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /\bnpm\s+(install|update)\b/i, reason: "dependency surface is changing" },
   { pattern: /\bpnpm\s+(add|install|update)\b/i, reason: "dependency surface is changing" },
@@ -128,6 +148,13 @@ function commandLooksMutating(command: string): boolean {
 
 function bashCommandEligibleForAutoBranch(command: string): boolean {
   return !GIT_CONTROL_COMMAND_PATTERN.test(command) && AUTO_BRANCHABLE_BASH_PATTERNS.some((pattern) => pattern.test(command));
+}
+
+function findTypedToolRedirect(command: string): string | null {
+  for (const rule of TYPED_TOOL_REDIRECT_PATTERNS) {
+    if (rule.pattern.test(command)) return rule.reason;
+  }
+  return null;
 }
 
 function commandTouchesProtectedPath(command: string): string | null {
@@ -627,6 +654,29 @@ export default function (pi: ExtensionAPI) {
       return {
         block: true,
         reason: `Blocked bash command: ${protectedPathReason}`,
+      };
+    }
+
+    const typedToolRedirect = findTypedToolRedirect(commandForClassification);
+    if (typedToolRedirect) {
+      await appendAuditLog(auditCwd, {
+        ts: new Date().toISOString(),
+        extension: "safe-bash",
+        action: "blocked",
+        tool: "bash",
+        cwd: auditCwd,
+        sessionCwd: ctx.cwd,
+        branch,
+        modelId,
+        provider,
+        command,
+        classificationCommand: commandForClassification,
+        reasons: [typedToolRedirect],
+      });
+
+      return {
+        block: true,
+        reason: `Blocked bash command: ${typedToolRedirect}`,
       };
     }
 
