@@ -1,9 +1,8 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
-import { appendFile, mkdir, readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -18,6 +17,7 @@ import {
   TASKS_FILE as TASKS_FILE_LIB,
   writeTasksState as writeTasksStateLib,
 } from "./lib/tasks-state.ts";
+import { appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
 
 export type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
 export type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
@@ -125,7 +125,6 @@ export interface TaskUpdateResult {
 }
 
 export const TASKS_FILE = TASKS_FILE_LIB;
-const AUDIT_LOG = "logs/harness-actions.jsonl";
 const COMPLETION_GATE_POLICY_FILE = ".pi/agent/validation/completion-gate-policy.json";
 const TASK_CLASSES = ["research", "docs", "implementation", "runtime_safety"] as const;
 const VALIDATION_SOURCES = ["review", "validator", "override"] as const;
@@ -427,12 +426,7 @@ function isMutatingBash(command: string): boolean {
 }
 
 async function appendAudit(cwd: string, entry: Record<string, unknown>): Promise<void> {
-  const logFile = resolve(cwd, AUDIT_LOG);
-  await mkdir(dirname(logFile), { recursive: true });
-
-  await withFileMutationQueue(logFile, async () => {
-    await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
-  });
+  await appendAuditEntry(cwd, entry as AuditLogEntry);
 }
 
 export async function ensureTaskFile(cwd: string): Promise<void> {

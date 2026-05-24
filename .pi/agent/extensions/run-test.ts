@@ -1,10 +1,7 @@
 import type { ExtensionAPI, ExecResult } from "@mariozechner/pi-coding-agent";
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 
-const AUDIT_LOG = "logs/harness-actions.jsonl";
+import { appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
 const NAMESPACED_SCRIPT_PATTERN = /^(test|validate):[a-z0-9][a-z0-9:-]*$/;
 const STANDALONE_SCRIPT_PATTERN = /^typecheck$/;
 const DISALLOWED_FLAG_PATTERN = /^(--no-verify|--unsafe-perm|--ignore-scripts)$/;
@@ -124,11 +121,7 @@ export async function executeRunTest(deps: RunTestDeps, input: RunTestInput): Pr
 }
 
 async function defaultAppendAudit(cwd: string, entry: Record<string, unknown>): Promise<void> {
-  const logFile = resolve(cwd, AUDIT_LOG);
-  await mkdir(dirname(logFile), { recursive: true });
-  await withFileMutationQueue(logFile, async () => {
-    await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
-  });
+  await appendAuditEntry(cwd, entry as AuditLogEntry);
 }
 
 function modelIdFromContext(ctx: { model?: { id?: string } | null }): string | null {
