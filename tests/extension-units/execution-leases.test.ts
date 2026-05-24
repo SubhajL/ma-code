@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -155,6 +156,92 @@ test("clearStaleExecutionLeases removes only expired leases", async () => {
   assert.deepEqual(cleared.removedLeases.map((lease) => lease.id), ["lease-stale"]);
   assert.deepEqual(cleared.retainedLeases.map((lease) => lease.id), ["lease-active"]);
   assert.deepEqual(state.leases.map((lease) => lease.id), ["lease-active"]);
+});
+
+test("first open backfills leases.json into SQLite then archives the JSON file", async () => {
+  const cwd = await makeTempRepo("execution-leases-backfill-");
+  const runtimeDir = join(cwd, ".pi", "agent", "state", "runtime");
+  const jsonPath = join(runtimeDir, "leases.json");
+  await writeFile(
+    jsonPath,
+    JSON.stringify(
+      {
+        version: 1,
+        leases: [
+          {
+            id: "legacy-1",
+            scope: "queue:legacy-1",
+            owner: "legacy-owner",
+            acquiredAt: "2026-05-01T00:00:00.000Z",
+            expiresAt: "2099-01-01T00:00:00.000Z",
+            heartbeatAt: null,
+            metadata: { lane: "A" },
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  const state = await readExecutionLeaseState(cwd);
+  assert.equal(state.leases.length, 1);
+  assert.equal(state.leases[0].id, "legacy-1");
+  assert.equal(state.leases[0].scope, "queue:legacy-1");
+  assert.equal(state.leases[0].owner, "legacy-owner");
+  assert.equal(state.leases[0].metadata?.lane, "A");
+
+  // Original leases.json should now be archived
+  assert.equal(existsSync(jsonPath), false, "leases.json should be moved aside after backfill");
+  const dirEntries = await readdir(runtimeDir);
+  const archived = dirEntries.filter((name) => name.startsWith("leases.json.migrated-"));
+  assert.equal(archived.length, 1, "expected exactly one migrated archive file");
+
+  // SQLite DB file should exist
+  assert.equal(existsSync(join(runtimeDir, "pi.db")), true);
+});
+
+test("backfill is idempotent — re-reads do not duplicate leases or re-archive", async () => {
+  const cwd = await makeTempRepo("execution-leases-backfill-idempotent-");
+  const runtimeDir = join(cwd, ".pi", "agent", "state", "runtime");
+  await writeFile(
+    join(runtimeDir, "leases.json"),
+    JSON.stringify({
+      version: 1,
+      leases: [
+        {
+          id: "legacy-x",
+          scope: "queue:legacy-x",
+          owner: "legacy",
+          acquiredAt: "2026-05-01T00:00:00.000Z",
+          expiresAt: "2099-01-01T00:00:00.000Z",
+          heartbeatAt: null,
+        },
+      ],
+    }),
+    "utf8",
+  );
+
+  await readExecutionLeaseState(cwd);
+  await readExecutionLeaseState(cwd);
+  const state = await readExecutionLeaseState(cwd);
+
+  assert.equal(state.leases.length, 1, "no duplication after multiple opens");
+  const dirEntries = await readdir(runtimeDir);
+  const archived = dirEntries.filter((name) => name.startsWith("leases.json.migrated-"));
+  assert.equal(archived.length, 1, "JSON archived exactly once");
+});
+
+test("backfill leaves malformed leases.json in place for operator inspection", async () => {
+  const cwd = await makeTempRepo("execution-leases-backfill-malformed-");
+  const runtimeDir = join(cwd, ".pi", "agent", "state", "runtime");
+  const jsonPath = join(runtimeDir, "leases.json");
+  await writeFile(jsonPath, "this is not valid json {{{", "utf8");
+
+  const state = await readExecutionLeaseState(cwd);
+  assert.deepEqual(state, { version: 1, leases: [] });
+  assert.equal(existsSync(jsonPath), true, "malformed JSON must NOT be archived");
 });
 
 test("expired lease is pruned before a new acquire and summary reflects active leases", async () => {

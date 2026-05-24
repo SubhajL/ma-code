@@ -1,11 +1,19 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { readFile, rename, stat } from "node:fs/promises";
+import { resolve } from "node:path";
+
+import {
+  closeRuntimeDb,
+  openRuntimeDb,
+  type RuntimeDb,
+} from "./lib/sqlite-state.ts";
 
 export const LEASES_FILE = ".pi/agent/state/runtime/leases.json";
 export const EXECUTION_LEASE_STATE_VERSION = 1 as const;
 export const QUEUE_SESSION_LEASE_SCOPE = "queue-session";
 export const LOCAL_MAIN_INTEGRATION_LEASE_SCOPE = "local-main-integration";
 export const WORKER_LANE_LEASE_TYPE = "worker_lane";
+
+const ID_METADATA_KEY = "__leaseId";
 
 export type ExecutionLeaseMetadata = Record<string, string | null>;
 
@@ -84,10 +92,7 @@ function nowIso(): string {
 }
 
 export function defaultExecutionLeaseState(): ExecutionLeaseState {
-  return {
-    version: EXECUTION_LEASE_STATE_VERSION,
-    leases: [],
-  };
+  return { version: EXECUTION_LEASE_STATE_VERSION, leases: [] };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -98,6 +103,7 @@ function normalizeLeaseMetadata(raw: unknown): ExecutionLeaseMetadata | undefine
   if (!isRecord(raw)) return undefined;
   const metadata: ExecutionLeaseMetadata = {};
   for (const key of Object.keys(raw)) {
+    if (key === ID_METADATA_KEY) continue;
     const value = raw[key];
     if (typeof value === "string") metadata[key] = value;
     if (value === null) metadata[key] = null;
@@ -129,11 +135,12 @@ function normalizeLeaseRecord(raw: unknown): ExecutionLeaseRecord | null {
 
 export function normalizeExecutionLeaseState(raw: unknown): ExecutionLeaseState {
   if (!isRecord(raw)) return defaultExecutionLeaseState();
-  const leases = Array.isArray(raw.leases) ? raw.leases.map(normalizeLeaseRecord).filter((lease): lease is ExecutionLeaseRecord => lease !== null) : [];
-  return {
-    version: EXECUTION_LEASE_STATE_VERSION,
-    leases,
-  };
+  const leases = Array.isArray(raw.leases)
+    ? raw.leases
+        .map(normalizeLeaseRecord)
+        .filter((lease): lease is ExecutionLeaseRecord => lease !== null)
+    : [];
+  return { version: EXECUTION_LEASE_STATE_VERSION, leases };
 }
 
 function timestampMs(value: string): number {
@@ -159,6 +166,91 @@ export function pruneExpiredExecutionLeases(state: ExecutionLeaseState, now: str
   };
 }
 
+// --- SQLite-backed implementation -------------------------------------------------
+
+interface LeaseRow {
+  scope: string;
+  owner: string;
+  acquired_at: number;
+  expires_at: number;
+  heartbeat_at: number | null;
+  metadata_json: string | null;
+}
+
+function rowToRecord(row: LeaseRow): ExecutionLeaseRecord {
+  const parsedMeta: unknown = row.metadata_json ? JSON.parse(row.metadata_json) : null;
+  const id =
+    isRecord(parsedMeta) && typeof parsedMeta[ID_METADATA_KEY] === "string"
+      ? String(parsedMeta[ID_METADATA_KEY])
+      : "";
+  return {
+    id,
+    scope: row.scope,
+    owner: row.owner,
+    acquiredAt: new Date(row.acquired_at).toISOString(),
+    expiresAt: new Date(row.expires_at).toISOString(),
+    heartbeatAt: row.heartbeat_at == null ? null : new Date(row.heartbeat_at).toISOString(),
+    metadata: normalizeLeaseMetadata(parsedMeta),
+  };
+}
+
+function encodeMetadata(id: string, metadata: ExecutionLeaseMetadata | undefined): string {
+  const payload: Record<string, string | null> = { ...(metadata ?? {}) };
+  payload[ID_METADATA_KEY] = id;
+  return JSON.stringify(payload);
+}
+
+function readAllLeasesSql(db: RuntimeDb): ExecutionLeaseRecord[] {
+  const rows = db.handle
+    .prepare(
+      `SELECT scope, owner, acquired_at, expires_at, heartbeat_at, metadata_json FROM leases ORDER BY acquired_at ASC, scope ASC`,
+    )
+    .all() as unknown as LeaseRow[];
+  return rows.map(rowToRecord);
+}
+
+function findLeaseByScopeSql(db: RuntimeDb, scope: string): ExecutionLeaseRecord | null {
+  const row = db.handle
+    .prepare(
+      `SELECT scope, owner, acquired_at, expires_at, heartbeat_at, metadata_json FROM leases WHERE scope = ?`,
+    )
+    .get(scope) as unknown as LeaseRow | undefined;
+  return row ? rowToRecord(row) : null;
+}
+
+function deleteExpiredSql(db: RuntimeDb, nowMs: number): void {
+  db.handle.prepare(`DELETE FROM leases WHERE expires_at <= ?`).run(nowMs);
+}
+
+function insertLeaseSql(db: RuntimeDb, input: AcquireExecutionLeaseInput, now: string): ExecutionLeaseRecord {
+  const acquiredAt = input.acquiredAt ?? now;
+  const heartbeatAt = input.heartbeatAt ?? null;
+  const acquiredMs = Date.parse(acquiredAt);
+  const expiresMs = Date.parse(input.expiresAt);
+  const heartbeatMs = heartbeatAt ? Date.parse(heartbeatAt) : null;
+  db.handle
+    .prepare(
+      `INSERT INTO leases (scope, owner, acquired_at, expires_at, heartbeat_at, metadata_json) VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      input.scope,
+      input.owner,
+      acquiredMs,
+      expiresMs,
+      heartbeatMs,
+      encodeMetadata(input.id, input.metadata),
+    );
+  return {
+    id: input.id,
+    scope: input.scope,
+    owner: input.owner,
+    acquiredAt,
+    expiresAt: input.expiresAt,
+    heartbeatAt,
+    metadata: input.metadata,
+  };
+}
+
 async function pathExists(pathValue: string): Promise<boolean> {
   try {
     await stat(pathValue);
@@ -169,91 +261,173 @@ async function pathExists(pathValue: string): Promise<boolean> {
   }
 }
 
-function resolveLeaseFile(cwd: string): string {
-  return resolve(cwd, LEASES_FILE);
+async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<void> {
+  const jsonFile = resolve(cwd, LEASES_FILE);
+  if (!(await pathExists(jsonFile))) return;
+
+  let raw: string;
+  try {
+    raw = await readFile(jsonFile, "utf8");
+  } catch {
+    return;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    // Malformed JSON: leave the file untouched so the operator can inspect it.
+    return;
+  }
+
+  const state = normalizeExecutionLeaseState(parsed);
+
+  if (state.leases.length > 0) {
+    db.handle.exec("BEGIN IMMEDIATE");
+    try {
+      const insert = db.handle.prepare(
+        `INSERT OR IGNORE INTO leases (scope, owner, acquired_at, expires_at, heartbeat_at, metadata_json) VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      for (const lease of state.leases) {
+        const acquiredMs = Date.parse(lease.acquiredAt);
+        const expiresMs = Date.parse(lease.expiresAt);
+        const heartbeatMs = lease.heartbeatAt ? Date.parse(lease.heartbeatAt) : null;
+        insert.run(
+          lease.scope,
+          lease.owner,
+          acquiredMs,
+          expiresMs,
+          heartbeatMs,
+          encodeMetadata(lease.id, lease.metadata),
+        );
+      }
+      db.handle.exec("COMMIT");
+    } catch (error) {
+      db.handle.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  const migratedPath = `${jsonFile}.migrated-${Date.now()}`;
+  await rename(jsonFile, migratedPath).catch(() => undefined);
+}
+
+async function withRuntimeDb<T>(cwd: string, fn: (db: RuntimeDb) => T | Promise<T>): Promise<T> {
+  const db = openRuntimeDb(cwd);
+  try {
+    await backfillFromJsonIfPresent(db, cwd);
+    return await fn(db);
+  } finally {
+    closeRuntimeDb(db);
+  }
 }
 
 export async function readExecutionLeaseState(cwd: string): Promise<ExecutionLeaseState> {
-  const absolute = resolveLeaseFile(cwd);
-  if (!(await pathExists(absolute))) {
-    return defaultExecutionLeaseState();
-  }
-
-  const raw = await readFile(absolute, "utf8");
-  return normalizeExecutionLeaseState(JSON.parse(raw));
+  return withRuntimeDb(cwd, (db) => ({
+    version: EXECUTION_LEASE_STATE_VERSION,
+    leases: readAllLeasesSql(db),
+  }));
 }
 
 export async function writeExecutionLeaseState(cwd: string, state: ExecutionLeaseState): Promise<void> {
-  const absolute = resolveLeaseFile(cwd);
-  await mkdir(dirname(absolute), { recursive: true });
-  await writeFile(absolute, `${JSON.stringify(normalizeExecutionLeaseState(state), null, 2)}\n`, "utf8");
+  return withRuntimeDb(cwd, (db) => {
+    db.handle.exec("BEGIN IMMEDIATE");
+    try {
+      db.handle.exec("DELETE FROM leases");
+      const insert = db.handle.prepare(
+        `INSERT INTO leases (scope, owner, acquired_at, expires_at, heartbeat_at, metadata_json) VALUES (?, ?, ?, ?, ?, ?)`,
+      );
+      for (const lease of normalizeExecutionLeaseState(state).leases) {
+        insert.run(
+          lease.scope,
+          lease.owner,
+          Date.parse(lease.acquiredAt),
+          Date.parse(lease.expiresAt),
+          lease.heartbeatAt ? Date.parse(lease.heartbeatAt) : null,
+          encodeMetadata(lease.id, lease.metadata),
+        );
+      }
+      db.handle.exec("COMMIT");
+    } catch (error) {
+      db.handle.exec("ROLLBACK");
+      throw error;
+    }
+  });
 }
 
-export async function acquireExecutionLease(cwd: string, input: AcquireExecutionLeaseInput): Promise<AcquireExecutionLeaseResult> {
-  const current = await readExecutionLeaseState(cwd);
-  const now = input.now ?? input.acquiredAt ?? nowIso();
-  const state = pruneExpiredExecutionLeases(current, now);
-  const conflict = state.leases.find((lease) => lease.scope === input.scope) ?? null;
+export async function acquireExecutionLease(
+  cwd: string,
+  input: AcquireExecutionLeaseInput,
+): Promise<AcquireExecutionLeaseResult> {
+  return withRuntimeDb(cwd, (db) => {
+    const now = input.now ?? input.acquiredAt ?? nowIso();
+    const nowMs = Date.parse(now);
 
-  if (conflict) {
-    await writeExecutionLeaseState(cwd, state);
+    db.handle.exec("BEGIN IMMEDIATE");
+    try {
+      deleteExpiredSql(db, nowMs);
+
+      const conflict = findLeaseByScopeSql(db, input.scope);
+      if (conflict) {
+        db.handle.exec("COMMIT");
+        return {
+          acquired: false,
+          lease: null,
+          conflict,
+          state: { version: EXECUTION_LEASE_STATE_VERSION, leases: readAllLeasesSql(db) },
+        };
+      }
+
+      const lease = insertLeaseSql(db, input, now);
+      db.handle.exec("COMMIT");
+      return {
+        acquired: true,
+        lease,
+        conflict: null,
+        state: { version: EXECUTION_LEASE_STATE_VERSION, leases: readAllLeasesSql(db) },
+      };
+    } catch (error) {
+      db.handle.exec("ROLLBACK");
+      throw error;
+    }
+  });
+}
+
+export async function releaseExecutionLease(
+  cwd: string,
+  leaseId: string,
+): Promise<ReleaseExecutionLeaseResult> {
+  return withRuntimeDb(cwd, (db) => {
+    const all = readAllLeasesSql(db);
+    const releasedLease = all.find((lease) => lease.id === leaseId) ?? null;
+    if (releasedLease) {
+      db.handle.prepare(`DELETE FROM leases WHERE scope = ?`).run(releasedLease.scope);
+    }
     return {
-      acquired: false,
-      lease: null,
-      conflict,
-      state,
+      released: releasedLease !== null,
+      releasedLease,
+      state: { version: EXECUTION_LEASE_STATE_VERSION, leases: readAllLeasesSql(db) },
     };
-  }
-
-  const lease: ExecutionLeaseRecord = {
-    id: input.id,
-    scope: input.scope,
-    owner: input.owner,
-    acquiredAt: input.acquiredAt ?? now,
-    expiresAt: input.expiresAt,
-    heartbeatAt: input.heartbeatAt ?? null,
-    metadata: input.metadata,
-  };
-
-  const nextState: ExecutionLeaseState = {
-    version: EXECUTION_LEASE_STATE_VERSION,
-    leases: [...state.leases, lease],
-  };
-  await writeExecutionLeaseState(cwd, nextState);
-  return {
-    acquired: true,
-    lease,
-    conflict: null,
-    state: nextState,
-  };
+  });
 }
 
-export async function releaseExecutionLease(cwd: string, leaseId: string): Promise<ReleaseExecutionLeaseResult> {
-  const current = await readExecutionLeaseState(cwd);
-  const releasedLease = current.leases.find((lease) => lease.id === leaseId) ?? null;
-  const nextState: ExecutionLeaseState = {
-    version: EXECUTION_LEASE_STATE_VERSION,
-    leases: current.leases.filter((lease) => lease.id !== leaseId),
-  };
-  await writeExecutionLeaseState(cwd, nextState);
-  return {
-    released: releasedLease !== null,
-    releasedLease,
-    state: nextState,
-  };
-}
-
-export async function clearStaleExecutionLeases(cwd: string, now: string = nowIso()): Promise<ClearStaleExecutionLeasesResult> {
-  const current = await readExecutionLeaseState(cwd);
-  const retainedState = pruneExpiredExecutionLeases(current, now);
-  const retainedIds = new Set(retainedState.leases.map((lease) => lease.id));
-  const removedLeases = current.leases.filter((lease) => !retainedIds.has(lease.id));
-  await writeExecutionLeaseState(cwd, retainedState);
-  return {
-    removedLeases,
-    retainedLeases: retainedState.leases,
-    state: retainedState,
-  };
+export async function clearStaleExecutionLeases(
+  cwd: string,
+  now: string = nowIso(),
+): Promise<ClearStaleExecutionLeasesResult> {
+  return withRuntimeDb(cwd, (db) => {
+    const all = readAllLeasesSql(db);
+    const removedLeases = all.filter((lease) => isExpired(lease, now));
+    const retainedLeases = all.filter((lease) => !isExpired(lease, now));
+    if (removedLeases.length > 0) {
+      deleteExpiredSql(db, Date.parse(now));
+    }
+    return {
+      removedLeases,
+      retainedLeases,
+      state: { version: EXECUTION_LEASE_STATE_VERSION, leases: retainedLeases },
+    };
+  });
 }
 
 export async function acquireLocalMainIntegrationLease(
@@ -270,7 +444,10 @@ export async function acquireLocalMainIntegrationLease(
   });
 }
 
-export async function releaseLocalMainIntegrationLease(cwd: string, leaseId: string): Promise<ReleaseExecutionLeaseResult> {
+export async function releaseLocalMainIntegrationLease(
+  cwd: string,
+  leaseId: string,
+): Promise<ReleaseExecutionLeaseResult> {
   return releaseExecutionLease(cwd, leaseId);
 }
 
@@ -278,21 +455,36 @@ export function workerLaneLeaseScope(scopeKey: string): string {
   return `${WORKER_LANE_LEASE_TYPE}:${scopeKey}`;
 }
 
-export function findWorkerLaneLeaseInState(state: ExecutionLeaseState, input: FindWorkerLaneLeaseInput): ExecutionLeaseRecord | null {
-  return state.leases.find((lease) => {
-    if (lease.metadata?.leaseType !== WORKER_LANE_LEASE_TYPE && !lease.scope.startsWith(`${WORKER_LANE_LEASE_TYPE}:`)) return false;
-    if (input.leaseId && lease.id !== input.leaseId) return false;
-    if (input.scopeKey && lease.scope !== workerLaneLeaseScope(input.scopeKey)) return false;
-    if (input.owner && lease.owner !== input.owner) return false;
-    return true;
-  }) ?? null;
+export function findWorkerLaneLeaseInState(
+  state: ExecutionLeaseState,
+  input: FindWorkerLaneLeaseInput,
+): ExecutionLeaseRecord | null {
+  return (
+    state.leases.find((lease) => {
+      if (
+        lease.metadata?.leaseType !== WORKER_LANE_LEASE_TYPE &&
+        !lease.scope.startsWith(`${WORKER_LANE_LEASE_TYPE}:`)
+      )
+        return false;
+      if (input.leaseId && lease.id !== input.leaseId) return false;
+      if (input.scopeKey && lease.scope !== workerLaneLeaseScope(input.scopeKey)) return false;
+      if (input.owner && lease.owner !== input.owner) return false;
+      return true;
+    }) ?? null
+  );
 }
 
-export async function findWorkerLaneLease(cwd: string, input: FindWorkerLaneLeaseInput): Promise<ExecutionLeaseRecord | null> {
+export async function findWorkerLaneLease(
+  cwd: string,
+  input: FindWorkerLaneLeaseInput,
+): Promise<ExecutionLeaseRecord | null> {
   return findWorkerLaneLeaseInState(await readExecutionLeaseState(cwd), input);
 }
 
-export async function acquireWorkerLaneLease(cwd: string, input: WorkerLaneLeaseInput): Promise<AcquireExecutionLeaseResult> {
+export async function acquireWorkerLaneLease(
+  cwd: string,
+  input: WorkerLaneLeaseInput,
+): Promise<AcquireExecutionLeaseResult> {
   return acquireExecutionLease(cwd, {
     id: input.id,
     scope: workerLaneLeaseScope(input.scopeKey),
@@ -311,7 +503,10 @@ export async function acquireWorkerLaneLease(cwd: string, input: WorkerLaneLease
   });
 }
 
-export async function releaseWorkerLaneLease(cwd: string, input: FindWorkerLaneLeaseInput): Promise<ReleaseExecutionLeaseResult> {
+export async function releaseWorkerLaneLease(
+  cwd: string,
+  input: FindWorkerLaneLeaseInput,
+): Promise<ReleaseExecutionLeaseResult> {
   const lease = await findWorkerLaneLease(cwd, input);
   if (!lease) {
     return {
