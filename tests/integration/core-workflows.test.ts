@@ -3,6 +3,7 @@ import test from "node:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { readTaskState as readTaskStateLib } from "../../.pi/agent/extensions/till-done.ts";
 import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/handoffs.ts";
 import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
@@ -106,8 +107,7 @@ async function writeQueue(cwd: string, queue: unknown) {
 }
 
 async function readTaskState(cwd: string) {
-  const raw = await readFile(join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"), "utf8");
-  return JSON.parse(raw) as {
+  return readTaskStateLib(cwd) as Promise<{
     activeTaskId: string | null;
     tasks: Array<{
       id: string;
@@ -117,7 +117,7 @@ async function readTaskState(cwd: string) {
       notes?: string[];
       validation: { decision: string; source: string | null };
     }>;
-  };
+  }>;
 }
 
 async function createWorkerToQualityHandoff(cwd: string) {

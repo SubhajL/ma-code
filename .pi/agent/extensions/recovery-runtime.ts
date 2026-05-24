@@ -1,8 +1,8 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+
+import { readTasksState, TASKS_FILE as TASKS_FILE_LIB } from "./lib/tasks-state.ts";
 import {
   ROLE_IDS,
   type HarnessRole,
@@ -42,7 +42,7 @@ import {
   resolveRecoveryPolicy,
 } from "./recovery-policy.ts";
 
-const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
+const TASKS_FILE = TASKS_FILE_LIB;
 const TASK_STATUSES = ["queued", "in_progress", "review", "blocked", "done", "failed"] as const;
 const TASK_CLASSES = ["research", "docs", "implementation", "runtime_safety"] as const;
 const TASK_VALIDATION_DECISIONS = ["pending", "pass", "fail", "blocked", "overridden"] as const;
@@ -620,17 +620,13 @@ export function resolveRecoveryRuntimeDecision(
 }
 
 export async function loadRecoveryRuntimeTaskState(cwd: string): Promise<TaskStateFile> {
-  const raw = await readFile(resolve(cwd, TASKS_FILE), "utf8");
-  const parsed = JSON.parse(raw) as { version?: number; activeTaskId?: string | null; tasks?: unknown[] };
-  const tasks = Array.isArray(parsed.tasks)
-    ? parsed.tasks
-        .map((task) => normalizeTaskInput((isRecord(task) ? task : {}) as RecoveryRuntimeTaskInput))
-        .filter((task): task is RecoveryRuntimeTaskInput => task !== null)
-    : [];
-
+  const state = await readTasksState<unknown>(cwd);
+  const tasks = state.tasks
+    .map((task) => normalizeTaskInput((isRecord(task) ? task : {}) as RecoveryRuntimeTaskInput))
+    .filter((task): task is RecoveryRuntimeTaskInput => task !== null);
   return {
-    version: typeof parsed.version === "number" ? parsed.version : 1,
-    activeTaskId: typeof parsed.activeTaskId === "string" || parsed.activeTaskId === null ? parsed.activeTaskId : null,
+    version: state.version,
+    activeTaskId: state.activeTaskId,
     tasks,
   };
 }
