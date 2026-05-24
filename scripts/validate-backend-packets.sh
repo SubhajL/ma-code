@@ -19,8 +19,7 @@ echo "backend-packet-validator: task packet/routing/domain regressions"
 
 echo "backend-packet-validator: compile helper and cli"
 npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node \
-  .pi/agent/extensions/backend-packet-generator.ts \
-  .pi/agent/extensions/task-packets.ts \
+  .pi/agent/extensions/packets.ts \
   .pi/agent/extensions/harness-routing.ts \
   .pi/agent/extensions/domain-governance.ts \
   .pi/agent/extensions/team-activation.ts \

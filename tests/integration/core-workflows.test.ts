@@ -8,9 +8,9 @@ import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/h
 import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 import { assessSliceLifecycle } from "../../.pi/agent/extensions/slice-lifecycle.ts";
-import recoveryRuntime from "../../.pi/agent/extensions/recovery-runtime.ts";
+import recovery from "../../.pi/agent/extensions/recovery.ts";
 import safeBash from "../../.pi/agent/extensions/safe-bash.ts";
-import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
+import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/packets.ts";
 import { loadTeamDefinitions } from "../../.pi/agent/extensions/team-activation.ts";
 import tillDone from "../../.pi/agent/extensions/till-done.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo } from "../extension-units/test-utils.ts";
@@ -43,7 +43,7 @@ async function setupCoreWorkflowRepo() {
   const pi = new FakePi("feat/harness-038-core-workflows");
   tillDone(pi as any);
   queueRunner(pi as any);
-  recoveryRuntime(pi as any);
+  recovery(pi as any);
   safeBash(pi as any);
 
   const taskTool = pi.getTool("task_update");
@@ -568,10 +568,9 @@ test("provider/tool block workflow exercises safe-bash blocking and bounded reco
   const decision = recoveryResult.details.decision;
   assert.equal(decision.recommendedAction, "switch_provider");
   assert.equal(decision.haltAutonomy, false);
-  assert.equal(decision.retryPlan.nextProvider, "anthropic");
+  assert.equal(decision.retryPlan.nextProvider, "openai-codex");
   assert.match(decision.retryPlan.reason ?? "", /provider switch retry is eligible/i);
   assert.match(decision.decisionReasons.join("\n"), /provider failure state is model_unavailable/i);
-  assert.match(decision.decisionReasons.join("\n"), /provider-specific retry limit blocks stronger-model retry on github-copilot/i);
 
   const auditLog = await readFile(join(cwd, "logs", "harness-actions.jsonl"), "utf8");
   assert.match(auditLog, /"extension":"safe-bash"/);

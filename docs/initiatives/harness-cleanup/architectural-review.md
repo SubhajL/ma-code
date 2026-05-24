@@ -176,8 +176,11 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 ### Tier 2 — do this quarter
 
 5. Collapse the orchestrator FSM — **Open.**
-6. Consolidate small modules (recovery, packets, stitch) — **Open.** Audit
-   pre-lists the clusters
+6. Consolidate small modules (recovery, packets, stitch) — **Done.** This
+   change adds consolidated `recovery.ts`, `packets.ts`, and `stitch.ts`
+   extension surfaces, rewires the cluster CLIs/validators/tests through them,
+   and keeps the old import paths available for compatibility. The audit
+   pre-listed the clusters
    ([coverage-audit.md §5](./coverage-audit.md#5-duplicated-concept-clusters-worth-consolidating-tier-2-input)).
 7. Codegen TS types from JSON schemas — **Open.**
 8. Provider / capability abstraction — **Open.** Need to bump

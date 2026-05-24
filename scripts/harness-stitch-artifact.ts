@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { generateMockStitchArtifact, writeMockStitchArtifactArtifacts, type MockStitchArtifactResult } from "../.pi/agent/extensions/stitch-artifact-adapter.ts";
+import { generateMockStitchArtifact, writeMockStitchArtifactArtifacts, type MockStitchArtifactResult } from "../.pi/agent/extensions/stitch.ts";
 
 type StitchArtifactMode = "dry-run" | "apply";
 

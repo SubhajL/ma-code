@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { PRODUCT_SLICE_PHASE_ORDER } from "../../.pi/agent/extensions/product-slice-lifecycle.ts";
-import { generateStitchPrompt } from "../../.pi/agent/extensions/stitch-prompt-generator.ts";
+import { generateStitchPrompt } from "../../.pi/agent/extensions/stitch.ts";
 import { makeTempRepo } from "./test-utils.ts";
 
 async function writeFixtureInitiative(repoRoot: string): Promise<void> {

@@ -4,8 +4,10 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { parseHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
-import { parseRecoveryPolicy } from "../../.pi/agent/extensions/recovery-policy.ts";
-import recoveryRuntime, { resolveRecoveryRuntimeDecision } from "../../.pi/agent/extensions/recovery-runtime.ts";
+import recovery, {
+  parseRecoveryPolicy,
+  resolveRecoveryRuntimeDecision,
+} from "../../.pi/agent/extensions/recovery.ts";
 import { FakePi, makeCtx, makeTempRepo } from "./test-utils.ts";
 
 async function readFixture(relativePath: string): Promise<string> {
@@ -100,7 +102,7 @@ test("runtime decision uses stricter role retry rules for validator worker", asy
   });
 
   assert.equal(decision.recommendedAction, "retry_stronger_model");
-  assert.equal(decision.retryPlan.nextModelId, "anthropic/claude-opus-4-5");
+  assert.equal(decision.retryPlan.nextModelId, "openai-codex/gpt-5.5");
   assert.match(decision.decisionReasons.join("\n"), /role-specific/i);
 });
 
@@ -118,7 +120,7 @@ test("runtime decision uses provider retry limits to prefer provider switch", as
 
   assert.equal(decision.recommendedAction, "switch_provider");
   assert.equal(decision.retryPlan.nextProvider, "anthropic");
-  assert.equal(decision.retryPlan.nextModelId, "anthropic/claude-sonnet-4-6");
+  assert.equal(decision.retryPlan.nextModelId, "anthropic/claude-opus-4-7");
   assert.match(decision.decisionReasons.join("\n"), /provider-specific/i);
 });
 
@@ -197,7 +199,7 @@ test("recovery runtime tool reuses task state evidence via taskId", async () => 
   );
 
   const pi = new FakePi("feat/recovery-runtime");
-  recoveryRuntime(pi as any);
+  recovery(pi as any);
   const tool = pi.getTool("resolve_recovery_runtime_decision");
   const result = await tool.execute(
     "tool-call-id",

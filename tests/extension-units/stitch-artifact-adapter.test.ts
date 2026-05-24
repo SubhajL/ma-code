@@ -4,7 +4,7 @@ import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 
-import { generateMockStitchArtifact, writeMockStitchArtifactArtifacts } from "../../.pi/agent/extensions/stitch-artifact-adapter.ts";
+import { generateMockStitchArtifact, writeMockStitchArtifactArtifacts } from "../../.pi/agent/extensions/stitch.ts";
 import { makeTempRepo } from "./test-utils.ts";
 
 function sha256(content: string): string {

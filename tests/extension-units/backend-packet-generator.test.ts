@@ -9,8 +9,8 @@ import { fileURLToPath } from "node:url";
 import {
   generateBackendImplementationPacket,
   type BackendPacketGeneratorInput,
-} from "../../.pi/agent/extensions/backend-packet-generator.ts";
-import { validateTaskPacketShape } from "../../.pi/agent/extensions/task-packets.ts";
+} from "../../.pi/agent/extensions/packets.ts";
+import { validateTaskPacketShape } from "../../.pi/agent/extensions/packets.ts";
 
 const sourceRepoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
