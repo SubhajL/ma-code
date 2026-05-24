@@ -34,7 +34,17 @@ test("HARNESS_IN_PROCESS_SUBCOMMANDS lists subcommands wired to in-process loade
   // Anchors the migrated-vs-spawned split so accidental regressions to spawn-mode are visible in tests.
   assert.deepEqual(
     [...HARNESS_IN_PROCESS_SUBCOMMANDS],
-    ["status", "leases", "queue-session", "worktree", "worker-session", "product-pipeline"],
+    [
+      "status",
+      "leases",
+      "queue-session",
+      "worktree",
+      "worker-session",
+      "product-pipeline",
+      "issue-materialize",
+      "afk-orchestrate",
+      "pr-lifecycle",
+    ],
   );
 });
 
