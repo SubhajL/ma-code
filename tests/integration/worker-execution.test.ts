@@ -55,6 +55,10 @@ async function writeFixture(): Promise<string> {
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slice-plan.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/pipeline.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/slices/issue-002.summary.json"), "{\"version\":1}\n", "utf8");
+  // Runtime state is local-only in production; gitignore it so the JSON→SQLite
+  // backfill (which archives the JSON after import) doesn't leave the worktree
+  // dirty for git-status checks.
+  await writeFile(join(cwd, ".gitignore"), ".pi/agent/state/runtime/\n", "utf8");
   await writeFile(join(cwd, ".pi/agent/state/runtime/queue.json"), `${JSON.stringify({ version: 1, paused: false, activeJobId: null, jobs: [{
     id: "afk-greenfield-scaffold-issue-002",
     goal: "Update docs",

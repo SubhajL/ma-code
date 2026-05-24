@@ -3,6 +3,8 @@ import test from "node:test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { readQueueState } from "../../.pi/agent/extensions/lib/queue-state.ts";
+
 import {
   buildScheduledWorkflowStatus,
   loadScheduledWorkflowConfig,
@@ -67,7 +69,7 @@ test("scheduled workflow materialization is explicit and duplicate-safe", async 
     "scheduled-daily-review-queue-2026-04-27",
   ]);
 
-  const queue = JSON.parse(await readFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), "utf8")) as {
+  const queue = (await readQueueState<{ id: string; scheduledWorkflowId?: string | null; scheduledRunKey?: string | null; status: string }>(cwd)) as {
     jobs: Array<{ id: string; scheduledWorkflowId?: string | null; scheduledRunKey?: string | null; status: string }>;
   };
   assert.equal(queue.jobs.length, 2);

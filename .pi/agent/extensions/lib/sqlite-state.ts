@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS queue_jobs (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS queue_meta (
+  singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+  paused INTEGER NOT NULL DEFAULT 0,
+  active_job_id TEXT
+);
+
 CREATE TABLE IF NOT EXISTS leases (
   scope TEXT PRIMARY KEY,
   owner TEXT NOT NULL,

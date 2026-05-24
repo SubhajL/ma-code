@@ -1,14 +1,16 @@
 import { exec as execCallback } from "node:child_process";
 import { realpathSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import {
+  ensureQueueState,
+  mutateQueueState,
+  readQueueState,
+} from "../.pi/agent/extensions/lib/queue-state.ts";
 
 const exec = promisify(execCallback);
-const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
 
 type QueueJobStatus = "queued" | "running" | "blocked" | "done" | "failed";
 
@@ -19,13 +21,6 @@ interface QueueJob {
   updatedAt?: string;
   finishedAt?: string;
   [key: string]: unknown;
-}
-
-interface QueueState {
-  version: number;
-  paused: boolean;
-  activeJobId: string | null;
-  jobs: QueueJob[];
 }
 
 interface ReconcileOptions {
@@ -115,19 +110,8 @@ async function runEvidenceCommands(cwd: string, commands: string[]): Promise<Evi
   return results;
 }
 
-async function ensureQueueFile(cwd: string): Promise<string> {
-  const queuePath = resolve(cwd, QUEUE_FILE);
-  await mkdir(dirname(queuePath), { recursive: true });
-  try {
-    await readFile(queuePath, "utf8");
-  } catch {
-    await writeFile(queuePath, `${JSON.stringify({ version: 1, paused: false, activeJobId: null, jobs: [] }, null, 2)}\n`, "utf8");
-  }
-  return queuePath;
-}
-
-async function assertBlockedJobExists(queuePath: string, jobId: string): Promise<void> {
-  const state = JSON.parse(await readFile(queuePath, "utf8")) as QueueState;
+async function assertBlockedJobExists(cwd: string, jobId: string): Promise<void> {
+  const state = await readQueueState<QueueJob>(cwd);
   const job = state.jobs.find((candidate) => candidate.id === jobId);
   if (!job) throw new Error(`Queue job not found: ${jobId}`);
   if (job.status !== "blocked") {
@@ -137,14 +121,13 @@ async function assertBlockedJobExists(queuePath: string, jobId: string): Promise
 
 async function reconcile(options: ReconcileOptions): Promise<Record<string, unknown>> {
   const cwd = resolve(options.cwd);
-  const queuePath = await ensureQueueFile(cwd);
-  await assertBlockedJobExists(queuePath, options.jobId);
+  await ensureQueueState(cwd);
+  await assertBlockedJobExists(cwd, options.jobId);
   const evidence = await runEvidenceCommands(cwd, options.evidenceCommands);
   const reconciledAt = new Date().toISOString();
   let previousStatus: QueueJobStatus | null = null;
 
-  await withFileMutationQueue(queuePath, async () => {
-    const state = JSON.parse(await readFile(queuePath, "utf8")) as QueueState;
+  await mutateQueueState<QueueJob, void>(cwd, (state) => {
     const job = state.jobs.find((candidate) => candidate.id === options.jobId);
     if (!job) throw new Error(`Queue job not found: ${options.jobId}`);
     previousStatus = job.status;
@@ -162,7 +145,6 @@ async function reconcile(options: ReconcileOptions): Promise<Record<string, unkn
     job.updatedAt = reconciledAt;
     job.finishedAt = reconciledAt;
     if (state.activeJobId === job.id) state.activeJobId = null;
-    await writeFile(queuePath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   });
 
   return {

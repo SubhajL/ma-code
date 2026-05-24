@@ -7,6 +7,7 @@ import { readExecutionLeaseState, QUEUE_SESSION_LEASE_SCOPE } from "../../.pi/ag
 import { loadHandoffPolicy, generateHandoff } from "../../.pi/agent/extensions/handoffs.ts";
 import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-routing.ts";
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
+import { writeQueueState as writeQueueStateLib } from "../../.pi/agent/extensions/lib/queue-state.ts";
 import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
 import { loadTeamDefinitions } from "../../.pi/agent/extensions/team-activation.ts";
 import tillDone, { readTaskState as readTaskStateLib, writeTaskState, type TaskRecord } from "../../.pi/agent/extensions/till-done.ts";
@@ -139,7 +140,7 @@ function withImplementationQueueTddSlices(queue: unknown): unknown {
 }
 
 async function writeRawQueue(cwd: string, queue: unknown) {
-  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(queue, null, 2)}\n`);
+  await writeQueueStateLib(cwd, queue as Parameters<typeof writeQueueStateLib>[1]);
 }
 
 async function writeQueue(cwd: string, queue: unknown) {
@@ -382,7 +383,18 @@ test("bounded queue session releases its lease after an idle session", async () 
 
 test("bounded queue session releases its lease when the session body throws", async () => {
   const { cwd, runBoundedQueueSessionForOperator } = await setupQueueRunnerRepo();
-  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), "{not-json\n", "utf8");
+  // Force a deterministic throw inside the session body by writing a malformed
+  // payload_json into the SQLite queue_jobs table — readQueueState's JSON.parse
+  // will reject it, the session body throws, and the lease should still release.
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(join(cwd, ".pi", "agent", "state", "runtime", "pi.db"));
+  db.exec(
+    "CREATE TABLE IF NOT EXISTS queue_jobs (id TEXT PRIMARY KEY, payload_json TEXT NOT NULL, status TEXT NOT NULL, enqueued_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
+  );
+  db.prepare(
+    "INSERT INTO queue_jobs (id, payload_json, status, enqueued_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+  ).run("corrupt", "{not-json", "queued", 0, 0);
+  db.close();
 
   await assert.rejects(
     () => runBoundedQueueSessionForOperator({ owner: "assistant", maxSteps: 1, maxRuntimeSeconds: 60 }),

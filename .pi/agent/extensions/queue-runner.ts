@@ -2,10 +2,17 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import graphifyOrchestrator from "./graphify-orchestrator.ts";
 import { dirname, resolve } from "node:path";
+import {
+  ensureQueueState as ensureQueueStateLib,
+  mutateQueueState as mutateQueueStateLib,
+  QUEUE_FILE as QUEUE_FILE_LIB,
+  readQueueState as readQueueStateLib,
+  writeQueueState as writeQueueStateLib,
+} from "./lib/queue-state.ts";
 import {
   QUEUE_SESSION_LEASE_SCOPE,
   acquireExecutionLease,
@@ -379,7 +386,7 @@ export interface BoundedQueueSessionResult {
   triage: BoundedQueueSessionTriageSummary;
 }
 
-const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
+const QUEUE_FILE = QUEUE_FILE_LIB;
 const QUEUE_TASK_COORDINATION_LOCK = ".pi/agent/state/runtime/queue-runner.coordination.lock";
 const AUDIT_LOG = "logs/harness-actions.jsonl";
 const QUEUE_SESSION_DIRECT_LEASE_SECONDS = 30;
@@ -579,45 +586,19 @@ async function queueSessionLeaseConflictResult(cwd: string, reason: string): Pro
 }
 
 async function ensureQueueFile(cwd: string): Promise<void> {
-  const absolute = resolve(cwd, QUEUE_FILE);
-  await mkdir(dirname(absolute), { recursive: true });
-
-  try {
-    await readFile(absolute, "utf8");
-  } catch {
-    const initial: QueueState = {
-      version: 1,
-      paused: false,
-      activeJobId: null,
-      jobs: [],
-    };
-    await writeFile(absolute, `${JSON.stringify(initial, null, 2)}\n`, "utf8");
-  }
+  await ensureQueueStateLib(cwd);
 }
 
 export async function readQueueState(cwd: string): Promise<QueueState> {
-  await ensureQueueFile(cwd);
-  const raw = await readFile(resolve(cwd, QUEUE_FILE), "utf8");
-  return JSON.parse(raw) as QueueState;
+  return readQueueStateLib<QueueJob>(cwd) as Promise<QueueState>;
 }
 
 async function writeQueueState(cwd: string, state: QueueState): Promise<void> {
-  const absolute = resolve(cwd, QUEUE_FILE);
-  await mkdir(dirname(absolute), { recursive: true });
-  await writeFile(absolute, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return writeQueueStateLib<QueueJob>(cwd, state);
 }
 
 async function mutateQueueState<T>(cwd: string, fn: (state: QueueState) => T | Promise<T>): Promise<T> {
-  const absolute = resolve(cwd, QUEUE_FILE);
-  await ensureQueueFile(cwd);
-
-  return withFileMutationQueue(absolute, async () => {
-    const raw = await readFile(absolute, "utf8");
-    const state = JSON.parse(raw) as QueueState;
-    const result = await fn(state);
-    await writeQueueState(cwd, state);
-    return result;
-  });
+  return mutateQueueStateLib<QueueJob, T>(cwd, (state) => fn(state as QueueState));
 }
 
 const TASK_QUEUE_MATERIALIZATION_PROTECTED_PREFIXES = [".git", "node_modules", ".pi/agent/state/runtime"];
@@ -759,28 +740,16 @@ async function withCoordinatedQueueTaskMutation<T>(
   fn: (state: { queueState: QueueState; taskState: TaskState }) => T | Promise<T>,
 ): Promise<T> {
   const coordinationLock = resolve(cwd, QUEUE_TASK_COORDINATION_LOCK);
-  const queueFile = resolve(cwd, QUEUE_FILE);
-  const taskFile = resolve(cwd, TASKS_FILE);
   await mkdir(dirname(coordinationLock), { recursive: true });
   await Promise.all([ensureQueueFile(cwd), ensureTaskFile(cwd)]);
 
   return withFileMutationQueue(coordinationLock, async () => {
-    return withFileMutationQueue(taskFile, async () => {
-      return withFileMutationQueue(queueFile, async () => {
-        const [queueRaw, taskState] = await Promise.all([
-          readFile(queueFile, "utf8"),
-          readTaskState(cwd),
-        ]);
-        const state = {
-          queueState: JSON.parse(queueRaw) as QueueState,
-          taskState,
-        };
-        const result = await fn(state);
-        await writeTaskState(cwd, state.taskState);
-        await writeQueueState(cwd, state.queueState);
-        return result;
-      });
-    });
+    const [queueState, taskState] = await Promise.all([readQueueState(cwd), readTaskState(cwd)]);
+    const state = { queueState, taskState };
+    const result = await fn(state);
+    await writeTaskState(cwd, state.taskState);
+    await writeQueueState(cwd, state.queueState);
+    return result;
   });
 }
 
