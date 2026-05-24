@@ -365,6 +365,112 @@ test("safe-bash does NOT redirect `git commit-tree` (false-positive guard)", asy
   assert.equal(result, undefined);
 });
 
+test("safe-bash redirects `git branch` via bash to the typed git_branch tool", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-git-branch-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git branch --show-current" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /git_branch/);
+  assert.match(result.reason, /instead of bash `git branch`/);
+});
+
+test("safe-bash redirects `git checkout` and `git switch` via bash to git_checkout", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-git-checkout-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const checkoutResult = await onToolCall(
+    { toolName: "bash", input: { command: "git checkout feature/x" } },
+    makeCtx(cwd),
+  );
+  const switchResult = await onToolCall(
+    { toolName: "bash", input: { command: "git switch feature/x" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(checkoutResult.block, true);
+  assert.match(checkoutResult.reason, /git_checkout/);
+  assert.equal(switchResult.block, true);
+  assert.match(switchResult.reason, /git_checkout/);
+});
+
+test("safe-bash redirects `git push` via bash to the typed git_push tool", async () => {
+  const cwd = await makeTempRepo("safe-bash-redirect-git-push-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git push origin feature/x" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result.block, true);
+  assert.match(result.reason, /git_push/);
+  assert.match(result.reason, /instead of bash `git push`/);
+});
+
+test("safe-bash hard-blocks force push before typed git_push redirect", async () => {
+  const cwd = await makeTempRepo("safe-bash-force-push-precedence-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git push --force origin feature/x" } },
+    makeCtx(cwd),
+  );
+
+  assert.deepEqual(result, {
+    block: true,
+    reason: "Blocked bash command: force push is blocked",
+  });
+});
+
+test("safe-bash hard-blocks force branch deletion before git_branch redirect", async () => {
+  const cwd = await makeTempRepo("safe-bash-force-branch-delete-precedence-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: "git branch -D feature/old" } },
+    makeCtx(cwd),
+  );
+
+  assert.deepEqual(result, {
+    block: true,
+    reason: "Blocked bash command: force branch deletion is blocked",
+  });
+});
+
+test("safe-bash does NOT redirect similarly named git commands", async () => {
+  const cwd = await makeTempRepo("safe-bash-git-false-positives-");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const checkoutIndexResult = await onToolCall(
+    { toolName: "bash", input: { command: "git checkout-index --help" } },
+    makeCtx(cwd),
+  );
+  const branchNameResult = await onToolCall(
+    { toolName: "bash", input: { command: "git branch-name --help" } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(checkoutIndexResult, undefined);
+  assert.equal(branchNameResult, undefined);
+});
+
 test("safe-bash still allows `git add` via bash (not yet typed)", async () => {
   const cwd = await makeTempRepo("safe-bash-git-add-allowed-");
   const pi = new FakePi("feat/safe-bash");

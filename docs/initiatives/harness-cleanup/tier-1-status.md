@@ -1,6 +1,6 @@
 # Tier 1 cleanup — status tracker
 
-**Status:** Tier 1 planning snapshot.
+**Status:** Tier 1 implementation tracker.
 **Date:** 2026-05-24
 **Scope:** The four "do soon" items from the lead's review, tracked here so the
 team knows what's already covered, what's open, and where the work lives.
@@ -9,22 +9,29 @@ team knows what's already covered, what's open, and where the work lives.
 
 ### 1. Move runtime state from JSON files to SQLite
 
-**Status:** Open. High risk. Dedicated PR.
+**Status:** Done via PRs #192, #195, #196, #197, and #198.
 
 Replace `.pi/agent/state/runtime/{tasks,queue,leases}.json` with a single
 SQLite database at `.pi/agent/state/runtime/pi.db`. Tables: `tasks`,
 `queue_jobs`, `leases`, `audit_log`. A unique constraint on `leases(scope)`
 provides atomic compare-and-swap. JSON schemas remain as documentation.
 
-Affected: `.pi/agent/extensions/execution-leases.ts`,
-`queue-runner.ts`, `recovery-runtime.ts`, `task-packets.ts` (~5,200 LOC) and
-20+ integration tests. Should land in its own focused PR so the migration
-and the test fan-out review together.
+Landed sequence:
+- PR #192: SQLite runtime-state foundation.
+- PR #195: `execution-leases` moved to SQLite source of truth.
+- PR #196: `tasks-state` moved to SQLite source of truth.
+- PR #197: `queue-state` moved to SQLite source of truth.
+- PR #198: audit-log dual-write to SQLite `audit_log` plus retained JSONL.
+
+Final runtime-state posture: `tasks.json`, `queue.json`, and `leases.json`
+auto-migrate/archive into SQLite; `harness-actions.jsonl` remains for ops
+debugging while SQLite provides the queryable audit source.
 
 ### 2. Sandbox bash exec or invert the tool surface
 
-**Status:** Open. Direction decided: invert (typed tools only). **Scope
-check complete (2026-05-24): doable in this repo, medium-sized work.**
+**Status:** Done after the typed git tool expansion PR. Direction: invert
+high-value harness actions to typed tools while keeping `safe-bash` as a
+documented warning layer, not a sandbox.
 
 Deprecate the `safe_bash` escape hatch. Agents go through typed tools
 (`read_file`, `write_file`, `run_test`, `git_commit`, etc.). The existing
@@ -40,40 +47,34 @@ non-security ([safety rules in AGENTS.md](../../AGENTS.md), PR #178).
 | Where is the `bash` tool defined? | Upstream: `@mariozechner/pi-coding-agent/dist/core/tools/bash.js`. Can't remove or replace; can only block at the interceptor |
 | Built-in tools available today | `bash`, `edit`, `edit-diff`, `find`, `grep`, `ls`, `read`, `write` |
 | Custom tool registration possible? | Yes — 10+ harness extensions already register tools via `pi.registerTool(...)` |
-| What typed tools would need to be added? | `run_test`, `git_commit`, `git_branch`, `git_push`, `git_checkout` (file I/O already covered by upstream `read`/`write`/`edit`) |
+| What typed tools needed to be added? | `run_test`, `git_commit`, `git_branch`, `git_push`, `git_checkout` (file I/O already covered by upstream `read`/`write`/`edit`) |
 
-#### Recommended implementation path
+#### Implementation path
 
-A single big-bang inversion is risky (agents and prompts may rely on
-bash in unexpected places). Stage the migration:
+A single big-bang inversion was risky (agents and prompts may rely on
+bash in unexpected places), so the migration landed in stages:
 
-1. **Add typed tools incrementally.** Start with the highest-value ones
-   the harness needs most often: `git_commit`, `git_branch`,
-   `git_checkout`, `run_test`. Each is a new file in
-   `.pi/agent/extensions/` that registers via `pi.registerTool` and
-   wraps the existing `safe_bash`-mediated command. Tests in
-   `tests/extension-units/`.
-2. **Update prompts/skills** to prefer the typed tools over bash for
-   the matching operations.
-3. **Tighten the `safe-bash` interceptor** to block bash invocations
-   that match the now-typed surfaces (e.g. block `git commit` via bash
-   once `git_commit` is the documented path). This is the actual
-   "invert" step — bash becomes the exception, typed tools the norm.
-4. **Audit the residual bash use** that can't be typed (one-off shell
-   utility calls). Either type them or leave them as the documented
-   escape hatch.
-
-Estimated 1-2 focused sessions. Each typed tool is ~50-100 LOC
-including tests; the interceptor tightening is per-pattern review
-work.
+1. **Add typed tools incrementally.** `git_commit` and `run_test` landed
+   first; `git_branch`, `git_checkout`, and `git_push` complete the planned
+   high-value git/test surface.
+2. **Teach the runtime surface to prefer typed tools.** Each tool registers
+   prompt snippets/guidelines that steer agents away from matching bash
+   commands.
+3. **Tighten the `safe-bash` interceptor.** Bash invocations that match the
+   now-typed surfaces are blocked with typed-tool guidance: `git commit`,
+   `git branch`, `git checkout`/`git switch`, `git push`, `npm test`,
+   `npm run test:*`, `npm run validate:*`, and `npm run typecheck`.
+4. **Keep residual bash explicit.** One-off shell utility calls remain
+   possible and are still governed by the regex tripwire, task discipline,
+   protected-path checks, and audit logging. This is not a sandbox.
 
 #### Decision
 
-Keep item 2 **open** as multi-PR work, not a single big-bang. First
-follow-up PR can be a narrow scope: add one or two typed tools
-(probably `git_commit` and `run_test` as the most-used) plus the
-prompt updates that teach agents to prefer them. The remaining work
-stages incrementally without forcing a single risky cutover.
+Close item 2 for Tier 1. The remaining security-hardening alternative
+(OS-level sandboxing for arbitrary bash) remains a future architecture option,
+but it is no longer required for the Tier 1 "invert tool surface" path because
+the planned high-frequency harness actions now have typed surfaces and
+safe-bash redirects.
 
 ### 3. Verify Anthropic prompt caching is on
 
@@ -94,12 +95,16 @@ No further work in this repo until upstream exposes the hook.
 
 ### 4. Replace npm-shell-out with in-process dispatch
 
-**Status:** Open. Medium risk. Next PR.
+**Status:** Done via PRs #185, #187, #193, and #194.
 
 The `package.json` `harness:*` scripts shell out to `tsx scripts/harness-*.ts`
 on every call (~90 callers across TS/sh/mjs). Each spawn costs seconds and
 swallows typed errors. Refactor to a single in-process dispatch module that
 re-exports per-script `run()` handlers; CLI scripts become thin facades.
+
+The staged in-process dispatch work is now on `main`. CLI scripts remain as
+operator-facing facades while shared dispatch avoids the repeated npm-shell-out
+path for the covered harness commands.
 
 ## How this list maps to the existing audits
 
