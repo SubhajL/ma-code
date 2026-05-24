@@ -9,7 +9,7 @@ import { loadHarnessRoutingConfig } from "../../.pi/agent/extensions/harness-rou
 import queueRunner, { readQueueState } from "../../.pi/agent/extensions/queue-runner.ts";
 import { loadPacketPolicy, generateTaskPacket } from "../../.pi/agent/extensions/task-packets.ts";
 import { loadTeamDefinitions } from "../../.pi/agent/extensions/team-activation.ts";
-import tillDone, { writeTaskState, type TaskRecord } from "../../.pi/agent/extensions/till-done.ts";
+import tillDone, { readTaskState as readTaskStateLib, writeTaskState, type TaskRecord } from "../../.pi/agent/extensions/till-done.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo, readAuditLog } from "./test-utils.ts";
 
 async function setupQueueRunnerRepo() {
@@ -171,11 +171,10 @@ async function seedActiveQueueSessionLease(cwd: string, id = "lease-existing-que
 }
 
 async function readTaskState(cwd: string) {
-  const raw = await readFile(join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"), "utf8");
-  return JSON.parse(raw) as {
+  return readTaskStateLib(cwd) as Promise<{
     activeTaskId: string | null;
     tasks: Array<{ id: string; status: string; owner: string | null; dependencies?: string[]; notes?: string[] }>;
-  };
+  }>;
 }
 
 async function appendBlockedTaskRecord(cwd: string, task: TaskRecord) {

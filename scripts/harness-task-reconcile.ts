@@ -1,14 +1,16 @@
 import { exec as execCallback } from "node:child_process";
 import { realpathSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
+import {
+  ensureTasksState,
+  mutateTasksState,
+  readTasksState,
+} from "../.pi/agent/extensions/lib/tasks-state.ts";
 
 const exec = promisify(execCallback);
-const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
 
 type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
 
@@ -35,12 +37,6 @@ interface TaskRecord {
     completedAt?: string;
   };
   [key: string]: unknown;
-}
-
-interface TaskState {
-  version: number;
-  activeTaskId: string | null;
-  tasks: TaskRecord[];
 }
 
 interface ReconcileOptions {
@@ -130,19 +126,8 @@ async function runEvidenceCommands(cwd: string, commands: string[]): Promise<Evi
   return results;
 }
 
-async function ensureTaskFile(cwd: string): Promise<string> {
-  const taskPath = resolve(cwd, TASKS_FILE);
-  await mkdir(dirname(taskPath), { recursive: true });
-  try {
-    await readFile(taskPath, "utf8");
-  } catch {
-    await writeFile(taskPath, `${JSON.stringify({ version: 1, activeTaskId: null, tasks: [] }, null, 2)}\n`, "utf8");
-  }
-  return taskPath;
-}
-
-async function assertBlockedTaskExists(taskPath: string, taskId: string): Promise<void> {
-  const state = JSON.parse(await readFile(taskPath, "utf8")) as TaskState;
+async function assertBlockedTaskExists(cwd: string, taskId: string): Promise<void> {
+  const state = await readTasksState<TaskRecord>(cwd);
   const task = state.tasks.find((candidate) => candidate.id === taskId);
   if (!task) throw new Error(`Task not found: ${taskId}`);
   if (task.status !== "blocked") {
@@ -152,14 +137,13 @@ async function assertBlockedTaskExists(taskPath: string, taskId: string): Promis
 
 async function reconcile(options: ReconcileOptions): Promise<Record<string, unknown>> {
   const cwd = resolve(options.cwd);
-  const taskPath = await ensureTaskFile(cwd);
-  await assertBlockedTaskExists(taskPath, options.taskId);
+  await ensureTasksState(cwd);
+  await assertBlockedTaskExists(cwd, options.taskId);
   const evidence = await runEvidenceCommands(cwd, options.evidenceCommands);
   const reconciledAt = new Date().toISOString();
   let previousStatus: TaskStatus | null = null;
 
-  await withFileMutationQueue(taskPath, async () => {
-    const state = JSON.parse(await readFile(taskPath, "utf8")) as TaskState;
+  await mutateTasksState<TaskRecord, void>(cwd, (state) => {
     const task = state.tasks.find((candidate) => candidate.id === options.taskId);
     if (!task) throw new Error(`Task not found: ${options.taskId}`);
     previousStatus = task.status;
@@ -199,7 +183,6 @@ async function reconcile(options: ReconcileOptions): Promise<Record<string, unkn
       completedAt: reconciledAt,
     };
     if (state.activeTaskId === task.id) state.activeTaskId = null;
-    await writeFile(taskPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
   });
 
   return {

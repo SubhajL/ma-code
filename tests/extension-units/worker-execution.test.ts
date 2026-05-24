@@ -8,6 +8,7 @@ import test from "node:test";
 
 import { runWorkerExecution } from "../../.pi/agent/extensions/worker-execution.ts";
 import { readQueueState, type QueueJob } from "../../.pi/agent/extensions/queue-runner.ts";
+import { readTaskState as readTaskStateLib } from "../../.pi/agent/extensions/till-done.ts";
 
 const execFile = promisify(execFileCallback);
 
@@ -558,7 +559,7 @@ test("provider-failed mixed-domain run with preserved diff and passing local pro
   assert.equal(queue.jobs[0].workerExecution?.status, "review_ready");
   assert.equal(queue.jobs[0].workerExecution?.salvage?.outcome, "reviewable");
 
-  const taskState = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as {
+  const taskState = (await readTaskStateLib(cwd)) as unknown as {
     tasks: Array<{ id: string; status: string; evidence: string[]; validation?: { decision?: string } }>;
   };
   assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.status, "review");
@@ -632,7 +633,7 @@ test("provider-failed mixed-domain run with preserved diff but without passing p
   assert.equal(queue.jobs[0].workerExecution?.status, "blocked");
   assert.equal(queue.jobs[0].workerExecution?.salvage?.outcome, "resumable");
 
-  const taskState = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as {
+  const taskState = (await readTaskStateLib(cwd)) as unknown as {
     tasks: Array<{ id: string; status: string; evidence: string[] }>;
   };
   assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.status, "blocked");
@@ -684,7 +685,7 @@ test("failed validation finalizes linked task and clears active queue job while 
   assert.match(failed.stopReason ?? "", /validation failure/);
   assert.ok(failed.worktree.path);
   const failedQueue = await readQueueState(validationCwd);
-  const failedTasks = JSON.parse(await readFile(join(validationCwd, ".pi/agent/state/runtime/tasks.json"), "utf8")) as { tasks: Array<{ id: string; status: string }> };
+  const failedTasks = (await readTaskStateLib(validationCwd)) as unknown as { tasks: Array<{ id: string; status: string }> };
   assert.equal(failedQueue.activeJobId, null);
   assert.equal(failedQueue.jobs[0].status, "failed");
   assert.equal(failedTasks.tasks.find((task) => task.id === failed.linkedTaskId)?.status, "failed");

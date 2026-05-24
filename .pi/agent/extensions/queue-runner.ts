@@ -767,10 +767,13 @@ async function withCoordinatedQueueTaskMutation<T>(
   return withFileMutationQueue(coordinationLock, async () => {
     return withFileMutationQueue(taskFile, async () => {
       return withFileMutationQueue(queueFile, async () => {
-        const [queueRaw, taskRaw] = await Promise.all([readFile(queueFile, "utf8"), readFile(taskFile, "utf8")]);
+        const [queueRaw, taskState] = await Promise.all([
+          readFile(queueFile, "utf8"),
+          readTaskState(cwd),
+        ]);
         const state = {
           queueState: JSON.parse(queueRaw) as QueueState,
-          taskState: JSON.parse(taskRaw) as TaskState,
+          taskState,
         };
         const result = await fn(state);
         await writeTaskState(cwd, state.taskState);

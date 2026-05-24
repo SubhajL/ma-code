@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,13 @@ import {
   GRAPHIFY_VALIDATION_POLICIES,
   type GraphifyValidationDecisionInput,
 } from "./graphify-validation-decision.ts";
+import {
+  ensureTasksState as ensureTasksStateLib,
+  mutateTasksState as mutateTasksStateLib,
+  readTasksState as readTasksStateLib,
+  TASKS_FILE as TASKS_FILE_LIB,
+  writeTasksState as writeTasksStateLib,
+} from "./lib/tasks-state.ts";
 
 export type TaskStatus = "queued" | "in_progress" | "review" | "blocked" | "done" | "failed";
 export type TaskClass = "research" | "docs" | "implementation" | "runtime_safety";
@@ -117,7 +124,7 @@ export interface TaskUpdateResult {
   details: Record<string, unknown>;
 }
 
-export const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
+export const TASKS_FILE = TASKS_FILE_LIB;
 const AUDIT_LOG = "logs/harness-actions.jsonl";
 const COMPLETION_GATE_POLICY_FILE = ".pi/agent/validation/completion-gate-policy.json";
 const TASK_CLASSES = ["research", "docs", "implementation", "runtime_safety"] as const;
@@ -429,46 +436,19 @@ async function appendAudit(cwd: string, entry: Record<string, unknown>): Promise
 }
 
 export async function ensureTaskFile(cwd: string): Promise<void> {
-  const absolute = resolve(cwd, TASKS_FILE);
-  await mkdir(dirname(absolute), { recursive: true });
-
-  try {
-    await readFile(absolute, "utf8");
-  } catch {
-    const initial: TaskState = {
-      version: 1,
-      activeTaskId: null,
-      tasks: [],
-    };
-
-    await writeFile(absolute, `${JSON.stringify(initial, null, 2)}\n`, "utf8");
-  }
+  await ensureTasksStateLib(cwd);
 }
 
 export async function readTaskState(cwd: string): Promise<TaskState> {
-  await ensureTaskFile(cwd);
-  const absolute = resolve(cwd, TASKS_FILE);
-  const raw = await readFile(absolute, "utf8");
-  return JSON.parse(raw) as TaskState;
+  return readTasksStateLib<TaskRecord>(cwd) as Promise<TaskState>;
 }
 
 export async function writeTaskState(cwd: string, state: TaskState): Promise<void> {
-  const absolute = resolve(cwd, TASKS_FILE);
-  await mkdir(dirname(absolute), { recursive: true });
-  await writeFile(absolute, `${JSON.stringify(state, null, 2)}\n`, "utf8");
+  return writeTasksStateLib<TaskRecord>(cwd, state);
 }
 
 export async function mutateTaskState<T>(cwd: string, fn: (state: TaskState) => T | Promise<T>): Promise<T> {
-  const absolute = resolve(cwd, TASKS_FILE);
-  await ensureTaskFile(cwd);
-
-  return withFileMutationQueue(absolute, async () => {
-    const raw = await readFile(absolute, "utf8");
-    const state = JSON.parse(raw) as TaskState;
-    const result = await fn(state);
-    await writeTaskState(cwd, state);
-    return result;
-  });
+  return mutateTasksStateLib<TaskRecord, T>(cwd, (state) => fn(state as TaskState));
 }
 
 export function getTask(state: TaskState, id: string): TaskRecord | undefined {
