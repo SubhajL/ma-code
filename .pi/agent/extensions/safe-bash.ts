@@ -50,6 +50,21 @@ const TYPED_TOOL_REDIRECT_PATTERNS: Array<{ pattern: RegExp; reason: string }> =
       "use the typed `git_commit` tool instead of bash `git commit` (refuses main and protected paths, no --no-verify; see .pi/agent/extensions/git-commit.ts)",
   },
   {
+    pattern: /\bgit\s+branch(?:\s|$)/i,
+    reason:
+      "use the typed `git_branch` tool instead of bash `git branch` (show/list/create only; branch deletion is not exposed; see .pi/agent/extensions/git-tools.ts)",
+  },
+  {
+    pattern: /\bgit\s+(?:checkout|switch)(?:\s|$)/i,
+    reason:
+      "use the typed `git_checkout` tool instead of bash `git checkout` / `git switch` (main requires explicit allowMain=true; see .pi/agent/extensions/git-tools.ts)",
+  },
+  {
+    pattern: /\bgit\s+push(?:\s|$)/i,
+    reason:
+      "use the typed `git_push` tool instead of bash `git push` (non-force, non-main branch pushes only; see .pi/agent/extensions/git-tools.ts)",
+  },
+  {
     pattern: /\bnpm\s+(?:t|test)(?:\s|$)/i,
     reason: "use the typed `run_test` tool instead of bash `npm test`",
   },
@@ -650,29 +665,6 @@ export default function (pi: ExtensionAPI) {
       };
     }
 
-    const typedToolRedirect = findTypedToolRedirect(commandForClassification);
-    if (typedToolRedirect) {
-      await appendAuditLog(auditCwd, {
-        ts: new Date().toISOString(),
-        extension: "safe-bash",
-        action: "blocked",
-        tool: "bash",
-        cwd: auditCwd,
-        sessionCwd: ctx.cwd,
-        branch,
-        modelId,
-        provider,
-        command,
-        classificationCommand: commandForClassification,
-        reasons: [typedToolRedirect],
-      });
-
-      return {
-        block: true,
-        reason: `Blocked bash command: ${typedToolRedirect}`,
-      };
-    }
-
     const risk = classifyBashRisk(commandForClassification);
 
     if (risk.level === "block") {
@@ -694,6 +686,29 @@ export default function (pi: ExtensionAPI) {
       return {
         block: true,
         reason: `Blocked bash command: ${risk.reasons.join("; ")}`,
+      };
+    }
+
+    const typedToolRedirect = findTypedToolRedirect(commandForClassification);
+    if (typedToolRedirect) {
+      await appendAuditLog(auditCwd, {
+        ts: new Date().toISOString(),
+        extension: "safe-bash",
+        action: "blocked",
+        tool: "bash",
+        cwd: auditCwd,
+        sessionCwd: ctx.cwd,
+        branch,
+        modelId,
+        provider,
+        command,
+        classificationCommand: commandForClassification,
+        reasons: [typedToolRedirect],
+      });
+
+      return {
+        block: true,
+        reason: `Blocked bash command: ${typedToolRedirect}`,
       };
     }
 
