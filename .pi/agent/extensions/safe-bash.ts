@@ -1,16 +1,14 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { appendFile, mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { TASKS_FILE, getActiveTask, readTaskState, type TaskRecord } from "./till-done.ts";
+import { AUDIT_LOG, appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
 
 type RiskLevel = "allow" | "warn" | "block";
 type AutoBranchOutcome =
   | { ok: true; branch: string; mode: "created" | "switched"; task: TaskRecord }
   | { ok: false; reason: string; auditReasons: string[] };
 
-const AUDIT_LOG = "logs/harness-actions.jsonl";
 const ALLOWED_BOOKKEEPING_DIRTY_PATHS = new Set([TASKS_FILE, AUDIT_LOG]);
 const GIT_CONTROL_COMMAND_PATTERN = /\bgit\s+(add|commit|merge|rebase|cherry-pick|reset|restore|clean|checkout|switch|push|branch)\b/i;
 const AUTO_BRANCHABLE_BASH_PATTERNS: RegExp[] = [
@@ -331,12 +329,7 @@ function providerFromModelId(modelId: string | null): string | null {
 }
 
 async function appendAuditLog(cwd: string, entry: Record<string, unknown>): Promise<void> {
-  const logFile = resolve(cwd, AUDIT_LOG);
-  await mkdir(dirname(logFile), { recursive: true });
-
-  await withFileMutationQueue(logFile, async () => {
-    await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
-  });
+  await appendAuditEntry(cwd, entry as AuditLogEntry);
 }
 
 async function attemptAutoBranchOnMain(

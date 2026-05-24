@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
-import { appendFile, mkdir } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import graphifyOrchestrator from "./graphify-orchestrator.ts";
 import { dirname, resolve } from "node:path";
@@ -13,6 +13,7 @@ import {
   readQueueState as readQueueStateLib,
   writeQueueState as writeQueueStateLib,
 } from "./lib/queue-state.ts";
+import { appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
 import {
   QUEUE_SESSION_LEASE_SCOPE,
   acquireExecutionLease,
@@ -495,12 +496,7 @@ async function getCurrentBranch(pi: ExtensionAPI, cwd: string): Promise<string |
 }
 
 async function appendAudit(cwd: string, entry: Record<string, unknown>): Promise<void> {
-  const logFile = resolve(cwd, AUDIT_LOG);
-  await mkdir(dirname(logFile), { recursive: true });
-
-  await withFileMutationQueue(logFile, async () => {
-    await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
-  });
+  await appendAuditEntry(cwd, entry as AuditLogEntry);
 }
 
 function addSecondsIso(timestamp: string, seconds: number): string {

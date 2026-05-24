@@ -1,10 +1,7 @@
 import type { ExtensionAPI, ExecResult } from "@mariozechner/pi-coding-agent";
-import { withFileMutationQueue } from "@mariozechner/pi-coding-agent";
-import { appendFile, mkdir } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
 import { Type } from "@sinclair/typebox";
 
-const AUDIT_LOG = "logs/harness-actions.jsonl";
+import { appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
 
 const PROTECTED_PATH_RULES: Array<{ pattern: RegExp; reason: string }> = [
   { pattern: /(^|\/)\.env($|\.)/, reason: "secret/env files are protected" },
@@ -232,11 +229,7 @@ export async function executeGitCommit(
 }
 
 async function defaultAppendAudit(cwd: string, entry: Record<string, unknown>): Promise<void> {
-  const logFile = resolve(cwd, AUDIT_LOG);
-  await mkdir(dirname(logFile), { recursive: true });
-  await withFileMutationQueue(logFile, async () => {
-    await appendFile(logFile, `${JSON.stringify(entry)}\n`, "utf8");
-  });
+  await appendAuditEntry(cwd, entry as AuditLogEntry);
 }
 
 function modelIdFromContext(ctx: { model?: { id?: string } | null }): string | null {
