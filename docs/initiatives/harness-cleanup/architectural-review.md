@@ -189,9 +189,51 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
    schema, wires API schema/seed record types through the generated output, and
    adds `npm run codegen:schema-types` / `npm run check:schema-types` drift
    checks.
-8. Provider / capability abstraction — **Open.** Model bump
-   `claude-opus-4-5` → `claude-opus-4-7` landed in `models.json` via #187;
-   the provider/capability abstraction itself is still open.
+8. Provider / capability abstraction — **Done.** Landed across the
+   PR G–O sequence:
+   - PR G (#209) — seeded the `capabilities` vocabulary
+     (`strong_reasoning`, `economy_reasoning`) and the parser/resolver.
+   - PR H (#210) — migrated `routing_defaults.<role>.fallback_order`
+     for all 12 roles to capability refs
+     (`routing_reasoning_first`, `routing_implementation_first`).
+   - PR I (#211) — registered the public `resolve_harness_capability`
+     tool for harness extensions and operators.
+   - PR J (#212) — migrated `routing_defaults.<role>.allowed_overrides`
+     for all 12 roles to capability refs with `excludeDefaultModel: true`.
+   - PR K (#213) — refreshed the validator fixture to the current
+     `claude-opus-4-7` explicit-override expectation.
+   - PR L (#214) — added `scripts/check-no-frontier-literals.sh`
+     keystone enforcement (wired into `check-repo-static.sh`) that
+     forbids hard-coded frontier model literals outside an explicit
+     path allowlist.
+   - PR M (#215) — migrated `routing_defaults.<role>.budget_overrides`
+     for the 3 implementation/build roles to capability refs
+     (`budget_implementation`).
+   - PR N (this) — docs-only closure with the scope notes below.
+   - PR O — migrated `packages/pi-g-skills/extensions/second-model-opus.ts`
+     off its hard-coded `claude-opus-4-6` pin via opportunistic
+     `.pi/agent/models.json` `strong_reasoning` capability lookup with a
+     safe versioned Opus fallback. Preserves the package's
+     standalone-shippable property (no import of harness-routing.ts),
+     and narrows the static-check allowlist from `packages/**` to the
+     specific file.
+
+   Closing scope notes (sub-items kept **Open, scope-checked** — not
+   migrated, with the verification below):
+
+   - `phase_routing_profiles.*` model fields (`targetModelRequest`,
+     `verifiedModelId`, `fallbackModelId`) encode per-lane
+     **verification state**, not preference lists. Replacing them with
+     capability refs would auto-bump model IDs on a frontier release
+     without re-verification, defeating the verified / unverified /
+     unavailable safety distinction the schema is built around.
+     Verification records must remain explicit model IDs by design.
+
+   - `.pi/agent/package/templates/models.template.json` is a scaffold
+     copy (Pi-package init template) on a separate release cycle from
+     the live harness routing config. Allowlisted in
+     `check-no-frontier-literals.sh` and queued for migration when the
+     templates package is next refreshed; not blocking Tier 2 §8.
 
 ### Tier 3 — when convenient
 
