@@ -8,11 +8,11 @@ import {
   type HarnessRole,
 } from "./harness-routing.ts";
 import {
-  TaskPacket,
   validateTaskPacketShape,
   renderGraphifyEvidence,
   renderTddSlice,
   type GraphifyEvidence,
+  type TaskPacket,
   type TddSlice,
 } from "./task-packets.ts";
 
