@@ -48,17 +48,8 @@ function matchesPreference(model: ModelLike, preference: string): boolean {
 async function readPlanningLaneOverrides(cwd: string): Promise<string[]> {
   try {
     const raw = await readFile(resolve(cwd, ".pi/agent/models.json"), "utf8");
-    const parsed = JSON.parse(raw) as {
-      routing_defaults?: {
-        planning_lead?: {
-          allowed_overrides?: unknown;
-        };
-      };
-    };
-
-    const overrides = parsed.routing_defaults?.planning_lead?.allowed_overrides;
-    if (!Array.isArray(overrides)) return [];
-    return overrides.map((item) => String(item).trim()).filter((item) => item.length > 0);
+    const config = parseHarnessRoutingConfig(JSON.parse(raw));
+    return config.routing_defaults.planning_lead?.allowed_overrides ?? [];
   } catch {
     return [];
   }
