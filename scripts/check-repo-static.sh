@@ -1652,4 +1652,6 @@ PY
 
 "$REPO_ROOT/scripts/validate-prompt-contracts.sh"
 
+"$REPO_ROOT/scripts/check-no-frontier-literals.sh"
+
 echo "repo-static-checks-ok"
