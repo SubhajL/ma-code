@@ -208,6 +208,37 @@ function parseCapabilityProfile(raw: unknown, capabilityId: string): CapabilityP
   return { description, model_ids: modelIds };
 }
 
+function expandRoutingFallbackOrder(
+  rawFallbackOrder: unknown,
+  capabilities: Record<string, CapabilityProfile>,
+  role: string,
+): string[] {
+  if (!Array.isArray(rawFallbackOrder)) return [];
+  const expanded: string[] = [];
+  for (const entry of rawFallbackOrder) {
+    if (typeof entry === "string") {
+      const trimmed = entry.trim();
+      if (trimmed.length > 0) expanded.push(trimmed);
+      continue;
+    }
+    if (isRecord(entry) && typeof entry.capability === "string") {
+      const capabilityId = entry.capability.trim();
+      const profile = capabilities[capabilityId];
+      if (!profile) {
+        throw new Error(
+          `Unknown fallback_order capability "${capabilityId}" for role ${role}.`,
+        );
+      }
+      expanded.push(...profile.model_ids);
+      continue;
+    }
+    throw new Error(
+      `Invalid fallback_order entry for role ${role}: expected a model id string or { "capability": "..." }.`,
+    );
+  }
+  return expanded;
+}
+
 function parsePhaseProfile(raw: unknown, phaseLane: PhaseLane): PhaseRoutingProfile {
   if (!isRecord(raw)) {
     throw new Error(`Missing phase routing profile for lane: ${phaseLane}`);
@@ -331,6 +362,17 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     throw new Error("routing_policy is required.");
   }
 
+  const capabilities: Record<string, CapabilityProfile> = {};
+  const capabilitiesRaw = raw.capabilities;
+  if (capabilitiesRaw !== undefined) {
+    if (!isRecord(capabilitiesRaw)) {
+      throw new Error("capabilities must be an object when present.");
+    }
+    for (const capabilityId of Object.keys(capabilitiesRaw)) {
+      capabilities[capabilityId] = parseCapabilityProfile(capabilitiesRaw[capabilityId], capabilityId);
+    }
+  }
+
   const routing_defaults = {} as Record<HarnessRole, RoutingDefault>;
   for (const role of ROLE_IDS) {
     const entryRaw = routingDefaultsRaw[role];
@@ -345,9 +387,7 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     const allowed_overrides = Array.isArray(entryRaw.allowed_overrides)
       ? entryRaw.allowed_overrides.filter((value): value is string => typeof value === "string")
       : [];
-    const fallback_order = Array.isArray(entryRaw.fallback_order)
-      ? entryRaw.fallback_order.filter((value): value is string => typeof value === "string")
-      : [];
+    const fallback_order = expandRoutingFallbackOrder(entryRaw.fallback_order, capabilities, role);
     const budget_overrides = Array.isArray(entryRaw.budget_overrides)
       ? entryRaw.budget_overrides.filter((value): value is string => typeof value === "string")
       : [];
@@ -472,17 +512,6 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     }
     for (const phaseLane of PHASE_LANES) {
       phase_routing_profiles[phaseLane] = parsePhaseProfile(phaseProfilesRaw[phaseLane], phaseLane);
-    }
-  }
-
-  const capabilities: Record<string, CapabilityProfile> = {};
-  const capabilitiesRaw = raw.capabilities;
-  if (capabilitiesRaw !== undefined) {
-    if (!isRecord(capabilitiesRaw)) {
-      throw new Error("capabilities must be an object when present.");
-    }
-    for (const capabilityId of Object.keys(capabilitiesRaw)) {
-      capabilities[capabilityId] = parseCapabilityProfile(capabilitiesRaw[capabilityId], capabilityId);
     }
   }
 
