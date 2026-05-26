@@ -139,6 +139,24 @@
         "openai-codex/gpt-5.4-mini",
         "github-copilot/gpt-5.4-mini"
       ]
+    },
+    "routing_reasoning_first": {
+      "description": "Role fallback profile for reasoning-led roles (orchestrator, leads, reviewer/validator, docs, research, recovery). Reasoning models first, then coding spark, then anthropic frontier. Update this list once when a new frontier model lands and all 9 reasoning-led roles pick it up.",
+      "model_ids": [
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-opus-4-7",
+        "anthropic/claude-sonnet-4-6"
+      ]
+    },
+    "routing_implementation_first": {
+      "description": "Role fallback profile for implementation roles (frontend/backend/infra workers). Coding spark first, then reasoning models, then anthropic frontier. Update this list once when a new frontier model lands and all 3 implementation roles pick it up.",
+      "model_ids": [
+        "openai-codex/gpt-5.3-codex-spark",
+        "openai-codex/gpt-5.5",
+        "anthropic/claude-sonnet-4-6",
+        "anthropic/claude-opus-4-7"
+      ]
     }
   },
   "routing_defaults": {
@@ -152,10 +170,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
@@ -170,10 +187,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
@@ -188,10 +204,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [
         "github-copilot/gpt-5.4-mini"
@@ -208,10 +223,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
@@ -226,10 +240,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "low"
@@ -244,10 +257,9 @@
         "anthropic/claude-opus-4-7"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "openai-codex/gpt-5.5",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-7"
+        {
+          "capability": "routing_implementation_first"
+        }
       ],
       "budget_overrides": [
         "github-copilot/gpt-5.4-mini"
@@ -264,10 +276,9 @@
         "anthropic/claude-opus-4-7"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "openai-codex/gpt-5.5",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-7"
+        {
+          "capability": "routing_implementation_first"
+        }
       ],
       "budget_overrides": [
         "github-copilot/gpt-5.4-mini"
@@ -284,10 +295,9 @@
         "anthropic/claude-opus-4-7"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "openai-codex/gpt-5.5",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-7"
+        {
+          "capability": "routing_implementation_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
@@ -302,10 +312,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
@@ -320,10 +329,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"
@@ -338,10 +346,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "low"
@@ -356,10 +363,9 @@
         "anthropic/claude-sonnet-4-6"
       ],
       "fallback_order": [
-        "openai-codex/gpt-5.5",
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first"
+        }
       ],
       "budget_overrides": [],
       "budget_guidance": "high"

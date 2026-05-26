@@ -206,12 +206,77 @@ test("resolveHarnessCapability rejects unknown capability ids", async () => {
   );
 });
 
-test("parseHarnessRoutingConfig treats capabilities as optional for backward compatibility", async () => {
+test("parseHarnessRoutingConfig accepts legacy string-array fallback_order without a capabilities block", async () => {
   const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
-  const without = clone(raw);
-  delete without.capabilities;
-  const config = parseHarnessRoutingConfig(without);
+  const legacy = clone(raw);
+  delete legacy.capabilities;
+  for (const role of Object.keys(legacy.routing_defaults)) {
+    legacy.routing_defaults[role].fallback_order = [
+      "openai-codex/gpt-5.5",
+      "anthropic/claude-opus-4-7",
+    ];
+  }
+  const config = parseHarnessRoutingConfig(legacy);
   assert.deepEqual(config.capabilities, {});
+  assert.deepEqual(config.routing_defaults.orchestrator.fallback_order, [
+    "openai-codex/gpt-5.5",
+    "anthropic/claude-opus-4-7",
+  ]);
+});
+
+test("parseHarnessRoutingConfig expands capability refs inside fallback_order", async () => {
+  const config = await repoConfig();
+  assert.deepEqual(config.routing_defaults.orchestrator.fallback_order, [
+    "openai-codex/gpt-5.5",
+    "openai-codex/gpt-5.3-codex-spark",
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-sonnet-4-6",
+  ]);
+  assert.deepEqual(config.routing_defaults.backend_worker.fallback_order, [
+    "openai-codex/gpt-5.3-codex-spark",
+    "openai-codex/gpt-5.5",
+    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-opus-4-7",
+  ]);
+});
+
+test("parseHarnessRoutingConfig preserves order when fallback_order mixes literal model ids and capability refs", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const mixed = clone(raw);
+  mixed.routing_defaults.orchestrator.fallback_order = [
+    "openai-codex/gpt-5.4-mini",
+    { capability: "routing_reasoning_first" },
+    "anthropic/claude-haiku-4-5",
+  ];
+  const config = parseHarnessRoutingConfig(mixed);
+  assert.deepEqual(config.routing_defaults.orchestrator.fallback_order, [
+    "openai-codex/gpt-5.4-mini",
+    "openai-codex/gpt-5.5",
+    "openai-codex/gpt-5.3-codex-spark",
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-haiku-4-5",
+  ]);
+});
+
+test("parseHarnessRoutingConfig rejects unknown capability ref in fallback_order", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.routing_defaults.orchestrator.fallback_order = [{ capability: "nonexistent_capability" }];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /Unknown fallback_order capability "nonexistent_capability" for role orchestrator/,
+  );
+});
+
+test("parseHarnessRoutingConfig rejects malformed fallback_order entries", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.routing_defaults.orchestrator.fallback_order = [42];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /Invalid fallback_order entry for role orchestrator/,
+  );
 });
 
 test("parseHarnessRoutingConfig rejects capability with empty model_ids", async () => {
