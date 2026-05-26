@@ -59,7 +59,7 @@ test("PR gate helper polls every 180 seconds without gh --watch until checks pas
 
   const session = await buildPrGateSession(
     { pr: "63", maxAttempts: 3, includeComments: true },
-    { runner, sleep: async (ms) => sleeps.push(ms) },
+    { runner, sleep: async (ms) => { sleeps.push(ms); } },
   );
 
   assert.equal(session.finalStatus, "pass");

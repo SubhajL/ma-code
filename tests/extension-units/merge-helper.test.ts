@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { SliceLifecycleAssessment, SliceLifecycleStage } from "../../.pi/agent/extensions/slice-lifecycle.ts";
+import type { PrGateCommentSummary, PrGateReviewSummary, PrGateSession } from "../../scripts/harness-pr-gate.ts";
 import {
   DEFAULT_MERGE_RELEASE_POLICY,
   assessMergeReadiness,
@@ -9,6 +11,38 @@ import {
   type MergePrDetails,
   type MergeRepoState,
 } from "../../scripts/harness-merge.ts";
+
+type GateFixture = Pick<PrGateSession, "finalStatus" | "recommendedNextAction" | "commentSummary" | "reviewSummary">;
+type LifecycleFixture = Pick<SliceLifecycleAssessment, "currentStage" | "target" | "blockingGaps">;
+
+function commentSummary(overrides: Partial<PrGateCommentSummary> = {}): PrGateCommentSummary {
+  return {
+    totalCommentCount: 0,
+    benignBotCommentCount: 0,
+    blockingCommentCount: 0,
+    blockingComments: [],
+    ...overrides,
+  };
+}
+
+function reviewSummary(overrides: Partial<PrGateReviewSummary> = {}): PrGateReviewSummary {
+  return {
+    reviewDecision: "APPROVED",
+    totalReviewCount: 0,
+    changesRequestedCount: 0,
+    blockingReviews: [],
+    ...overrides,
+  };
+}
+
+function lifecycleFixture(
+  currentStage: SliceLifecycleStage,
+  targetStage: SliceLifecycleStage,
+  ready: boolean,
+  blockingGaps: string[] = [],
+): LifecycleFixture {
+  return { currentStage, target: { stage: targetStage, ready }, blockingGaps };
+}
 
 const readyPr: MergePrDetails = {
   number: 101,
@@ -29,18 +63,14 @@ const cleanRepo: MergeRepoState = {
   dirtyFiles: [],
 };
 
-const passingGate = {
-  finalStatus: "pass" as const,
-  recommendedNextAction: "merge_or_sync" as const,
-  commentSummary: { blockingCommentCount: 0 },
-  reviewSummary: { changesRequestedCount: 0 },
+const passingGate: GateFixture = {
+  finalStatus: "pass",
+  recommendedNextAction: "merge_or_sync",
+  commentSummary: commentSummary(),
+  reviewSummary: reviewSummary(),
 };
 
-const mergeReadyLifecycle = {
-  currentStage: "merge_ready",
-  target: { stage: "merge_ready", ready: true },
-  blockingGaps: [] as string[],
-};
+const mergeReadyLifecycle: LifecycleFixture = lifecycleFixture("merge_ready", "merge_ready", true);
 
 test("merge release policy parses required defaults", () => {
   const policy = parseMergeReleasePolicy(DEFAULT_MERGE_RELEASE_POLICY);
@@ -60,7 +90,9 @@ test("check blocks when lifecycle is not merge-ready", () => {
     policy: parseMergeReleasePolicy(DEFAULT_MERGE_RELEASE_POLICY),
     mode: "check",
     method: "squash",
-    lifecycle: { currentStage: "submitted", target: { stage: "merge_ready", ready: false }, blockingGaps: ["pr_gate_clean requires PR gate clean/pass evidence."] },
+    lifecycle: lifecycleFixture("submitted", "merge_ready", false, [
+      "pr_gate_clean requires PR gate clean/pass evidence.",
+    ]),
     prGate: passingGate,
     pr: readyPr,
     repo: cleanRepo,
@@ -93,7 +125,9 @@ test("apply accepts zero-check stacked PRs and ignores runtime artifact dirt", (
     policy: parseMergeReleasePolicy(DEFAULT_MERGE_RELEASE_POLICY),
     mode: "apply",
     method: "squash",
-    lifecycle: { currentStage: "submitted", target: { stage: "merge_ready", ready: false }, blockingGaps: ["pr_gate_clean requires PR gate clean/pass evidence."] },
+    lifecycle: lifecycleFixture("submitted", "merge_ready", false, [
+      "pr_gate_clean requires PR gate clean/pass evidence.",
+    ]),
     prGate: { ...passingGate, finalStatus: "timeout", recommendedNextAction: "wait_and_rerun" },
     pr: { ...readyPr, baseRefName: "task/task-phase3-sweep", reviewDecision: "", mergeStateStatus: "CLEAN" },
     repo: { ...cleanRepo, dirtyFiles: ["docs/initiatives/greenfield-scaffold/afk-runs/", "docs/initiatives/greenfield-scaffold/pr-runs/"] },
@@ -113,8 +147,8 @@ test("apply blocks draft PRs, requested changes, blocking comments, and dirty lo
     prGate: {
       finalStatus: "pass",
       recommendedNextAction: "fix_required",
-      commentSummary: { blockingCommentCount: 1 },
-      reviewSummary: { changesRequestedCount: 1 },
+      commentSummary: commentSummary({ blockingCommentCount: 1, totalCommentCount: 1 }),
+      reviewSummary: reviewSummary({ changesRequestedCount: 1, totalReviewCount: 1, reviewDecision: "CHANGES_REQUESTED" }),
     },
     pr: {
       ...readyPr,
