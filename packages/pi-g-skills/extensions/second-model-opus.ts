@@ -1,5 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { runSpawn, truncateText } from "./lib/process-utils.js";
 
 const SecondModelPlanSchema = Type.Object({
@@ -19,17 +21,42 @@ function modelKey(model: ModelLike): string {
   return `${model.provider}/${model.id}`;
 }
 
-function isOpus46(model: ModelLike): boolean {
-  const key = modelKey(model).toLowerCase();
-  return key === "anthropic/claude-opus-4-6" || /claude-opus-4[.-]6/.test(key);
+export function isAnyOpus(model: ModelLike): boolean {
+  return model.provider.toLowerCase() === "anthropic" && /^claude-opus-4-\d+$/i.test(model.id);
 }
 
-function selectSecondModel(available: ModelLike[], currentKey: string | null): ModelLike | null {
-  const exactAnthropic = available.find((model) => modelKey(model).toLowerCase() === "anthropic/claude-opus-4-6");
-  if (exactAnthropic && modelKey(exactAnthropic) !== currentKey) return exactAnthropic;
+export async function readStrongReasoningOpusCandidates(cwd: string): Promise<string[]> {
+  try {
+    const raw = await readFile(resolve(cwd, ".pi/agent/models.json"), "utf8");
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return [];
+    const caps = (parsed as { capabilities?: unknown }).capabilities;
+    if (typeof caps !== "object" || caps === null) return [];
+    const strong = (caps as Record<string, unknown>).strong_reasoning;
+    if (typeof strong !== "object" || strong === null) return [];
+    const ids = (strong as { model_ids?: unknown }).model_ids;
+    if (!Array.isArray(ids)) return [];
+    return ids.filter(
+      (id): id is string =>
+        typeof id === "string" && /^anthropic\/claude-opus-4-\d+$/i.test(id),
+    );
+  } catch {
+    return [];
+  }
+}
 
-  const alternate = available.find((model) => isOpus46(model) && modelKey(model) !== currentKey);
-  return alternate ?? null;
+export function selectSecondModel(
+  available: ModelLike[],
+  currentKey: string | null,
+  capabilityOpusIds: string[],
+): ModelLike | null {
+  for (const fullId of capabilityOpusIds) {
+    const match = available.find(
+      (model) => modelKey(model) === fullId && modelKey(model) !== currentKey,
+    );
+    if (match) return match;
+  }
+  return available.find((model) => isAnyOpus(model) && modelKey(model) !== currentKey) ?? null;
 }
 
 function buildPlanningPrompt(input: {
@@ -143,7 +170,7 @@ function formatFallback(primaryPlan: string | undefined, reason: string, current
   lines.push("## Unified Plan");
   lines.push(`- fallback to the main/current model${currentModelKey ? ` (${currentModelKey})` : ""}`);
   if (primaryPlan?.trim()) {
-    lines.push("- preserved the primary plan draft because no eligible Opus 4.6 second lane completed");
+    lines.push("- preserved the primary plan draft because no eligible Anthropic Opus second lane completed");
     lines.push("");
     lines.push(primaryPlan.trim());
   } else {
@@ -156,11 +183,12 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "second_model_plan",
     label: "Second Model Plan",
-    description: "Request a second planning pass from Claude Opus 4.6 only, with explicit fallback to the main model if unavailable.",
-    promptSnippet: "Request a second planning pass from Claude Opus 4.6 only, and fall back explicitly to the main model otherwise.",
+    description: "Request a second planning pass from Claude Opus only (any verified 4.x), with explicit fallback to the main model if unavailable.",
+    promptSnippet: "Request a second planning pass from Claude Opus only, and fall back explicitly to the main model otherwise.",
     promptGuidelines: [
       "Use this tool for medium- or high-risk planning when a second planning opinion is valuable.",
-      "This package intentionally restricts the second-model lane to Claude Opus 4.6 only.",
+      "This package intentionally restricts the second-model lane to Claude Opus only (any 4.x version available).",
+      "Preferred Opus order is read from the consumer's `.pi/agent/models.json` `strong_reasoning` capability when present; otherwise any available Anthropic Opus 4.x is acceptable.",
       "If the tool reports fallback, continue with the main/current model and state the fallback explicitly.",
     ],
     parameters: SecondModelPlanSchema,
@@ -169,12 +197,13 @@ export default function (pi: ExtensionAPI) {
         (model) => typeof model.provider === "string" && typeof model.id === "string",
       );
       const currentKey = ctx.model ? modelKey(ctx.model as ModelLike) : null;
-      const candidate = selectSecondModel(availableModels, currentKey);
+      const capabilityOpusIds = await readStrongReasoningOpusCandidates(ctx.cwd);
+      const candidate = selectSecondModel(availableModels, currentKey, capabilityOpusIds);
 
       if (!candidate) {
-        const reason = currentKey && /claude-opus-4[.-]6/i.test(currentKey)
-          ? "current model is already Claude Opus 4.6, so no separate second-model lane exists"
-          : "Claude Opus 4.6 is not available in the current Pi model registry";
+        const reason = currentKey && isAnyOpus({ provider: currentKey.split("/")[0] ?? "", id: currentKey.split("/")[1] ?? "" })
+          ? "current model is already an Anthropic Opus 4.x, so no separate second-model lane exists"
+          : "no Anthropic Opus 4.x model is available in the current Pi model registry";
         return {
           content: [{ type: "text", text: formatFallback(params.primaryPlan, reason, currentKey) }],
           details: {
@@ -183,6 +212,7 @@ export default function (pi: ExtensionAPI) {
             reason,
             selectedModel: null,
             currentModel: currentKey,
+            capabilityOpusIds,
           },
         };
       }
@@ -208,6 +238,7 @@ export default function (pi: ExtensionAPI) {
             selectedModel: selectedModelKey,
             currentModel: currentKey,
             timeoutMs,
+            capabilityOpusIds,
           },
         };
       }
@@ -220,6 +251,7 @@ export default function (pi: ExtensionAPI) {
           selectedModel: selectedModelKey,
           currentModel: currentKey,
           timeoutMs,
+          capabilityOpusIds,
         },
       };
     },
