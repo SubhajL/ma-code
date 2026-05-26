@@ -174,12 +174,14 @@ test("gate passes zero-check stacked PRs when merge state is clean and review st
 
   const gated = await runPrLifecycle({ repoRoot: cwd, command: "gate", initiativeId: "greenfield-scaffold", runId: "pr-stacked-gate" }, {
     prGate: async () => ({
+      pr: "123",
+      intervalSeconds: 1,
+      maxAttempts: 1,
       finalStatus: "pending",
       attempts: [{ checks: [], summary: { passCount: 0, failCount: 0, pendingCount: 0, totalCount: 0 }, attempt: 1, status: "pending" }],
       commentSummary: { blockingCommentCount: 0, totalCommentCount: 0, benignBotCommentCount: 0, blockingComments: [] },
-      reviewSummary: { reviewDecision: "", changesRequestedCount: 0, approvalsCount: 0, reviews: [] },
-      prContext: { number: 123, state: "OPEN", reviewDecision: "", mergeStateStatus: "CLEAN", url: "https://github.com/SubhajL/ma-code/pull/123" },
-      finalChecks: [],
+      reviewSummary: { reviewDecision: "", totalReviewCount: 0, changesRequestedCount: 0, blockingReviews: [] },
+      prContext: { number: 123, state: "OPEN", mergeStateStatus: "CLEAN", url: "https://github.com/SubhajL/ma-code/pull/123" },
       recommendedNextAction: "wait_and_rerun",
       recommendedNextActionReason: "Checks are still pending or the bounded polling limit was reached before terminal success/failure.",
     }),
