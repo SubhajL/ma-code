@@ -509,6 +509,7 @@ test("runtime inspection and task show compact large task history by default", a
   } as any);
 
   await writeTaskState(cwd, {
+    version: 1,
     activeTaskId: "task-large-8",
     tasks: Array.from({ length: 9 }, (_, index) => ({
       id: `task-large-${index}`,
@@ -608,6 +609,7 @@ test("operator inspect queue state surfaces worker-execution salvage metadata in
   });
 
   await writeTaskState(cwd, {
+    version: 1,
     activeTaskId: "task-salvage-inspect",
     tasks: [
       {

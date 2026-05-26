@@ -414,9 +414,9 @@ test("queue session exposes recovery-action visibility after finalizing a failed
 
   const startedView = await buildHarnessQueueSession({ cwd, maxSteps: 5, maxRuntimeSeconds: 60, recentLimit: 5 });
   const linkedTaskId = startedView.result.finalInspection.summary.activeTask?.id;
-  assert.ok(linkedTaskId, "expected active task id after the first bounded session start");
+  assert.equal(typeof linkedTaskId, "string", "expected active task id after the first bounded session start");
 
-  await finalizeTaskFail(taskUpdate, linkedTaskId!, ".pi/agent/extensions/recovery-runtime.ts");
+  await finalizeTaskFail(taskUpdate, linkedTaskId as string, ".pi/agent/extensions/recovery-runtime.ts");
 
   const finalizedView = await buildHarnessQueueSession({ cwd, maxSteps: 5, maxRuntimeSeconds: 60, recentLimit: 5 });
 

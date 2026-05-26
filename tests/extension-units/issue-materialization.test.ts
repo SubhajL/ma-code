@@ -80,7 +80,7 @@ test("source validation rejects missing required issue fields", () => {
   assert.throws(() => parseIssueMaterializationSource(source({ issues: [{ ...issue(1), type: undefined as unknown as "AFK" }] })), /type must be HITL or AFK/);
   const withoutDependencies = { ...issue(1) } as Record<string, unknown>;
   delete withoutDependencies.dependencies;
-  assert.throws(() => parseIssueMaterializationSource(source({ issues: [withoutDependencies as IssueMaterializationSource["issues"][number]] })), /dependencies field is required/);
+  assert.throws(() => parseIssueMaterializationSource(source({ issues: [withoutDependencies as unknown as IssueMaterializationSource["issues"][number]] })), /dependencies field is required/);
   assert.throws(() => parseIssueMaterializationSource(source({ issues: [issue(1, { acceptanceCriteria: [] })] })), /acceptanceCriteria is required/);
   assert.throws(() => parseIssueMaterializationSource(source({ issues: [issue(2, { validationProof: [] })] })), /AFK issue issue-002 requires validationProof/);
 });

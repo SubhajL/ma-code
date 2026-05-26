@@ -6,7 +6,7 @@ import {
   type OrchestratorContinueAfkExecutor,
   type OrchestratorContinueRunExecutor,
 } from "../../.pi/agent/extensions/orchestrator-continue.ts";
-import type { AfkOrchestrationRun } from "../../.pi/agent/extensions/afk-orchestration.ts";
+import type { AfkMaterializedQueueJob, AfkOrchestrationRun } from "../../.pi/agent/extensions/afk-orchestration.ts";
 import type { OrchestratorRunSessionResult } from "../../.pi/agent/extensions/orchestrator-run.ts";
 
 function afkRun(overrides: Partial<AfkOrchestrationRun> = {}): AfkOrchestrationRun {
@@ -16,6 +16,7 @@ function afkRun(overrides: Partial<AfkOrchestrationRun> = {}): AfkOrchestrationR
     initiativeId: "mixed-domain-harness-optimization",
     mode: "dry_run",
     maxParallel: 1,
+    sourceArtifacts: { issues: "", slicePlan: "", pipeline: "", summaries: [] },
     eligibleIssues: [],
     blockedIssues: [],
     deferredIssues: [],
@@ -31,6 +32,33 @@ function afkRun(overrides: Partial<AfkOrchestrationRun> = {}): AfkOrchestrationR
   };
 }
 
+function queueJob(overrides: Partial<AfkMaterializedQueueJob> = {}): AfkMaterializedQueueJob {
+  return {
+    id: "afk-mixed-domain-harness-optimization-issue-004",
+    title: "Issue 004",
+    status: "queued",
+    sourceIssueId: "issue-004",
+    sourceInitiativeId: "mixed-domain-harness-optimization",
+    taskClass: "implementation",
+    assignedTeam: "build",
+    assignedRole: "backend_worker",
+    acceptanceCriteria: ["pass"],
+    domains: ["backend"],
+    allowedPaths: [],
+    dependencies: [],
+    budget: {},
+    approvalRequired: false,
+    stop_conditions: [],
+    sourceArtifactPaths: [],
+    queueJobSource: {
+      kind: "issue-materialization",
+      initiativeId: "mixed-domain-harness-optimization",
+      issueId: "issue-004",
+    },
+    ...overrides,
+  };
+}
+
 function runResult(overrides: Partial<OrchestratorRunSessionResult> = {}): OrchestratorRunSessionResult {
   return {
     version: 1,
@@ -41,11 +69,12 @@ function runResult(overrides: Partial<OrchestratorRunSessionResult> = {}): Orche
     status: "stopped",
     limits: { maxSteps: 3, maxRuntimeSeconds: 300, maxParallel: 1 },
     blockers: [],
-    stopReason: "review_boundary",
+    stopReason: "approval_boundary",
     startedWork: ["afk-mixed-domain-harness-optimization-issue-004"],
     completedWork: [],
     rawOutputExcerpt: "",
     nextSafeActions: ["Create and review the bounded PR before continuing."],
+    pr: { created: false, url: null, gateStatus: null },
     merge: { attempted: false, allowed: false, reason: "worker run stops before merge" },
     ...overrides,
   };
@@ -64,36 +93,14 @@ test("continue selects one eligible issue, materializes queue-only, delegates wo
           { issueId: "issue-002", title: "Issue 002", disposition: "done", reasons: ["done"], dependencies: ["issue-001"] },
           { issueId: "issue-003", title: "Issue 003", disposition: "done", reasons: ["done"], dependencies: ["issue-002"] },
         ],
-        materializedQueueJobs: [{
-          id: "afk-mixed-domain-harness-optimization-issue-004",
-          title: "Issue 004",
-          status: "queued",
-          sourceIssueId: "issue-004",
-          sourceInitiativeId: "mixed-domain-harness-optimization",
-          taskClass: "implementation",
-          assignedTeam: "build",
-          assignedRole: "backend_worker",
-          acceptanceCriteria: ["pass"],
-          domains: ["backend"],
-        }],
+        materializedQueueJobs: [queueJob()],
       });
     }
     if (input.command === "apply") {
       return afkRun({
         mode: "apply",
         lastAction: "queue-only materialized",
-        materializedQueueJobs: [{
-          id: "afk-mixed-domain-harness-optimization-issue-004",
-          title: "Issue 004",
-          status: "queued",
-          sourceIssueId: "issue-004",
-          sourceInitiativeId: "mixed-domain-harness-optimization",
-          taskClass: "implementation",
-          assignedTeam: "build",
-          assignedRole: "backend_worker",
-          acceptanceCriteria: ["pass"],
-          domains: ["backend"],
-        }],
+        materializedQueueJobs: [queueJob()],
       });
     }
     return afkRun({
@@ -121,7 +128,7 @@ test("continue selects one eligible issue, materializes queue-only, delegates wo
   }, afkExecutor, runExecutor);
 
   assert.equal(result.status, "stopped");
-  assert.equal(result.stopReason, "review_boundary");
+  assert.equal(result.stopReason, "approval_boundary");
   assert.deepEqual(result.selectedIssues, ["issue-004"]);
   assert.deepEqual(result.selectedQueueJobIds, ["afk-mixed-domain-harness-optimization-issue-004"]);
   assert.equal(result.slices.length, 1);
@@ -143,18 +150,7 @@ test("continue blocks when AFK apply does not materialize the selected queue job
     if (calls === 1) {
       return afkRun({
         eligibleIssues: [{ issueId: "issue-004", title: "Issue 004", disposition: "eligible", reasons: ["ready"], dependencies: ["issue-003"], queueJobId: "afk-mixed-domain-harness-optimization-issue-004" }],
-        materializedQueueJobs: [{
-          id: "afk-mixed-domain-harness-optimization-issue-004",
-          title: "Issue 004",
-          status: "queued",
-          sourceIssueId: "issue-004",
-          sourceInitiativeId: "mixed-domain-harness-optimization",
-          taskClass: "implementation",
-          assignedTeam: "build",
-          assignedRole: "backend_worker",
-          acceptanceCriteria: ["pass"],
-          domains: ["backend"],
-        }],
+        materializedQueueJobs: [queueJob()],
       });
     }
     assert.equal(input.command, "apply");
