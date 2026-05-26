@@ -87,7 +87,7 @@ export interface WorkerExecutionRunSummary {
     implementation: string[];
     validation: string[];
   };
-  validationStatus: WorkerRunStepStatus;
+  validationStatus: WorkerStepStatus;
   prBoundaryStatus: "stop_before_pr" | "pr_creation_allowed";
   modelExecution?: WorkerExecutionModelEvidence;
 }
@@ -160,6 +160,7 @@ export interface WorkerExecutionInput {
   explicitApprovalRef?: string;
   explainRunId?: string;
   sameRuntimeExecutor?: SameRuntimeExecutor;
+  callerModelId?: string;
 }
 
 interface AfkIssueArtifact {
@@ -661,8 +662,9 @@ async function ensureLinkedTask(repoRoot: string, run: WorkerExecutionRun, job: 
       acceptance: job.acceptanceCriteria ?? [],
       evidence: [`Worker run artifact: ${workerRunPath(run.initiativeId, run.runId)}`],
     }, policy);
-    const createdTask = isRecord(create.details.task) && typeof create.details.task.id === "string" ? create.details.task : null;
-    const createdId = createdTask?.id ?? null;
+    const createdId = isRecord(create.details.task) && typeof create.details.task.id === "string"
+      ? create.details.task.id
+      : null;
     if (!createdId) return null;
     applyTaskUpdateAction(state, { action: "start", id: createdId, owner: job.assignedRole ?? DEFAULT_OWNER, note: `Linked to queue job ${job.id} for Phase C worker execution.` }, policy);
     return createdId;
