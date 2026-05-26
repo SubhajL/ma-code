@@ -416,9 +416,12 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
       role,
       "fallback_order",
     );
-    const budget_overrides = Array.isArray(entryRaw.budget_overrides)
-      ? entryRaw.budget_overrides.filter((value): value is string => typeof value === "string")
-      : [];
+    const budget_overrides = expandCapabilityRefArray(
+      entryRaw.budget_overrides,
+      capabilities,
+      role,
+      "budget_overrides",
+    );
 
     if (!provider || !default_model || !thinking || !budget_guidance || fallback_order.length === 0) {
       throw new Error(`Incomplete routing default for role: ${role}`);

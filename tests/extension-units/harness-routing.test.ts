@@ -223,7 +223,7 @@ test("resolveHarnessCapability rejects unknown capability ids", async () => {
   );
 });
 
-test("parseHarnessRoutingConfig accepts legacy string-array fallback_order and allowed_overrides without a capabilities block", async () => {
+test("parseHarnessRoutingConfig accepts legacy string-array fallback_order, allowed_overrides, and budget_overrides without a capabilities block", async () => {
   const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
   const legacy = clone(raw);
   delete legacy.capabilities;
@@ -235,6 +235,7 @@ test("parseHarnessRoutingConfig accepts legacy string-array fallback_order and a
     legacy.routing_defaults[role].allowed_overrides = [
       "anthropic/claude-sonnet-4-6",
     ];
+    legacy.routing_defaults[role].budget_overrides = [];
   }
   const config = parseHarnessRoutingConfig(legacy);
   assert.deepEqual(config.capabilities, {});
@@ -245,6 +246,7 @@ test("parseHarnessRoutingConfig accepts legacy string-array fallback_order and a
   assert.deepEqual(config.routing_defaults.orchestrator.allowed_overrides, [
     "anthropic/claude-sonnet-4-6",
   ]);
+  assert.deepEqual(config.routing_defaults.orchestrator.budget_overrides, []);
 });
 
 test("parseHarnessRoutingConfig expands capability refs inside fallback_order", async () => {
@@ -397,6 +399,65 @@ test("parseHarnessRoutingConfig rejects capability model_ids without provider pr
   assert.throws(
     () => parseHarnessRoutingConfig(invalid),
     /must be fully qualified as "<provider>\/<model>"/,
+  );
+});
+
+test("models.json declares budget_implementation capability with the canonical cheap model", async () => {
+  const config = await repoConfig();
+  assert.ok(config.capabilities.budget_implementation, "budget_implementation capability present");
+  assert.deepEqual(config.capabilities.budget_implementation.model_ids, [
+    "github-copilot/gpt-5.4-mini",
+  ]);
+});
+
+test("parseHarnessRoutingConfig expands budget_overrides capability refs for implementation roles", async () => {
+  const config = await repoConfig();
+  for (const role of ["build_lead", "frontend_worker", "backend_worker"] as const) {
+    assert.deepEqual(
+      config.routing_defaults[role].budget_overrides,
+      ["github-copilot/gpt-5.4-mini"],
+      `${role} budget_overrides`,
+    );
+  }
+});
+
+test("parseHarnessRoutingConfig keeps budget_overrides empty for non-budget roles", async () => {
+  const config = await repoConfig();
+  const nonBudgetRoles = [
+    "orchestrator",
+    "planning_lead",
+    "quality_lead",
+    "research_worker",
+    "infra_worker",
+    "reviewer_worker",
+    "validator_worker",
+    "docs_worker",
+    "recovery_worker",
+  ] as const;
+  for (const role of nonBudgetRoles) {
+    assert.deepEqual(config.routing_defaults[role].budget_overrides, [], `${role} budget_overrides`);
+  }
+});
+
+test("parseHarnessRoutingConfig accepts legacy string-array budget_overrides for backward compat", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const legacy = clone(raw);
+  legacy.routing_defaults.backend_worker.budget_overrides = ["github-copilot/gpt-5.4-mini"];
+  const config = parseHarnessRoutingConfig(legacy);
+  assert.deepEqual(config.routing_defaults.backend_worker.budget_overrides, [
+    "github-copilot/gpt-5.4-mini",
+  ]);
+});
+
+test("parseHarnessRoutingConfig rejects unknown budget_overrides capability", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.routing_defaults.backend_worker.budget_overrides = [
+    { capability: "nonexistent_budget_capability" },
+  ];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /Unknown budget_overrides capability "nonexistent_budget_capability" for role backend_worker/,
   );
 });
 
