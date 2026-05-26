@@ -3,7 +3,11 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { deriveDomainOwnershipForDomains } from "../../.pi/agent/extensions/domain-ownership.ts";
-import { parseHarnessRoutingConfig, resolveHarnessRoute } from "../../.pi/agent/extensions/harness-routing.ts";
+import {
+  parseHarnessRoutingConfig,
+  resolveHarnessCapability,
+  resolveHarnessRoute,
+} from "../../.pi/agent/extensions/harness-routing.ts";
 
 async function repoConfig() {
   return parseHarnessRoutingConfig(JSON.parse(await readFile(".pi/agent/models.json", "utf8")));
@@ -154,6 +158,79 @@ test("parser rejects unverified targets as active fallbacks", async () => {
   assert.throws(
     () => parseHarnessRoutingConfig(invalidRaw),
     /unverified targetModelRequest cannot also be the active fallbackModelId/,
+  );
+});
+
+test("models.json declares strong_reasoning and economy_reasoning capabilities", async () => {
+  const config = await repoConfig();
+  assert.ok(config.capabilities.strong_reasoning, "strong_reasoning capability present");
+  assert.ok(config.capabilities.economy_reasoning, "economy_reasoning capability present");
+  assert.ok(config.capabilities.strong_reasoning.model_ids.length > 0);
+  assert.ok(config.capabilities.economy_reasoning.model_ids.length > 0);
+});
+
+test("resolveHarnessCapability returns configured candidates in order", async () => {
+  const config = await repoConfig();
+  const result = resolveHarnessCapability(config, { capability: "strong_reasoning" });
+  assert.deepEqual(result.candidates, config.capabilities.strong_reasoning.model_ids);
+  assert.equal(result.firstAvailable, config.capabilities.strong_reasoning.model_ids[0]);
+  assert.equal(result.capability, "strong_reasoning");
+});
+
+test("resolveHarnessCapability filters unavailable candidates and falls through to the next", async () => {
+  const config = await repoConfig();
+  const [first, second] = config.capabilities.strong_reasoning.model_ids;
+  const result = resolveHarnessCapability(config, {
+    capability: "strong_reasoning",
+    unavailableModels: [first],
+  });
+  assert.equal(result.firstAvailable, second);
+  assert.ok(!result.candidates.includes(first));
+});
+
+test("resolveHarnessCapability returns null firstAvailable when every candidate is unavailable", async () => {
+  const config = await repoConfig();
+  const result = resolveHarnessCapability(config, {
+    capability: "economy_reasoning",
+    unavailableModels: config.capabilities.economy_reasoning.model_ids,
+  });
+  assert.equal(result.firstAvailable, null);
+  assert.deepEqual(result.candidates, []);
+});
+
+test("resolveHarnessCapability rejects unknown capability ids", async () => {
+  const config = await repoConfig();
+  assert.throws(
+    () => resolveHarnessCapability(config, { capability: "nonexistent" }),
+    /Unknown capability: nonexistent/,
+  );
+});
+
+test("parseHarnessRoutingConfig treats capabilities as optional for backward compatibility", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const without = clone(raw);
+  delete without.capabilities;
+  const config = parseHarnessRoutingConfig(without);
+  assert.deepEqual(config.capabilities, {});
+});
+
+test("parseHarnessRoutingConfig rejects capability with empty model_ids", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.capabilities.strong_reasoning.model_ids = [];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /strong_reasoning requires a non-empty model_ids/,
+  );
+});
+
+test("parseHarnessRoutingConfig rejects capability model_ids without provider prefix", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.capabilities.strong_reasoning.model_ids = ["claude-opus-4-7"];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /must be fully qualified as "<provider>\/<model>"/,
   );
 });
 
