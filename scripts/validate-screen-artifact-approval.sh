@@ -55,7 +55,6 @@ doc = (root / ".pi/agent/docs/screen_artifact_approval.md").read_text(encoding="
 workflow = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
 stitch_doc = (root / ".pi/agent/docs/stitch_artifacts.md").read_text(encoding="utf-8")
 static = (root / "scripts/check-repo-static.sh").read_text(encoding="utf-8")
-compile_script = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 assert package["scripts"]["harness:screen-approval"] == "node --import tsx scripts/harness-screen-approval.ts"
 assert package["scripts"]["test:screen-approval"] == "node --import tsx --test tests/extension-units/screen-artifact-approval.test.ts tests/integration/screen-artifact-approval.test.ts"
 assert package["scripts"]["validate:screen-approval"] == "./scripts/validate-screen-artifact-approval.sh"
@@ -103,7 +102,6 @@ for path in [
     "scripts/validate-screen-artifact-approval.sh",
 ]:
     assert path in static, path
-assert "screen-artifact-approval.ts" in compile_script
 print("screen-artifact-approval-wiring-ok")
 PY
 
