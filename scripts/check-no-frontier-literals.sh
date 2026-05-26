@@ -20,7 +20,13 @@
 #     the live source (Tier 1 §1, PRs #192-#198), JSON files are post-migration
 #     historical evidence.
 #   - coding-logs/**, logs/**, reports/**, docs/**: append-only history.
-#   - packages/**: separate package release cycle (outside Tier 2 §8 scope).
+#   (packages/** is intentionally NOT allowlisted as of PR O: the only
+#    package file that previously needed it,
+#    packages/pi-g-skills/extensions/second-model-opus.ts, was migrated to
+#    opportunistic `.pi/agent/models.json` `strong_reasoning` capability
+#    lookup with an "any Anthropic Opus 4.x in the registry" fallback —
+#    no hard-coded model ID literal remains. Future package additions
+#    must use the same pattern or an explicit narrow allowlist entry.)
 #   - README.md, ma-code-devlogs.md: top-level history.
 #
 # Exit codes:
@@ -73,7 +79,6 @@ is_allowed_path() {
     logs/*) return 0 ;;
     reports/*) return 0 ;;
     docs/*) return 0 ;;
-    packages/*) return 0 ;;
     README.md) return 0 ;;
     ma-code-devlogs.md) return 0 ;;
   esac
