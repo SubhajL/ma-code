@@ -54,7 +54,7 @@ export interface HarnessMixedDomainLaneView extends ParallelWorkerLane {
 
 export interface HarnessParallelWorkerLaneManifest extends ParallelWorkerLaneManifest {
   lanes: HarnessMixedDomainLaneView[];
-  coordinators: ProductPipelineMixedDomainCoordinator[];
+  coordinators?: ProductPipelineMixedDomainCoordinator[];
 }
 
 export interface HarnessParallelWorkerLanesResult {
