@@ -124,6 +124,23 @@
       }
     }
   },
+  "capabilities": {
+    "strong_reasoning": {
+      "description": "Repo-approved high-capability reasoning candidates in preference order. Used when the harness needs the strongest model available (e.g. second-model planning critique). Update this list when a new frontier release lands; downstream callers should not name versioned model ids directly.",
+      "model_ids": [
+        "anthropic/claude-opus-4-7",
+        "openai-codex/gpt-5.5",
+        "anthropic/claude-sonnet-4-6"
+      ]
+    },
+    "economy_reasoning": {
+      "description": "Cheaper bounded reasoning candidates in preference order. Used when a small fast model is acceptable as a fallback (e.g. second-model planning when no high-capability model is available).",
+      "model_ids": [
+        "openai-codex/gpt-5.4-mini",
+        "github-copilot/gpt-5.4-mini"
+      ]
+    }
+  },
   "routing_defaults": {
     "orchestrator": {
       "provider": "openai-codex",

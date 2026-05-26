@@ -91,12 +91,30 @@ export interface PhaseRoutingProfile {
   activation: PhaseProfileActivation;
 }
 
+export interface CapabilityProfile {
+  description: string;
+  model_ids: string[];
+}
+
 export interface HarnessRoutingConfig {
   notes: string[];
   routing_defaults: Record<HarnessRole, RoutingDefault>;
   phase_routing_profiles: Partial<Record<PhaseLane, PhaseRoutingProfile>>;
   routing_policy: RoutingPolicy;
   thinking_policy: ThinkingPolicy;
+  capabilities: Record<string, CapabilityProfile>;
+}
+
+export interface CapabilityResolutionInput {
+  capability: string;
+  unavailableModels?: string[];
+}
+
+export interface CapabilityResolution {
+  capability: string;
+  description: string;
+  candidates: string[];
+  firstAvailable: string | null;
 }
 
 export interface RouteResolutionInput {
@@ -167,6 +185,27 @@ function isPhaseLane(value: unknown): value is PhaseLane {
 
 function parseStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+function parseCapabilityProfile(raw: unknown, capabilityId: string): CapabilityProfile {
+  if (!isRecord(raw)) {
+    throw new Error(`Capability ${capabilityId} must be an object.`);
+  }
+  const description = typeof raw.description === "string" ? raw.description : "";
+  const modelIds = parseStringArray(raw.model_ids)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (modelIds.length === 0) {
+    throw new Error(`Capability ${capabilityId} requires a non-empty model_ids array.`);
+  }
+  for (const modelId of modelIds) {
+    if (!modelId.includes("/")) {
+      throw new Error(
+        `Capability ${capabilityId} model id "${modelId}" must be fully qualified as "<provider>/<model>".`,
+      );
+    }
+  }
+  return { description, model_ids: modelIds };
 }
 
 function parsePhaseProfile(raw: unknown, phaseLane: PhaseLane): PhaseRoutingProfile {
@@ -436,6 +475,17 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     }
   }
 
+  const capabilities: Record<string, CapabilityProfile> = {};
+  const capabilitiesRaw = raw.capabilities;
+  if (capabilitiesRaw !== undefined) {
+    if (!isRecord(capabilitiesRaw)) {
+      throw new Error("capabilities must be an object when present.");
+    }
+    for (const capabilityId of Object.keys(capabilitiesRaw)) {
+      capabilities[capabilityId] = parseCapabilityProfile(capabilitiesRaw[capabilityId], capabilityId);
+    }
+  }
+
   return {
     notes,
     routing_defaults,
@@ -446,6 +496,25 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
       budget_modes,
     },
     thinking_policy,
+    capabilities,
+  };
+}
+
+export function resolveHarnessCapability(
+  config: HarnessRoutingConfig,
+  input: CapabilityResolutionInput,
+): CapabilityResolution {
+  const profile = config.capabilities[input.capability];
+  if (!profile) {
+    throw new Error(`Unknown capability: ${input.capability}`);
+  }
+  const unavailable = new Set(input.unavailableModels ?? []);
+  const candidates = profile.model_ids.filter((modelId) => !unavailable.has(modelId));
+  return {
+    capability: input.capability,
+    description: profile.description,
+    candidates,
+    firstAvailable: candidates[0] ?? null,
   };
 }
 

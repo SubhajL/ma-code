@@ -3,6 +3,7 @@ import { Type } from "@sinclair/typebox";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { parseHarnessRoutingConfig, resolveHarnessCapability } from "./harness-routing.ts";
 import { runSpawn, truncateText } from "./lib/process-utils.js";
 
 const SecondModelPlanSchema = Type.Object({
@@ -63,6 +64,17 @@ async function readPlanningLaneOverrides(cwd: string): Promise<string[]> {
   }
 }
 
+async function readCapabilityCandidates(cwd: string, capability: string): Promise<string[]> {
+  try {
+    const raw = await readFile(resolve(cwd, ".pi/agent/models.json"), "utf8");
+    const config = parseHarnessRoutingConfig(JSON.parse(raw));
+    if (!config.capabilities[capability]) return [];
+    return resolveHarnessCapability(config, { capability }).candidates;
+  } catch {
+    return [];
+  }
+}
+
 interface OperatorModelHints {
   codexConfigPath: string;
   hasGeminiMcp: boolean;
@@ -99,13 +111,26 @@ async function readOperatorModelHints(): Promise<OperatorModelHints> {
   }
 }
 
-function orderedSecondaryCandidates(
-  available: ModelLike[],
-  currentKey: string | null,
-  preferred: string[] | undefined,
-  repoPlanningOverrides: string[],
-  operatorHints: OperatorModelHints,
-): ModelLike[] {
+export interface SecondaryCandidateSources {
+  available: ModelLike[];
+  currentKey: string | null;
+  preferred?: string[];
+  repoPlanningOverrides: string[];
+  operatorHints: OperatorModelHints;
+  strongReasoningCandidates: string[];
+  economyReasoningCandidates: string[];
+}
+
+export function orderedSecondaryCandidates(sources: SecondaryCandidateSources): ModelLike[] {
+  const {
+    available,
+    currentKey,
+    preferred,
+    repoPlanningOverrides,
+    operatorHints,
+    strongReasoningCandidates,
+    economyReasoningCandidates,
+  } = sources;
   const candidates: ModelLike[] = [];
   const seen = new Set<string>();
   const maybeAdd = (model: ModelLike | undefined) => {
@@ -125,15 +150,10 @@ function orderedSecondaryCandidates(
     maybeAddByPreference(preference);
   }
 
-  const boundedDefaults = [
-    "anthropic/claude-opus-4-6",
-    "anthropic/claude-opus-4-5",
-    ...repoPlanningOverrides,
-    "github-copilot/claude-opus-4.6",
-    "github-copilot/claude-opus-4.5",
-    "github-copilot/claude-sonnet-4.6",
-  ];
-  for (const preference of boundedDefaults) {
+  for (const preference of strongReasoningCandidates) {
+    maybeAddByPreference(preference);
+  }
+  for (const preference of repoPlanningOverrides) {
     maybeAddByPreference(preference);
   }
 
@@ -146,7 +166,9 @@ function orderedSecondaryCandidates(
     maybeAddByPreference("google/gemini-2.5-pro");
   }
 
-  maybeAddByPreference("openai-codex/gpt-5.4-mini");
+  for (const preference of economyReasoningCandidates) {
+    maybeAddByPreference(preference);
+  }
   maybeAdd(available.find((model) => matchesProviderHint(model, /^google$/i) && /gemini-2\.5-(flash|pro)/i.test(model.id)));
   maybeAdd(
     available.find(
@@ -304,13 +326,17 @@ export default function (pi: ExtensionAPI) {
       const currentKey = ctx.model ? modelKey(ctx.model as ModelLike) : null;
       const repoPlanningOverrides = await readPlanningLaneOverrides(ctx.cwd);
       const operatorHints = await readOperatorModelHints();
-      const candidates = orderedSecondaryCandidates(
-        availableModels,
+      const strongReasoningCandidates = await readCapabilityCandidates(ctx.cwd, "strong_reasoning");
+      const economyReasoningCandidates = await readCapabilityCandidates(ctx.cwd, "economy_reasoning");
+      const candidates = orderedSecondaryCandidates({
+        available: availableModels,
         currentKey,
-        params.preferredModels,
+        preferred: params.preferredModels,
         repoPlanningOverrides,
         operatorHints,
-      );
+        strongReasoningCandidates,
+        economyReasoningCandidates,
+      });
 
       if (candidates.length === 0) {
         const reason = "no eligible secondary model is currently available";
