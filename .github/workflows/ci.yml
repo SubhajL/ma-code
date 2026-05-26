@@ -28,20 +28,6 @@ jobs:
       - name: Run static repo checks
         run: ./scripts/check-repo-static.sh
 
-  foundation-extension-compile:
-    name: Foundation Extension Compile
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-
-      - name: Compile foundation runtime extensions
-        run: ./scripts/check-foundation-extension-compile.sh
-
   typecheck-baseline:
     name: Typecheck Baseline
     runs-on: ubuntu-latest

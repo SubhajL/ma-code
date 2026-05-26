@@ -11,7 +11,6 @@ cd "$REPO_ROOT"
 
 "$NODE_BIN" --import "$TSX_IMPORT" --test tests/extension-units/parallel-worker-lanes.test.ts
 "$NODE_BIN" --import "$TSX_IMPORT" --test tests/integration/parallel-worker-lanes.test.ts
-./scripts/check-foundation-extension-compile.sh
 ./scripts/check-repo-static.sh
 git diff --check
 

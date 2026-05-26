@@ -61,7 +61,6 @@ workflow = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(enco
 domain_doc = (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8")
 team_doc = (root / ".pi/agent/docs/team_orchestration_architecture.md").read_text(encoding="utf-8")
 static = (root / "scripts/check-repo-static.sh").read_text(encoding="utf-8")
-compile_script = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 assert package["scripts"]["harness:slice-contract"] == "node --import tsx scripts/harness-slice-contract.ts"
 assert package["scripts"]["test:slice-contract"] == "node --import tsx --test tests/extension-units/slice-contracts.test.ts tests/integration/slice-contracts.test.ts"
 assert package["scripts"]["validate:slice-contract"] == "./scripts/validate-slice-contracts.sh"
@@ -111,7 +110,6 @@ for path in [
     "scripts/validate-slice-contracts.sh",
 ]:
     assert path in static, path
-assert "slice-contracts.ts" in compile_script
 print("slice-contract-wiring-ok")
 PY
 

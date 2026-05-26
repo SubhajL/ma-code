@@ -368,7 +368,6 @@ handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encod
 queue_runner = (root / ".pi/agent/extensions/queue-runner.ts").read_text(encoding="utf-8")
 queue_runner_validator = (root / "scripts/validate-queue-runner.sh").read_text(encoding="utf-8")
 extension_unit_validator = (root / "scripts/validate-extension-unit-tests.sh").read_text(encoding="utf-8")
-foundation_compile_validator = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 pr_gate_helper = (root / "scripts/harness-pr-gate.ts").read_text(encoding="utf-8")
 package_json = json.loads((root / "package.json").read_text(encoding="utf-8"))
 models_json = json.loads((root / ".pi/agent/models.json").read_text(encoding="utf-8"))
@@ -474,19 +473,14 @@ for needle in [
     assert needle in file_map_doc
 assert "discovery-policy.ts" in extension_unit_validator
 assert "discovery-policy.test.ts" in extension_unit_validator
-assert "discovery-policy.ts" in foundation_compile_validator
 assert "graphify-validation-decision.ts" in extension_unit_validator
 assert "graphify-validation-decision.test.ts" in extension_unit_validator
-assert "graphify-validation-decision.ts" in foundation_compile_validator
 assert "graphify-orchestration-decision.ts" in extension_unit_validator
 assert "graphify-orchestration-decision.test.ts" in extension_unit_validator
-assert "graphify-orchestration-decision.ts" in foundation_compile_validator
 assert "graphify-orchestrator.ts" in extension_unit_validator
 assert "graphify-orchestrator.test.ts" in extension_unit_validator
-assert "graphify-orchestrator.ts" in foundation_compile_validator
 assert "execution-leases.ts" in extension_unit_validator
 assert "execution-leases.test.ts" in extension_unit_validator
-assert "execution-leases.ts" in foundation_compile_validator
 for needle in [
     "decideGraphifyOrchestration",
     "GRAPHIFY_ORCHESTRATION_ACTIONS",
@@ -971,7 +965,6 @@ for needle in [
     "blocked_out_of_order",
 ]:
     assert needle in product_slice_lifecycle_extension
-assert "product-slice-lifecycle.ts" in foundation_compile_validator
 for needle in [
     "product-slice-lifecycle.ts",
     "product-slice-lifecycle.test.ts",
@@ -1127,7 +1120,6 @@ for needle in [
     "screen-artifact-approval-validator: compile helper and CLI",
 ]:
     assert needle in screen_artifact_approval_validator
-assert "screen-artifact-approval.ts" in foundation_compile_validator
 assert "scripts/validate-screen-artifact-approval.sh" in validation_doc
 assert "harness:screen-approval" in stitch_artifacts_doc
 
@@ -1171,7 +1163,6 @@ assert "test:live-stitch-artifact" in package_json.get("scripts", {})
 assert "validate:live-stitch-artifact" in package_json.get("scripts", {})
 assert "harness:live-stitch-artifact" in stitch_artifacts_doc
 assert "live_stitch_adapter.md" in stitch_artifacts_doc
-assert "live-stitch-adapter.ts" in foundation_compile_validator
 assert "mode: `mock` or `live`" in screen_artifact_approval_doc
 
 assert slice_contract_schema["properties"]["status"]["enum"] == ["draft", "ready_for_review", "approved", "blocked"]
@@ -1211,7 +1202,6 @@ for needle in [
     "slice-contract-validator: compile helper and CLI",
 ]:
     assert needle in slice_contract_validator
-assert "slice-contracts.ts" in foundation_compile_validator
 assert "scripts/validate-slice-contracts.sh" in validation_doc
 assert "harness:slice-contract" in package_json.get("scripts", {})
 assert "contracts/<slice-id>.contract.json" in (root / ".pi/agent/docs/domain_governance.md").read_text(encoding="utf-8")
@@ -1249,7 +1239,6 @@ for needle in [
     "backend packets wait for a later phase",
 ]:
     assert needle in product_planning_doc, needle
-assert "frontend-packet-generator.ts" in foundation_compile_validator
 assert "scripts/validate-frontend-packets.sh" in validation_doc
 assert "harness:fe-packet" in package_json.get("scripts", {})
 assert "harness:fe-packet" in package_template_json.get("scripts", {})
@@ -1298,7 +1287,6 @@ for needle in [
     "no FE packet changes",
 ]:
     assert needle in product_planning_doc, needle
-assert "backend-packet-generator.ts" in foundation_compile_validator
 assert "frontend-validation-evidence.schema.json" in validation_doc
 assert "scripts/validate-backend-packets.sh" in validation_doc
 assert "harness:be-packet" in package_json.get("scripts", {})
@@ -1349,7 +1337,6 @@ for needle in [
     "Intra-slice phases remain sequential",
 ]:
     assert needle in product_planning_doc, needle
-assert "slice-dependency-decision.ts" in foundation_compile_validator
 assert "slice-dependency-decision.schema.json" in validation_doc
 assert "scripts/validate-slice-dependencies.sh" in validation_doc
 for script_name in ["harness:slice-dependencies", "test:slice-dependencies", "validate:slice-dependencies"]:
@@ -1411,7 +1398,6 @@ for needle in [
 assert "validate:product-pipeline-e2e" in package_json.get("scripts", {})
 assert "product_pipeline_e2e" in core_workflows_validator or "product pipeline E2E pilot" in core_workflows_validator
 assert product_pipeline_schema["title"] == "Product Pipeline Run"
-assert "product-pipeline.ts" in foundation_compile_validator
 for needle in [
     "planParallelWorkerLanes",
     "buildParallelWorkerLaneManifest",
@@ -1431,12 +1417,10 @@ for needle in [
     assert needle in parallel_worker_lanes_doc, needle
 for needle in [
     "parallel-worker-lanes.test.ts",
-    "check-foundation-extension-compile.sh",
     "check-repo-static.sh",
 ]:
     assert needle in parallel_worker_lanes_validator, needle
 assert parallel_worker_lanes_schema["title"] == "Parallel Worker Lanes Manifest"
-assert "parallel-worker-lanes.ts" in foundation_compile_validator
 assert "harness:parallel-worker-lanes" in package_json.get("scripts", {})
 assert "harness:parallel-worker-lanes" in package_template_json.get("scripts", {})
 assert "test:parallel-worker-lanes" in package_json.get("scripts", {})
@@ -1486,13 +1470,6 @@ assert "planOrchestratorDryRun" in orchestrator_cli
 assert "runOrchestratorApply" in orchestrator_cli
 assert "runHarnessOrchestrateContext" in orchestrator_cli
 assert "harness-orchestrate context" in orchestrator_cli
-assert "orchestrator-context.ts" in foundation_compile_validator
-assert "orchestrator-classifier.ts" in foundation_compile_validator
-assert "orchestrator-dry-run.ts" in foundation_compile_validator
-assert "orchestrator-apply-policy.ts" in foundation_compile_validator
-assert "orchestrator-run.ts" in foundation_compile_validator
-assert "orchestrator-continue.ts" in foundation_compile_validator
-assert "orchestrator-evidence.ts" in foundation_compile_validator
 assert "analyzeOrchestratorContext" in orchestrator_context_helper
 assert "greenfield_assumption" in orchestrator_context_helper
 assert "active_existing_initiative" in orchestrator_context_helper

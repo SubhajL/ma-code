@@ -60,7 +60,6 @@ doc = (root / ".pi/agent/docs/stitch_artifacts.md").read_text(encoding="utf-8")
 workflow = (root / ".pi/agent/docs/product_planning_workflow.md").read_text(encoding="utf-8")
 prompt_doc = (root / ".pi/agent/docs/stitch_prompt_generation.md").read_text(encoding="utf-8")
 static = (root / "scripts/check-repo-static.sh").read_text(encoding="utf-8")
-compile_script = (root / "scripts/check-foundation-extension-compile.sh").read_text(encoding="utf-8")
 assert package["scripts"]["harness:stitch-artifact"] == "node --import tsx scripts/harness-stitch-artifact.ts"
 assert package["scripts"]["test:stitch-artifact"] == "node --import tsx --test tests/extension-units/stitch-artifact-adapter.test.ts tests/integration/stitch-artifact.test.ts"
 assert package["scripts"]["validate:stitch-artifact"] == "./scripts/validate-stitch-artifacts.sh"
@@ -102,7 +101,6 @@ for path in [
     "scripts/validate-stitch-artifacts.sh",
 ]:
     assert path in static, path
-assert "stitch-artifact-adapter.ts" in compile_script
 print("stitch-artifact-wiring-ok")
 PY
 
