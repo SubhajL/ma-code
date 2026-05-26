@@ -159,8 +159,8 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 |---|---|---|
 | `tsc --noEmit` script over all harness TS | **Done** | PR #183 — root `tsconfig.json` + `npm run typecheck`; 45-error baseline known. |
 | Wire `tsc --noEmit` into CI | **Done** | `typecheck-baseline` job in `.github/workflows/ci.yml` runs `scripts/check-typecheck-baseline.sh`; fails on regression, passes on burndown with a warning. |
-| Retire `check-foundation-extension-compile.sh` | **Open, gated on burndown** | Kept as belt-and-suspenders until the 45-error baseline reaches 0. |
-| Treat baseline typecheck errors as production bugs | **Open** | 14-file × 45-error backlog catalogued; ratchet at `.typecheck-baseline-count` prevents drift up while burndown happens incrementally. |
+| Retire `check-foundation-extension-compile.sh` | **Open, gated on burndown** | Kept as belt-and-suspenders until the typecheck baseline reaches 0. |
+| Treat baseline typecheck errors as production bugs | **Open, burndown in progress** | Baseline ratcheted from 45 → 32 (started 2026-05-26); ratchet at `.typecheck-baseline-count` prevents drift up while burndown happens incrementally. |
 | Coverage / reachability audit | **Done** | PR #181 — [coverage-audit.md](./coverage-audit.md). |
 | `harness:doctor` health-check | **Done** | PR #180. |
 
@@ -168,14 +168,15 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 
 | # | Item | Status | Where |
 |---|---|---|---|
-| 1 | SQLite migration | **Open** | Scoped at ~5,200 LOC + 20+ tests; [tier-1-status.md](./tier-1-status.md) flags as dedicated PR. |
-| 2 | Sandbox vs invert tool surface | **Open, scope-checked** | Invert (typed tools only). `safe-bash` is local (this repo); `bash` tool is upstream and can only be blocked via interceptor. Plan staged into multi-PR: add typed tools (`git_commit`, `run_test`, etc.) → update prompts → tighten interceptor. See [tier-1-status.md §2](./tier-1-status.md). |
+| 1 | SQLite migration | **Done** | 5-PR stack #192/#195/#196/#197/#198. SQLite at `.pi/agent/state/runtime/pi.db` is source of truth for `tasks`/`queue_jobs`/`leases`/`audit_log`; JSON files auto-migrate/archive on first boot, audit log dual-writes JSONL for ops debugging. |
+| 2 | Sandbox vs invert tool surface | **Done** | Inversion landed via #189 (scope check) → #190 (typed `git_commit`, `run_test`) → #191 (`safe-bash` redirects matching bash forms) → #199 (typed `git_branch`/`git_checkout`/`git_push` + blocking with guidance). Residual bash retained for one-off shell utilities; **not** a sandbox by design. |
 | 3 | Verify Anthropic prompt caching | **Done** | Upstream `pi-ai` already applies `cache_control`; PR #182 landed consumer-side utility + gap doc. |
-| 4 | In-process dispatch | **Partial** | PR #185 — central dispatch table + 3 of 12 operator subcommands in-process. 9 still spawn-based behind the same table; each is a one-line follow-up PR (switch entry from `spawned()` to `inProcess()` and add `runFromArgv` to the target). |
+| 4 | In-process dispatch | **Done** | All 12 operator subcommands now route through the central dispatch table in-process. Landed across #185 (table + first 3) → #187 (3 more) → #193 (3 more) → #194 (final 3). Heavy spawn-based subcommands (e.g. `orchestrator-run.ts`) still spawn by design — the dispatch table is additive and each subcommand keeps its own isolation tradeoff. |
 
 ### Tier 2 — do this quarter
 
-5. Collapse the orchestrator FSM — **Open.**
+5. Collapse the orchestrator FSM — **Partial.** PR #200 collapsed the
+   orchestrator command dispatch; the wider FSM collapse is still open.
 6. Consolidate small modules (recovery, packets, stitch) — **Done.** This
    change adds consolidated `recovery.ts`, `packets.ts`, and `stitch.ts`
    extension surfaces, rewires the cluster CLIs/validators/tests through them,
@@ -188,8 +189,9 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
    schema, wires API schema/seed record types through the generated output, and
    adds `npm run codegen:schema-types` / `npm run check:schema-types` drift
    checks.
-8. Provider / capability abstraction — **Open.** Need to bump
-   `claude-opus-4-5` → `claude-opus-4-7` regardless.
+8. Provider / capability abstraction — **Open.** Model bump
+   `claude-opus-4-5` → `claude-opus-4-7` landed in `models.json` via #187;
+   the provider/capability abstraction itself is still open.
 
 ### Tier 3 — when convenient
 
