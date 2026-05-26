@@ -213,14 +213,16 @@ function parseCapabilityProfile(raw: unknown, capabilityId: string): CapabilityP
   return { description, model_ids: modelIds };
 }
 
-function expandRoutingFallbackOrder(
-  rawFallbackOrder: unknown,
+function expandCapabilityRefArray(
+  rawEntries: unknown,
   capabilities: Record<string, CapabilityProfile>,
   role: string,
+  fieldName: string,
+  defaultModelFullId?: string,
 ): string[] {
-  if (!Array.isArray(rawFallbackOrder)) return [];
+  if (!Array.isArray(rawEntries)) return [];
   const expanded: string[] = [];
-  for (const entry of rawFallbackOrder) {
+  for (const entry of rawEntries) {
     if (typeof entry === "string") {
       const trimmed = entry.trim();
       if (trimmed.length > 0) expanded.push(trimmed);
@@ -231,14 +233,23 @@ function expandRoutingFallbackOrder(
       const profile = capabilities[capabilityId];
       if (!profile) {
         throw new Error(
-          `Unknown fallback_order capability "${capabilityId}" for role ${role}.`,
+          `Unknown ${fieldName} capability "${capabilityId}" for role ${role}.`,
         );
       }
-      expanded.push(...profile.model_ids);
+      const excludeDefault = entry.excludeDefaultModel === true;
+      if (excludeDefault && !defaultModelFullId) {
+        throw new Error(
+          `${fieldName} capability "${capabilityId}" for role ${role} cannot use excludeDefaultModel here (no default model available in this context).`,
+        );
+      }
+      const candidates = excludeDefault
+        ? profile.model_ids.filter((modelId) => modelId !== defaultModelFullId)
+        : profile.model_ids;
+      expanded.push(...candidates);
       continue;
     }
     throw new Error(
-      `Invalid fallback_order entry for role ${role}: expected a model id string or { "capability": "..." }.`,
+      `Invalid ${fieldName} entry for role ${role}: expected a model id string or { "capability": "..." }.`,
     );
   }
   return expanded;
@@ -389,10 +400,22 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     const default_model = typeof entryRaw.default_model === "string" ? entryRaw.default_model : "";
     const thinking = typeof entryRaw.thinking === "string" ? entryRaw.thinking : "";
     const budget_guidance = typeof entryRaw.budget_guidance === "string" ? entryRaw.budget_guidance : "";
-    const allowed_overrides = Array.isArray(entryRaw.allowed_overrides)
-      ? entryRaw.allowed_overrides.filter((value): value is string => typeof value === "string")
-      : [];
-    const fallback_order = expandRoutingFallbackOrder(entryRaw.fallback_order, capabilities, role);
+    const defaultModelFullId = provider && default_model
+      ? normalizeModelId(default_model, provider)
+      : undefined;
+    const allowed_overrides = expandCapabilityRefArray(
+      entryRaw.allowed_overrides,
+      capabilities,
+      role,
+      "allowed_overrides",
+      defaultModelFullId,
+    );
+    const fallback_order = expandCapabilityRefArray(
+      entryRaw.fallback_order,
+      capabilities,
+      role,
+      "fallback_order",
+    );
     const budget_overrides = Array.isArray(entryRaw.budget_overrides)
       ? entryRaw.budget_overrides.filter((value): value is string => typeof value === "string")
       : [];

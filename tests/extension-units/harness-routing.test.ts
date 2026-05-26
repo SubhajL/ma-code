@@ -223,7 +223,7 @@ test("resolveHarnessCapability rejects unknown capability ids", async () => {
   );
 });
 
-test("parseHarnessRoutingConfig accepts legacy string-array fallback_order without a capabilities block", async () => {
+test("parseHarnessRoutingConfig accepts legacy string-array fallback_order and allowed_overrides without a capabilities block", async () => {
   const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
   const legacy = clone(raw);
   delete legacy.capabilities;
@@ -232,12 +232,18 @@ test("parseHarnessRoutingConfig accepts legacy string-array fallback_order witho
       "openai-codex/gpt-5.5",
       "anthropic/claude-opus-4-7",
     ];
+    legacy.routing_defaults[role].allowed_overrides = [
+      "anthropic/claude-sonnet-4-6",
+    ];
   }
   const config = parseHarnessRoutingConfig(legacy);
   assert.deepEqual(config.capabilities, {});
   assert.deepEqual(config.routing_defaults.orchestrator.fallback_order, [
     "openai-codex/gpt-5.5",
     "anthropic/claude-opus-4-7",
+  ]);
+  assert.deepEqual(config.routing_defaults.orchestrator.allowed_overrides, [
+    "anthropic/claude-sonnet-4-6",
   ]);
 });
 
@@ -294,6 +300,84 @@ test("parseHarnessRoutingConfig rejects malformed fallback_order entries", async
     () => parseHarnessRoutingConfig(invalid),
     /Invalid fallback_order entry for role orchestrator/,
   );
+});
+
+test("parseHarnessRoutingConfig expands allowed_overrides capability refs minus the role default", async () => {
+  const config = await repoConfig();
+  // Reasoning-led role: default is gpt-5.5; allowed_overrides should be routing_reasoning_first minus gpt-5.5.
+  assert.deepEqual(config.routing_defaults.orchestrator.allowed_overrides, [
+    "openai-codex/gpt-5.3-codex-spark",
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-sonnet-4-6",
+  ]);
+  // Implementation role: default is spark; allowed_overrides should be routing_implementation_first minus spark.
+  assert.deepEqual(config.routing_defaults.backend_worker.allowed_overrides, [
+    "openai-codex/gpt-5.5",
+    "anthropic/claude-sonnet-4-6",
+    "anthropic/claude-opus-4-7",
+  ]);
+});
+
+test("parseHarnessRoutingConfig keeps every role's allowed_overrides identical to the pre-migration arrays", async () => {
+  const config = await repoConfig();
+  const reasoningRoles = [
+    "orchestrator",
+    "planning_lead",
+    "build_lead",
+    "quality_lead",
+    "research_worker",
+    "reviewer_worker",
+    "validator_worker",
+    "docs_worker",
+    "recovery_worker",
+  ] as const;
+  const implementationRoles = ["frontend_worker", "backend_worker", "infra_worker"] as const;
+  const reasoningExpected = ["openai-codex/gpt-5.3-codex-spark", "anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4-6"];
+  const implementationExpected = ["openai-codex/gpt-5.5", "anthropic/claude-sonnet-4-6", "anthropic/claude-opus-4-7"];
+  for (const role of reasoningRoles) {
+    assert.deepEqual(config.routing_defaults[role].allowed_overrides, reasoningExpected, `${role} allowed_overrides`);
+  }
+  for (const role of implementationRoles) {
+    assert.deepEqual(config.routing_defaults[role].allowed_overrides, implementationExpected, `${role} allowed_overrides`);
+  }
+});
+
+test("parseHarnessRoutingConfig rejects excludeDefaultModel when no default is available (fallback_order context)", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.routing_defaults.orchestrator.fallback_order = [
+    { capability: "routing_reasoning_first", excludeDefaultModel: true },
+  ];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /fallback_order capability "routing_reasoning_first".*cannot use excludeDefaultModel/,
+  );
+});
+
+test("parseHarnessRoutingConfig rejects unknown allowed_overrides capability", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const invalid = clone(raw);
+  invalid.routing_defaults.orchestrator.allowed_overrides = [{ capability: "nonexistent_capability" }];
+  assert.throws(
+    () => parseHarnessRoutingConfig(invalid),
+    /Unknown allowed_overrides capability "nonexistent_capability" for role orchestrator/,
+  );
+});
+
+test("parseHarnessRoutingConfig allows mixed allowed_overrides entries (literals plus capability refs)", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const mixed = clone(raw);
+  mixed.routing_defaults.orchestrator.allowed_overrides = [
+    "anthropic/claude-haiku-4-5",
+    { capability: "routing_reasoning_first", excludeDefaultModel: true },
+  ];
+  const config = parseHarnessRoutingConfig(mixed);
+  assert.deepEqual(config.routing_defaults.orchestrator.allowed_overrides, [
+    "anthropic/claude-haiku-4-5",
+    "openai-codex/gpt-5.3-codex-spark",
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-sonnet-4-6",
+  ]);
 });
 
 test("parseHarnessRoutingConfig rejects capability with empty model_ids", async () => {

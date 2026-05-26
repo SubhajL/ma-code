@@ -165,9 +165,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -182,9 +183,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -199,9 +201,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -218,9 +221,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -235,9 +239,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -252,9 +257,10 @@
       "default_model": "gpt-5.3-codex-spark",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.5",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-7"
+        {
+          "capability": "routing_implementation_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -271,9 +277,10 @@
       "default_model": "gpt-5.3-codex-spark",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.5",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-7"
+        {
+          "capability": "routing_implementation_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -290,9 +297,10 @@
       "default_model": "gpt-5.3-codex-spark",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.5",
-        "anthropic/claude-sonnet-4-6",
-        "anthropic/claude-opus-4-7"
+        {
+          "capability": "routing_implementation_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -307,9 +315,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -324,9 +333,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -341,9 +351,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
@@ -358,9 +369,10 @@
       "default_model": "gpt-5.5",
       "thinking": "high",
       "allowed_overrides": [
-        "openai-codex/gpt-5.3-codex-spark",
-        "anthropic/claude-opus-4-7",
-        "anthropic/claude-sonnet-4-6"
+        {
+          "capability": "routing_reasoning_first",
+          "excludeDefaultModel": true
+        }
       ],
       "fallback_order": [
         {
