@@ -252,8 +252,8 @@ const cases = [
   },
   {
     name: "explicit allowed override",
-    input: { role: "backend_worker", reason: "human_override", modelOverride: "anthropic/claude-opus-4-5" },
-    expected: { selectedModelId: "anthropic/claude-opus-4-5", source: "explicit_override" },
+    input: { role: "backend_worker", reason: "human_override", modelOverride: "anthropic/claude-opus-4-7" },
+    expected: { selectedModelId: "anthropic/claude-opus-4-7", source: "explicit_override" },
   },
   {
     name: "screen phase fallback",
