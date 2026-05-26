@@ -1,13 +1,30 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
 
+import harnessRouting from "../../.pi/agent/extensions/harness-routing.ts";
 import { deriveDomainOwnershipForDomains } from "../../.pi/agent/extensions/domain-ownership.ts";
 import {
   parseHarnessRoutingConfig,
   resolveHarnessCapability,
   resolveHarnessRoute,
 } from "../../.pi/agent/extensions/harness-routing.ts";
+import { FakePi, makeCtx, makeTempRepo } from "./test-utils.ts";
+
+async function makeTempRepoWithModelsJson(prefix: string): Promise<string> {
+  const cwd = await makeTempRepo(prefix);
+  const raw = await readFile(".pi/agent/models.json", "utf8");
+  await mkdir(join(cwd, ".pi", "agent"), { recursive: true });
+  await writeFile(join(cwd, ".pi", "agent", "models.json"), raw);
+  return cwd;
+}
+
+function registerHarnessRoutingTools() {
+  const pi = new FakePi("feat/resolve-harness-capability");
+  harnessRouting(pi as any);
+  return pi;
+}
 
 async function repoConfig() {
   return parseHarnessRoutingConfig(JSON.parse(await readFile(".pi/agent/models.json", "utf8")));
@@ -297,6 +314,69 @@ test("parseHarnessRoutingConfig rejects capability model_ids without provider pr
     () => parseHarnessRoutingConfig(invalid),
     /must be fully qualified as "<provider>\/<model>"/,
   );
+});
+
+test("resolve_harness_capability tool is registered alongside resolve_harness_route", () => {
+  const pi = registerHarnessRoutingTools();
+  const capability = pi.getTool("resolve_harness_capability");
+  const route = pi.getTool("resolve_harness_route");
+  assert.equal(capability.name, "resolve_harness_capability");
+  assert.equal(route.name, "resolve_harness_route");
+});
+
+test("resolve_harness_capability tool returns ordered candidates for a known capability", async () => {
+  const pi = registerHarnessRoutingTools();
+  const tool = pi.getTool("resolve_harness_capability");
+  const cwd = await makeTempRepoWithModelsJson("resolve-capability-happy-");
+  const result = await tool.execute(
+    "tool-call-id",
+    { capability: "strong_reasoning" },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(result.details.ok, true);
+  assert.equal(result.details.capability, "strong_reasoning");
+  assert.deepEqual(result.details.candidates, [
+    "anthropic/claude-opus-4-7",
+    "openai-codex/gpt-5.5",
+    "anthropic/claude-sonnet-4-6",
+  ]);
+  assert.equal(result.details.firstAvailable, "anthropic/claude-opus-4-7");
+});
+
+test("resolve_harness_capability tool filters out unavailable models", async () => {
+  const pi = registerHarnessRoutingTools();
+  const tool = pi.getTool("resolve_harness_capability");
+  const cwd = await makeTempRepoWithModelsJson("resolve-capability-filter-");
+  const result = await tool.execute(
+    "tool-call-id",
+    {
+      capability: "economy_reasoning",
+      unavailableModels: ["openai-codex/gpt-5.4-mini"],
+    },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(result.details.ok, true);
+  assert.equal(result.details.firstAvailable, "github-copilot/gpt-5.4-mini");
+  assert.ok(!result.details.candidates.includes("openai-codex/gpt-5.4-mini"));
+});
+
+test("resolve_harness_capability tool returns ok:false on unknown capability id", async () => {
+  const pi = registerHarnessRoutingTools();
+  const tool = pi.getTool("resolve_harness_capability");
+  const cwd = await makeTempRepoWithModelsJson("resolve-capability-unknown-");
+  const result = await tool.execute(
+    "tool-call-id",
+    { capability: "nonexistent_capability" },
+    undefined,
+    undefined,
+    makeCtx(cwd),
+  );
+  assert.equal(result.details.ok, false);
+  assert.match(String(result.details.error), /Unknown capability: nonexistent_capability/);
 });
 
 test("mixed frontend/backend ownership selects backend worker before route resolution", async () => {

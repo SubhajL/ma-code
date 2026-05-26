@@ -353,6 +353,7 @@ check_3_phase_lane_unit_tests() {
   cp "$REPO_ROOT/.pi/agent/extensions/domain-ownership.ts" "$runtime_dir/.pi/agent/extensions/domain-ownership.ts"
   cp "$REPO_ROOT/.pi/agent/models.json" "$runtime_dir/.pi/agent/models.json"
   cp "$REPO_ROOT/tests/extension-units/harness-routing.test.ts" "$runtime_dir/tests/extension-units/harness-routing.test.ts"
+  cp "$REPO_ROOT/tests/extension-units/test-utils.ts" "$runtime_dir/tests/extension-units/test-utils.ts"
 
   if (cd "$runtime_dir" && npx tsx --test tests/extension-units/harness-routing.test.ts) >"$out" 2>&1; then
     local detail="Phase-lane harness-routing unit tests passed."
@@ -410,12 +411,50 @@ check_3_live_probe() {
   fi
 }
 
+check_4_live_capability_probe() {
+  local name="5. live resolve_harness_capability tool probe"
+  if [[ $INCLUDE_LIVE -eq 0 ]]; then
+    local detail="Live probe skipped by default to avoid unnecessary provider-backed validation spend."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "- none" "- run with \`--include-live\` when one bounded live wiring proof is needed"
+    return
+  fi
+
+  local out="$TMP_ROOT/check_4_live_capability_probe.jsonl"
+  local cmd="$PI_BIN --no-session --no-extensions -e $REPO_ROOT/.pi/agent/extensions/harness-routing.ts --mode json \"Use resolve_harness_capability for capability economy_reasoning with unavailableModels [openai-codex/gpt-5.4-mini], then report the exact firstAvailable model ID in one sentence.\""
+  if (cd "$REPO_ROOT" && bash -lc "$cmd") >"$out" 2>&1; then
+    if grep -Fq '"toolName":"resolve_harness_capability"' "$out" && grep -Fq 'github-copilot/gpt-5.4-mini' "$out"; then
+      local detail="Live probe observed resolve_harness_capability and the expected firstAvailable model ID."
+      record_result "$name" "PASS" "$detail"
+      append_summary_row "$name" "PASS" "$detail"
+      append_check_section "$name" "PASS" "$cmd" "- tool call observed: \`resolve_harness_capability\`\n- expected firstAvailable model found: \`github-copilot/gpt-5.4-mini\`"
+    else
+      local detail="Live probe ran but expected tool/result evidence was missing."
+      record_result "$name" "FAIL" "$detail"
+      append_summary_row "$name" "FAIL" "$detail"
+      append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`json\n$(sed -n '1,200p' "$out")\n\`\`\`"
+    fi
+  elif probe_unavailable "$out"; then
+    local detail="Live probe skipped because provider/model access was unavailable in this environment."
+    record_result "$name" "SKIP" "$detail"
+    append_summary_row "$name" "SKIP" "$detail"
+    append_check_section "$name" "SKIP" "$cmd" "- output indicated provider/model unavailability:\n\n\`\`\`\n$(sed -n '1,120p' "$out")\n\`\`\`"
+  else
+    local detail="Live probe failed unexpectedly."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(sed -n '1,160p' "$out")\n\`\`\`"
+  fi
+}
+
 setup_temp_runtime
 write_header
 check_1_helper_resolution
 check_2_compile
 check_3_phase_lane_unit_tests
 check_3_live_probe
+check_4_live_capability_probe
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"

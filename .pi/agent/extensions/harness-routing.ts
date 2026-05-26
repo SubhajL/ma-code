@@ -166,6 +166,11 @@ const ResolveHarnessRouteSchema = Type.Object({
   phaseLane: Type.Optional(StringEnum(PHASE_LANES)),
 });
 
+const ResolveHarnessCapabilitySchema = Type.Object({
+  capability: Type.String({ description: "Capability id declared under `capabilities` in .pi/agent/models.json." }),
+  unavailableModels: Type.Optional(Type.Array(Type.String(), { description: "Fully-qualified <provider>/<model> ids that should be filtered out of the candidate list before picking firstAvailable." })),
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -724,6 +729,34 @@ export default function harnessRouting(pi: ExtensionAPI) {
         };
       } catch (error) {
         const message = `Routing resolution failed: ${String(error)}`;
+        return {
+          content: [{ type: "text", text: message }],
+          details: { ok: false, error: String(error) },
+        };
+      }
+    },
+  });
+
+  pi.registerTool({
+    name: "resolve_harness_capability",
+    label: "Resolve Harness Capability",
+    description: "Resolve the repo-local model candidate list for a named capability (e.g. strong_reasoning, economy_reasoning). Returns ordered candidates and the firstAvailable model after filtering out caller-supplied unavailable ids.",
+    promptSnippet: "Use deterministic capability resolution instead of hard-coding preferred model IDs.",
+    promptGuidelines: [
+      "Use this tool when a harness extension or operator needs the current preferred model for a repo-local capability declared in .pi/agent/models.json `capabilities`.",
+      "Prefer this tool before hard-coding model IDs for reasoning, routing, or implementation capabilities — capability lists are the single place frontier-model bumps land.",
+    ],
+    parameters: ResolveHarnessCapabilitySchema,
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      try {
+        const config = await loadHarnessRoutingConfig(ctx.cwd);
+        const result = resolveHarnessCapability(config, params);
+        return {
+          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          details: { ok: true, ...result },
+        };
+      } catch (error) {
+        const message = `Capability resolution failed: ${String(error)}`;
         return {
           content: [{ type: "text", text: message }],
           details: { ok: false, error: String(error) },
