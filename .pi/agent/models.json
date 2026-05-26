@@ -157,6 +157,12 @@
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-7"
       ]
+    },
+    "budget_implementation": {
+      "description": "Cheaper bounded models acceptable as budget-pressure overrides for build_lead and the implementation worker roles. Update this list once when a new cheap-frontier coding model lands and all 3 implementation/build roles pick it up.",
+      "model_ids": [
+        "github-copilot/gpt-5.4-mini"
+      ]
     }
   },
   "routing_defaults": {
@@ -212,7 +218,9 @@
         }
       ],
       "budget_overrides": [
-        "github-copilot/gpt-5.4-mini"
+        {
+          "capability": "budget_implementation"
+        }
       ],
       "budget_guidance": "medium"
     },
@@ -268,7 +276,9 @@
         }
       ],
       "budget_overrides": [
-        "github-copilot/gpt-5.4-mini"
+        {
+          "capability": "budget_implementation"
+        }
       ],
       "budget_guidance": "medium"
     },
@@ -288,7 +298,9 @@
         }
       ],
       "budget_overrides": [
-        "github-copilot/gpt-5.4-mini"
+        {
+          "capability": "budget_implementation"
+        }
       ],
       "budget_guidance": "medium_high"
     },
