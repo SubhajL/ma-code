@@ -197,6 +197,9 @@ required_files=(
   "docs/adr/0001-runtime-state-is-sqlite.md"
   "docs/adr/0002-bounded-autonomy.md"
   "docs/adr/0003-atomic-queue-task-mutations.md"
+  "docs/adr/0004-apps-web-and-services-api-are-harness-fixtures.md"
+  "apps/web/README.md"
+  "services/api/README.md"
 )
 
 for path in "${required_files[@]}"; do
@@ -1710,6 +1713,37 @@ for adr_filename in adr_files:
     assert status_match.group(1) in allowed_statuses, (
         f"{adr_filename} has unknown Status '{status_match.group(1)}'; "
         f"must be one of {sorted(allowed_statuses)}"
+    )
+
+fixture_adr_filename = "0004-apps-web-and-services-api-are-harness-fixtures.md"
+fixture_banner = "HARNESS PILOT FIXTURE"
+for fixture_readme in ("apps/web/README.md", "services/api/README.md"):
+    fixture_doc = (root / fixture_readme).read_text(encoding="utf-8")
+    assert fixture_banner in fixture_doc, (
+        f"{fixture_readme} must contain the literal banner phrase {fixture_banner!r} "
+        f"to make its harness-pilot status explicit (ADR-0004). A bare 'fixture' substring "
+        f"elsewhere in the file is not sufficient."
+    )
+    assert fixture_adr_filename in fixture_doc, (
+        f"{fixture_readme} must link to the ADR-0004 file (filename {fixture_adr_filename!r}) "
+        f"so readers can find the binding decision"
+    )
+
+# The greenfield-scaffold initiative docs are the path operators reach via the
+# root README's "Initiative overview" link. They must mention fixture status
+# and link to ADR-0004 so a reader entering through the initiative does not
+# miss the decision recorded in apps/web/README.md and services/api/README.md.
+for greenfield_doc_relpath in (
+    "docs/initiatives/greenfield-scaffold/README.md",
+    "docs/initiatives/greenfield-scaffold/foundation-contract.md",
+):
+    greenfield_doc = (root / greenfield_doc_relpath).read_text(encoding="utf-8")
+    assert "harness pilot fixture" in greenfield_doc.lower(), (
+        f"{greenfield_doc_relpath} must mention 'harness pilot fixture' (per ADR-0004 lifecycle "
+        f"step 3, contradicting docs must point at the ADR)"
+    )
+    assert fixture_adr_filename in greenfield_doc, (
+        f"{greenfield_doc_relpath} must link to the ADR-0004 file (filename {fixture_adr_filename!r})"
     )
 PY
 
