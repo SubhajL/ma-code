@@ -84,3 +84,17 @@ Escalate when:
 - Direct raw JSON edits and direct SQLite mutation are both fallback or
   maintenance paths, not the normal operating path. Use the runtime task tools
   and helper scripts (`harness:status`, `harness:doctor`, etc.) instead.
+
+## Architecture decisions
+- Load-bearing architectural decisions live as Architecture Decision Records
+  under [`docs/adr/`](docs/adr/README.md). Each ADR is numbered, dated, and has
+  a Status of `Proposed`, `Accepted`, `Superseded`, or `Deprecated`.
+- The ADR index ([`docs/adr/README.md`](docs/adr/README.md)) is the single
+  authoritative current source of truth for the decisions it covers.
+- **When this `AGENTS.md` (or any other doc) disagrees with an ADR, the ADR
+  wins for the area it covers.** The other doc should be updated to match.
+  If the ADR turns out to be wrong, write a new ADR that supersedes it; do
+  not silently rewrite the existing record.
+- Before changing top-level rules in `AGENTS.md`, the README, or operator
+  docs in a way that contradicts an ADR, write or update the relevant ADR
+  first so the decision is captured in the authoritative place.

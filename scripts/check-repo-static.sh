@@ -192,6 +192,10 @@ required_files=(
   ".github/CODEOWNERS"
   ".github/pull_request_template.md"
   "docs/initiatives/TEMPLATE/slice-plan.json"
+  "docs/adr/README.md"
+  "docs/adr/TEMPLATE.md"
+  "docs/adr/0001-runtime-state-is-sqlite.md"
+  "docs/adr/0002-bounded-autonomy.md"
 )
 
 for path in "${required_files[@]}"; do
@@ -1678,6 +1682,34 @@ for needle in [
 ]:
     assert needle in operator_workflow_doc
     assert needle in prompt_semantics_doc
+
+import re as _re
+adr_index_doc = (root / "docs/adr/README.md").read_text(encoding="utf-8")
+assert "ADR-0001" in adr_index_doc, "docs/adr/README.md index missing ADR-0001 entry"
+agents_doc = (root / "AGENTS.md").read_text(encoding="utf-8")
+assert "docs/adr/README.md" in agents_doc, "AGENTS.md missing cross-link to docs/adr/README.md"
+assert "docs/adr/README.md" in readme_doc, "README.md missing cross-link to docs/adr/README.md"
+
+adr_dir = root / "docs/adr"
+adr_files = sorted(
+    p.name for p in adr_dir.glob("*.md")
+    if _re.match(r"^\d{4}-[a-z0-9-]+\.md$", p.name)
+)
+assert adr_files, "no NNNN-*.md ADR files found under docs/adr/"
+allowed_statuses = {"Proposed", "Accepted", "Superseded", "Deprecated"}
+for adr_filename in adr_files:
+    adr_id = adr_filename.split("-", 1)[0]
+    adr_label = f"ADR-{adr_id}"
+    assert adr_label in adr_index_doc, (
+        f"docs/adr/README.md index missing row for {adr_label} (file: {adr_filename})"
+    )
+    adr_text = (adr_dir / adr_filename).read_text(encoding="utf-8")
+    status_match = _re.search(r"^\s*-\s*\*\*Status:\*\*\s*(\S+)", adr_text, _re.MULTILINE)
+    assert status_match, f"{adr_filename} missing '- **Status:** <value>' line"
+    assert status_match.group(1) in allowed_statuses, (
+        f"{adr_filename} has unknown Status '{status_match.group(1)}'; "
+        f"must be one of {sorted(allowed_statuses)}"
+    )
 PY
 
 "$REPO_ROOT/scripts/validate-prompt-contracts.sh"

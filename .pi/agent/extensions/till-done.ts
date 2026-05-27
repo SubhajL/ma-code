@@ -1014,7 +1014,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "task_update",
     label: "Task Update",
-    description: "Create, claim, start, validate, and complete tasks using file-backed JSON state.",
+    description: "Create, claim, start, validate, and complete tasks. Persists to the canonical SQLite runtime store at .pi/agent/state/runtime/pi.db.",
     parameters: TaskUpdateSchema,
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
       const completionGatePolicy = await loadCompletionGatePolicy(ctx.cwd);
