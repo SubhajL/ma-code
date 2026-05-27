@@ -214,7 +214,7 @@ tracked_runtime = subprocess.check_output(
         "ls-files",
         "--",
         ".pi/agent/state/runtime/*.json",
-        "logs/harness-actions.jsonl",
+        "logs/harness-actions.jsonl*",
     ],
     text=True,
 ).splitlines()
@@ -880,7 +880,7 @@ assert ".pi/agent/artifacts/" in gitignore_doc
 for needle in [
     ".pi/agent/state/runtime/*.json",
     ".pi/agent/state/runtime/*.lock",
-    "logs/harness-actions.jsonl",
+    "logs/harness-actions.jsonl*",
 ]:
     assert needle in gitignore_doc
 assert ".pi/agent/artifacts" in package_manifest.get("excludedPaths", [])

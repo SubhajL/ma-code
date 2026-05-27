@@ -116,7 +116,13 @@ the tier-1-status tracker.
   per-call hook in `pi-coding-agent`. Documented in
   `.pi/agent/docs/prompt_cache_instrumentation.md`. Nothing more this repo
   can do; waiting on upstream.
-- **`harness-actions.jsonl` has no rotation** — still true.
+- **`harness-actions.jsonl` rotation** — *resolved* in PR Q (Tier 3 §11).
+  Size-based rotation with count-based retention via
+  `HARNESS_AUDIT_LOG_MAX_BYTES` (default 5 MB) and
+  `HARNESS_AUDIT_LOG_RETAIN` (default 5). Inline trigger inside the
+  existing `withFileMutationQueue` in `appendJsonlLine` — all 8
+  `appendAuditEntry` callers inherit automatically. SQLite remains the
+  canonical audit store.
 - **`pi-session-*.html` files** — *correction:* never tracked.
   `git ls-files` returns 0; they're gitignored. They sit on disk under
   `.pi/agent/` (not repo root). **Drop this finding** — it was a misread in
@@ -259,7 +265,13 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 9. Drop phase numbering from filenames, modules, doc headings — **Open.**
 10. One Node-based validator runner replacing the 45 `validate-*.sh` —
     **Open.**
-11. Rotation + retention on `harness-actions.jsonl` — **Open.**
+11. Rotation + retention on `harness-actions.jsonl` — **Done.** PR Q
+    added size-based rotation (`HARNESS_AUDIT_LOG_MAX_BYTES`, default
+    5 MB) and count-based retention (`HARNESS_AUDIT_LOG_RETAIN`,
+    default 5) inline in `appendJsonlLine`. Rotated files are named
+    `harness-actions.jsonl.YYYYMMDDTHHMMSSmmmZ-XXXX` (sortable timestamp
+    + collision-safe random suffix). SQLite remains the canonical
+    audit store; the JSONL is debug-only.
 12. ~~Move `pi-session-*.html` out of repo root.~~ *Drop.* Files were never
     tracked.
 
