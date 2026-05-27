@@ -7,7 +7,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
-import { bootstrapHarnessPackage, loadHarnessPackageManifest } from "../../scripts/harness-package.ts";
+import {
+  bootstrapHarnessPackage,
+  installHarnessPackage,
+  loadHarnessPackageManifest,
+  renderHarnessPackageInstall,
+} from "../../scripts/harness-package.ts";
 
 const execFile = promisify(execFileCallback);
 const tsxImportPath = process.env.TSX_IMPORT_PATH ?? createRequire(import.meta.url).resolve("tsx");
@@ -210,6 +215,169 @@ test("harness package bootstrap preserves existing repo-local files instead of o
   assert.equal(agents, "# existing rules\n");
   const models = await readFile(join(destinationRoot, ".pi", "agent", "models.json"), "utf8");
   assert.match(models, /"custom": true/);
+});
+
+test("harness package install wraps bootstrap, records skipped npm install + validators, and enumerates files-to-review from manifest", async () => {
+  const sourceRoot = requireSourceRoot();
+  const manifest = await loadHarnessPackageManifest(sourceRoot);
+  const destinationRoot = await makeTempDir("harness-package-install-");
+
+  const previousOpenai = process.env.OPENAI_API_KEY;
+  const previousAnthropic = process.env.ANTHROPIC_API_KEY;
+  try {
+    delete process.env.OPENAI_API_KEY;
+    process.env.ANTHROPIC_API_KEY = "test-token-fixture";
+
+    const result = await installHarnessPackage({
+      sourceRoot,
+      destinationRoot,
+      skipNpmInstall: true,
+      skipValidators: true,
+    });
+
+    assert.equal(result.version, 1);
+    assert.equal(result.bootstrap.packageVersion, manifest.packageVersion);
+    assert.ok(result.bootstrap.copiedAssets.includes(".pi/agent/extensions/safe-bash.ts"));
+    assert.ok(result.bootstrap.generatedFiles.includes("AGENTS.md"));
+
+    assert.equal(result.npmInstall.skipped, true);
+    assert.equal(result.npmInstall.status, "skipped");
+    assert.equal(result.npmInstall.skipReason, "user_request");
+    assert.equal(result.npmInstall.exitCode, null);
+
+    assert.equal(result.validators.length, 3);
+    const validatorNames = result.validators.map((entry) => entry.name);
+    assert.deepEqual(validatorNames, [
+      "validate:harness-package",
+      "validate:core-workflows",
+      "validate:harness-routing",
+    ]);
+    for (const validator of result.validators) {
+      assert.equal(validator.status, "skipped");
+      assert.equal(validator.exitCode, null);
+      assert.equal(validator.skipReason, "user_request");
+      assert.equal(validator.stderrTail, undefined);
+    }
+
+    assert.equal(result.providerEnv.openaiApiKey, "missing");
+    assert.equal(result.providerEnv.anthropicApiKey, "set");
+
+    const expectedReviewFiles = manifest.generatedFiles
+      .filter((rule) => rule.requiredReview)
+      .map((rule) => rule.target);
+    assert.deepEqual(result.filesToReview.slice().sort(), expectedReviewFiles.slice().sort());
+    assert.ok(result.filesToReview.includes("AGENTS.md"));
+    assert.ok(result.filesToReview.includes("SYSTEM.md"));
+    assert.ok(result.filesToReview.includes(".pi/agent/models.json"));
+    assert.ok(result.filesToReview.includes("docs/product/intake-policy.md"));
+
+    assert.ok(result.nextSteps.some((line) => line.includes("harness:product-intake")));
+
+    const rendered = renderHarnessPackageInstall(result);
+    assert.match(rendered, /Harness Package Install/);
+    assert.match(rendered, /npm install: skipped/);
+    assert.match(rendered, /validate:harness-package: skipped \(reason: user_request\)/);
+    assert.match(rendered, /OPENAI_API_KEY: missing/);
+    assert.match(rendered, /ANTHROPIC_API_KEY: set/);
+    assert.match(rendered, /AGENTS\.md/);
+    assert.match(rendered, /harness:product-intake/);
+  } finally {
+    if (previousOpenai === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenai;
+    if (previousAnthropic === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousAnthropic;
+  }
+});
+
+test("harness package install rejects flag-like value for --dest instead of treating the flag as the path", async () => {
+  const sourceRoot = requireSourceRoot();
+  await assert.rejects(
+    execFile(
+      process.execPath,
+      [
+        "--import",
+        tsxImportPath,
+        join(sourceRoot, "scripts", "harness-package.ts"),
+        "install",
+        "--dest",
+        "--skip-install",
+        "--json",
+      ],
+      {
+        cwd: sourceRoot,
+        encoding: "utf8",
+      },
+    ),
+    /--dest requires a value/,
+  );
+});
+
+test("harness package install CLI emits JSON when --json is passed and includes filesToReview + providerEnv", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-install-cli-");
+
+  const installResult = await execFile(
+    process.execPath,
+    [
+      "--import",
+      tsxImportPath,
+      join(sourceRoot, "scripts", "harness-package.ts"),
+      "install",
+      "--source-root",
+      sourceRoot,
+      "--dest",
+      destinationRoot,
+      "--skip-install",
+      "--skip-validators",
+      "--json",
+    ],
+    {
+      cwd: sourceRoot,
+      encoding: "utf8",
+      env: { ...process.env, OPENAI_API_KEY: "", ANTHROPIC_API_KEY: "" },
+    },
+  );
+
+  const installJson = JSON.parse(installResult.stdout) as {
+    version: number;
+    npmInstall: { status: string; skipped: boolean };
+    validators: Array<{ name: string; status: string }>;
+    providerEnv: { openaiApiKey: string; anthropicApiKey: string };
+    filesToReview: string[];
+    nextSteps: string[];
+  };
+
+  assert.equal(installJson.version, 1);
+  assert.equal(installJson.npmInstall.status, "skipped");
+  assert.equal(installJson.validators.length, 3);
+  assert.equal(installJson.providerEnv.openaiApiKey, "missing");
+  assert.equal(installJson.providerEnv.anthropicApiKey, "missing");
+  assert.ok(installJson.filesToReview.includes("AGENTS.md"));
+  assert.ok(installJson.filesToReview.includes("SYSTEM.md"));
+  assert.ok(installJson.filesToReview.includes(".pi/agent/models.json"));
+  assert.ok(installJson.nextSteps.some((line) => line.includes("harness:product-intake")));
+});
+
+test("harness package install CLI rejects missing --dest", async () => {
+  const sourceRoot = requireSourceRoot();
+  await assert.rejects(
+    execFile(
+      process.execPath,
+      [
+        "--import",
+        tsxImportPath,
+        join(sourceRoot, "scripts", "harness-package.ts"),
+        "install",
+        "--skip-install",
+        "--skip-validators",
+      ],
+      {
+        cwd: sourceRoot,
+        encoding: "utf8",
+      },
+    ),
+    /install requires --dest/,
+  );
 });
 
 async function exists(pathValue: string): Promise<boolean> {

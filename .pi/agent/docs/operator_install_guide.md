@@ -8,7 +8,25 @@ This guide explains how to install the current repo-local harness into a repo an
 - npm available
 - Pi available in the environment you plan to use for live sessions
 
-## Option A — bootstrap this harness into another repo
+## Option A — one-shot install (preferred)
+Run the `install` subcommand from the source harness repo. It bootstraps, runs `npm install` in the target, runs three cheap validators, probes provider env vars, and prints a `filesToReview` list:
+```bash
+cd /path/to/source-harness-repo
+node --import tsx scripts/harness-package.ts install --dest /path/to/target-repo
+```
+
+The same wrapper is exposed as the `harness:install` package script alias once the harness is on the runtime PATH:
+```bash
+npm run harness:install -- --dest /path/to/target-repo
+npm run harness:install:json -- --dest /path/to/target-repo
+```
+
+Useful flags: `--json`, `--skip-install`, `--skip-validators`. The wrapper does not set provider API keys, edit `AGENTS.md`/`SYSTEM.md`, or start live workflows.
+
+After it returns, review the files it lists under `filesToReview` (typically `AGENTS.md`, `SYSTEM.md`, `.pi/agent/models.json`, `docs/product/intake-policy.md`) and set any missing provider env vars before live runs.
+
+## Option B — manual bootstrap into another repo
+Use this path when you want to inspect each step before continuing.
 From this source harness repo:
 ```bash
 cd /path/to/source-harness-repo
@@ -27,7 +45,7 @@ Review these generated files before normal use:
 - `.pi/agent/models.json`
 - `package.json`
 
-## Option B — operate this repo directly
+## Option C — operate this repo directly
 ```bash
 cd /Users/subhajlimanond/dev/ma-code
 npm install --no-package-lock
