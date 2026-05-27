@@ -251,7 +251,17 @@ test("checkSqliteConsistency passes when active pointers reference existing rows
 test("checkSqliteConsistency fails when activeTaskId points at a non-existent task", async () => {
   const cwd = await makeTempRepo("doctor-sqlite-dangling-task-");
   withDb(cwd, (db) => {
-    setActiveTask(db, "task-missing");
+    // Migration 002 made active_task.task_id a real FK, so this dangling
+    // state cannot be produced by the public API anymore. The doctor
+    // check stays as defense-in-depth for data from before the migration
+    // or from operators who bypassed FK enforcement; recreate that
+    // shape here by toggling the pragma for the setup INSERT only.
+    db.handle.exec("PRAGMA foreign_keys = OFF");
+    try {
+      setActiveTask(db, "task-missing");
+    } finally {
+      db.handle.exec("PRAGMA foreign_keys = ON");
+    }
   });
   const result = await checkSqliteConsistency(cwd);
   assert.equal(result.status, "fail");
