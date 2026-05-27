@@ -13,6 +13,7 @@ import {
   readQueueState as readQueueStateLib,
   writeQueueState as writeQueueStateLib,
 } from "./lib/queue-state.ts";
+import { withAtomicQueueAndTasksMutation } from "./lib/coordinated-state.ts";
 import { appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
 import {
   QUEUE_SESSION_LEASE_SCOPE,
@@ -739,13 +740,22 @@ async function withCoordinatedQueueTaskMutation<T>(
   await mkdir(dirname(coordinationLock), { recursive: true });
   await Promise.all([ensureQueueFile(cwd), ensureTaskFile(cwd)]);
 
+  // The withFileMutationQueue wrapper is an IN-PROCESS serializer (a
+  // module-level Map of in-flight promises keyed by the lock path); it is
+  // not a cross-process filesystem lock. We keep it because the harness
+  // commonly invokes this helper from multiple async paths inside one
+  // process, and serializing them avoids interleaving surprises.
+  //
+  // Cross-process coordination is provided by the SQLite layer:
+  // withAtomicQueueAndTasksMutation runs one BEGIN IMMEDIATE per call, and
+  // openRuntimeDb sets PRAGMA busy_timeout so a contending process waits
+  // instead of throwing SQLITE_BUSY. See
+  // docs/adr/0003-atomic-queue-task-mutations.md for the full atomicity
+  // contract.
   return withFileMutationQueue(coordinationLock, async () => {
-    const [queueState, taskState] = await Promise.all([readQueueState(cwd), readTaskState(cwd)]);
-    const state = { queueState, taskState };
-    const result = await fn(state);
-    await writeTaskState(cwd, state.taskState);
-    await writeQueueState(cwd, state.queueState);
-    return result;
+    return withAtomicQueueAndTasksMutation<TaskRecord, QueueJob, T>(cwd, async ({ tasksState, queueState }) => {
+      return fn({ queueState: queueState as QueueState, taskState: tasksState as TaskState });
+    });
   });
 }
 

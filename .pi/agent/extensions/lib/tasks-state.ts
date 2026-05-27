@@ -2,6 +2,7 @@ import { readFile, rename, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { closeRuntimeDb, openRuntimeDb, type RuntimeDb } from "./sqlite-state.ts";
+import { assertNotInsideCoordinatedScope, isInsideCoordinatedScope } from "./transaction-coordination.ts";
 
 export const TASKS_FILE = ".pi/agent/state/runtime/tasks.json";
 export const TASKS_STATE_VERSION = 1 as const;
@@ -65,6 +66,16 @@ function rowsToState<T>(rows: TaskRow[], activeTaskId: string | null): TasksStat
   };
 }
 
+/**
+ * Read the canonical tasks snapshot from an already-open RuntimeDb handle.
+ * Caller must own the connection (and any surrounding transaction).
+ * Intended for `withAtomicQueueAndTasksMutation`; single-entity callers
+ * should keep using `readTasksState` / `mutateTasksState`.
+ */
+export function readTasksStateFromDb<T>(db: RuntimeDb): TasksStateShape<T> {
+  return rowsToState<T>(readTaskRowsSql(db), readActiveTaskIdSql(db));
+}
+
 function writeStateSqlUnsafe<T>(db: RuntimeDb, state: TasksStateShape<T>): void {
   db.handle.exec(`DELETE FROM tasks`);
   const insert = db.handle.prepare(
@@ -82,6 +93,15 @@ function writeStateSqlUnsafe<T>(db: RuntimeDb, state: TasksStateShape<T>): void 
     .run(ACTIVE_TASK_SINGLETON, state.activeTaskId);
 }
 
+/**
+ * Apply a tasks snapshot to an already-open RuntimeDb handle.
+ * Caller must own the connection AND have a BEGIN ... COMMIT transaction
+ * already open. Intended for `withAtomicQueueAndTasksMutation`.
+ */
+export function applyTasksStateToDb<T>(db: RuntimeDb, state: TasksStateShape<T>): void {
+  writeStateSqlUnsafe(db, state);
+}
+
 async function pathExists(pathValue: string): Promise<boolean> {
   try {
     await stat(pathValue);
@@ -92,7 +112,25 @@ async function pathExists(pathValue: string): Promise<boolean> {
   }
 }
 
+/**
+ * Migrate any pre-existing tasks JSON file into SQLite. Idempotent: if the
+ * JSON file is absent or malformed, this is a no-op. After a successful
+ * import the JSON file is renamed with a `.migrated-<ts>` suffix so the
+ * import does not repeat. Exported for use by
+ * `withAtomicQueueAndTasksMutation`, which needs to run the backfill
+ * BEFORE opening its own transaction (the backfill opens its own short
+ * BEGIN..COMMIT internally and would otherwise nest).
+ */
+export async function backfillTasksFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<void> {
+  return backfillFromJsonIfPresent(db, cwd);
+}
+
 async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<void> {
+  // Skip backfill if we are already inside a coordinated scope: the
+  // coordinated helper runs the backfill once at the start, before opening
+  // its transaction, and a second backfill inside the scope would issue a
+  // BEGIN IMMEDIATE on a fresh connection that races the outer write lock.
+  if (isInsideCoordinatedScope()) return;
   const jsonFile = resolve(cwd, TASKS_FILE);
   if (!(await pathExists(jsonFile))) return;
 
@@ -177,6 +215,7 @@ export async function readTasksState<T>(cwd: string): Promise<TasksStateShape<T>
 }
 
 export async function writeTasksState<T>(cwd: string, state: TasksStateShape<T>): Promise<void> {
+  assertNotInsideCoordinatedScope("writeTasksState");
   return withRuntimeDb(cwd, (db) => {
     db.handle.exec("BEGIN IMMEDIATE");
     try {
@@ -193,6 +232,7 @@ export async function mutateTasksState<T, R>(
   cwd: string,
   fn: (state: TasksStateShape<T>) => R | Promise<R>,
 ): Promise<R> {
+  assertNotInsideCoordinatedScope("mutateTasksState");
   return withRuntimeDb(cwd, async (db) => {
     db.handle.exec("BEGIN IMMEDIATE");
     try {
