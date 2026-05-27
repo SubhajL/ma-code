@@ -92,8 +92,10 @@ All entries from the original still hold:
   define the same shapes.
 - **Validators-as-bash:** 45 `validate-*.sh` files; most shell out to
   `node --test` with minor framing.
-- **Phase prefixes in code:** "Phase 7 routing", "Phase 8 merge", etc. still
-  appear in module docs and tests.
+- **Phase prefixes in code:** preserved by design after PR R (Tier 3 §9)
+  scope check. Several phase strings turn out to be runtime- or
+  static-check-visible identifiers, not just module prose. See Tier 3 item
+  9 below for the load-bearing surface map.
 - **No-op default exports:** `executionLeasesExtension(): void {}` pattern
   still in use across helper-only modules.
 - **Over-engineered envelopes:** `tool-result-envelope.ts` still ~346L.
@@ -262,7 +264,37 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 
 ### Tier 3 — when convenient
 
-9. Drop phase numbering from filenames, modules, doc headings — **Open.**
+9. Drop phase numbering from filenames, modules, doc headings —
+   **Open, scope-checked.** Repo-scope verification found phase numbering
+   is load-bearing identity, not just cosmetic history. Preserved by
+   design across:
+   - Runtime error strings + matchers — `parallel-worker-lanes.ts:128`,
+     `product-pipeline.ts:309,475` emit/match `Missing Phase 10
+     parallelAllowed proof` and `source: "missing_phase_10_proof"`.
+   - Packet artifact IDs — `frontend-packet-generator.ts:252`
+     `sourceGoalId: "phase-8:..."`; backend equivalents emit `Phase 7/8/9`
+     narrative evidence.
+   - Versioned policy names — `harness-merge.ts:46`
+     `merge-release-policy-phase-8` references
+     `.pi/agent/release/merge-release-policy.json`.
+   - JSON schema fields — `parallel-worker-lanes.schema.json` persists
+     `phase10Decision`.
+   - Dependency-ref key prefixes — `parallel-worker-lanes.ts:191` uses
+     `phase10:*` / `phase10:not_required_single_lane`.
+   - Validator script filenames + package wiring — `validate-phase-a-b.sh`,
+     `validate-greenfield-phase-{b,c}.mjs` exposed via `package.json`
+     scripts AND `.pi/agent/package/templates/package.template.json:26`.
+   - Static-check pinning — `check-repo-static.sh` asserts literal
+     `Phase 8/9/10/11/14` doc-heading phrases, so even cosmetic renames
+     would cascade.
+   - Historical pipeline-run artifacts — 30+ entries in
+     `docs/initiatives/mixed-domain-harness-optimization/pipeline-runs/`
+     contain `"source": "missing_phase_10_proof"`; current code reads
+     compatible strings.
+
+   A future migration would need to version artifacts, schemas, validators,
+   docs, package templates, static checks, and compatibility readers
+   together — out of scope for this initiative.
 10. One Node-based validator runner replacing the 45 `validate-*.sh` —
     **Open.**
 11. Rotation + retention on `harness-actions.jsonl` — **Done.** PR Q
@@ -282,8 +314,10 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
   isolation. The migration path lets each subcommand make its own
   isolation-vs-speed tradeoff explicit, rather than forcing one answer
   harness-wide.
-- **Phase numbering as load-bearing identity** — unchanged. Still worth a
-  team conversation before renaming.
+- **Phase numbering as load-bearing identity** — confirmed within current
+  repo scope (PR R, Tier 3 §9). Phase numbers ARE artifact/schema/policy/
+  validator identity in several places, so this cleanup item is closed as
+  a scope correction rather than a rename. See Tier 3 item 9.
 - **JSON files as git-trackable for reviewability** — *partially mooted by
   reality.* Runtime state (`tasks.json`, `queue.json`, `leases.json`) is
   already gitignored (per safety rules and PR #70 in the historical record).
