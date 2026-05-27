@@ -2,6 +2,8 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
+import { applyRuntimeMigrations } from "./runtime-migrations.ts";
+
 export const RUNTIME_DB_FILE = ".pi/agent/state/runtime/pi.db";
 
 export const RUNTIME_DB_SCHEMA_DDL = `
@@ -125,7 +127,22 @@ export function openRuntimeDb(cwd: string): RuntimeDb {
   // while still surfacing real deadlocks loudly.
   handle.exec("PRAGMA busy_timeout = 5000");
   handle.exec(RUNTIME_DB_SCHEMA_DDL);
-  return { handle, cwd, file };
+  const db: RuntimeDb = { handle, cwd, file };
+  try {
+    applyRuntimeMigrations(db);
+  } catch (error) {
+    // Migrations run after the handle is open but before we return it.
+    // If they throw, the caller never gets a reference, so they can't
+    // close the handle in their finally block. Close it ourselves; the
+    // original error still surfaces to the caller.
+    try {
+      handle.close();
+    } catch {
+      // Best-effort close; do not mask the original migration error.
+    }
+    throw error;
+  }
+  return db;
 }
 
 export function closeRuntimeDb(db: RuntimeDb): void {

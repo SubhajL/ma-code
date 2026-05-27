@@ -93,6 +93,7 @@ The template at [`TEMPLATE.md`](./TEMPLATE.md) captures this skeleton.
 | [ADR-0003](./0003-atomic-queue-task-mutations.md) | Coupled queue + tasks mutations go through one SQLite transaction | Accepted | 2026-05-27 |
 | [ADR-0004](./0004-apps-web-and-services-api-are-harness-fixtures.md) | `apps/web/` and `services/api/` are harness pilot fixtures, not a product foundation | Accepted | 2026-05-27 |
 | [ADR-0005](./0005-typed-control-plane-kernel.md) | New control-plane mutations go through a typed kernel | Accepted | 2026-05-27 |
+| [ADR-0006](./0006-sqlite-as-real-domain-store.md) | SQLite is a real domain store — versioned migrations, declared foreign keys, typed row ops | Accepted | 2026-05-28 |
 
 ## What this directory is NOT
 
