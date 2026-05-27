@@ -196,6 +196,7 @@ required_files=(
   "docs/adr/TEMPLATE.md"
   "docs/adr/0001-runtime-state-is-sqlite.md"
   "docs/adr/0002-bounded-autonomy.md"
+  "docs/adr/0003-atomic-queue-task-mutations.md"
 )
 
 for path in "${required_files[@]}"; do

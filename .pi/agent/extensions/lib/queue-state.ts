@@ -2,6 +2,7 @@ import { readFile, rename, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { closeRuntimeDb, openRuntimeDb, type RuntimeDb } from "./sqlite-state.ts";
+import { assertNotInsideCoordinatedScope, isInsideCoordinatedScope } from "./transaction-coordination.ts";
 
 export const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
 export const QUEUE_STATE_VERSION = 1 as const;
@@ -69,6 +70,16 @@ function rowsToState<T>(rows: QueueJobRow[], meta: { paused: boolean; activeJobI
   };
 }
 
+/**
+ * Read the canonical queue snapshot from an already-open RuntimeDb handle.
+ * Caller must own the connection (and any surrounding transaction).
+ * Intended for `withAtomicQueueAndTasksMutation`; single-entity callers
+ * should keep using `readQueueState` / `mutateQueueState`.
+ */
+export function readQueueStateFromDb<T>(db: RuntimeDb): QueueStateShape<T> {
+  return rowsToState<T>(readJobRowsSql(db), readQueueMetaSql(db));
+}
+
 function writeStateSqlUnsafe<T>(db: RuntimeDb, state: QueueStateShape<T>): void {
   db.handle.exec(`DELETE FROM queue_jobs`);
   const now = Date.now();
@@ -99,7 +110,30 @@ async function pathExists(pathValue: string): Promise<boolean> {
   }
 }
 
+/**
+ * Apply a queue snapshot to an already-open RuntimeDb handle.
+ * Caller must own the connection AND have a BEGIN ... COMMIT transaction
+ * already open. Intended for `withAtomicQueueAndTasksMutation`.
+ */
+export function applyQueueStateToDb<T>(db: RuntimeDb, state: QueueStateShape<T>): void {
+  writeStateSqlUnsafe(db, state);
+}
+
+/**
+ * Migrate any pre-existing queue JSON file into SQLite. Same semantics as
+ * the tasks-state counterpart: idempotent, no-op when absent/malformed,
+ * renames the JSON file with `.migrated-<ts>` on success. Exported for use
+ * by `withAtomicQueueAndTasksMutation`, which runs the backfill BEFORE
+ * opening its own transaction.
+ */
+export async function backfillQueueFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<void> {
+  return backfillFromJsonIfPresent(db, cwd);
+}
+
 async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<void> {
+  // Skip backfill if we are already inside a coordinated scope (see the
+  // matching guard in tasks-state.ts for the full reasoning).
+  if (isInsideCoordinatedScope()) return;
   const jsonFile = resolve(cwd, QUEUE_FILE);
   if (!(await pathExists(jsonFile))) return;
 
@@ -182,6 +216,7 @@ export async function readQueueState<T>(cwd: string): Promise<QueueStateShape<T>
 }
 
 export async function writeQueueState<T>(cwd: string, state: QueueStateShape<T>): Promise<void> {
+  assertNotInsideCoordinatedScope("writeQueueState");
   return withRuntimeDb(cwd, (db) => {
     db.handle.exec("BEGIN IMMEDIATE");
     try {
@@ -198,6 +233,7 @@ export async function mutateQueueState<T, R>(
   cwd: string,
   fn: (state: QueueStateShape<T>) => R | Promise<R>,
 ): Promise<R> {
+  assertNotInsideCoordinatedScope("mutateQueueState");
   return withRuntimeDb(cwd, async (db) => {
     db.handle.exec("BEGIN IMMEDIATE");
     try {

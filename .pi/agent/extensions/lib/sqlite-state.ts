@@ -119,6 +119,11 @@ export function openRuntimeDb(cwd: string): RuntimeDb {
   const handle = new DatabaseSync(file);
   handle.exec("PRAGMA journal_mode = WAL");
   handle.exec("PRAGMA foreign_keys = ON");
+  // SQLite will not serialize concurrent BEGIN IMMEDIATE across connections
+  // without a positive busy_timeout: the loser throws SQLITE_BUSY immediately.
+  // Five seconds is a generous bound for the harness's bounded operations
+  // while still surfacing real deadlocks loudly.
+  handle.exec("PRAGMA busy_timeout = 5000");
   handle.exec(RUNTIME_DB_SCHEMA_DDL);
   return { handle, cwd, file };
 }
