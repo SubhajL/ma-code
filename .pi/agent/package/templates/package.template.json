@@ -11,6 +11,8 @@
     "harness:schedules:json": "node --import tsx scripts/harness-scheduled-workflows.ts status --json",
     "harness:package": "node --import tsx scripts/harness-package.ts manifest",
     "harness:package:json": "node --import tsx scripts/harness-package.ts manifest --json",
+    "harness:install": "node --import tsx scripts/harness-package.ts install",
+    "harness:install:json": "node --import tsx scripts/harness-package.ts install --json",
     "harness:init-feature": "node --import tsx scripts/harness-init-feature.ts",
     "harness:product-intake": "node --import tsx scripts/harness-product-intake.ts",
     "harness:orchestrate": "node --import tsx scripts/harness-orchestrate.ts",

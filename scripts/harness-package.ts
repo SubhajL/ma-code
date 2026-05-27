@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -42,6 +43,60 @@ export interface HarnessPackageBootstrapResult {
   warnings: string[];
   versionRecordPath: string;
 }
+
+export interface HarnessPackageInstallOptions {
+  sourceRoot?: string;
+  destinationRoot: string;
+  skipNpmInstall?: boolean;
+  skipValidators?: boolean;
+  npmBin?: string;
+  env?: NodeJS.ProcessEnv;
+}
+
+export type InstallStepStatus = "passed" | "failed" | "skipped";
+
+export type NpmInstallSkipReason = "user_request";
+
+export type ValidatorSkipReason = "user_request" | "upstream_skipped" | "upstream_failed";
+
+export interface NpmInstallStepResult {
+  skipped: boolean;
+  status: InstallStepStatus;
+  durationMs: number;
+  exitCode: number | null;
+  skipReason?: NpmInstallSkipReason;
+  stderrTail?: string;
+}
+
+export interface ValidatorStepResult {
+  name: string;
+  status: InstallStepStatus;
+  durationMs: number;
+  exitCode: number | null;
+  skipReason?: ValidatorSkipReason;
+  stderrTail?: string;
+}
+
+export interface ProviderEnvProbe {
+  openaiApiKey: "set" | "missing";
+  anthropicApiKey: "set" | "missing";
+}
+
+export interface HarnessPackageInstallResult {
+  version: 1;
+  bootstrap: HarnessPackageBootstrapResult;
+  npmInstall: NpmInstallStepResult;
+  validators: ValidatorStepResult[];
+  providerEnv: ProviderEnvProbe;
+  filesToReview: string[];
+  nextSteps: string[];
+}
+
+export const HARNESS_INSTALL_VALIDATORS: readonly string[] = [
+  "validate:harness-package",
+  "validate:core-workflows",
+  "validate:harness-routing",
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -344,6 +399,207 @@ export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOp
   return result;
 }
 
+function tailString(input: string, maxChars = 1200): string {
+  const trimmed = input.replace(/\s+$/u, "");
+  return trimmed.length <= maxChars ? trimmed : `…${trimmed.slice(-maxChars)}`;
+}
+
+interface RunCommandResult {
+  exitCode: number | null;
+  durationMs: number;
+  stderr: string;
+}
+
+async function runCommand(
+  command: string,
+  args: string[],
+  options: { cwd: string; env?: NodeJS.ProcessEnv },
+): Promise<RunCommandResult> {
+  const startedAt = Date.now();
+  return new Promise<RunCommandResult>((resolvePromise, rejectPromise) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      env: options.env ?? process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderrBuffer = "";
+    child.stdout?.on("data", () => {});
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      stderrBuffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+    });
+    child.on("error", (error) => {
+      rejectPromise(error);
+    });
+    child.on("close", (exitCode) => {
+      resolvePromise({
+        exitCode,
+        durationMs: Date.now() - startedAt,
+        stderr: stderrBuffer,
+      });
+    });
+  });
+}
+
+function probeProviderEnv(env: NodeJS.ProcessEnv): ProviderEnvProbe {
+  const hasValue = (value: string | undefined): boolean => typeof value === "string" && value.trim().length > 0;
+  return {
+    openaiApiKey: hasValue(env.OPENAI_API_KEY) ? "set" : "missing",
+    anthropicApiKey: hasValue(env.ANTHROPIC_API_KEY) ? "set" : "missing",
+  };
+}
+
+function collectFilesToReview(bootstrap: HarnessPackageBootstrapResult, manifest: HarnessPackageManifest): string[] {
+  const generatedSet = new Set(bootstrap.generatedFiles);
+  const preservedSet = new Set(bootstrap.preservedFiles);
+  const matches = manifest.generatedFiles
+    .filter((rule) => rule.requiredReview)
+    .filter((rule) => generatedSet.has(rule.target) || preservedSet.has(rule.target))
+    .map((rule) => rule.target);
+  return Array.from(new Set(matches)).sort();
+}
+
+function buildNextSteps(filesToReview: string[], providerEnv: ProviderEnvProbe): string[] {
+  const lines: string[] = [];
+  if (filesToReview.length > 0) {
+    lines.push("Review the generated files listed under filesToReview before normal use.");
+  }
+  if (providerEnv.openaiApiKey === "missing" || providerEnv.anthropicApiKey === "missing") {
+    lines.push("Set missing provider environment variables (OPENAI_API_KEY and/or ANTHROPIC_API_KEY) before live runs.");
+  }
+  lines.push("Start the first major feature with: npm run harness:product-intake -- --slug <name> --description '...' --dry-run");
+  lines.push("Then inspect harness state with: npm run harness:status");
+  return lines;
+}
+
+export async function installHarnessPackage(options: HarnessPackageInstallOptions): Promise<HarnessPackageInstallResult> {
+  const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
+  const destinationRoot = resolve(options.destinationRoot);
+  const env = options.env ? { ...process.env, ...options.env } : process.env;
+  const npmBin = options.npmBin ?? "npm";
+
+  const bootstrap = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+  const manifest = await loadHarnessPackageManifest(sourceRoot);
+
+  let npmInstall: NpmInstallStepResult;
+  if (options.skipNpmInstall) {
+    npmInstall = {
+      skipped: true,
+      status: "skipped",
+      durationMs: 0,
+      exitCode: null,
+      skipReason: "user_request",
+    };
+  } else {
+    const installRun = await runCommand(npmBin, ["install", "--no-package-lock"], {
+      cwd: destinationRoot,
+      env,
+    });
+    npmInstall = {
+      skipped: false,
+      status: installRun.exitCode === 0 ? "passed" : "failed",
+      durationMs: installRun.durationMs,
+      exitCode: installRun.exitCode,
+    };
+    if (installRun.exitCode !== 0) {
+      npmInstall.stderrTail = tailString(installRun.stderr);
+    }
+  }
+
+  const validators: ValidatorStepResult[] = [];
+  for (const validatorName of HARNESS_INSTALL_VALIDATORS) {
+    if (options.skipValidators) {
+      validators.push({
+        name: validatorName,
+        status: "skipped",
+        durationMs: 0,
+        exitCode: null,
+        skipReason: "user_request",
+      });
+      continue;
+    }
+    if (npmInstall.status !== "passed") {
+      validators.push({
+        name: validatorName,
+        status: "skipped",
+        durationMs: 0,
+        exitCode: null,
+        skipReason: npmInstall.status === "skipped" ? "upstream_skipped" : "upstream_failed",
+      });
+      continue;
+    }
+    const validatorRun = await runCommand(npmBin, ["run", validatorName], {
+      cwd: destinationRoot,
+      env,
+    });
+    const status: InstallStepStatus = validatorRun.exitCode === 0 ? "passed" : "failed";
+    const entry: ValidatorStepResult = {
+      name: validatorName,
+      status,
+      durationMs: validatorRun.durationMs,
+      exitCode: validatorRun.exitCode,
+    };
+    if (status === "failed") entry.stderrTail = tailString(validatorRun.stderr);
+    validators.push(entry);
+  }
+
+  const providerEnv = probeProviderEnv(env);
+  const filesToReview = collectFilesToReview(bootstrap, manifest);
+  const nextSteps = buildNextSteps(filesToReview, providerEnv);
+
+  return {
+    version: 1,
+    bootstrap,
+    npmInstall,
+    validators,
+    providerEnv,
+    filesToReview,
+    nextSteps,
+  };
+}
+
+export function renderHarnessPackageInstall(result: HarnessPackageInstallResult): string {
+  const lines: string[] = [
+    "Harness Package Install",
+    `package: ${result.bootstrap.packageName}`,
+    `version: ${result.bootstrap.packageVersion}`,
+    `destination: ${result.bootstrap.destinationRoot}`,
+    `copied assets: ${result.bootstrap.copiedAssets.length}`,
+    `generated repo-local files: ${result.bootstrap.generatedFiles.length}`,
+    `preserved repo-local files: ${result.bootstrap.preservedFiles.length}`,
+    `npm install: ${result.npmInstall.status}${
+      result.npmInstall.skipped ? "" : ` (exit ${result.npmInstall.exitCode ?? "?"}, ${result.npmInstall.durationMs}ms)`
+    }`,
+  ];
+  if (result.npmInstall.stderrTail) {
+    lines.push("  npm install stderr tail:", ...result.npmInstall.stderrTail.split("\n").map((row) => `    ${row}`));
+  }
+  for (const validator of result.validators) {
+    let suffix: string;
+    if (validator.status === "skipped") {
+      suffix = validator.skipReason ? ` (reason: ${validator.skipReason})` : "";
+    } else {
+      suffix = ` (exit ${validator.exitCode ?? "?"}, ${validator.durationMs}ms)`;
+    }
+    lines.push(`${validator.name}: ${validator.status}${suffix}`);
+    if (validator.stderrTail) {
+      lines.push("  stderr tail:", ...validator.stderrTail.split("\n").map((row) => `    ${row}`));
+    }
+  }
+  lines.push(
+    `OPENAI_API_KEY: ${result.providerEnv.openaiApiKey}`,
+    `ANTHROPIC_API_KEY: ${result.providerEnv.anthropicApiKey}`,
+  );
+  if (result.filesToReview.length > 0) {
+    lines.push("files to review:");
+    for (const file of result.filesToReview) lines.push(`- ${file}`);
+  }
+  if (result.nextSteps.length > 0) {
+    lines.push("next steps:");
+    for (const step of result.nextSteps) lines.push(`- ${step}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
 export function renderHarnessPackageManifest(manifest: HarnessPackageManifest): string {
   const lines = [
     "Harness Package Manifest",
@@ -383,21 +639,34 @@ export function renderHarnessPackageBootstrap(result: HarnessPackageBootstrapRes
 }
 
 function printUsage(): void {
-  process.stdout.write(`Usage: node --import tsx scripts/harness-package.ts <command> [options]\n\nCommands:\n  manifest               Show the machine-readable harness package manifest\n  bootstrap              Copy reusable assets and generate repo-local placeholders into a target repo\n\nOptions:\n  --source-root <path>   Source harness repo root (default: current working directory)\n  --dest <path>          Target repo root for bootstrap\n  --json                 Emit machine-readable JSON\n  -h, --help             Show this help text\n`);
+  process.stdout.write(`Usage: node --import tsx scripts/harness-package.ts <command> [options]\n\nCommands:\n  manifest               Show the machine-readable harness package manifest\n  bootstrap              Copy reusable assets and generate repo-local placeholders into a target repo\n  install                Bootstrap + npm install + run cheap validators + report files-to-review/provider env\n\nOptions:\n  --source-root <path>   Source harness repo root (default: current working directory)\n  --dest <path>          Target repo root for bootstrap/install\n  --json                 Emit machine-readable JSON\n  --skip-install         (install) Skip the npm install step\n  --skip-validators      (install) Skip running the three cheap validators\n  -h, --help             Show this help text\n`);
 }
 
 function requireValue(argv: string[], index: number, flag: string): string {
   const value = argv[index + 1];
   if (!value) throw new Error(`${flag} requires a value.`);
+  if (value.startsWith("-")) throw new Error(`${flag} requires a value (got flag-like token: ${value}).`);
   return value;
 }
 
-function parseArgs(argv: string[]): { command?: string; sourceRoot?: string; dest?: string; json: boolean; help: boolean } {
+interface ParsedArgs {
+  command?: string;
+  sourceRoot?: string;
+  dest?: string;
+  json: boolean;
+  help: boolean;
+  skipInstall: boolean;
+  skipValidators: boolean;
+}
+
+function parseArgs(argv: string[]): ParsedArgs {
   const [command, ...rest] = argv;
-  const result: { command?: string; sourceRoot?: string; dest?: string; json: boolean; help: boolean } = {
+  const result: ParsedArgs = {
     command,
     json: false,
     help: false,
+    skipInstall: false,
+    skipValidators: false,
   };
 
   for (let index = 0; index < rest.length; index += 1) {
@@ -418,6 +687,14 @@ function parseArgs(argv: string[]): { command?: string; sourceRoot?: string; des
     if (arg === "--dest") {
       result.dest = requireValue(rest, index, arg);
       index += 1;
+      continue;
+    }
+    if (arg === "--skip-install") {
+      result.skipInstall = true;
+      continue;
+    }
+    if (arg === "--skip-validators") {
+      result.skipValidators = true;
       continue;
     }
     throw new Error(`Unknown argument: ${arg}`);
@@ -446,6 +723,21 @@ async function main(): Promise<void> {
       destinationRoot: args.dest,
     });
     process.stdout.write(args.json ? `${JSON.stringify(result, null, 2)}\n` : renderHarnessPackageBootstrap(result));
+    return;
+  }
+
+  if (args.command === "install") {
+    if (!args.dest) throw new Error("install requires --dest.");
+    const result = await installHarnessPackage({
+      sourceRoot: args.sourceRoot ?? process.cwd(),
+      destinationRoot: args.dest,
+      skipNpmInstall: args.skipInstall,
+      skipValidators: args.skipValidators,
+    });
+    process.stdout.write(args.json ? `${JSON.stringify(result, null, 2)}\n` : renderHarnessPackageInstall(result));
+    if (result.npmInstall.status === "failed" || result.validators.some((entry) => entry.status === "failed")) {
+      process.exitCode = 1;
+    }
     return;
   }
 

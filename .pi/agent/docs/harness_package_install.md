@@ -4,6 +4,24 @@ This guide explains the current HARNESS-040 package/bootstrap path.
 It is intentionally conservative.
 The goal is to help another repo adopt the harness without copying runtime history, logs, or validation reports.
 
+## One-shot install (preferred)
+
+The fastest path is the `install` subcommand. It wraps bootstrap, runs `npm install --no-package-lock` in the target, runs three cheap validators (`validate:harness-package`, `validate:core-workflows`, `validate:harness-routing`), probes provider env vars, and reports the files you still need to review by hand.
+
+```bash
+cd /path/to/source-harness-repo
+node --import tsx scripts/harness-package.ts install --dest /path/to/target-repo
+```
+
+Useful flags:
+- `--json` — emit machine-readable output
+- `--skip-install` — skip the `npm install` step (useful in offline/CI flows)
+- `--skip-validators` — skip the cheap validator runs (useful when you only want bootstrap + install)
+
+`harness:install` is not deployment automation. It does not set provider API keys, customize `AGENTS.md`/`SYSTEM.md`, edit `.pi/agent/models.json`, or start any live workflow. After the wrapper returns, review the files it lists under `filesToReview` and set any missing provider env vars before live work.
+
+The longer manual path below remains supported for cases where the wrapper is not appropriate (e.g. you want to inspect each step before continuing).
+
 ## What the package helper does
 The package helper reads:
 - `.pi/agent/package/harness-package.json`
