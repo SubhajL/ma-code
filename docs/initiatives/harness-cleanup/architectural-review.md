@@ -60,9 +60,15 @@ isolation, schemas as a real artifact, append-only audit log.
    not to treat it as a security boundary. Tier 1 item 2 (invert tool surface)
    still open; direction decided (typed tools only, not sandboxing).
 
-5. **No real state machine.** *Still true.* Orchestrator FSM still scattered
-   across `orchestrator-{classifier,dry-run,apply-policy,run,continue,
-   evidence,context}.ts`. Tier 2.
+5. **No real state machine.** *Resolved at the consolidation level via PR P
+   (Tier 2 §5).* The 7-file orchestrator surface now sits behind a single
+   `orchestrator.ts` facade matching the recovery/packets/stitch precedent.
+   The lead's literal "discriminated-union state + `advance()` function"
+   reading didn't apply because the 7 functions are called independently
+   from 9 CLI subcommands (`harness-orchestrate {classify, context,
+   dry-run, apply, run, continue, evidence, merge-check, merge-apply}`),
+   not as a chain — and PR #200 already collapsed the only real "state
+   machine" surface (the CLI command dispatch).
 
 6. **Provider/model coupling leaks everywhere.** *Still true.* `models.json`
    still lists `claude-opus-4-5` and `claude-sonnet-4-6` — Opus is now at
@@ -175,8 +181,21 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
 
 ### Tier 2 — do this quarter
 
-5. Collapse the orchestrator FSM — **Partial.** PR #200 collapsed the
-   orchestrator command dispatch; the wider FSM collapse is still open.
+5. Collapse the orchestrator FSM — **Done.** Landed in two phases:
+   - PR #200 (`e428ae6`) — collapsed the CLI command dispatch in
+     `scripts/harness-orchestrate.ts` (single command-table object with
+     parse/execute entries per subcommand).
+   - PR P (this initiative's closing PR) — added
+     `.pi/agent/extensions/orchestrator.ts` facade matching the
+     recovery/packets/stitch precedent (commit `8ec6027`), rewired
+     `harness-orchestrate.ts` imports through the facade, and added
+     static-check assertions enforcing the facade surface.
+
+   Scope correction: the lead's "discriminated-union state +
+   `advance()`" reading didn't apply — the 7 functions are called
+   independently from 9 CLI subcommands, not chained. See item 5 above
+   in "What concerns me at the architectural level" for the full
+   explanation.
 6. Consolidate small modules (recovery, packets, stitch) — **Done.** This
    change adds consolidated `recovery.ts`, `packets.ts`, and `stitch.ts`
    extension surfaces, rewires the cluster CLIs/validators/tests through them,

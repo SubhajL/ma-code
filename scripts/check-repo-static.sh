@@ -363,6 +363,7 @@ backend_packet_doc = (root / ".pi/agent/docs/backend_packet_generation.md").read
 product_pipeline_doc = (root / ".pi/agent/docs/product_pipeline_runtime.md").read_text(encoding="utf-8")
 till_done_extension = (root / ".pi/agent/extensions/till-done.ts").read_text(encoding="utf-8")
 recovery_extension = (root / ".pi/agent/extensions/recovery.ts").read_text(encoding="utf-8")
+orchestrator_extension = (root / ".pi/agent/extensions/orchestrator.ts").read_text(encoding="utf-8")
 task_packets_extension = (root / ".pi/agent/extensions/task-packets.ts").read_text(encoding="utf-8")
 handoffs_extension = (root / ".pi/agent/extensions/handoffs.ts").read_text(encoding="utf-8")
 queue_runner = (root / ".pi/agent/extensions/queue-runner.ts").read_text(encoding="utf-8")
@@ -377,12 +378,41 @@ for needle in ["taskPacketsExtension", "generateFrontendImplementationPacket", "
     assert needle in packets_extension, needle
 for needle in ["generateStitchPrompt", "generateMockStitchArtifact", "planLiveStitchArtifact"]:
     assert needle in stitch_extension, needle
+for needle in [
+    "slugFromGoal",
+    "classifyOrchestratorGoal",
+    "analyzeOrchestratorContext",
+    "collectOrchestratorContextSignals",
+    "assertSafeDelegatedDryRunCommand",
+    "planOrchestratorDryRun",
+    "rejectUnsafeApplyVerb",
+    "buildOrchestratorApplyPlan",
+    "assertCreatedFilesWithinAllowlist",
+    "runOrchestratorApply",
+    "assertSafeDelegatedRunCommand",
+    "defaultOrchestratorRunPreflight",
+    "runOrchestratorRun",
+    "runOrchestratorContinue",
+    "collectOrchestratorEvidence",
+    "assertNoRawGitMergeCommand",
+    "runOrchestratorMergeCheck",
+    "runOrchestratorMergeApply",
+    "orchestratorClassifierExtension",
+    "orchestratorContextExtension",
+    "orchestratorDryRunExtension",
+    "orchestratorApplyPolicyExtension",
+    "orchestratorRunExtension",
+    "orchestratorContinueExtension",
+    "orchestratorEvidenceExtension",
+]:
+    assert needle in orchestrator_extension, needle
 for rel, needle in [
     ("scripts/harness-fe-packet.ts", "../.pi/agent/extensions/packets.ts"),
     ("scripts/harness-be-packet.ts", "../.pi/agent/extensions/packets.ts"),
     ("scripts/harness-stitch-prompt.ts", "../.pi/agent/extensions/stitch.ts"),
     ("scripts/harness-stitch-artifact.ts", "../.pi/agent/extensions/stitch.ts"),
     ("scripts/harness-live-stitch-artifact.ts", "../.pi/agent/extensions/stitch.ts"),
+    ("scripts/harness-orchestrate.ts", "../.pi/agent/extensions/orchestrator.ts"),
 ]:
     assert needle in (root / rel).read_text(encoding="utf-8"), rel
 assert "tactical vs strategic rule" in workflow_doc.lower()
