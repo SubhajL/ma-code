@@ -11,6 +11,8 @@ DEFAULT_SUMMARY_JSON="$REPORT_DIR/${DATE_STAMP}_task-packets-validation-script.j
 
 PI_BIN="${PI_BIN:-pi}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+NODE_BIN="${NODE_BIN:-node}"
+TSX_IMPORT="${TSX_IMPORT:-tsx}"
 KEEP_TEMP=0
 INCLUDE_LIVE=0
 REPORT_PATH="$DEFAULT_REPORT"
@@ -153,28 +155,26 @@ write_json_summary() {
     printf '%s\n' "${CHECK_DETAILS[$i]}" >> "$SUMMARY_DETAILS_FILE"
   done
 
-  "$PYTHON_BIN" - <<'PY' "$SUMMARY_JSON_PATH" "$SUMMARY_NAMES_FILE" "$SUMMARY_STATUS_FILE" "$SUMMARY_DETAILS_FILE" "$FAILED_CHECKS"
-import json, sys
-out_path, names_path, statuses_path, details_path, failed = sys.argv[1:]
-with open(names_path) as f:
-    names = [line.rstrip("\n") for line in f]
-with open(statuses_path) as f:
-    statuses = [line.rstrip("\n") for line in f]
-with open(details_path) as f:
-    details = [line.rstrip("\n") for line in f]
-checks = [
-    {"name": n, "status": s, "detail": d}
-    for n, s, d in zip(names, statuses, details)
-]
-summary = {
-    "status": "PASS" if int(failed) == 0 else "FAIL",
-    "failedChecks": int(failed),
-    "checks": checks,
-}
-with open(out_path, "w", encoding="utf-8") as f:
-    json.dump(summary, f, indent=2)
-    f.write("\n")
-PY
+  # Emit the canonical JSON via the typed contract module
+  # (`.pi/agent/extensions/lib/validator-report.ts`, ADR-0007). The
+  # TS emitter validates the shape against the typed contract and
+  # writes byte-equivalent JSON to $SUMMARY_JSON_PATH. Byte-
+  # equivalence with the prior Python emission is locked down by a
+  # golden test in tests/extension-units/validator-report.test.ts.
+  #
+  # The script runs under `set -u -o pipefail` (no -e), so a non-zero
+  # exit from the emitter would otherwise be silently dropped on the
+  # floor — and downstream consumers would see a missing JSON file
+  # instead of a typed contract violation. Surface the failure
+  # explicitly here.
+  if ! "$NODE_BIN" --import "$TSX_IMPORT" "$REPO_ROOT/scripts/lib/emit-validator-report.ts" \
+      --out "$SUMMARY_JSON_PATH" \
+      --names-file "$SUMMARY_NAMES_FILE" \
+      --statuses-file "$SUMMARY_STATUS_FILE" \
+      --details-file "$SUMMARY_DETAILS_FILE"; then
+    echo "Task-packets validation FAIL (emit-validator-report failed; see stderr above)" >&2
+    exit 1
+  fi
 }
 
 setup_temp_runtime() {
