@@ -5,42 +5,33 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import {
+  analyzeOrchestratorContext,
   classifyOrchestratorGoal,
-  type OrchestratorClassification,
-  type OrchestratorGitState,
-  type OrchestratorInitiativeCandidate,
-} from "../.pi/agent/extensions/orchestrator-classifier.ts";
-import { planOrchestratorDryRun, type OrchestratorDryRunPlan } from "../.pi/agent/extensions/orchestrator-dry-run.ts";
-import {
+  collectOrchestratorContextSignals,
+  collectOrchestratorEvidence,
+  planOrchestratorDryRun,
   rejectUnsafeApplyVerb,
   runOrchestratorApply,
+  runOrchestratorContinue,
+  runOrchestratorMergeApply,
+  runOrchestratorMergeCheck,
+  runOrchestratorRun,
   type OrchestratorApplyMaterializationResult,
   type OrchestratorApplyPath,
   type OrchestratorApplyRequest,
-} from "../.pi/agent/extensions/orchestrator-apply-policy.ts";
-import {
-  runOrchestratorRun,
+  type OrchestratorClassification,
+  type OrchestratorContextAssessment,
+  type OrchestratorContinueRequest,
+  type OrchestratorContinueResult,
+  type OrchestratorDryRunPlan,
+  type OrchestratorEvidenceSummary,
+  type OrchestratorGitState,
+  type OrchestratorInitiativeCandidate,
+  type OrchestratorMergeOptions,
   type OrchestratorRunLane,
   type OrchestratorRunRequest,
   type OrchestratorRunSessionResult,
-} from "../.pi/agent/extensions/orchestrator-run.ts";
-import {
-  runOrchestratorContinue,
-  type OrchestratorContinueRequest,
-  type OrchestratorContinueResult,
-} from "../.pi/agent/extensions/orchestrator-continue.ts";
-import {
-  collectOrchestratorEvidence,
-  runOrchestratorMergeApply,
-  runOrchestratorMergeCheck,
-  type OrchestratorEvidenceSummary,
-  type OrchestratorMergeOptions,
-} from "../.pi/agent/extensions/orchestrator-evidence.ts";
-import {
-  analyzeOrchestratorContext,
-  collectOrchestratorContextSignals,
-  type OrchestratorContextAssessment,
-} from "../.pi/agent/extensions/orchestrator-context.ts";
+} from "../.pi/agent/extensions/orchestrator.ts";
 
 const execFile = promisify(execFileCallback);
 
