@@ -35,10 +35,16 @@ function printHelp(): void {
 Reports the health of repo-local harness state. Read-only.
 
 Checks:
-  - runtime-state   leases.json, queue.json, tasks.json parse and have version 1
-  - schemas-valid   every *.schema.json in .pi/agent/state/schemas/ parses
-  - models-config   .pi/agent/models.json parses and has routing_defaults
-  - audit-log       logs/harness-actions.jsonl is line-parseable JSONL
+  - runtime-state      legacy JSON files (leases/queue/tasks.json) parse if present (compat only)
+  - schemas-valid      every *.schema.json in .pi/agent/state/schemas/ parses
+  - models-config      .pi/agent/models.json parses and has routing_defaults
+  - audit-log          logs/harness-actions.jsonl is line-parseable JSONL (compat audit history)
+  - sqlite-runtime-db  canonical .pi/agent/state/runtime/pi.db exists, has required tables, PRAGMA integrity_check = ok
+  - sqlite-consistency activeTaskId/activeJobId reference real rows; queue jobs' linkedTaskId references valid tasks
+  - sqlite-audit-log   SQLite audit_log table is queryable (canonical audit source)
+
+SQLite at .pi/agent/state/runtime/pi.db is the canonical runtime state store;
+JSON files under the same directory are compatibility/export artifacts only.
 
 Exit code:
   0  all checks pass (warn is acceptable)

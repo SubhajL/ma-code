@@ -1,5 +1,12 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+
+import { RUNTIME_DB_FILE } from "./lib/sqlite-state.ts";
+
+interface ProbeDb {
+  readonly handle: DatabaseSync;
+}
 
 export type DoctorCheckStatus = "pass" | "warn" | "fail";
 
@@ -220,6 +227,346 @@ export async function checkAuditLog(cwd: string): Promise<DoctorCheckResult> {
   };
 }
 
+const REQUIRED_SQLITE_TABLES = [
+  "tasks",
+  "active_task",
+  "queue_jobs",
+  "queue_meta",
+  "leases",
+  "audit_log",
+] as const;
+
+async function withSqliteRuntime<R>(
+  cwd: string,
+  fn: (db: ProbeDb) => R,
+): Promise<{ kind: "ok"; value: R } | { kind: "absent" } | { kind: "open-failed"; error: string }> {
+  const absolute = resolve(cwd, RUNTIME_DB_FILE);
+  if (!(await pathExists(absolute))) return { kind: "absent" };
+  let handle: DatabaseSync;
+  try {
+    handle = new DatabaseSync(absolute);
+    handle.exec("PRAGMA query_only = ON");
+  } catch (error) {
+    return { kind: "open-failed", error: (error as Error).message };
+  }
+  try {
+    return { kind: "ok", value: fn({ handle }) };
+  } finally {
+    handle.close();
+  }
+}
+
+function listSqliteTables(db: ProbeDb): Set<string> {
+  const rows = db.handle
+    .prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`)
+    .all() as unknown as Array<{ name: string }>;
+  return new Set(rows.map((row) => row.name));
+}
+
+function countRows(db: ProbeDb, table: string): number {
+  const row = db.handle.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as unknown as { n: number };
+  return Number(row.n);
+}
+
+function readIntegrityCheck(db: ProbeDb): string {
+  const rows = db.handle.prepare(`PRAGMA integrity_check`).all() as unknown as Array<{ integrity_check: string }>;
+  if (rows.length === 0) return "no-result";
+  if (rows.length === 1 && rows[0].integrity_check === "ok") return "ok";
+  return rows.map((row) => row.integrity_check).join("; ");
+}
+
+export async function checkSqliteRuntimeDb(cwd: string): Promise<DoctorCheckResult> {
+  let probe: Awaited<ReturnType<typeof withSqliteRuntime<{
+    tableStatus: Record<string, boolean>;
+    missing: string[];
+    integrity: string;
+    rowCounts: Record<string, number | null>;
+  }>>>;
+  try {
+    probe = await withSqliteRuntime(cwd, (db) => {
+      const tables = listSqliteTables(db);
+      const tableStatus: Record<string, boolean> = {};
+      const missing: string[] = [];
+      for (const name of REQUIRED_SQLITE_TABLES) {
+        const present = tables.has(name);
+        tableStatus[name] = present;
+        if (!present) missing.push(name);
+      }
+      const integrity = readIntegrityCheck(db);
+      const rowCounts: Record<string, number | null> = {};
+      for (const name of ["tasks", "queue_jobs", "leases", "audit_log"] as const) {
+        rowCounts[name] = tables.has(name) ? countRows(db, name) : null;
+      }
+      return { tableStatus, missing, integrity, rowCounts };
+    });
+  } catch (error) {
+    return {
+      name: "sqlite-runtime-db",
+      status: "fail",
+      message: `Runtime DB probe threw: ${(error as Error).message}`,
+    };
+  }
+
+  if (probe.kind === "absent") {
+    return {
+      name: "sqlite-runtime-db",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} is missing; SQLite is the canonical runtime store. Run any harness command (e.g. \`npm run harness:status\`) once to lazily initialize the DB.`,
+    };
+  }
+  if (probe.kind === "open-failed") {
+    return {
+      name: "sqlite-runtime-db",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} could not be opened: ${probe.error}`,
+    };
+  }
+
+  const details: Record<string, unknown> = {
+    file: RUNTIME_DB_FILE,
+    tables: probe.value.tableStatus,
+    integrity: probe.value.integrity,
+    rowCounts: probe.value.rowCounts,
+  };
+
+  if (probe.value.missing.length > 0) {
+    return {
+      name: "sqlite-runtime-db",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} is missing required tables: ${probe.value.missing.join(", ")}`,
+      details,
+    };
+  }
+  if (probe.value.integrity !== "ok") {
+    return {
+      name: "sqlite-runtime-db",
+      status: "fail",
+      message: `Runtime DB integrity_check returned: ${probe.value.integrity}`,
+      details,
+    };
+  }
+  return {
+    name: "sqlite-runtime-db",
+    status: "pass",
+    message: `Runtime DB ${RUNTIME_DB_FILE} has all expected tables; integrity_check ok.`,
+    details,
+  };
+}
+
+function readActiveTaskId(db: ProbeDb): string | null {
+  const row = db.handle
+    .prepare(`SELECT task_id FROM active_task WHERE singleton = 1`)
+    .get() as unknown as { task_id: string | null } | undefined;
+  return row?.task_id ?? null;
+}
+
+function readActiveJobId(db: ProbeDb): string | null {
+  const row = db.handle
+    .prepare(`SELECT active_job_id FROM queue_meta WHERE singleton = 1`)
+    .get() as unknown as { active_job_id: string | null } | undefined;
+  return row?.active_job_id ?? null;
+}
+
+interface QueueJobPayloadReadResult {
+  parsed: Array<{ id: string; payload: Record<string, unknown> }>;
+  malformedIds: string[];
+}
+
+function readQueueJobPayloads(db: ProbeDb): QueueJobPayloadReadResult {
+  const rows = db.handle
+    .prepare(`SELECT id, payload_json FROM queue_jobs`)
+    .all() as unknown as Array<{ id: string; payload_json: string }>;
+  const parsed: Array<{ id: string; payload: Record<string, unknown> }> = [];
+  const malformedIds: string[] = [];
+  for (const row of rows) {
+    try {
+      const value = JSON.parse(row.payload_json) as unknown;
+      if (isObject(value)) {
+        parsed.push({ id: row.id, payload: value });
+      } else {
+        malformedIds.push(row.id);
+      }
+    } catch {
+      malformedIds.push(row.id);
+    }
+  }
+  return { parsed, malformedIds };
+}
+
+function readTaskIds(db: ProbeDb): Set<string> {
+  const rows = db.handle.prepare(`SELECT id FROM tasks`).all() as unknown as Array<{ id: string }>;
+  return new Set(rows.map((row) => row.id));
+}
+
+interface ConsistencyProbeOk {
+  kind: "ok";
+  activeTaskId: string | null;
+  activeJobId: string | null;
+  taskIds: Set<string>;
+  jobIds: Set<string>;
+  danglingLinkedTaskIds: Array<{ jobId: string; linkedTaskId: string }>;
+  malformedPayloadJobIds: string[];
+}
+
+interface ConsistencyProbeSchemaBroken {
+  kind: "schema-broken";
+  missing: string[];
+}
+
+export async function checkSqliteConsistency(cwd: string): Promise<DoctorCheckResult> {
+  let probe: Awaited<ReturnType<typeof withSqliteRuntime<ConsistencyProbeOk | ConsistencyProbeSchemaBroken>>>;
+  try {
+    probe = await withSqliteRuntime(cwd, (db): ConsistencyProbeOk | ConsistencyProbeSchemaBroken => {
+      const tables = listSqliteTables(db);
+      const missing = REQUIRED_SQLITE_TABLES.filter((name) => !tables.has(name));
+      if (missing.length > 0) {
+        return { kind: "schema-broken", missing };
+      }
+      const taskIds = readTaskIds(db);
+      const jobIds = new Set(
+        (db.handle.prepare(`SELECT id FROM queue_jobs`).all() as unknown as Array<{ id: string }>).map(
+          (row) => row.id,
+        ),
+      );
+      const activeTaskId = readActiveTaskId(db);
+      const activeJobId = readActiveJobId(db);
+      const { parsed, malformedIds } = readQueueJobPayloads(db);
+      const danglingLinkedTaskIds: Array<{ jobId: string; linkedTaskId: string }> = [];
+      for (const entry of parsed) {
+        const linked = entry.payload.linkedTaskId;
+        if (typeof linked === "string" && !taskIds.has(linked)) {
+          danglingLinkedTaskIds.push({ jobId: entry.id, linkedTaskId: linked });
+        }
+      }
+      return {
+        kind: "ok",
+        activeTaskId,
+        activeJobId,
+        taskIds,
+        jobIds,
+        danglingLinkedTaskIds,
+        malformedPayloadJobIds: malformedIds,
+      };
+    });
+  } catch (error) {
+    return {
+      name: "sqlite-consistency",
+      status: "fail",
+      message: `Runtime DB consistency probe threw: ${(error as Error).message}`,
+    };
+  }
+
+  if (probe.kind === "absent") {
+    return {
+      name: "sqlite-consistency",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} is missing; consistency checks require an initialized SQLite store.`,
+    };
+  }
+  if (probe.kind === "open-failed") {
+    return {
+      name: "sqlite-consistency",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} could not be opened: ${probe.error}`,
+    };
+  }
+  if (probe.value.kind === "schema-broken") {
+    return {
+      name: "sqlite-consistency",
+      status: "fail",
+      message: `Runtime DB schema is broken; cannot run consistency checks. Missing tables: ${probe.value.missing.join(", ")}`,
+      details: { missing: probe.value.missing },
+    };
+  }
+
+  const value = probe.value;
+  const details: Record<string, unknown> = {
+    activeTaskId: value.activeTaskId,
+    activeJobId: value.activeJobId,
+    danglingLinkedTaskIds: value.danglingLinkedTaskIds,
+    malformedPayloadJobIds: value.malformedPayloadJobIds,
+  };
+
+  const problems: string[] = [];
+  if (value.activeTaskId != null && !value.taskIds.has(value.activeTaskId)) {
+    problems.push(`activeTaskId=${value.activeTaskId} has no matching task row`);
+  }
+  if (value.activeJobId != null && !value.jobIds.has(value.activeJobId)) {
+    problems.push(`activeJobId=${value.activeJobId} has no matching queue_jobs row`);
+  }
+  if (value.danglingLinkedTaskIds.length > 0) {
+    const formatted = value.danglingLinkedTaskIds
+      .map((entry) => `${entry.jobId}->${entry.linkedTaskId}`)
+      .join(", ");
+    problems.push(`dangling linkedTaskId references: ${formatted}`);
+  }
+  if (value.malformedPayloadJobIds.length > 0) {
+    problems.push(`queue_jobs rows with malformed/non-object payload_json: ${value.malformedPayloadJobIds.join(", ")}`);
+  }
+
+  if (problems.length > 0) {
+    return {
+      name: "sqlite-consistency",
+      status: "fail",
+      message: `Runtime DB consistency issues: ${problems.join("; ")}`,
+      details,
+    };
+  }
+  return {
+    name: "sqlite-consistency",
+    status: "pass",
+    message: "Active task/job pointers reference real rows; queue jobs' linkedTaskId references and payload_json are all valid.",
+    details,
+  };
+}
+
+type AuditProbe = { kind: "ok"; rowCount: number } | { kind: "missing-table" };
+
+export async function checkSqliteAuditLog(cwd: string): Promise<DoctorCheckResult> {
+  let probe: Awaited<ReturnType<typeof withSqliteRuntime<AuditProbe>>>;
+  try {
+    probe = await withSqliteRuntime(cwd, (db): AuditProbe => {
+      const tables = listSqliteTables(db);
+      if (!tables.has("audit_log")) return { kind: "missing-table" };
+      return { kind: "ok", rowCount: countRows(db, "audit_log") };
+    });
+  } catch (error) {
+    return {
+      name: "sqlite-audit-log",
+      status: "fail",
+      message: `SQLite audit_log probe threw: ${(error as Error).message}`,
+    };
+  }
+
+  if (probe.kind === "absent") {
+    return {
+      name: "sqlite-audit-log",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} is missing; SQLite audit_log table cannot be probed.`,
+    };
+  }
+  if (probe.kind === "open-failed") {
+    return {
+      name: "sqlite-audit-log",
+      status: "fail",
+      message: `Runtime DB ${RUNTIME_DB_FILE} could not be opened: ${probe.error}`,
+    };
+  }
+  if (probe.value.kind === "missing-table") {
+    return {
+      name: "sqlite-audit-log",
+      status: "fail",
+      message: `SQLite audit_log table is missing from ${RUNTIME_DB_FILE}.`,
+    };
+  }
+  return {
+    name: "sqlite-audit-log",
+    status: "pass",
+    message: `SQLite audit_log table is queryable (${probe.value.rowCount} rows).`,
+    details: { rowCount: probe.value.rowCount },
+  };
+}
+
 export async function runAllChecks(cwd: string): Promise<DoctorReport> {
   const startedAt = new Date().toISOString();
   const results = await Promise.all([
@@ -227,6 +574,9 @@ export async function runAllChecks(cwd: string): Promise<DoctorReport> {
     checkSchemas(cwd),
     checkModelsConfig(cwd),
     checkAuditLog(cwd),
+    checkSqliteRuntimeDb(cwd),
+    checkSqliteConsistency(cwd),
+    checkSqliteAuditLog(cwd),
   ]);
   const finishedAt = new Date().toISOString();
   const overall: DoctorCheckStatus = results.some((r) => r.status === "fail")

@@ -62,8 +62,9 @@ Primary assets:
 - `.pi/agent/extensions/till-done.ts`
 - `.pi/agent/state/schemas/*.json`
 - `.pi/agent/package/templates/runtime/*.json`
-- `.pi/agent/state/runtime/*.json` (generated local-only runtime bookkeeping)
-- `logs/harness-actions.jsonl` (generated local-only audit log)
+- `.pi/agent/state/runtime/pi.db` (canonical local-only SQLite runtime store: tasks, queue jobs, leases, audit rows)
+- `.pi/agent/state/runtime/{tasks,queue,leases}.json` (compatibility/export artifacts only, auto-migrated into SQLite on first use)
+- `logs/harness-actions.jsonl` (append-only audit history; queryable audit source is the SQLite `audit_log` table)
 
 Current responsibilities include:
 - blocking protected writes such as `.env*`

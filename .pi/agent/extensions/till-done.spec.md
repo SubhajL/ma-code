@@ -5,7 +5,7 @@ Enforce visible task ownership and completion evidence before mutating work is c
 
 ## Current architectural decision
 - interaction layer should be tool-driven
-- persistence layer should be file-backed JSON
+- persistence layer is SQLite at `.pi/agent/state/runtime/pi.db` (canonical for tasks, queue jobs, leases, and audit rows); the sibling `tasks.json` / `queue.json` / `leases.json` files are compatibility/export artifacts only and auto-migrate into SQLite on first use
 
 ## Core rules
 - a mutating action must be linked to a task
