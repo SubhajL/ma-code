@@ -198,6 +198,7 @@ required_files=(
   "docs/adr/0002-bounded-autonomy.md"
   "docs/adr/0003-atomic-queue-task-mutations.md"
   "docs/adr/0004-apps-web-and-services-api-are-harness-fixtures.md"
+  "docs/adr/0005-typed-control-plane-kernel.md"
   "apps/web/README.md"
   "services/api/README.md"
 )
