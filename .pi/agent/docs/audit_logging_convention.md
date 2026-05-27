@@ -21,6 +21,22 @@ Format:
 - one JSON object per line
 - append-only under normal operation
 
+## Rotation and retention
+The active log at `logs/harness-actions.jsonl` is rotated when it would
+exceed `HARNESS_AUDIT_LOG_MAX_BYTES` (default 5 MB) by the size of the
+pending entry. Rotated files are renamed in place to
+`logs/harness-actions.jsonl.YYYYMMDDTHHMMSSmmmZ-XXXX` (sortable UTC
+millisecond timestamp plus a 4-hex random discriminator that prevents
+same-tick collisions). `HARNESS_AUDIT_LOG_RETAIN` (default 5) controls
+how many rotated files survive; older ones are pruned on each rotation.
+
+- Set `HARNESS_AUDIT_LOG_MAX_BYTES=0` to disable rotation entirely
+  (debug/forensics).
+- SQLite remains the canonical audit store via the `audit_log` table —
+  losing a pruned rotated JSONL never loses data.
+- Single entries larger than `maxBytes` are written without splitting;
+  the active file may briefly exceed the threshold by one line.
+
 ## Current producers
 ### `safe-bash.ts`
 Current events include:

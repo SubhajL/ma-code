@@ -6,5 +6,5 @@ node_modules/
 .pi/agent/artifacts/
 .pi/agent/state/runtime/*.json
 .pi/agent/state/runtime/*.lock
-logs/harness-actions.jsonl
-**/logs/harness-actions.jsonl
+logs/harness-actions.jsonl*
+**/logs/harness-actions.jsonl*
