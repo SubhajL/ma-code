@@ -90,8 +90,13 @@ All entries from the original still hold:
   `frontend-packet-generator.ts` (375L) + `backend-packet-generator.ts` (377L).
 - **Schema/TS hand-mirror:** `.pi/agent/state/schemas/` JSON + TS types both
   define the same shapes.
-- **Validators-as-bash:** 45 `validate-*.sh` files; most shell out to
-  `node --test` with minor framing.
+- **Validators-as-bash:** scope-checked via PR S (Tier 3 §10). Repo has
+  45 `validate-*.sh` files (10,136 LOC) plus 3 Node `.mjs` validators.
+  Only the smallest bucket matches "minor framing": 12 scripts are ≤30 L
+  wrappers and ~12 are medium 50–99 L local test/wiring scripts. The
+  remaining 21 are ≥100 L validator orchestrators with temp-runtime setup,
+  per-check result tracking, optional live probes, and Markdown/JSON
+  report artifacts consumed by downstream tooling.
 - **Phase prefixes in code:** preserved by design after PR R (Tier 3 §9)
   scope check. Several phase strings turn out to be runtime- or
   static-check-visible identifiers, not just module prose. See Tier 3 item
@@ -106,7 +111,14 @@ the tier-1-status tracker.
 
 ### Workflow issues
 
-- **Two layers of test runners** (`test:*` and `validate:*`) — still true.
+- **Two layers of test runners** (`test:*` and `validate:*`) — still true,
+  but scope-checked via PR S (Tier 3 §10). `test:*` is direct repo-local
+  test execution; `validate:*` is the operator validation surface,
+  including temp-runtime isolation, formal report artifacts
+  (`reports/validation/{date}_*-validation-script.{md,json}`) consumed by
+  `scripts/collect-harness-tuning-data.sh` and `scripts/harness-integrate.ts`,
+  live-probe flags, wiring assertions, and integration-helper expectations.
+  Not pure duplication.
 - **Bash safety blocks raw git** with soft circularity around the helpers —
   still true; safety doc (PR #178) names the circularity but doesn't resolve
   it.
@@ -296,7 +308,36 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
    docs, package templates, static checks, and compatibility readers
    together — out of scope for this initiative.
 10. One Node-based validator runner replacing the 45 `validate-*.sh` —
-    **Open.**
+    **Open, scope-checked.** The original cleanup item underestimates the
+    surface. A minority of validators (12 of 45, ≤30 LOC each) are thin
+    `node --test` wrappers, but the majority — including 21 ≥100 LOC
+    files (e.g. `validate-extension-unit-tests.sh` at 591 L,
+    `validate-harness-routing.sh`, `validate-task-packets.sh`) — are
+    report-producing orchestrators with temp-runtime setup, npm install
+    in scratch dirs, per-check PASS/FAIL tracking, and Markdown + JSON
+    report emission to `reports/validation/`.
+
+    Migration touches:
+    - 45 `.sh` scripts (10,136 LOC) + 3 `.mjs` scripts
+    - 44 `validate:*` entries in `package.json`
+    - `.pi/agent/package/templates/package.template.json`
+    - `.github/workflows/ci.yml`
+    - `.github/pull_request_template.md`
+    - 68 assertions in `scripts/check-repo-static.sh`
+    - JSON format consumers: `scripts/collect-harness-tuning-data.sh:151`
+      (parses `status` / `failedChecks`), `scripts/harness-integrate.ts:89,111`
+      (tolerates report filenames + invokes with `--report` /
+      `--summary-json` flags)
+    - Operator docs: `.pi/agent/docs/validation_architecture.md`,
+      `.pi/agent/docs/operator_workflow.md`
+
+    Future work should split this into an explicit validator-architecture
+    project: first define a shared TS report/summary contract module to
+    capture the `{status, failedChecks, checks}` shape currently embedded
+    in 19+ bash files, then migrate one low-risk heavy validator at a
+    time behind compatibility aliases. Do not replace only the trivial
+    wrappers in this initiative — that would add a second validator style
+    without retiring the load-bearing one. Out of scope for this cleanup.
 11. Rotation + retention on `harness-actions.jsonl` — **Done.** PR Q
     added size-based rotation (`HARNESS_AUDIT_LOG_MAX_BYTES`, default
     5 MB) and count-based retention (`HARNESS_AUDIT_LOG_RETAIN`,
