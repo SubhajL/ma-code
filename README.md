@@ -87,7 +87,7 @@ That means the repo currently has:
 - repo-local harness structure
 - role/prompt foundation
 - task and queue schemas as state artifacts
-- local-only generated runtime bookkeeping under `.pi/agent/state/runtime/` and `logs/harness-actions.jsonl`
+- local-only generated runtime bookkeeping in the canonical SQLite store at `.pi/agent/state/runtime/pi.db` (tasks, queue jobs, leases, audit rows); the sibling `tasks.json`/`queue.json`/`leases.json` files are compatibility/export artifacts only, and `logs/harness-actions.jsonl` is the append-only audit history (the queryable audit source is the SQLite `audit_log` table)
 - first live runtime controls
 - bounded validation workflow
 

@@ -76,5 +76,11 @@ Escalate when:
 
 ## Task architecture note
 - Normal task interaction should be tool-driven.
-- JSON is the persistence layer for task and queue state.
-- Direct raw JSON edits are a fallback or maintenance path, not the normal operating path.
+- SQLite at `.pi/agent/state/runtime/pi.db` is the canonical persistence layer
+  for task, queue, lease, and audit state. The legacy
+  `.pi/agent/state/runtime/{tasks,queue,leases}.json` files are
+  compatibility/export artifacts only; they auto-migrate into SQLite on first
+  use and should not be treated as the source of truth.
+- Direct raw JSON edits and direct SQLite mutation are both fallback or
+  maintenance paths, not the normal operating path. Use the runtime task tools
+  and helper scripts (`harness:status`, `harness:doctor`, etc.) instead.
