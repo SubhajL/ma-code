@@ -102,6 +102,7 @@ So Phase F should be read as:
 - not yet “almost hands-free programming” by itself
 
 Related docs:
+- architecture decision records (load-bearing decisions, authoritative when in conflict with prose docs): [`docs/adr/README.md`](./docs/adr/README.md)
 - discovery policy: `.pi/agent/docs/discovery_policy.md`
 - Graphify adapter and runtime command: `.pi/agent/docs/graphify_adapter.md` (`.pi/agent/extensions/graphify-orchestrator.ts` / `run_graphify_orchestration` delegates to `graphify_adapter`)
 - validation architecture: `.pi/agent/docs/validation_architecture.md`
