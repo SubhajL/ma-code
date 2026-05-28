@@ -9,6 +9,8 @@ REPORT_DIR="$REPO_ROOT/reports/validation"
 REPORT_PATH="$REPORT_DIR/${DATE_STAMP}_product-pipeline-e2e.md"
 SUMMARY_JSON_PATH="$REPORT_DIR/${DATE_STAMP}_product-pipeline-e2e.json"
 KEEP_TEMP=0
+NODE_BIN="${NODE_BIN:-node}"
+TSX_IMPORT="${TSX_IMPORT:-tsx}"
 
 usage() {
   cat <<USAGE
@@ -50,6 +52,12 @@ done
 
 mkdir -p "$REPORT_DIR" "$(dirname "$REPORT_PATH")" "$(dirname "$SUMMARY_JSON_PATH")"
 TMP_ROOT="$(mktemp -d)"
+# Python writes the summary dict to this intermediate path; a TS
+# emitter (ADR-0007 sibling for the product-pipeline-e2e rich schema)
+# then validates the typed shape and writes the canonical final JSON
+# to $SUMMARY_JSON_PATH. The schema is verbose and not covered by the
+# generic validator-report contract, so it gets its own typed module.
+SUMMARY_INTERMEDIATE_PATH="$TMP_ROOT/product-pipeline-e2e.intermediate.json"
 cleanup() {
   local exit_code=$?
   if [[ $KEEP_TEMP -eq 0 ]]; then
@@ -68,7 +76,19 @@ PY_CLEANUP
 }
 trap cleanup EXIT
 
-python3 - "$REPO_ROOT" "$REPORT_PATH" "$SUMMARY_JSON_PATH" "$TMP_ROOT" <<'PY'
+# Capture Python's exit code without `set -e` aborting bash before the
+# TS emit step has a chance to run. We still want the validator's
+# final exit code to reflect Python's pass/fail decision.
+#
+# Python writes the summary dict to $SUMMARY_INTERMEDIATE_PATH (so the
+# TS emit step controls the canonical final write). But the
+# `observability.reportsWritten` field must claim the FINAL user-
+# requested path, not the intermediate, since downstream tooling
+# (collect-harness-tuning-data.sh, harness-integrate.ts, the
+# integration test) reads that field. So pass both paths and have
+# Python record the final one.
+set +e
+python3 - "$REPO_ROOT" "$REPORT_PATH" "$SUMMARY_INTERMEDIATE_PATH" "$SUMMARY_JSON_PATH" "$TMP_ROOT" <<'PY'
 import hashlib
 import json
 from pathlib import Path
@@ -78,7 +98,8 @@ from datetime import datetime, timezone
 repo_root = Path(sys.argv[1])
 report_path = Path(sys.argv[2])
 summary_path = Path(sys.argv[3])
-tmp_root = Path(sys.argv[4])
+summary_final_path = Path(sys.argv[4])
+tmp_root = Path(sys.argv[5])
 fixture_dir = repo_root / "tests" / "fixtures" / "product-pipeline-e2e" / "checkout-mini"
 manifest = json.loads((fixture_dir / "expected-artifacts.json").read_text(encoding="utf-8"))
 initiative_id = manifest["initiativeId"]
@@ -200,7 +221,7 @@ summary = {
         "evidence": [f"re-run produced no duplicate artifacts: count remained {count_once}"] if count_once == count_twice else [f"artifact count changed from {count_once} to {count_twice}"],
     },
     "observability": {
-        "reportsWritten": [str(report_path), str(summary_path)],
+        "reportsWritten": [str(report_path), str(summary_final_path)],
         "logsReferenced": ["logs/coding/2026-05-08_product-pipeline-e2e-phase-14.md"],
         "missingEvidence": missing,
     },
@@ -266,3 +287,21 @@ if status != "pass":
     sys.exit(1)
 print("product-pipeline-e2e-validation: PASS")
 PY
+PY_STATUS=$?
+set -e
+
+# Validate the rich schema and emit the canonical JSON via the typed
+# contract module (`scripts/lib/emit-product-pipeline-e2e-report.ts`).
+# This catches producer bugs (wrong status enum, missing required
+# fields, drifted shapes) at write time instead of silently writing
+# malformed JSON that downstream consumers
+# (`tests/integration/product-pipeline-e2e.test.ts`) would blame on
+# themselves.
+if ! "$NODE_BIN" --import "$TSX_IMPORT" "$REPO_ROOT/scripts/lib/emit-product-pipeline-e2e-report.ts" \
+    --input "$SUMMARY_INTERMEDIATE_PATH" \
+    --out "$SUMMARY_JSON_PATH"; then
+  echo "product-pipeline-e2e-validation: FAIL (emit-product-pipeline-e2e-report failed; see stderr above)" >&2
+  exit 1
+fi
+
+exit "$PY_STATUS"
