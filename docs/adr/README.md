@@ -95,6 +95,7 @@ The template at [`TEMPLATE.md`](./TEMPLATE.md) captures this skeleton.
 | [ADR-0005](./0005-typed-control-plane-kernel.md) | New control-plane mutations go through a typed kernel | Accepted | 2026-05-27 |
 | [ADR-0006](./0006-sqlite-as-real-domain-store.md) | SQLite is a real domain store — versioned migrations, declared foreign keys, typed row ops | Accepted | 2026-05-28 |
 | [ADR-0007](./0007-typed-validator-report-contract.md) | Validator reports go through one typed TypeScript contract | Accepted | 2026-05-28 |
+| [ADR-0008](./0008-rich-schema-per-validator-emitters.md) | Validators with output shapes incompatible with the generic contract get their own typed emitter | Accepted | 2026-05-28 |
 
 ## What this directory is NOT
 

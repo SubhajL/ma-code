@@ -174,12 +174,14 @@ setup_temp_runtime() {
   local workdir="$TMP_ROOT/unit-runtime"
   mkdir -p \
     "$workdir/.pi/agent/extensions" \
+    "$workdir/.pi/agent/extensions/lib" \
     "$workdir/.pi/agent/teams" \
     "$workdir/.pi/agent/packets" \
     "$workdir/.pi/agent/handoffs" \
     "$workdir/.pi/agent/validation" \
     "$workdir/.pi/agent/recovery" \
     "$workdir/.pi/agent/state/schemas" \
+    "$workdir/scripts/lib" \
     "$workdir/tests/extension-units"
 
   cat > "$workdir/package.json" <<'JSON'
@@ -198,6 +200,15 @@ setup_temp_runtime() {
 }
 JSON
 
+  # Original explicit copies (kept enumerated so
+  # scripts/check-repo-static.sh can find each module reference).
+  # The first 11-file group covers the long-standing checks 1-12;
+  # the individual extensions below cover checks 5-12. NOTE: the
+  # validator originally listed only these — that hand-rolled list
+  # grew stale as consolidated facades (PR #201) and SQLite-era
+  # lib/ modules (ADR-0001/0003/0005/0006/0007) were added without
+  # the validator being updated. The wildcard copies after the
+  # explicit list are the auto-discovery safety net.
   cp "$REPO_ROOT/.pi/agent/extensions/"{safe-bash,till-done,harness-routing,team-activation,domain-governance,task-packets,handoffs,recovery-policy,recovery-runtime,queue-runner,graphify-adapter}.ts "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/discovery-policy.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/graphify-validation-decision.ts" "$workdir/.pi/agent/extensions/"
@@ -206,6 +217,17 @@ JSON
   cp "$REPO_ROOT/.pi/agent/extensions/execution-leases.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/product-slice-lifecycle.ts" "$workdir/.pi/agent/extensions/"
   cp "$REPO_ROOT/.pi/agent/extensions/tool-result-envelope.ts" "$workdir/.pi/agent/extensions/"
+  # Auto-discovery safety net: copy any remaining top-level
+  # extensions (consolidated facades from PR #201, etc.) and the
+  # full `lib/` tree so new test files added by ADR-0003/0005/0006/
+  # 0007 / future ADRs don't need per-test updates here.
+  cp "$REPO_ROOT/.pi/agent/extensions/"*.ts "$workdir/.pi/agent/extensions/"
+  cp "$REPO_ROOT/.pi/agent/extensions/lib/"*.ts "$workdir/.pi/agent/extensions/lib/"
+  # `validator-report.test.ts` and `product-pipeline-e2e-report.test.ts`
+  # spawn child `node --import tsx` processes against the canonical
+  # CLI emitters at `scripts/lib/emit-*-report.ts`. Copy them into
+  # the temp runtime so those spawn paths resolve.
+  cp "$REPO_ROOT/scripts/lib/"*.ts "$workdir/scripts/lib/"
   cp "$REPO_ROOT/.pi/agent/models.json" "$workdir/.pi/agent/models.json"
   cp "$REPO_ROOT/.pi/agent/teams/activation-policy.json" "$workdir/.pi/agent/teams/activation-policy.json"
   cp "$REPO_ROOT/.pi/agent/teams/"*.yaml "$workdir/.pi/agent/teams/"
@@ -468,12 +490,53 @@ check_12_tool_result_envelope_unit_tests() {
   fi
 }
 
+# Auto-discovery catch-all for test files added by recent ADRs that
+# the hand-rolled check_1..12 list does not cover individually.
+# Covers:
+#   - audit-log.test.ts (ADR-0001 SQLite audit-log dual-write)
+#   - coordinated-state.test.ts (ADR-0003 atomic queue+tasks helper)
+#   - doctor.test.ts (the harness:doctor command from PR #180/#223)
+#   - control-plane.test.ts (ADR-0005 typed control-plane kernel)
+#   - runtime-migrations.test.ts (ADR-0006 SQLite domain store)
+#   - validator-report.test.ts (ADR-0007 typed validator-report contract)
+#   - product-pipeline-e2e-report.test.ts (PR #243 rich-schema sibling)
+# A single check function runs all of them in one node --test
+# invocation so this gap stays closed even if new tests land in the
+# same families without the validator being updated per-test.
+check_13_recent_adr_unit_tests() {
+  local name="13. ADR-0001/0003/0005/0006/0007 unit tests"
+  local out="$TMP_ROOT/check_13_recent_adr_unit_tests.txt"
+  local runtime_dir="$TMP_ROOT/unit-runtime"
+  local tests=(
+    "tests/extension-units/audit-log.test.ts"
+    "tests/extension-units/coordinated-state.test.ts"
+    "tests/extension-units/doctor.test.ts"
+    "tests/extension-units/control-plane.test.ts"
+    "tests/extension-units/runtime-migrations.test.ts"
+    "tests/extension-units/validator-report.test.ts"
+    "tests/extension-units/product-pipeline-e2e-report.test.ts"
+  )
+  local cmd="cd $runtime_dir && $NODE_BIN --import $TSX_IMPORT --test ${tests[*]}"
+  if (cd "$runtime_dir" && "$NODE_BIN" --import "$TSX_IMPORT" --test "${tests[@]}") >"$out" 2>&1; then
+    local detail="audit-log + coordinated-state + doctor + control-plane + runtime-migrations + validator-report + product-pipeline-e2e-report tests all pass."
+    record_result "$name" "PASS" "$detail"
+    append_summary_row "$name" "PASS" "$detail"
+    append_check_section "$name" "PASS" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  else
+    local detail="One or more of the recent ADR-introduced unit tests failed."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- output:\n\n\`\`\`\n$(cat "$out")\n\`\`\`"
+  fi
+}
+
 check_7_graphify_validation_decision_unit_tests
 check_8_graphify_orchestration_decision_unit_tests
 check_9_graphify_orchestrator_unit_tests
 check_10_execution_leases_unit_tests
 check_11_product_slice_lifecycle_unit_tests
 check_12_tool_result_envelope_unit_tests
+check_13_recent_adr_unit_tests
 
 cat "$SUMMARY_TABLE_FILE" >> "$REPORT_PATH"
 cat "$DETAILS_FILE" >> "$REPORT_PATH"
