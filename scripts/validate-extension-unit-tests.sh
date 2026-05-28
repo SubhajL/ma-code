@@ -244,13 +244,17 @@ JSON
   )
 }
 
-run_test_file() {
+run_test_files() {
+  # Variadic: run any number of test files in a single `node --test`
+  # spawn, with stdout/stderr captured to one out file. Positional
+  # signature is (runtime_dir, out_file, test_file1 [, test_file2,
+  # ...]) so the variadic tail comes last per bash convention.
   local runtime_dir="$1"
-  local test_file="$2"
-  local out_file="$3"
+  local out_file="$2"
+  shift 2
   (
     cd "$runtime_dir"
-    "$NODE_BIN" --import tsx --test "$test_file" >"$out_file" 2>&1
+    "$NODE_BIN" --import "$TSX_IMPORT" --test "$@" >"$out_file" 2>&1
   )
 }
 
@@ -260,7 +264,7 @@ check_1_safe_bash_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/safe-bash.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/safe-bash.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/safe-bash.test.ts"; then
     local detail="safe-bash protected-path, hard-block, warn-level, and allow-path unit tests passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -279,7 +283,7 @@ check_2_till_done_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/till-done.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/till-done.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/till-done.test.ts"; then
     local detail="till-done mutation blocking, validation gate, lighter docs path, and active-task allow-path tests passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -298,7 +302,7 @@ check_3_orchestration_helper_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/orchestration-helpers.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/orchestration-helpers.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/orchestration-helpers.test.ts"; then
     local detail="routing, team activation, task packet, and handoff helper unit tests passed."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -317,7 +321,7 @@ check_4_queue_runner_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/queue-runner.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/queue-runner.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/queue-runner.test.ts"; then
     local detail="queue-runner unit tests passed for empty/paused no-ops, deterministic single-job start/finalize, stop-condition enforcement for retries/runtime/failed validations/approval boundaries, unsupported-control blocking, compensation safety, and recovery reuse."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -336,7 +340,7 @@ check_5_graphify_adapter_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-adapter.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/graphify-adapter.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/graphify-adapter.test.ts"; then
     local detail="Graphify adapter unit tests passed for installed/missing binary behavior, managed graph query, large-corpus approval, and managed output paths."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -355,7 +359,7 @@ check_6_discovery_policy_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/discovery-policy.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/discovery-policy.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/discovery-policy.test.ts"; then
     local detail="discovery-policy selector tests passed for Auggie, Graphify, local read/rg/find, Exa, and unavailable-index fallback choices."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -374,7 +378,7 @@ check_7_graphify_validation_decision_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-validation-decision.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/graphify-validation-decision.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/graphify-validation-decision.test.ts"; then
     local detail="Graphify validation decision tests passed for explicit states, required missing proof blocking, optional skip, source verification, and pass behavior."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -401,7 +405,7 @@ check_8_graphify_orchestration_decision_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-orchestration-decision.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/graphify-orchestration-decision.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/graphify-orchestration-decision.test.ts"; then
     local detail="Graphify orchestration decision tests passed for explicit actions, local fallback, unavailable Graphify, preflight/approval/scan, freshness, query/source proof, and ready behavior."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -420,7 +424,7 @@ check_9_graphify_orchestrator_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/graphify-orchestrator.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/graphify-orchestrator.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/graphify-orchestrator.test.ts"; then
     local detail="Graphify orchestrator runtime command tests passed for graphify_adapter preflight/scan/freshness/query delegation, local fallback, and forbidden watch args."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -439,7 +443,7 @@ check_10_execution_leases_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/execution-leases.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/execution-leases.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/execution-leases.test.ts"; then
     local detail="execution-leases unit tests passed for default load, acquire/release, conflict rejection, expired lease pruning, and summary behavior."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -458,7 +462,7 @@ check_11_product_slice_lifecycle_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/product-slice-lifecycle.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/product-slice-lifecycle.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/product-slice-lifecycle.test.ts"; then
     local detail="product-slice lifecycle tests passed for schema load/validation, phase order, blocked skips, same-slice parallel blocking, and FE-before-BE sequencing."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -477,7 +481,7 @@ check_12_tool_result_envelope_unit_tests() {
   local runtime_dir="$TMP_ROOT/unit-runtime"
   local cmd="cd $runtime_dir && $NODE_BIN --import tsx --test tests/extension-units/tool-result-envelope.test.ts"
 
-  if run_test_file "$runtime_dir" "tests/extension-units/tool-result-envelope.test.ts" "$out"; then
+  if run_test_files "$runtime_dir" "$out" "tests/extension-units/tool-result-envelope.test.ts"; then
     local detail="tool-result envelope tests passed for compact read/write/edit/bash success and failure outputs."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"
@@ -517,7 +521,7 @@ check_13_recent_adr_unit_tests() {
     "tests/extension-units/product-pipeline-e2e-report.test.ts"
   )
   local cmd="cd $runtime_dir && $NODE_BIN --import $TSX_IMPORT --test ${tests[*]}"
-  if (cd "$runtime_dir" && "$NODE_BIN" --import "$TSX_IMPORT" --test "${tests[@]}") >"$out" 2>&1; then
+  if run_test_files "$runtime_dir" "$out" "${tests[@]}"; then
     local detail="audit-log + coordinated-state + doctor + control-plane + runtime-migrations + validator-report + product-pipeline-e2e-report tests all pass."
     record_result "$name" "PASS" "$detail"
     append_summary_row "$name" "PASS" "$detail"

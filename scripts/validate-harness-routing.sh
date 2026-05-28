@@ -31,7 +31,12 @@ Usage: $(basename "$0") [options]
 Options:
   --report <path>          Write markdown report to a custom path
   --summary-json <path>    Write JSON summary to a custom path
-  --include-live           Run one bounded live tool probe
+  --include-live           Run one bounded live tool probe (live is OFF by default)
+  --skip-live              No-op alias for the default behavior (live OFF).
+                           Accepted for operator-uniform usage so CI scripts
+                           can pass --skip-live to every validator regardless
+                           of whether it defaults to live-on or live-off
+                           (see ADR-0009).
   --keep-temp              Keep temporary validation directories and files
   -h, --help               Show this help text
 
@@ -53,6 +58,12 @@ while [[ $# -gt 0 ]]; do
       ;;
     --include-live)
       INCLUDE_LIVE=1
+      shift
+      ;;
+    --skip-live)
+      # No-op: live probes are already skipped by default in this
+      # validator. Documented in ADR-0009 as the cross-validator
+      # convention so operators can pass --skip-live uniformly.
       shift
       ;;
     --keep-temp)

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +11,7 @@ import {
   productPipelineE2EReportToCanonicalJson,
   type ProductPipelineE2EReport,
 } from "../../scripts/lib/emit-product-pipeline-e2e-report.ts";
+import { spawnEmitterChild } from "./test-emitter-spawn.ts";
 
 function exampleReport(): ProductPipelineE2EReport {
   return {
@@ -154,18 +154,9 @@ const EMITTER_PATH = fileURLToPath(
   new URL("../../scripts/lib/emit-product-pipeline-e2e-report.ts", import.meta.url),
 );
 
-async function runEmitterChild(args: string[]): Promise<{ code: number; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("node", ["--import", "tsx", EMITTER_PATH, ...args], {
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stderr = "";
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ code: code ?? -1, stderr }));
-  });
+async function runEmitterChild(args: readonly string[]): Promise<{ code: number; stderr: string }> {
+  const { code, stderr } = await spawnEmitterChild(EMITTER_PATH, args);
+  return { code, stderr };
 }
 
 test("CLI emitter writes canonical JSON from a well-formed input", async () => {

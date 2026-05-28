@@ -3,8 +3,9 @@ import test from "node:test";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+
+import { spawnEmitterChild } from "./test-emitter-spawn.ts";
 
 import {
   countFailedChecks,
@@ -198,28 +199,8 @@ const EMITTER_PATH = fileURLToPath(
   new URL("../../scripts/lib/emit-validator-report.ts", import.meta.url),
 );
 
-async function runEmitterChild(args: string[], stdin?: string): Promise<{ code: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("node", ["--import", "tsx", EMITTER_PATH, ...args], {
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    child.stdout.on("data", (chunk) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      resolve({ code: code ?? -1, stdout, stderr });
-    });
-    if (stdin !== undefined) {
-      child.stdin.write(stdin);
-    }
-    child.stdin.end();
-  });
+function runEmitterChild(args: readonly string[], stdin?: string): Promise<{ code: number; stdout: string; stderr: string }> {
+  return spawnEmitterChild(EMITTER_PATH, args, stdin);
 }
 
 test("emit-validator-report CLI writes canonical JSON from stdin", async () => {
