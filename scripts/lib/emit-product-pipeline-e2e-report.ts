@@ -20,6 +20,8 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 
+import { canonicalJson, isRecord, runCliMain, takeValue } from "./emitter-cli.ts";
+
 export type ProductPipelineE2EStatus = "pass" | "fail";
 export type ProductPipelineE2EReadiness = "ready" | "blocked";
 export type ProductPipelineE2EGoNoGo = "go" | "no_go";
@@ -86,10 +88,6 @@ export class ProductPipelineE2EReportError extends Error {
     super(message);
     this.name = "ProductPipelineE2EReportError";
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -305,20 +303,12 @@ export function productPipelineE2EReportToCanonicalJson(report: ProductPipelineE
       daemonOrWatchModeIntroduced: report.safety.daemonOrWatchModeIntroduced,
     },
   };
-  return `${JSON.stringify(ordered, null, 2)}\n`;
+  return canonicalJson(ordered);
 }
 
 interface ParsedArgs {
   readonly input: string;
   readonly out: string;
-}
-
-function takeValue(argv: readonly string[], i: number, flag: string): string {
-  const next = argv[i + 1];
-  if (typeof next !== "string" || next.length === 0 || next.startsWith("-")) {
-    throw new Error(`${flag} requires a non-empty path argument`);
-  }
-  return next;
 }
 
 function parseArgs(argv: readonly string[]): ParsedArgs {
@@ -385,13 +375,4 @@ export async function runEmitter(argv: readonly string[]): Promise<number> {
   return 0;
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]}`;
-if (isMain) {
-  runEmitter(process.argv.slice(2)).then(
-    (code) => process.exit(code),
-    (error) => {
-      process.stderr.write(`emit-product-pipeline-e2e-report: ${error instanceof Error ? error.message : String(error)}\n`);
-      process.exit(1);
-    },
-  );
-}
+runCliMain(import.meta.url, "emit-product-pipeline-e2e-report", runEmitter);

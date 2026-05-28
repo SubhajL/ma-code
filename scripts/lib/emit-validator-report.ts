@@ -33,6 +33,7 @@ import {
   validatorReportToCanonicalJson,
   ValidatorReportError,
 } from "../../.pi/agent/extensions/lib/validator-report.ts";
+import { runCliMain, takeValue } from "./emitter-cli.ts";
 
 interface ParsedArgs {
   readonly out: string;
@@ -40,14 +41,6 @@ interface ParsedArgs {
   readonly namesFile: string | null;
   readonly statusesFile: string | null;
   readonly detailsFile: string | null;
-}
-
-function takeValue(argv: readonly string[], i: number, flag: string): string {
-  const next = argv[i + 1];
-  if (typeof next !== "string" || next.length === 0 || next.startsWith("-")) {
-    throw new Error(`${flag} requires a non-empty path argument`);
-  }
-  return next;
 }
 
 function parseArgs(argv: readonly string[]): ParsedArgs {
@@ -252,15 +245,4 @@ export async function runEmitter(argv: readonly string[]): Promise<number> {
   return 0;
 }
 
-const isMain = import.meta.url === `file://${process.argv[1]}`;
-if (isMain) {
-  runEmitter(process.argv.slice(2)).then(
-    (code) => {
-      process.exit(code);
-    },
-    (error) => {
-      process.stderr.write(`emit-validator-report: ${error instanceof Error ? error.message : String(error)}\n`);
-      process.exit(1);
-    },
-  );
-}
+runCliMain(import.meta.url, "emit-validator-report", runEmitter);
