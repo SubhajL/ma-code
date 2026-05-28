@@ -78,7 +78,8 @@ npm run harness:leases      # who holds which scope
 | Merge a PR (HUMAN GATE) | `npm run harness:pr-lifecycle -- merge --initiative <slug> --run-id <pr> --allow-merge --approval-ref <ref>` |
 | Fast-forward local main | `npm run harness:sync-main` |
 | Post-merge cleanup | `npm run harness:integrate` |
-| Install harness into another repo | `npm run harness:install -- --dest <path>` |
+| Install harness into another repo (you already have a checkout) | `npm run harness:install -- --dest <path>` |
+| Install harness into another repo (no checkout — npx from anywhere; ADR-0010) | `npx github:SubhajL/ma-code#main pi-harness-install --dest .` |
 | One central dispatch help | `npm run harness:operator -- --help` |
 
 ### "When something looks wrong…"
