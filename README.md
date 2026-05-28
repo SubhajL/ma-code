@@ -248,7 +248,8 @@ cd /Users/subhajlimanond/dev/ma-code
 ```
 
 Key outputs:
-- runbook: `.pi/agent/docs/runtime_validation_runbook.md`
+- **harness runbook (start here):** `.pi/agent/docs/harness_runbook.md` — end-to-end prescriptive guide (mental model → quick-reference cheat sheet → full lifecycle → 3 canonical workflows → invariants → troubleshooting)
+- runtime validation runbook: `.pi/agent/docs/runtime_validation_runbook.md`
 - operator workflow: `.pi/agent/docs/operator_workflow.md`
 - validation reports: `reports/validation/`
   - scan validator reports in this order: `Summary Table` -> `Final Decision` -> `Detailed Results`
@@ -430,6 +431,7 @@ npm run harness:pr-gate:json -- --pr 63 --once
 The PR gate helper polls `gh pr checks` without `--watch`; default polling waits 180 seconds between attempts and reports CI/security checks plus review/comment triage.
 
 Operator docs:
+- **`.pi/agent/docs/harness_runbook.md`** — definitive end-to-end runbook (start here)
 - `.pi/agent/docs/operator_manual.md`
 - `.pi/agent/docs/operator_quickstart.md`
 - `.pi/agent/docs/operator_workflow.md`
