@@ -12,6 +12,8 @@ DEFAULT_SUMMARY_JSON="$REPORT_DIR/${DATE_STAMP}_phase-a-b-runtime-validation-scr
 
 PI_BIN="${PI_BIN:-pi}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+NODE_BIN="${NODE_BIN:-node}"
+TSX_IMPORT="${TSX_IMPORT:-tsx}"
 
 SKIP_COMPILE=0
 INCLUDE_FULLSTACK=0
@@ -299,26 +301,26 @@ write_json_summary() {
     printf '%s\n' "${CHECK_DETAILS[$i]}" >> "$SUMMARY_DETAILS_FILE"
   done
 
-  "$PYTHON_BIN" - "$SUMMARY_JSON_PATH" "$SUMMARY_NAMES_FILE" "$SUMMARY_STATUS_FILE" "$SUMMARY_DETAILS_FILE" "$FAILED_CHECKS" <<'PY'
-import json, sys
-from pathlib import Path
-out_path = Path(sys.argv[1])
-name_path = Path(sys.argv[2])
-status_path = Path(sys.argv[3])
-detail_path = Path(sys.argv[4])
-failed = int(sys.argv[5])
-names = name_path.read_text().splitlines()
-statuses = status_path.read_text().splitlines()
-details = detail_path.read_text().splitlines()
-checks = []
-for name, status, detail in zip(names, statuses, details):
-    checks.append({"name": name, "status": status, "detail": detail})
-out_path.write_text(json.dumps({
-    "status": "PASS" if failed == 0 else "FAIL",
-    "failedChecks": failed,
-    "checks": checks,
-}, indent=2) + "\n")
-PY
+  # Emit the canonical JSON via the typed contract module
+  # (`.pi/agent/extensions/lib/validator-report.ts`, ADR-0007). The
+  # TS emitter validates the shape against the typed contract and
+  # writes byte-equivalent JSON to $SUMMARY_JSON_PATH. Byte-
+  # equivalence with the prior Python emission is locked down by a
+  # golden test in tests/extension-units/validator-report.test.ts.
+  #
+  # The script runs under `set -u -o pipefail` (no -e), so a non-zero
+  # exit from the emitter would otherwise be silently dropped on the
+  # floor — and downstream consumers would see a missing JSON file
+  # instead of a typed contract violation. Surface the failure
+  # explicitly here.
+  if ! "$NODE_BIN" --import "$TSX_IMPORT" "$REPO_ROOT/scripts/lib/emit-validator-report.ts" \
+      --out "$SUMMARY_JSON_PATH" \
+      --names-file "$SUMMARY_NAMES_FILE" \
+      --statuses-file "$SUMMARY_STATUS_FILE" \
+      --details-file "$SUMMARY_DETAILS_FILE"; then
+    echo "phase-a-b-validation: FAIL (emit-validator-report failed; see stderr above)" >&2
+    exit 1
+  fi
 }
 
 run_shell_capture() {
