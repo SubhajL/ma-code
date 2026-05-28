@@ -98,3 +98,17 @@ Escalate when:
 - Before changing top-level rules in `AGENTS.md`, the README, or operator
   docs in a way that contradicts an ADR, write or update the relevant ADR
   first so the decision is captured in the authoritative place.
+
+## Operator runbook
+- For end-to-end "how do I drive this harness" guidance, the
+  authoritative runbook is
+  [`.pi/agent/docs/harness_runbook.md`](.pi/agent/docs/harness_runbook.md).
+  It collects the mental model, a quick-reference cheat sheet, the full
+  lifecycle (MO → initiative → Phase A/B/C → PR lifecycle), three
+  canonical workflows (greenfield AFK, codebase review, demo/pilot),
+  operator invariants, and a troubleshooting decision tree.
+- The topic-specific operator docs under
+  [`.pi/agent/docs/operator_*.md`](.pi/agent/docs/) remain authoritative
+  for their narrow scopes (install, safety rules, scheduled workflows,
+  provider setup, etc.). The runbook cross-links them; it does not
+  replace them.
