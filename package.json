@@ -2,6 +2,9 @@
   "name": "ma-code-harness-032-dev",
   "private": true,
   "type": "module",
+  "bin": {
+    "pi-harness-install": "scripts/bin/pi-harness-install.mjs"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "codegen:schema-types": "node --import tsx scripts/codegen-schema-types.ts",

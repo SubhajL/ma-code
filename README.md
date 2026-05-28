@@ -366,8 +366,13 @@ Phase 0 durable bootstrap now also expects target repos to carry durable docs un
 
 Harness package/bootstrap examples:
 ```bash
+# npx-callable install from any directory (ADR-0010, lowest friction for new adopters):
+npx github:SubhajL/ma-code#main pi-harness-install --dest .
+
+# Or from a local checkout of the harness repo:
 npm run harness:package
 npm run harness:package:json
+npm run harness:install -- --dest /path/to/target-repo
 node --import tsx scripts/harness-package.ts bootstrap --dest /path/to/target-repo
 npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --dry-run
 npm run harness:product-intake -- --slug example-major-feature --description "Describe target users, outcome, and constraints" --apply

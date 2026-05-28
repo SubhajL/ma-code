@@ -203,7 +203,9 @@ required_files=(
   "docs/adr/0007-typed-validator-report-contract.md"
   "docs/adr/0008-rich-schema-per-validator-emitters.md"
   "docs/adr/0009-skip-live-flag-convention.md"
+  "docs/adr/0010-npx-bootstrap-deployment.md"
   ".pi/agent/docs/harness_runbook.md"
+  "scripts/bin/pi-harness-install.mjs"
   "apps/web/README.md"
   "services/api/README.md"
 )

@@ -8,8 +8,24 @@ This guide explains how to install the current repo-local harness into a repo an
 - npm available
 - Pi available in the environment you plan to use for live sessions
 
-## Option A — one-shot install (preferred)
-Run the `install` subcommand from the source harness repo. It bootstraps, runs `npm install` in the target, runs three cheap validators, probes provider env vars, and prints a `filesToReview` list:
+## Option A — `npx` one-shot from any directory (preferred for new adopters; ADR-0010)
+When you do NOT already have a checkout of the harness repo, the lowest-friction path is the `pi-harness-install` bin shim, exposed via the package's `bin` field:
+
+```bash
+# From an empty or existing repo (no prior clone of the harness needed):
+cd /path/to/target-repo
+npx github:SubhajL/ma-code#main pi-harness-install --dest .
+
+# Or with an explicit destination:
+npx github:SubhajL/ma-code#main pi-harness-install --dest /path/to/target-repo
+```
+
+The bin auto-resolves `--source-root` to its own install location (the npm cache during `npx`), so you don't have to know the harness's clone path. All `harness-package.ts install` flags (`--json`, `--skip-install`, `--skip-validators`) forward through. See ADR-0010 for the deployment-model rationale.
+
+**Known cost:** the first `npx github:` invocation does an `npm install` of the harness's full devDependency tree (~100 MB, ~30 seconds). Subsequent calls in the same shell session are cached. After publish-to-registry (separate ADR), this drops significantly.
+
+## Option B — one-shot install from a local checkout (when you already cloned the harness)
+Run the `install` subcommand from the source harness repo. Same engine as Option A; just skips the `npx`-fetch step. Bootstraps, runs `npm install` in the target, runs three cheap validators, probes provider env vars, and prints a `filesToReview` list:
 ```bash
 cd /path/to/source-harness-repo
 node --import tsx scripts/harness-package.ts install --dest /path/to/target-repo
@@ -25,7 +41,7 @@ Useful flags: `--json`, `--skip-install`, `--skip-validators`. The wrapper does 
 
 After it returns, review the files it lists under `filesToReview` (typically `AGENTS.md`, `SYSTEM.md`, `.pi/agent/models.json`, `docs/product/intake-policy.md`) and set any missing provider env vars before live runs.
 
-## Option B — manual bootstrap into another repo
+## Option C — manual bootstrap into another repo
 Use this path when you want to inspect each step before continuing.
 From this source harness repo:
 ```bash
@@ -45,7 +61,7 @@ Review these generated files before normal use:
 - `.pi/agent/models.json`
 - `package.json`
 
-## Option C — operate this repo directly
+## Option D — operate this repo directly
 ```bash
 cd /Users/subhajlimanond/dev/ma-code
 npm install --no-package-lock
