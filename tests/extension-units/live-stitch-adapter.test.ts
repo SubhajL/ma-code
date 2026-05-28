@@ -89,7 +89,11 @@ test("dry-run validates prompt metadata, plans managed paths, and writes no file
   const repoRoot = await makeTempRepo("live-stitch-dry-run-");
   await writePromptFixture(repoRoot);
 
-  const result = await planLiveStitchArtifact({ repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test" });
+  // Explicit empty env so the test does not inherit a real STITCH_API_KEY
+  // from the dev's shell — otherwise the "no auth configured" branch
+  // would not fire and `requiredConfig` would return [] instead of the
+  // expected ["STITCH_API_KEY or ..."] sentinel.
+  const result = await planLiveStitchArtifact({ repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test", env: {} });
 
   assert.equal(result.artifact.mode, "live");
   assert.equal(result.artifact.status, "blocked");
@@ -118,14 +122,19 @@ test("stale prompt hash and missing prompt metadata block", async () => {
   await writePromptFixture(repoRoot);
   await writeFile(join(repoRoot, "docs", "initiatives", "checkout-redesign", "stitch-prompts", "slice-001.prompt.md"), "# Changed prompt\n", "utf8");
 
+  // `env: {}` keeps these calls hermetic regardless of the dev's shell
+  // state. The expected rejection here is prompt-hash / metadata, which
+  // fires BEFORE the auth check, so today the tests pass even with a
+  // real STITCH_API_KEY leaking from the shell — but the explicit empty
+  // env removes that fragile ordering dependency.
   await assert.rejects(
-    planLiveStitchArtifact({ repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test" }),
+    planLiveStitchArtifact({ repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test", env: {} }),
     /Stale Stitch prompt hash/,
   );
 
   await rm(join(repoRoot, "docs", "initiatives", "checkout-redesign", "stitch-prompts", "slice-001.prompt.json"));
   await assert.rejects(
-    planLiveStitchArtifact({ repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test" }),
+    planLiveStitchArtifact({ repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test", env: {} }),
     /Missing required live Stitch prompt metadata/,
   );
 });
@@ -177,7 +186,9 @@ test("apply blocks missing auth/config, forbidden args, and unmanaged output pat
   const base = { repoRoot, initiative: "checkout-redesign", sliceId: "slice-001", runId: "run-test", approvalRef: "operator-approved-live-stitch:test-ref" };
 
   await assert.rejects(
-    applyLiveStitchArtifact({ ...base, providerCommand: "fake-stitch", policyAllowsProviderCommand: true }),
+    // Explicit env: {} so the test does not inherit a real STITCH_API_KEY
+    // from the dev's shell; the "missing auth" branch must fire here.
+    applyLiveStitchArtifact({ ...base, providerCommand: "fake-stitch", policyAllowsProviderCommand: true, env: {} }),
     /Missing live Stitch auth\/config/,
   );
   await assert.rejects(

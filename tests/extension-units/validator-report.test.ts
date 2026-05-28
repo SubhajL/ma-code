@@ -72,19 +72,41 @@ test("createValidatorReportBuilder derives status + failedChecks from checks", (
   assert.equal(report.checks.length, 3);
 });
 
-test("validatorReportToCanonicalJson matches existing Python emission shape byte-for-byte", async () => {
-  // Golden file: a real harness-package validation report previously
-  // written by the inline Python emission. The bytes (indent=2 + key
-  // order {status, failedChecks, checks} + check key order
-  // {name, status, detail} + trailing newline) must round-trip.
-  const goldenPath = new URL(
-    "../../reports/validation/2026-05-27_harness-package-validation-script.json",
-    import.meta.url,
-  );
-  const golden = await readFile(goldenPath, "utf8");
+test("validatorReportToCanonicalJson matches the Python emission shape byte-for-byte", () => {
+  // Golden bytes: a verbatim snapshot of the JSON shape the inline
+  // Python emission used to write before PR #229 — two-space indent,
+  // top-level key order {status, failedChecks, checks}, check-key
+  // order {name, status, detail}, trailing newline. The original
+  // verification compared against a real on-disk report at
+  // `reports/validation/2026-05-27_harness-package-validation-script.json`,
+  // but that path is gitignored as a generated artifact so it
+  // disappears on a clean checkout. This inline snapshot covers the
+  // same byte invariants without depending on filesystem state.
+  const golden =
+    '{\n' +
+    '  "status": "PASS",\n' +
+    '  "failedChecks": 0,\n' +
+    '  "checks": [\n' +
+    '    {\n' +
+    '      "name": "1. harness package helper compiles",\n' +
+    '      "status": "PASS",\n' +
+    '      "detail": "compile + harness-package + harness-init-feature + product-intake all pass."\n' +
+    '    },\n' +
+    '    {\n' +
+    '      "name": "2. harness package bootstrap integration",\n' +
+    '      "status": "PASS",\n' +
+    '      "detail": "bootstrap copies assets, generates fresh runtime placeholders, merges package.json, wires initiative + intake helpers, and preserves existing repo-local files."\n' +
+    '    },\n' +
+    '    {\n' +
+    '      "name": "3. package manifest/install/operator doc wiring",\n' +
+    '      "status": "PASS",\n' +
+    '      "detail": "manifest, script aliases, install docs, and operator entrypoints all present."\n' +
+    '    }\n' +
+    '  ]\n' +
+    '}\n';
   const parsed = parseValidatorReport(JSON.parse(golden));
   const canonical = validatorReportToCanonicalJson(parsed);
-  assert.equal(canonical, golden, "TS emission must match the golden file byte-for-byte");
+  assert.equal(canonical, golden, "TS emission must match the golden bytes byte-for-byte");
 });
 
 test("parseValidatorReport rejects non-object input", () => {

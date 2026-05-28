@@ -243,6 +243,7 @@ Boundary notes:
 - `scripts/validate-prompt-semantics-live.sh` is the later HARNESS-051 slice 2 path for one bounded provider-backed proof
 - the live wrapper always runs the local semantic validator first and refuses the live probe when local validation fails
 - the live wrapper performs exactly one inventory-backed live probe and captures markdown/JSON reports under `reports/validation/`
+- pass `--skip-live` to refuse the live probe explicitly (CI, tuning runs, any context where touching a live provider is undesirable). The live-probe check then records `status: SKIP` with `detail: "Live probe skipped by --skip-live flag (caller opted out of provider-backed validation)."`, distinct from the other SKIP branches (local-gate failed, pi binary missing, provider auth unavailable), so consumers reading the JSON can tell from the detail string exactly why the probe did not run
 - default static-gate execution can be staged in later once the dedicated semantic validator proves stable and low-noise enough for the default local gate
 
 It should be used when changes affect bounded semantic fixture expectations for the critical prompt surfaces or the semantic fixture inventory itself, and the live wrapper should be used only when one bounded provider-backed proof is worth the spend.

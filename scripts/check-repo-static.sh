@@ -201,6 +201,7 @@ required_files=(
   "docs/adr/0005-typed-control-plane-kernel.md"
   "docs/adr/0006-sqlite-as-real-domain-store.md"
   "docs/adr/0007-typed-validator-report-contract.md"
+  "docs/adr/0008-rich-schema-per-validator-emitters.md"
   "apps/web/README.md"
   "services/api/README.md"
 )
