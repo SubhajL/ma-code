@@ -10,12 +10,14 @@ import recoveryExtension, {
   resolveRecoveryPolicy,
   resolveRecoveryRuntimeDecision,
 } from "../../.pi/agent/extensions/recovery.ts";
+import recoveryPolicyExtension from "../../.pi/agent/extensions/recovery-policy.ts";
+import recoveryRuntimeExtension from "../../.pi/agent/extensions/recovery-runtime.ts";
 import stitchExtension, {
   generateMockStitchArtifact,
   generateStitchPrompt,
   planLiveStitchArtifact,
 } from "../../.pi/agent/extensions/stitch.ts";
-import { FakePi } from "./test-utils.ts";
+import { DuplicateDetectingPi, FakePi } from "./test-utils.ts";
 
 test("consolidated recovery module registers policy and runtime tools", () => {
   const pi = new FakePi("task/consolidated-recovery");
@@ -26,6 +28,21 @@ test("consolidated recovery module registers policy and runtime tools", () => {
   assert.equal(typeof resolveRecoveryRuntimeDecision, "function");
   assert.equal(pi.getTool("resolve_recovery_policy").name, "resolve_recovery_policy");
   assert.equal(pi.getTool("resolve_recovery_runtime_decision").name, "resolve_recovery_runtime_decision");
+});
+
+test("recovery composite and split factories register once in either order", () => {
+  const orders = [
+    [recoveryExtension, recoveryPolicyExtension, recoveryRuntimeExtension],
+    [recoveryPolicyExtension, recoveryRuntimeExtension, recoveryExtension],
+  ];
+
+  for (const [index, order] of orders.entries()) {
+    const pi = new DuplicateDetectingPi(`task/recovery-registration-order-${index}`);
+    for (const factory of order) factory(pi as any);
+
+    assert.equal(pi.getToolRegistrationCount("resolve_recovery_policy"), 1);
+    assert.equal(pi.getToolRegistrationCount("resolve_recovery_runtime_decision"), 1);
+  }
 });
 
 test("consolidated packets module registers task packet tool and exports packet helpers", () => {

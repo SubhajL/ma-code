@@ -720,7 +720,11 @@ export function resolveRecoveryPolicy(
   };
 }
 
+const registeredRecoveryPolicyApis = new WeakSet<ExtensionAPI>();
+
 export default function (pi: ExtensionAPI) {
+  if (registeredRecoveryPolicyApis.has(pi)) return;
+
   pi.registerTool({
     name: "resolve_recovery_policy",
     label: "Resolve Recovery Policy",
@@ -745,4 +749,5 @@ export default function (pi: ExtensionAPI) {
       };
     },
   });
+  registeredRecoveryPolicyApis.add(pi);
 }

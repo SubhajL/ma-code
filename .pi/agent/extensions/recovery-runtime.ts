@@ -639,7 +639,11 @@ export function findRecoveryRuntimeTask(taskState: TaskStateFile, taskId: string
   return task;
 }
 
+const registeredRecoveryRuntimeApis = new WeakSet<ExtensionAPI>();
+
 export default function (pi: ExtensionAPI) {
+  if (registeredRecoveryRuntimeApis.has(pi)) return;
+
   pi.registerTool({
     name: "resolve_recovery_runtime_decision",
     label: "Resolve Recovery Runtime Decision",
@@ -670,4 +674,5 @@ export default function (pi: ExtensionAPI) {
       };
     },
   });
+  registeredRecoveryRuntimeApis.add(pi);
 }

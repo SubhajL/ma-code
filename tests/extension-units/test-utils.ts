@@ -215,6 +215,32 @@ export class FakePi {
   }
 }
 
+export class DuplicateDetectingPi extends FakePi {
+  private readonly registrationCounts = new Map<string, number>();
+
+  constructor(
+    branch: string | null,
+    private readonly duplicateSensitiveTools: ReadonlySet<string> | null = null,
+  ) {
+    super(branch);
+  }
+
+  registerCommand(_name: string, _command: unknown): void {}
+
+  override registerTool(tool: ToolRegistration): void {
+    const count = (this.registrationCounts.get(tool.name) ?? 0) + 1;
+    if (this.duplicateSensitiveTools === null || this.duplicateSensitiveTools.has(tool.name)) {
+      assert.equal(count, 1, `duplicate tool registration: ${tool.name}`);
+    }
+    this.registrationCounts.set(tool.name, count);
+    super.registerTool(tool);
+  }
+
+  getToolRegistrationCount(name: string): number {
+    return this.registrationCounts.get(name) ?? 0;
+  }
+}
+
 export function makeCtx(
   cwd: string,
   options: {
