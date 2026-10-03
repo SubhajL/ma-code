@@ -1,10 +1,10 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-05-18_fix-cli-tsx-root-clean.md`
+- `logs/coding/2026-10-03_h1-runtime-context.md`
 
 ## Current planning log
-- `reports/planning/2026-05-18_fix-cli-tsx-root-clean-plan.md`
+- `reports/planning/2026-10-03_h1-runtime-context-plan.md`
 
 ## Logging convention
 - Active pointer: `logs/CURRENT.md`

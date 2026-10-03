@@ -14,6 +14,7 @@ type RepoExecState = {
   branches: Set<string>;
   failSwitchBranches: Set<string>;
   gitCommonDir: string | null;
+  gitTopLevel: string | null;
 };
 
 export class FakePi {
@@ -36,6 +37,7 @@ export class FakePi {
           existingBranches?: string[];
           failSwitchBranches?: string[];
           gitCommonDir?: string | null;
+          gitTopLevel?: string | null;
         }
       >;
     } = {},
@@ -50,6 +52,7 @@ export class FakePi {
           existingBranches: state.existingBranches,
           failSwitchBranches: state.failSwitchBranches,
           gitCommonDir: state.gitCommonDir,
+          gitTopLevel: state.gitTopLevel,
         }),
       );
     }
@@ -62,6 +65,7 @@ export class FakePi {
       existingBranches?: string[];
       failSwitchBranches?: string[];
       gitCommonDir?: string | null;
+          gitTopLevel?: string | null;
     } = {},
   ): RepoExecState {
     const branches = new Set<string>();
@@ -74,6 +78,7 @@ export class FakePi {
       branches,
       failSwitchBranches: new Set(options.failSwitchBranches ?? []),
       gitCommonDir: options.gitCommonDir !== undefined ? options.gitCommonDir : ".git",
+      gitTopLevel: options.gitTopLevel || null,
     };
   }
 
@@ -102,6 +107,13 @@ export class FakePi {
           stdout: `${state.currentBranch ?? ""}\n`,
           stderr: "",
         };
+      }
+
+      if (gitArgs[0] === "rev-parse" && gitArgs[1] === "--show-toplevel") {
+        if (state.gitTopLevel === null && !cwd) {
+          return { code: 1, stdout: "", stderr: "not a git repository" };
+        }
+        return { code: 0, stdout: (state.gitTopLevel || cwd || "") + "\n", stderr: "" };
       }
 
       if (gitArgs[0] === "rev-parse" && gitArgs[1] === "--git-common-dir") {
