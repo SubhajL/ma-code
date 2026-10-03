@@ -10,6 +10,10 @@ export { default as recoveryRuntimeExtension } from "./recovery-runtime.ts";
 export { loadRecoveryPolicy, parseRecoveryPolicy, resolveRecoveryPolicy } from "./recovery-policy.ts";
 export { findRecoveryRuntimeTask, loadRecoveryRuntimeTaskState, resolveRecoveryRuntimeDecision } from "./recovery-runtime.ts";
 
+/**
+ * Composite entry point for explicit recovery loading. The split factories are
+ * idempotent because top-level extension discovery also loads them directly.
+ */
 export default function recoveryExtension(pi: ExtensionAPI): void {
   recoveryPolicyExtension(pi);
   recoveryRuntimeExtension(pi);
