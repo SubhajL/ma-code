@@ -613,3 +613,142 @@ test("safe-bash allows safe non-mutating bash commands", async () => {
 
   assert.equal(result, undefined);
 });
+
+
+test("safe-bash nested write uses worktree control-plane root", async () => {
+  const cwd = await makeTempRepo("safe-bash-nested-write-root-");
+  const targetDir = join(cwd, "src", "nested");
+  const targetPath = join(targetDir, "feature.ts");
+  const commonDir = join(cwd, ".git");
+  await mkdir(targetDir, { recursive: true });
+
+  const pi = new FakePi("feat/safe-bash", {
+    cwdStates: {
+      [cwd]: { branch: "feat/safe-bash", gitCommonDir: commonDir, gitTopLevel: cwd },
+      [targetDir]: { branch: "feat/safe-bash", gitCommonDir: commonDir, gitTopLevel: cwd },
+    },
+  });
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "write", input: { path: targetPath } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result, undefined);
+  const audit = await readAuditLog(cwd);
+  assert.match(audit, /"action":"allowed-mutation"/);
+  assert.match(audit, /"resolvedPath":/);
+
+  const { access } = await import("node:fs/promises");
+  await assert.rejects(access(join(targetDir, "logs", "harness-actions.jsonl")), /ENOENT/);
+  await assert.rejects(access(join(targetDir, ".pi", "agent", "state", "runtime", "pi.db")), /ENOENT/);
+});
+
+
+test("safe-bash nested leading cd uses target worktree control-plane root", async () => {
+  const sessionCwd = await makeTempRepo("safe-bash-nested-cd-session-");
+  const targetRoot = await makeTempRepo("safe-bash-nested-cd-target-");
+  const targetDir = join(targetRoot, "src", "nested");
+  const sharedCommonDir = "/tmp/repos/shared-common-dir";
+  await mkdir(targetDir, { recursive: true });
+
+  const pi = new FakePi("feat/session", {
+    cwdStates: {
+      [sessionCwd]: {
+        branch: "feat/session",
+        gitCommonDir: sharedCommonDir,
+        gitTopLevel: sessionCwd,
+      },
+      [targetRoot]: {
+        branch: "feat/target-worktree",
+        gitCommonDir: sharedCommonDir,
+        gitTopLevel: targetRoot,
+      },
+      [targetDir]: {
+        branch: "feat/target-worktree",
+        gitCommonDir: sharedCommonDir,
+        gitTopLevel: targetRoot,
+      },
+    },
+  });
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "bash", input: { command: `cd ${targetDir} && touch feature.ts` } },
+    makeCtx(sessionCwd),
+  );
+
+  assert.equal(result, undefined);
+  const audit = await readAuditLog(targetRoot);
+  assert.match(audit, /"action":"allowed-mutation"/);
+  assert.match(audit, /"controlPlaneRoot":/);
+
+  const { access } = await import("node:fs/promises");
+  await assert.rejects(access(join(targetDir, "logs", "harness-actions.jsonl")), /ENOENT/);
+  await assert.rejects(access(join(targetDir, ".pi", "agent", "state", "runtime", "pi.db")), /ENOENT/);
+});
+
+
+test("safe-bash new-parent write resolves Git context from the nearest existing ancestor", async () => {
+  const cwd = await makeTempRepo("safe-bash-new-parent-root-");
+  const targetPath = join(cwd, "new", "deep", "feature.ts");
+  const pi = new FakePi("feat/safe-bash");
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "write", input: { path: targetPath } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result, undefined);
+  const audit = await readAuditLog(cwd);
+  assert.match(audit, /"action":"allowed-mutation"/);
+  assert.match(audit, /"executionCwd":/);
+
+  const { access } = await import("node:fs/promises");
+  await assert.rejects(access(join(cwd, "new", "deep", ".pi")), /ENOENT/);
+});
+
+test("safe-bash nested main write auto-branches from the worktree task store", async () => {
+  const cwd = await makeTempRepo("safe-bash-nested-main-root-");
+  const targetDir = join(cwd, "src", "nested");
+  const commonDir = join(cwd, ".git");
+  await mkdir(targetDir, { recursive: true });
+  await seedActiveTask(cwd);
+
+  const pi = new FakePi("main", {
+    cwdStates: {
+      [cwd]: {
+        branch: "main",
+        statusPorcelain: " M .pi/agent/state/runtime/tasks.json\n M logs/harness-actions.jsonl\n",
+        gitCommonDir: commonDir,
+        gitTopLevel: cwd,
+      },
+      [targetDir]: {
+        branch: "main",
+        gitCommonDir: commonDir,
+        gitTopLevel: cwd,
+      },
+    },
+  });
+  safeBash(pi as any);
+
+  const onToolCall = pi.getHandler("tool_call");
+  const result = await onToolCall(
+    { toolName: "write", input: { path: join(targetDir, "feature.ts") } },
+    makeCtx(cwd),
+  );
+
+  assert.equal(result, undefined);
+  assert.equal(pi.getCurrentBranchName(cwd), ACTIVE_TASK_BRANCH);
+  const audit = await readAuditLog(cwd);
+  assert.match(audit, /"action":"auto-branch"/);
+  assert.match(audit, /"taskId":"task-123"/);
+
+  const { access } = await import("node:fs/promises");
+  await assert.rejects(access(join(targetDir, ".pi", "agent", "state", "runtime", "pi.db")), /ENOENT/);
+});

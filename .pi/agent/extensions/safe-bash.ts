@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 
 import { TASKS_FILE, getActiveTask, readTaskState, type TaskRecord } from "./till-done.ts";
 import { AUDIT_LOG, appendAuditEntry, type AuditLogEntry } from "./lib/audit-log.ts";
+import { resolveRuntimeContext } from "./lib/runtime-context.ts";
 
 type RiskLevel = "allow" | "warn" | "block";
 type AutoBranchOutcome =
@@ -247,49 +248,6 @@ async function getCurrentBranch(pi: ExtensionAPI, cwd: string): Promise<string |
   return branch.length > 0 ? branch : null;
 }
 
-async function getGitCommonDir(pi: ExtensionAPI, cwd: string): Promise<string | null> {
-  const result = await pi.exec("git", ["-C", cwd, "rev-parse", "--git-common-dir"]);
-  if (result.code !== 0) return null;
-
-  const commonDir = result.stdout.trim();
-  if (!commonDir) return null;
-  return resolve(cwd, commonDir);
-}
-
-async function ensureSameRepoFamily(
-  pi: ExtensionAPI,
-  sessionCwd: string,
-  targetCwd: string,
-): Promise<{ ok: true; commonDir: string } | { ok: false; reason: string; auditReasons: string[] }> {
-  const sessionCommonDir = await getGitCommonDir(pi, sessionCwd);
-  const targetCommonDir = await getGitCommonDir(pi, targetCwd);
-
-  if (!sessionCommonDir || !targetCommonDir) {
-    const auditReasons = [
-      `git repo context could not be resolved (session: ${sessionCommonDir ? "ok" : "missing"}, target: ${targetCommonDir ? "ok" : "missing"})`,
-    ];
-    return {
-      ok: false,
-      reason:
-        "Blocked target outside the current repo/worktree family: git context could not be resolved for the session or target path, so mutation safety cannot verify the target repo.",
-      auditReasons,
-    };
-  }
-
-  if (sessionCommonDir !== targetCommonDir) {
-    const auditReasons = [
-      `target repo family differs from session repo family (session common-dir: ${sessionCommonDir}, target common-dir: ${targetCommonDir})`,
-    ];
-    return {
-      ok: false,
-      reason: "Blocked target outside the current repo/worktree family: target path/cwd resolves to a different git common-dir than the session.",
-      auditReasons,
-    };
-  }
-
-  return { ok: true, commonDir: sessionCommonDir };
-}
-
 async function getDirtyTrackedFiles(pi: ExtensionAPI, cwd: string): Promise<{ files: string[] | null; error: string | null }> {
   const result = await pi.exec("git", ["-C", cwd, "status", "--porcelain", "--untracked-files=no"]);
   if (result.code !== 0) {
@@ -508,16 +466,26 @@ export default function (pi: ExtensionAPI) {
       const protectedReason = findProtectedPathReason(absolutePath);
       const modelId = modelIdFromContext(ctx);
       const provider = providerFromModelId(modelId);
-      const repoFamily = await ensureSameRepoFamily(pi, ctx.cwd, targetCwd);
-      let branch = repoFamily.ok ? await getCurrentBranch(pi, targetCwd) : await getCurrentBranch(pi, ctx.cwd);
-
-      if (repoFamily.ok === false) {
-        await appendAuditLog(ctx.cwd, {
+      const runtimeResolution = await resolveRuntimeContext(
+        {
+          sessionCwd: ctx.cwd,
+          executionCwd: targetCwd,
+          targetPath: absolutePath,
+        },
+        async (cwd, args) => pi.exec("git", ["-C", cwd, ...args]),
+      );
+      if (runtimeResolution.ok === false) {
+        const auditRoot = runtimeResolution.sessionControlPlaneRoot ?? ctx.cwd;
+        const branch = await getCurrentBranch(pi, auditRoot);
+        const repoFamilyReason = runtimeResolution.sessionGitCommonDir && runtimeResolution.targetGitCommonDir
+          ? "Blocked target outside the current repo/worktree family: target path/cwd resolves to a different git common-dir than the session."
+          : "Blocked target outside the current repo/worktree family: git context could not be resolved for the session or target path, so mutation safety cannot verify the target repo.";
+        await appendAuditLog(auditRoot, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "blocked",
           tool: event.toolName,
-          cwd: ctx.cwd,
+          cwd: auditRoot,
           sessionCwd: ctx.cwd,
           branch,
           modelId,
@@ -525,22 +493,32 @@ export default function (pi: ExtensionAPI) {
           path: rawPath,
           resolvedPath: absolutePath,
           targetCwd,
-          reasons: repoFamily.auditReasons,
+          reasons: [runtimeResolution.reason],
         });
 
         return {
           block: true,
-          reason: `${event.toolName === "write" ? "Blocked write" : "Blocked edit"}: ${repoFamily.reason}`,
+          reason: `${event.toolName === "write" ? "Blocked write" : "Blocked edit"}: ${repoFamilyReason}`,
         };
       }
 
+      const runtimeContext = runtimeResolution.context;
+      let branch = await getCurrentBranch(pi, runtimeContext.worktreeRoot);
+      const runtimeMetadata = {
+        repoRoot: runtimeContext.repoRoot,
+        worktreeRoot: runtimeContext.worktreeRoot,
+        controlPlaneRoot: runtimeContext.controlPlaneRoot,
+        executionCwd: runtimeContext.executionCwd,
+        targetPath: runtimeContext.targetPath,
+      };
+
       if (protectedReason) {
-        await appendAuditLog(targetCwd, {
+        await appendAuditLog(runtimeContext.controlPlaneRoot, {
           ts: new Date().toISOString(),
           extension: "safe-bash",
           action: "blocked",
           tool: event.toolName,
-          cwd: targetCwd,
+          cwd: runtimeContext.controlPlaneRoot,
           sessionCwd: ctx.cwd,
           branch,
           modelId,
@@ -548,6 +526,7 @@ export default function (pi: ExtensionAPI) {
           path: rawPath,
           resolvedPath: absolutePath,
           reasons: [protectedReason],
+          ...runtimeMetadata,
         });
 
         return {
@@ -557,18 +536,19 @@ export default function (pi: ExtensionAPI) {
       }
 
       if (branch === "main") {
-        const autoBranch = await attemptAutoBranchOnMain(pi, ctx, targetCwd, event.toolName, {
+        const autoBranch = await attemptAutoBranchOnMain(pi, ctx, runtimeContext.controlPlaneRoot, event.toolName, {
           path: rawPath,
           resolvedPath: absolutePath,
+          ...runtimeMetadata,
         });
 
         if (autoBranch.ok === false) {
-          await appendAuditLog(targetCwd, {
+          await appendAuditLog(runtimeContext.controlPlaneRoot, {
             ts: new Date().toISOString(),
             extension: "safe-bash",
             action: "blocked",
             tool: event.toolName,
-            cwd: targetCwd,
+            cwd: runtimeContext.controlPlaneRoot,
             sessionCwd: ctx.cwd,
             branch,
             modelId,
@@ -576,6 +556,7 @@ export default function (pi: ExtensionAPI) {
             path: rawPath,
             resolvedPath: absolutePath,
             reasons: autoBranch.auditReasons,
+            ...runtimeMetadata,
           });
 
           return {
@@ -587,18 +568,19 @@ export default function (pi: ExtensionAPI) {
         branch = autoBranch.branch;
       }
 
-      await appendAuditLog(targetCwd, {
+      await appendAuditLog(runtimeContext.controlPlaneRoot, {
         ts: new Date().toISOString(),
         extension: "safe-bash",
         action: "allowed-mutation",
         tool: event.toolName,
-        cwd: targetCwd,
+        cwd: runtimeContext.controlPlaneRoot,
         sessionCwd: ctx.cwd,
         branch,
         modelId,
         provider,
         path: rawPath,
         resolvedPath: absolutePath,
+        ...runtimeMetadata,
       });
 
       return;
@@ -612,35 +594,57 @@ export default function (pi: ExtensionAPI) {
     const modelId = modelIdFromContext(ctx);
     const provider = providerFromModelId(modelId);
 
-    if (cdContext) {
-      const repoFamily = await ensureSameRepoFamily(pi, ctx.cwd, cdContext.targetCwd);
-      if (repoFamily.ok === false) {
-        const branch = await getCurrentBranch(pi, ctx.cwd);
-        await appendAuditLog(ctx.cwd, {
-          ts: new Date().toISOString(),
-          extension: "safe-bash",
-          action: "blocked",
-          tool: "bash",
-          cwd: ctx.cwd,
-          sessionCwd: ctx.cwd,
-          branch,
-          modelId,
-          provider,
-          command,
-          classificationCommand: commandForClassification,
-          targetCwd: cdContext.targetCwd,
-          reasons: repoFamily.auditReasons,
-        });
+    const requestedExecutionCwd = cdContext?.targetCwd ?? ctx.cwd;
+    const runtimeResolution = await resolveRuntimeContext(
+      {
+        sessionCwd: ctx.cwd,
+        executionCwd: requestedExecutionCwd,
+        targetPath: requestedExecutionCwd,
+      },
+      async (cwd, args) => pi.exec("git", ["-C", cwd, ...args]),
+    );
 
-        return {
-          block: true,
-          reason: `Blocked bash command: ${repoFamily.reason}`,
-        };
-      }
+    if (cdContext && runtimeResolution.ok === false) {
+      const auditRoot = runtimeResolution.sessionControlPlaneRoot ?? ctx.cwd;
+      const branch = await getCurrentBranch(pi, auditRoot);
+      const repoFamilyReason = runtimeResolution.sessionGitCommonDir && runtimeResolution.targetGitCommonDir
+        ? "Blocked target outside the current repo/worktree family: target path/cwd resolves to a different git common-dir than the session."
+        : "Blocked target outside the current repo/worktree family: git context could not be resolved for the session or target path, so mutation safety cannot verify the target repo.";
+      await appendAuditLog(auditRoot, {
+        ts: new Date().toISOString(),
+        extension: "safe-bash",
+        action: "blocked",
+        tool: "bash",
+        cwd: auditRoot,
+        sessionCwd: ctx.cwd,
+        branch,
+        modelId,
+        provider,
+        command,
+        classificationCommand: commandForClassification,
+        targetCwd: cdContext.targetCwd,
+        reasons: [runtimeResolution.reason],
+      });
+
+      return {
+        block: true,
+        reason: `Blocked bash command: ${repoFamilyReason}`,
+      };
     }
 
-    const auditCwd = cdContext?.targetCwd ?? ctx.cwd;
-    let branch = await getCurrentBranch(pi, auditCwd);
+    const runtimeContext = runtimeResolution.ok ? runtimeResolution.context : null;
+    const auditCwd = runtimeContext?.controlPlaneRoot ?? ctx.cwd;
+    const branchCwd = runtimeContext?.worktreeRoot ?? requestedExecutionCwd;
+    const runtimeMetadata = runtimeContext
+      ? {
+          repoRoot: runtimeContext.repoRoot,
+          worktreeRoot: runtimeContext.worktreeRoot,
+          controlPlaneRoot: runtimeContext.controlPlaneRoot,
+          executionCwd: runtimeContext.executionCwd,
+          targetPath: runtimeContext.targetPath,
+        }
+      : {};
+    let branch = await getCurrentBranch(pi, branchCwd);
 
     const protectedPathReason = commandTouchesProtectedPath(commandForClassification);
     if (protectedPathReason) {
@@ -760,6 +764,7 @@ export default function (pi: ExtensionAPI) {
       const autoBranch = await attemptAutoBranchOnMain(pi, ctx, auditCwd, "bash", {
         command,
         classificationCommand: commandForClassification,
+        ...runtimeMetadata,
       });
       if (autoBranch.ok === false) {
         await appendAuditLog(auditCwd, {
@@ -851,6 +856,7 @@ export default function (pi: ExtensionAPI) {
         command,
         classificationCommand: commandForClassification,
         riskLevel: risk.level,
+        ...runtimeMetadata,
       });
     }
   });
