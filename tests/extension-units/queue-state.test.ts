@@ -11,6 +11,7 @@ import {
   readQueueState,
   writeQueueState,
 } from "../../.pi/agent/extensions/lib/queue-state.ts";
+import { closeRuntimeDb, openRuntimeDb } from "../../.pi/agent/extensions/lib/sqlite-state.ts";
 import { makeTempRepo } from "./test-utils.ts";
 
 interface Job {
@@ -202,4 +203,42 @@ test("backfill leaves malformed queue.json in place for operator inspection", as
   const state = await readQueueState<Job>(cwd);
   assert.deepEqual(state, { version: 1, paused: false, activeJobId: null, jobs: [] });
   assert.equal(existsSync(jsonPath), true);
+});
+
+
+test("queue-first legacy migration backfills linked tasks before queue FKs", async () => {
+  const cwd = await makeTempRepo("queue-state-linked-backfill-");
+  const runtimeDir = join(cwd, ".pi", "agent", "state", "runtime");
+  await writeFile(
+    join(runtimeDir, "tasks.json"),
+    JSON.stringify({
+      version: 1,
+      activeTaskId: "t1",
+      tasks: [{ id: "t1", status: "in_progress", updatedAt: 1 }],
+    }),
+    "utf8",
+  );
+  await writeFile(
+    join(runtimeDir, "queue.json"),
+    JSON.stringify({
+      version: 1,
+      paused: false,
+      activeJobId: "j1",
+      jobs: [{ id: "j1", title: "linked", linkedTaskId: "t1", status: "queued" }],
+    }),
+    "utf8",
+  );
+
+  const state = await readQueueState<Job & { linkedTaskId: string }>(cwd);
+  assert.equal(state.jobs[0]?.linkedTaskId, "t1");
+
+  const db = openRuntimeDb(cwd);
+  try {
+    const row = db.handle
+      .prepare(`SELECT linked_task_id FROM queue_jobs WHERE id = 'j1'`)
+      .get() as unknown as { linked_task_id: string | null };
+    assert.equal(row.linked_task_id, "t1");
+  } finally {
+    closeRuntimeDb(db);
+  }
 });

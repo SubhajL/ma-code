@@ -1229,6 +1229,12 @@ test("queue runner does not start a new job while the active linked task is stil
 test("queue runner blocks parent mixed-domain completion when child evidence is missing", async () => {
   const { cwd, runNextQueueJob, taskUpdate } = await setupQueueRunnerRepo();
 
+  await writeTaskState(cwd, {
+    version: 1,
+    activeTaskId: null,
+    tasks: [{ id: "task-mixed-domain-child-done", status: "done", updatedAt: "2026-05-13T00:00:00.000Z" } as unknown as TaskRecord],
+  });
+
   await writeQueue(cwd, {
     version: 1,
     paused: false,

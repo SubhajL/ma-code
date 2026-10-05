@@ -77,19 +77,54 @@ export function readTasksStateFromDb<T>(db: RuntimeDb): TasksStateShape<T> {
 }
 
 function writeStateSqlUnsafe<T>(db: RuntimeDb, state: TasksStateShape<T>): void {
-  db.handle.exec(`DELETE FROM tasks`);
-  const insert = db.handle.prepare(
-    `INSERT INTO tasks (id, payload_json, status, updated_at) VALUES (?, ?, ?, ?)`,
-  );
+  const desiredIds = new Set<string>();
   for (const task of state.tasks) {
     const id = isRecord(task) && typeof task.id === "string" ? task.id : null;
     if (!id) {
       throw new Error(`tasks-state: task is missing required string id field: ${JSON.stringify(task)}`);
     }
-    insert.run(id, JSON.stringify(task), deriveStatus(task), deriveUpdatedAt(task));
+    if (desiredIds.has(id)) {
+      throw new Error(`tasks-state: duplicate task id in snapshot: ${id}`);
+    }
+    desiredIds.add(id);
   }
+
+  const existingRows = db.handle.prepare(`SELECT id FROM tasks`).all() as unknown as Array<{ id: string }>;
+  const upsert = db.handle.prepare(`
+    INSERT INTO tasks (id, payload_json, status, updated_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      payload_json = excluded.payload_json,
+      status = excluded.status,
+      updated_at = excluded.updated_at
+  `);
+  for (const task of state.tasks) {
+    const record = task as Record<string, unknown>;
+    upsert.run(record.id as string, JSON.stringify(task), deriveStatus(task), deriveUpdatedAt(task));
+  }
+
+  const linkedQueueRows = db.handle.prepare(
+    `SELECT id, payload_json FROM queue_jobs WHERE linked_task_id = ?`,
+  );
+  const updateQueuePayload = db.handle.prepare(`UPDATE queue_jobs SET payload_json = ? WHERE id = ?`);
+  const deleteTask = db.handle.prepare(`DELETE FROM tasks WHERE id = ?`);
+  for (const row of existingRows) {
+    if (desiredIds.has(row.id)) continue;
+    const queueRows = linkedQueueRows.all(row.id) as unknown as Array<{ id: string; payload_json: string }>;
+    for (const queueRow of queueRows) {
+      const payload = JSON.parse(queueRow.payload_json) as unknown;
+      if (!isRecord(payload)) {
+        throw new Error(`tasks-state: queue job ${queueRow.id} payload is not an object`);
+      }
+      updateQueuePayload.run(JSON.stringify({ ...payload, linkedTaskId: null }), queueRow.id);
+    }
+    deleteTask.run(row.id);
+  }
+
   db.handle
-    .prepare(`INSERT OR REPLACE INTO active_task (singleton, task_id) VALUES (?, ?)`)
+    .prepare(`
+      INSERT INTO active_task (singleton, task_id) VALUES (?, ?)
+      ON CONFLICT(singleton) DO UPDATE SET task_id = excluded.task_id
+    `)
     .run(ACTIVE_TASK_SINGLETON, state.activeTaskId);
 }
 
