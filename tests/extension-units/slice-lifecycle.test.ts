@@ -204,3 +204,20 @@ test('slice task selection uses explicit canonical task ID, not another passing 
  const result=await assessSliceLifecycle({cwd,evidenceBundle:{version:1,taskId:'missing'}});
  assert.equal(result.evidence.taskValidated,false);
 });
+
+for (const status of ['review','done']) {
+  test(`task status ${status} alone is not validator proof`,async()=>{
+    const cwd=await seedLifecycleRepo({codingLog,planningLog,tasks:{activeTaskId:'task-1',tasks:[{id:'task-1',status,acceptance:['ok']}]}});
+    const result=await assessSliceLifecycle({cwd,evidenceBundle:{version:1,taskId:'task-1',task:{status,acceptanceCriteria:['ok']}}});
+    assert.equal(result.evidence.taskReady,true);
+    assert.equal(result.evidence.taskValidated,false);
+  });
+}
+
+test('bare RED GREEN words or empty evidence headings do not prove tests ran',async()=>{
+ for(const text of ['Plan to run RED then GREEN','### RED Evidence\n\n### GREEN Evidence\n']) {
+  const cwd=await seedLifecycleRepo({codingLog:text,planningLog,tasks:validatedTaskState});
+  const result=await assessSliceLifecycle({cwd});
+  assert.deepEqual(result.evidence.redGreenEvidence,{red:false,green:false});
+ }
+});

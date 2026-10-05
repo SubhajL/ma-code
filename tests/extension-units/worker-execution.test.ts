@@ -214,6 +214,7 @@ test("run defaults worker baseRef to the current branch so worker worktrees inhe
 test("run creates isolated worktree, records RED/GREEN, validation, review, queue linkage, and stops before PR", async () => {
   const cwd = await writeFixture();
   const result = await runWorkerExecution({
+    reviewVerdict: "no_required_fixes",
     repoRoot: cwd,
     command: "run",
     initiativeId: "greenfield-scaffold",
@@ -261,6 +262,7 @@ test("run uses queue job implementation command fallback and allows Pi log artif
   });
 
   const result = await runWorkerExecution({
+    reviewVerdict: "no_required_fixes",
     repoRoot: cwd,
     command: "run",
     initiativeId: "greenfield-scaffold",
@@ -490,7 +492,8 @@ test("run prefers structured same-runtime worker execution plans over legacy imp
 
   assert.equal(result.status, "review_ready");
   assert.equal(result.steps.coding.status, "passed");
-  assert.match(result.steps.coding.greenCommand ?? "", /same_runtime_prompt/);
+  assert.match((result.steps.coding.commands ?? []).join(" "), /same_runtime_prompt/);
+  assert.equal(result.steps.coding.greenCommand, result.steps.validation.results?.[0]?.command);
   assert.ok(result.steps.coding.changedFiles.includes("docs/initiatives/greenfield-scaffold/notes.md"));
   assert.ok(result.steps.coding.changedFiles.includes("logs/CURRENT.md"));
   assert.ok(result.steps.coding.changedFiles.includes("logs/coding/task.md"));
@@ -525,6 +528,7 @@ test("provider-failed mixed-domain run with preserved diff and passing local pro
   });
 
   const result = await runWorkerExecution({
+    reviewVerdict: "no_required_fixes",
     repoRoot: cwd,
     command: "run",
     initiativeId: "greenfield-scaffold",
@@ -567,7 +571,7 @@ test("provider-failed mixed-domain run with preserved diff and passing local pro
     tasks: Array<{ id: string; status: string; evidence: string[]; validation?: { decision?: string } }>;
   };
   assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.status, "review");
-  assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.validation?.decision, "pass");
+  assert.equal(taskState.tasks.find((task) => task.id === result.linkedTaskId)?.validation?.decision, "pending");
   assert.match((taskState.tasks.find((task) => task.id === result.linkedTaskId)?.evidence ?? []).join("\n"), /salvage/i);
 });
 
@@ -599,6 +603,7 @@ test("provider-failed mixed-domain run with preserved diff but without passing p
   });
 
   const result = await runWorkerExecution({
+    reviewVerdict: "no_required_fixes",
     repoRoot: cwd,
     command: "run",
     initiativeId: "greenfield-scaffold",
@@ -647,6 +652,7 @@ test("provider-failed mixed-domain run with preserved diff but without passing p
 test("resume refuses terminal worker runs", async () => {
   const cwd = await writeFixture();
   await runWorkerExecution({
+    reviewVerdict: "no_required_fixes",
     repoRoot: cwd,
     command: "run",
     initiativeId: "greenfield-scaffold",
@@ -799,6 +805,7 @@ test("run ignores generated initiative runtime run artifacts when checking workt
   await writeFile(join(cwd, "docs", "initiatives", "greenfield-scaffold", "afk-runs", "afk-test.json"), "{}\n", "utf8");
 
   const result = await runWorkerExecution({
+    reviewVerdict: "no_required_fixes",
     repoRoot: cwd,
     command: "run",
     initiativeId: "greenfield-scaffold",
@@ -835,4 +842,87 @@ test("protected and outside-allowed path mutations are blocked", async () => {
   });
   assert.equal(result.status, "blocked");
   assert.match(result.stopReason ?? "", /outside allowed paths/);
+});
+
+test('successful coding and tests without review stay pending and cannot create a PR', async () => {
+  const cwd = await writeFixture();
+  const result = await runWorkerExecution({
+    repoRoot: cwd, command: 'run', initiativeId: 'greenfield-scaffold',
+    queueJobId: 'afk-greenfield-scaffold-issue-002', runId: 'worker-no-review',
+    baseRef: 'main', maxSteps: 4, maxRuntimeSeconds: 10,
+    redCommand: 'node -e "process.exit(1)"',
+    implementationCommand: `node -e "require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok')"`,
+    validationCommands: ['node -e "process.exit(0)"'],
+  });
+  assert.equal(result.steps.coding.status, 'passed');
+  assert.equal(result.steps.validation.status, 'passed');
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.steps.review.status, 'pending');
+  assert.equal(result.steps.review.verdict, 'not_run');
+  assert.match(result.stopReason ?? '', /review.*pending/i);
+  const tasks = await readTaskStateLib(cwd);
+  assert.notEqual(tasks.tasks.find(task => task.id === result.linkedTaskId)?.validation?.decision, 'pass');
+  const {runPrLifecycle} = await import('../../.pi/agent/extensions/pr-lifecycle.ts');
+  const readiness = await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-no-review'},{runner:async()=>({stdout:'',stderr:'',code:0}),dirtyFiles:async()=>[]});
+  assert.equal(readiness.lifecycle.createReady,false);
+});
+
+test('explicit review and passing commands do not manufacture validator approval', async () => {
+  const cwd = await writeFixture();
+  const result = await runWorkerExecution({
+    repoRoot: cwd, command: 'run', initiativeId: 'greenfield-scaffold',
+    queueJobId: 'afk-greenfield-scaffold-issue-002', runId: 'worker-needs-validator',
+    baseRef: 'main', maxSteps: 4, maxRuntimeSeconds: 10,
+    reviewVerdict: 'no_required_fixes', redCommand: 'node -e "process.exit(1)"',
+    implementationCommand: `node -e "require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok')"`,
+    validationCommands: ['node -e "process.exit(0)"'],
+  });
+  assert.equal(result.status,'review_ready');
+  const tasks = await readTaskStateLib(cwd);
+  const task = tasks.tasks.find(task=>task.id===result.linkedTaskId)!;
+  assert.equal(task.status,'review');
+  assert.equal(task.validation?.decision,'pending');
+  const {runPrLifecycle} = await import('../../.pi/agent/extensions/pr-lifecycle.ts');
+  const deps={runner:async()=>({stdout:'',stderr:'',code:0}),dirtyFiles:async()=>[]};
+  const input={repoRoot:cwd,command:'dry-run' as const,initiativeId:'greenfield-scaffold',workerRunId:'worker-needs-validator'};
+  assert.equal((await runPrLifecycle(input,deps)).lifecycle.createReady,false);
+  const {applyTaskUpdateAction,loadCompletionGatePolicy,mutateTaskState} = await import('../../.pi/agent/extensions/till-done.ts');
+  const policy=await loadCompletionGatePolicy(cwd);
+  await mutateTaskState(cwd,state=>applyTaskUpdateAction(state,{action:'validate',id:task.id,validationSource:'validator',validationDecision:'pass',validationChecklist:{acceptance:'met',tests:'met',diff_review:'met',evidence:'met'}},policy));
+  assert.equal((await runPrLifecycle(input,deps)).lifecycle.createReady,true);
+});
+
+test('empty validation proof remains pending even with explicit passing review', async () => {
+  const cwd = await writeFixture({issueOverrides:{validationProof:[]}});
+  const result = await runWorkerExecution({repoRoot:cwd,command:'run',initiativeId:'greenfield-scaffold',queueJobId:'afk-greenfield-scaffold-issue-002',runId:'worker-no-proof',baseRef:'main',maxSteps:4,maxRuntimeSeconds:10,reviewVerdict:'no_required_fixes',implementationCommand:`node -e "require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok')"`});
+  assert.equal(result.steps.validation.status,'pending');
+  assert.equal(result.status,'blocked');
+  assert.match(result.stopReason??'',/without validation commands/i);
+});
+
+for (const interrupted of [false,true]) {
+ test(`mixed-domain salvage without review stays pending, runtime interruption=${interrupted}`,async()=>{
+  const cwd=await writeFixture({jobOverrides:{domains:['frontend','backend'],workerExecutionPlan:{strategy:'same_runtime_prompt',prompt:'Implement bounded docs proof',toolProfile:'coding',includeProjectExtensions:false,includeContextFiles:false}}});
+  const result=await runWorkerExecution({repoRoot:cwd,command:'run',initiativeId:'greenfield-scaffold',queueJobId:'afk-greenfield-scaffold-issue-002',runId:`worker-salvage-pending-${interrupted}`,baseRef:'main',maxSteps:4,maxRuntimeSeconds:10,validationCommands:['node -e "process.exit(0)"'],sameRuntimeExecutor:async(worktreePath)=>{
+   await writeFile(join(worktreePath,'docs/initiatives/greenfield-scaffold/notes.md'),'preserved diff');
+   if(interrupted)throw new Error('provider interruption after writing diff');
+   return {command:'mock boundary worker',exitCode:1,stdout:'',stderr:'provider failure',durationMs:1};
+  }});
+  assert.equal(result.status,'blocked');
+  assert.equal(result.steps.review.verdict,'not_run');
+  assert.equal(result.steps.review.status,'pending');
+  assert.equal(result.salvage?.outcome,'resumable');
+  assert.ok(result.salvage?.preservedDiff.length);
+  const tasks=await readTaskStateLib(cwd);
+  assert.notEqual(tasks.tasks.find(task=>task.id===result.linkedTaskId)?.validation?.decision,'pass');
+ });
+}
+
+test('queue-supplied RED records GREEN from validation rather than implementation success',async()=>{
+ const cwd=await writeFixture({jobOverrides:{redCommand:'node -e "process.exit(1)"'}});
+ const result=await runWorkerExecution({repoRoot:cwd,command:'run',initiativeId:'greenfield-scaffold',queueJobId:'afk-greenfield-scaffold-issue-002',runId:'worker-job-red',baseRef:'main',maxSteps:4,maxRuntimeSeconds:10,reviewVerdict:'no_required_fixes',implementationCommand:`node -e "require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','ok')"`,validationCommands:['node -e "process.exit(0)"']});
+ assert.equal(result.status,'review_ready');
+ assert.equal(result.steps.coding.redResult?.exitCode,1);
+ assert.equal(result.steps.coding.greenCommand,result.steps.validation.results?.[0].command);
+ assert.deepEqual(result.steps.coding.greenResult,result.steps.validation.results?.[0]);
 });

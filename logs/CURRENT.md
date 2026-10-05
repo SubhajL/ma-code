@@ -1,7 +1,7 @@
 # Current Harness Logs
 
 ## Current coding log
-- `logs/coding/2026-10-05_h2-canonical-readiness.md`
+- `logs/coding/2026-10-05_h3a-pending-proof.md`
 
 ## Current planning log
-- `reports/planning/2026-10-05_h2-canonical-readiness-plan.md`
+- `reports/planning/2026-10-05_h3a-pending-proof-plan.md`
