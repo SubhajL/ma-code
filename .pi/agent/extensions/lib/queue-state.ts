@@ -2,6 +2,7 @@ import { readFile, rename, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { closeRuntimeDb, openRuntimeDb, type RuntimeDb } from "./sqlite-state.ts";
+import { backfillTasksFromJsonIfPresent } from "./tasks-state.ts";
 import { assertNotInsideCoordinatedScope, isInsideCoordinatedScope } from "./transaction-coordination.ts";
 
 export const QUEUE_FILE = ".pi/agent/state/runtime/queue.json";
@@ -81,22 +82,52 @@ export function readQueueStateFromDb<T>(db: RuntimeDb): QueueStateShape<T> {
 }
 
 function writeStateSqlUnsafe<T>(db: RuntimeDb, state: QueueStateShape<T>): void {
-  db.handle.exec(`DELETE FROM queue_jobs`);
-  const now = Date.now();
-  const insert = db.handle.prepare(
-    `INSERT INTO queue_jobs (id, payload_json, status, enqueued_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-  );
+  const desiredIds = new Set<string>();
   for (const job of state.jobs) {
     const id = isRecord(job) && typeof job.id === "string" ? job.id : null;
     if (!id) {
       throw new Error(`queue-state: job is missing required string id field: ${JSON.stringify(job)}`);
     }
+    if (desiredIds.has(id)) {
+      throw new Error(`queue-state: duplicate job id in snapshot: ${id}`);
+    }
+    desiredIds.add(id);
+  }
+
+  const now = Date.now();
+  const upsert = db.handle.prepare(`
+    INSERT INTO queue_jobs (id, payload_json, status, enqueued_at, updated_at, linked_task_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      payload_json = excluded.payload_json,
+      status = excluded.status,
+      enqueued_at = excluded.enqueued_at,
+      updated_at = excluded.updated_at,
+      linked_task_id = excluded.linked_task_id
+  `);
+  for (const job of state.jobs) {
+    const record = job as Record<string, unknown>;
+    const id = record.id as string;
     const enqueuedAt = deriveTimestampField(job, "enqueuedAt", now);
     const updatedAt = deriveTimestampField(job, "updatedAt", now);
-    insert.run(id, JSON.stringify(job), deriveStatus(job), enqueuedAt, updatedAt);
+    const linkedTaskId =
+      typeof record.linkedTaskId === "string" && record.linkedTaskId.length > 0 ? record.linkedTaskId : null;
+    upsert.run(id, JSON.stringify(job), deriveStatus(job), enqueuedAt, updatedAt, linkedTaskId);
   }
+
+  const deleteRow = db.handle.prepare(`DELETE FROM queue_jobs WHERE id = ?`);
+  const existingRows = db.handle.prepare(`SELECT id FROM queue_jobs`).all() as unknown as Array<{ id: string }>;
+  for (const row of existingRows) {
+    if (!desiredIds.has(row.id)) deleteRow.run(row.id);
+  }
+
   db.handle
-    .prepare(`INSERT OR REPLACE INTO queue_meta (singleton, paused, active_job_id) VALUES (?, ?, ?)`)
+    .prepare(`
+      INSERT INTO queue_meta (singleton, paused, active_job_id) VALUES (?, ?, ?)
+      ON CONFLICT(singleton) DO UPDATE SET
+        paused = excluded.paused,
+        active_job_id = excluded.active_job_id
+    `)
     .run(QUEUE_META_SINGLETON, state.paused ? 1 : 0, state.activeJobId);
 }
 
@@ -153,6 +184,9 @@ async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<vo
 
   if (!isRecord(parsed)) return;
   const jobs = Array.isArray(parsed.jobs) ? parsed.jobs : [];
+  if (jobs.some((job) => isRecord(job) && typeof job.linkedTaskId === "string")) {
+    await backfillTasksFromJsonIfPresent(db, cwd);
+  }
   const paused = typeof parsed.paused === "boolean" ? parsed.paused : false;
   const activeJobId =
     typeof parsed.activeJobId === "string" || parsed.activeJobId === null
@@ -163,14 +197,18 @@ async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<vo
   try {
     const now = Date.now();
     const insert = db.handle.prepare(
-      `INSERT OR IGNORE INTO queue_jobs (id, payload_json, status, enqueued_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO queue_jobs (id, payload_json, status, enqueued_at, updated_at, linked_task_id) VALUES (?, ?, ?, ?, ?, ?)`,
     );
     for (const job of jobs) {
       const id = isRecord(job) && typeof job.id === "string" ? job.id : null;
       if (!id) continue;
       const enqueuedAt = deriveTimestampField(job, "enqueuedAt", now);
       const updatedAt = deriveTimestampField(job, "updatedAt", now);
-      insert.run(id, JSON.stringify(job), deriveStatus(job), enqueuedAt, updatedAt);
+      const linkedTaskId =
+        isRecord(job) && typeof job.linkedTaskId === "string" && job.linkedTaskId.length > 0
+          ? job.linkedTaskId
+          : null;
+      insert.run(id, JSON.stringify(job), deriveStatus(job), enqueuedAt, updatedAt, linkedTaskId);
     }
     const existingMeta = readQueueMetaSql(db);
     // Seed queue_meta from JSON only when SQLite hasn't been initialized yet.
