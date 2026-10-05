@@ -1,3 +1,4 @@
+import { readTasksState } from "./lib/tasks-state.ts";
 import { execFile as execFileCallback } from "node:child_process";
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -229,20 +230,15 @@ function isOwnLifecycleBookkeeping(run: PrLifecycleRun, file: string): boolean {
 
 async function readTaskReady(repoRoot: string, linkedTaskId: string | null, worktreePath?: string | null): Promise<boolean> {
   if (!linkedTaskId) return false;
-  const candidateRoots = [repoRoot, worktreePath ? resolve(repoRoot, worktreePath) : null].filter((value): value is string => Boolean(value));
-  const seen = new Set<string>();
-  for (const candidateRoot of candidateRoots) {
-    const path = resolve(candidateRoot, ".pi/agent/state/runtime/tasks.json");
-    if (seen.has(path)) continue;
-    seen.add(path);
-    if (!(await exists(path))) continue;
-    const parsed = JSON.parse(await readFile(path, "utf8")) as { tasks?: Array<Record<string, unknown>> };
-    const task = (parsed.tasks ?? []).find((entry) => entry.id === linkedTaskId);
+  const roots = [repoRoot, worktreePath ? resolve(repoRoot, worktreePath) : null].filter((root): root is string => Boolean(root));
+  for (const root of new Set(roots)) {
+    const state = await readTasksState<Record<string, unknown>>(root);
+    const task = state.tasks.find((entry) => entry.id === linkedTaskId);
     if (!task) continue;
     const evidence = Array.isArray(task.evidence) ? task.evidence.map(String).join("\n") : "";
     const acceptance = Array.isArray(task.acceptance) ? task.acceptance : [];
     const validation = task.validation && typeof task.validation === "object" ? task.validation as Record<string, unknown> : {};
-    if (acceptance.length > 0 && /Changed files:/i.test(evidence) && /Validation:/i.test(evidence) && /Review Verdict:\s*no_required_fixes/i.test(evidence) && validation.decision === "pass") return true;
+    return acceptance.length > 0 && /Changed files:/i.test(evidence) && /Validation:/i.test(evidence) && /Review Verdict:\s*no_required_fixes/i.test(evidence) && validation.decision === "pass";
   }
   return false;
 }

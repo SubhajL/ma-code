@@ -1,3 +1,4 @@
+import { readTasksState, writeTasksState } from "../../.pi/agent/extensions/lib/tasks-state.ts";
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
 import { mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
@@ -53,7 +54,7 @@ async function writeFixture(options: { workerOverrides?: Record<string, unknown>
   const workerPath = join(cwd, "docs/initiatives/greenfield-scaffold/worker-runs/worker-green.json");
   await writeFile(workerPath, `${JSON.stringify(worker, null, 2)}\n`, "utf8");
   const taskEvidence = options.taskEvidence ?? ["Changed files: docs/initiatives/greenfield-scaffold/change.md", "Validation: node -e passed", "Review Verdict: no_required_fixes"];
-  await writeFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({ version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: taskEvidence, validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] }, null, 2)}\n`, "utf8");
+  await writeTasksState(cwd, { version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: taskEvidence, validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] });
   return { cwd, workerPath };
 }
 
@@ -252,8 +253,8 @@ test("create accepts linked task evidence from the worker worktree runtime", asy
   const { cwd, workerPath } = await writeFixture();
   const workerWorktree = await mkdtemp(join(tmpdir(), "pr-lifecycle-worker-"));
   await mkdir(join(workerWorktree, ".pi", "agent", "state", "runtime"), { recursive: true });
-  await writeFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({ version: 1, activeTaskId: null, tasks: [] }, null, 2)}\n`, "utf8");
-  await writeFile(join(workerWorktree, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({ version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: ["Changed files: docs/initiatives/greenfield-scaffold/change.md", "Validation: node -e passed", "Review Verdict: no_required_fixes"], validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] }, null, 2)}\n`, "utf8");
+  await writeTasksState(cwd, { version: 1, activeTaskId: null, tasks: [] });
+  await writeTasksState(workerWorktree, { version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: ["Changed files: docs/initiatives/greenfield-scaffold/change.md", "Validation: node -e passed", "Review Verdict: no_required_fixes"], validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] });
   const worker = JSON.parse(await readFile(workerPath, "utf8"));
   worker.worktree.path = workerWorktree;
   await writeFile(workerPath, `${JSON.stringify(worker, null, 2)}\n`, "utf8");
@@ -291,4 +292,27 @@ test("create pushes a missing non-protected base branch before creating the PR",
 test("close-superseded requires explicit approval", async () => {
   const { cwd } = await writeFixture();
   await assert.rejects(runPrLifecycle({ repoRoot: cwd, command: "create", initiativeId: "greenfield-scaffold", workerRunId: "worker-green", runId: "pr-close", closeSuperseded: true }), /--close-superseded requires --close-approval-ref/);
+});
+
+test('SQLite-only readiness ignores stale task exports', async () => {
+  const {cwd} = await writeFixture();
+  await writeFile(join(cwd,'.pi/agent/state/runtime/tasks.json'),JSON.stringify({version:1,activeTaskId:'task-1',tasks:[{id:'task-1',acceptance:[],evidence:[],validation:{decision:'fail'}}]}));
+  const result=await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-green'}, {runner:fakeRunner([]),dirtyFiles:async()=>[]});
+  assert.equal(result.lifecycle.taskReady,true);
+  assert.equal(result.lifecycle.createReady,true);
+});
+
+test('canonical task failure cannot borrow a passing worker-worktree task', async () => {
+  const {cwd,workerPath}=await writeFixture();
+  const state=await readTasksState<Record<string,unknown>>(cwd);
+  const other=await mkdtemp(join(tmpdir(),'pr-borrowed-task-'));
+  await writeTasksState(other,state);
+  state.tasks[0].validation={decision:'fail'};
+  await writeTasksState(cwd,state);
+  const worker=JSON.parse(await readFile(workerPath,'utf8'));
+  worker.worktree.path=other;
+  await writeFile(workerPath,JSON.stringify(worker));
+  const result=await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-green'},{runner:fakeRunner([]),dirtyFiles:async()=>[]});
+  assert.equal(result.lifecycle.taskReady,false);
+  assert.equal(result.lifecycle.createReady,false);
 });
