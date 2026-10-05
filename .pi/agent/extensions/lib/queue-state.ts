@@ -165,6 +165,9 @@ async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<vo
   // Skip backfill if we are already inside a coordinated scope (see the
   // matching guard in tasks-state.ts for the full reasoning).
   if (isInsideCoordinatedScope()) return;
+  // Initialized SQLite state is authoritative, including an intentionally empty snapshot.
+  if (db.handle.prepare(`SELECT 1 FROM queue_meta UNION ALL SELECT 1 FROM queue_jobs LIMIT 1`).get()) return;
+
   const jsonFile = resolve(cwd, QUEUE_FILE);
   if (!(await pathExists(jsonFile))) return;
 
@@ -195,6 +198,11 @@ async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<vo
 
   db.handle.exec("BEGIN IMMEDIATE");
   try {
+    // Recheck after obtaining the write lock: another process may have initialized it.
+    if (db.handle.prepare(`SELECT 1 FROM queue_meta UNION ALL SELECT 1 FROM queue_jobs LIMIT 1`).get()) {
+      db.handle.exec("COMMIT");
+      return;
+    }
     const now = Date.now();
     const insert = db.handle.prepare(
       `INSERT OR IGNORE INTO queue_jobs (id, payload_json, status, enqueued_at, updated_at, linked_task_id) VALUES (?, ?, ?, ?, ?, ?)`,

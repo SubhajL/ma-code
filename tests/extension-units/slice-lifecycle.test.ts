@@ -1,3 +1,4 @@
+import { writeTasksState } from "../../.pi/agent/extensions/lib/tasks-state.ts";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -32,10 +33,7 @@ async function seedLifecycleRepo(options: {
   );
   await writeFile(join(cwd, "logs", "coding", "phase-6.md"), options.codingLog ?? "");
   await writeFile(join(cwd, "reports", "planning", "phase-6-plan.md"), options.planningLog ?? "");
-  await writeFile(
-    join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"),
-    JSON.stringify(options.tasks ?? { activeTaskId: "task-1", tasks: [] }, null, 2),
-  );
+  await writeTasksState(cwd, { version: 1, ...(options.tasks ?? { activeTaskId: null, tasks: [] }) as {activeTaskId: string | null; tasks: unknown[]} });
   return cwd;
 }
 
@@ -199,4 +197,10 @@ test("lifecycle evidence file must stay under reports/lifecycle", async () => {
     assessSliceLifecycle({ cwd, targetStage: "merge_ready", evidenceFile: "../outside.json" }),
     /repo-local JSON file under reports\/lifecycle/,
   );
+});
+
+test('slice task selection uses explicit canonical task ID, not another passing task',async()=>{
+ const cwd=await seedLifecycleRepo({codingLog,planningLog,tasks:validatedTaskState});
+ const result=await assessSliceLifecycle({cwd,evidenceBundle:{version:1,taskId:'missing'}});
+ assert.equal(result.evidence.taskValidated,false);
 });

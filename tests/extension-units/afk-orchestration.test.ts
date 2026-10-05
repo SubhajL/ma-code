@@ -1,3 +1,4 @@
+import { writeQueueState as writeCanonicalQueueState } from "../../.pi/agent/extensions/lib/queue-state.ts";
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -420,4 +421,13 @@ test("apply materializes mixed frontend/backend AFK jobs with explicit mixed-dom
   });
   assert.match(job.migrationPathNote ?? "", /mixed-domain/i);
   assert.match((job.escalationInstructions ?? []).join("\n"), /mixed-domain/i);
+});
+
+test('AFK status reads SQLite and ignores stale queue export',async()=>{
+ const cwd=await tempRepo(canonicalIssues());
+ await writeCanonicalQueueState(cwd,{version:1,paused:false,activeJobId:null,jobs:[{id:'afk-greenfield-scaffold-issue-002',status:'done',queueJobSource:{initiativeId:'greenfield-scaffold'}}]});
+ await writeFile(join(cwd,'.pi/agent/state/runtime/queue.json'),JSON.stringify({version:1,paused:false,activeJobId:null,jobs:[{id:'afk-greenfield-scaffold-issue-002',status:'blocked',queueJobSource:{initiativeId:'greenfield-scaffold'}}]}));
+ const result=await runAfkOrchestration({repoRoot:cwd,command:'status',initiativeId:'greenfield-scaffold'});
+ const records=[...result.eligibleIssues,...result.blockedIssues,...result.deferredIssues,...result.doneIssues];
+ assert.match(records.find(x=>x.issueId==='issue-002')?.reasons.join(' ')??'',/Current queue job status: done/);
 });

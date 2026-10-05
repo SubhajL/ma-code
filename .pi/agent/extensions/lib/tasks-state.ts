@@ -166,6 +166,9 @@ async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<vo
   // its transaction, and a second backfill inside the scope would issue a
   // BEGIN IMMEDIATE on a fresh connection that races the outer write lock.
   if (isInsideCoordinatedScope()) return;
+  // Initialized SQLite state is authoritative, including an intentionally empty snapshot.
+  if (db.handle.prepare(`SELECT 1 FROM active_task UNION ALL SELECT 1 FROM tasks LIMIT 1`).get()) return;
+
   const jsonFile = resolve(cwd, TASKS_FILE);
   if (!(await pathExists(jsonFile))) return;
 
@@ -193,6 +196,11 @@ async function backfillFromJsonIfPresent(db: RuntimeDb, cwd: string): Promise<vo
 
   db.handle.exec("BEGIN IMMEDIATE");
   try {
+    // Recheck after obtaining the write lock: another process may have initialized it.
+    if (db.handle.prepare(`SELECT 1 FROM active_task UNION ALL SELECT 1 FROM tasks LIMIT 1`).get()) {
+      db.handle.exec("COMMIT");
+      return;
+    }
     const insert = db.handle.prepare(
       `INSERT OR IGNORE INTO tasks (id, payload_json, status, updated_at) VALUES (?, ?, ?, ?)`,
     );

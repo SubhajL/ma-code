@@ -1,3 +1,4 @@
+import { readTasksState } from "./lib/tasks-state.ts";
 import { access, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -208,27 +209,20 @@ async function loadLifecycleEvidenceBundle(cwd: string, evidenceFile?: string, e
   return { bundle: normalizeLifecycleEvidenceBundle(JSON.parse(await readFile(path, "utf8"))), path };
 }
 
-async function loadTaskEvidence(cwd: string): Promise<{ taskReady: boolean; taskValidated: boolean }> {
-  const statePath = join(cwd, ".pi", "agent", "state", "runtime", "tasks.json");
-  const raw = await readTextIfExists(statePath);
-  if (!raw.trim()) return { taskReady: false, taskValidated: false };
-  try {
-    const parsed = JSON.parse(raw) as { activeTaskId?: string | null; tasks?: Array<Record<string, unknown>> };
-    const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
-    const active = tasks.find((task) => parsed.activeTaskId && task.id === parsed.activeTaskId) ?? tasks[0];
-    if (!active) return { taskReady: false, taskValidated: false };
-    const acceptance = active.acceptance ?? active.acceptanceCriteria;
-    const hasAcceptance = Array.isArray(acceptance) && acceptance.length > 0;
-    const status = String(active.status ?? "");
-    const validation = active.validation as { decision?: unknown } | undefined;
-    const validationDecision = String(validation?.decision ?? active.validationDecision ?? "");
-    return {
-      taskReady: hasAcceptance || ["in_progress", "review", "done"].includes(status),
-      taskValidated: validationDecision === "pass" || status === "done" || status === "review",
-    };
-  } catch {
-    return { taskReady: false, taskValidated: false };
-  }
+async function loadTaskEvidence(cwd: string, taskId?: string): Promise<{ taskReady: boolean; taskValidated: boolean }> {
+  const state = await readTasksState<Record<string, unknown>>(cwd);
+  const selectedId = taskId ?? state.activeTaskId;
+  const active = state.tasks.find((task) => task.id === selectedId);
+  if (!active) return { taskReady: false, taskValidated: false };
+  const acceptance = active.acceptance ?? active.acceptanceCriteria;
+  const hasAcceptance = Array.isArray(acceptance) && acceptance.length > 0;
+  const status = String(active.status ?? "");
+  const validation = active.validation as { decision?: unknown } | undefined;
+  const validationDecision = String(validation?.decision ?? active.validationDecision ?? "");
+  return {
+    taskReady: hasAcceptance || ["in_progress", "review", "done"].includes(status),
+    taskValidated: validationDecision === "pass" || status === "done" || status === "review",
+  };
 }
 
 function readGitState(cwd: string): { branch?: string; cleanBranch?: boolean } {
@@ -284,10 +278,10 @@ export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput 
   const planningText = planningLogPath ? await readTextIfExists(planningLogPath) : "";
   const explicitText = (input.explicitEvidence ?? []).join("\n");
   const combinedText = [currentLog, planningText, codingText, explicitText].join("\n");
-  const taskEvidence = await loadTaskEvidence(cwd);
   const git = readGitState(cwd);
   const lifecycleEvidence = await loadLifecycleEvidenceBundle(cwd, input.evidenceFile, input.evidenceBundle);
   const bundle = lifecycleEvidence.bundle;
+  const taskEvidence = await loadTaskEvidence(cwd, bundle?.taskId);
   const bundlePlanningReady = Boolean(
     bundle?.directImplementationExemption === true ||
     (bundle?.planning?.acceptanceCriteria && bundle.planning.acceptanceCriteria.length > 0) ||

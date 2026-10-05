@@ -1,3 +1,4 @@
+import { readQueueState } from "./lib/queue-state.ts";
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { delimiter, join, resolve } from "node:path";
 
@@ -733,16 +734,10 @@ function summarizeQueueJob(job: QueueJob, issue: AfkIssueArtifact, initiativeId:
 }
 
 async function readIssueQueueStatuses(repoRoot: string, initiativeId: string): Promise<Map<string, QueueJobStatus>> {
-  const queuePath = resolve(repoRoot, ".pi/agent/state/runtime/queue.json");
-  try {
-    const parsed = JSON.parse(await readFile(queuePath, "utf8")) as { jobs?: QueueJob[] };
-    return new Map((parsed.jobs ?? [])
-      .filter((job) => job.queueJobSource?.initiativeId === initiativeId)
-      .map((job) => [job.id, job.status]));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Map();
-    throw error;
-  }
+  const state = await readQueueState<QueueJob>(repoRoot);
+  return new Map(state.jobs
+    .filter((job) => job.queueJobSource?.initiativeId === initiativeId)
+    .map((job) => [job.id, job.status]));
 }
 
 async function latestAfkRun(repoRoot: string, initiativeId: string): Promise<AfkOrchestrationRun | null> {
