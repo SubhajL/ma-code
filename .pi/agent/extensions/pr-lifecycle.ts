@@ -245,9 +245,18 @@ async function readTaskReady(repoRoot: string, linkedTaskId: string | null, work
 
 function lifecycleFromWorker(worker: WorkerRunArtifact, taskReady: boolean): PrLifecycleRun["lifecycle"] {
   const changedFiles = worker.steps.coding?.changedFiles ?? [];
-  const validationPassed = worker.steps.validation?.status === "passed" && ((worker.steps.validation.results?.length ?? 0) > 0 || (worker.steps.validation.evidence?.length ?? 0) > 0);
-  const reviewVerdict = worker.steps.review?.verdict === "no_required_fixes" ? "no_required_fixes" : worker.steps.review?.verdict === "changes_required" ? "changes_required" : null;
-  const redGreenEvidence = Boolean(worker.steps.coding?.redResult || worker.steps.coding?.greenResult || worker.steps.coding?.redCommand || worker.steps.coding?.greenCommand);
+  const validation = worker.steps.validation;
+  const results = validation?.results ?? [];
+  const validationPassed = validation?.status === "passed" && results.length > 0 && results.every((result) => result.exitCode === 0);
+  const validationFailed = ["failed", "blocked"].includes(validation?.status ?? "") ||
+    results.some((result) => typeof result.exitCode === "number" && result.exitCode !== 0);
+  const review = worker.steps.review;
+  const reviewVerdict = review?.verdict === "changes_required" ? "changes_required" :
+    review?.status === "passed" && review.verdict === "no_required_fixes" && (review.evidence?.length ?? 0) > 0 ? "no_required_fixes" : null;
+  const coding = worker.steps.coding;
+  const redExit = coding?.redResult?.exitCode;
+  const redGreenEvidence = Boolean(coding?.redCommand?.trim() && coding?.greenCommand?.trim()) &&
+    typeof redExit === "number" && Number.isInteger(redExit) && redExit !== 0 && coding?.greenResult?.exitCode === 0;
   const planningReady = worker.steps.planning?.status === "passed";
   const createReady = worker.status === "review_ready" && planningReady && taskReady && redGreenEvidence && changedFiles.length > 0 && validationPassed && reviewVerdict === "no_required_fixes";
   return {
@@ -255,7 +264,7 @@ function lifecycleFromWorker(worker: WorkerRunArtifact, taskReady: boolean): PrL
     taskReady,
     redGreenEvidence,
     reviewVerdict,
-    validationDecision: validationPassed ? "pass" : "fail",
+    validationDecision: validationPassed ? "pass" : validationFailed ? "fail" : "pending",
     createReady,
     mergeReady: false,
   };

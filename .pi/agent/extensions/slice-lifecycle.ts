@@ -221,7 +221,7 @@ async function loadTaskEvidence(cwd: string, taskId?: string): Promise<{ taskRea
   const validationDecision = String(validation?.decision ?? active.validationDecision ?? "");
   return {
     taskReady: hasAcceptance || ["in_progress", "review", "done"].includes(status),
-    taskValidated: validationDecision === "pass" || status === "done" || status === "review",
+    taskValidated: validationDecision === "pass",
   };
 }
 
@@ -265,6 +265,17 @@ function nextActionsFor(stage: SliceLifecycleStage): string[] {
   return [`Collect evidence for ${next}.`, `Run harness-slice-lifecycle check --stage ${next} before claiming ${next}.`];
 }
 
+function loggedTestEvidence(text: string, phase: "RED" | "GREEN"): boolean {
+  const section = text.match(new RegExp(
+    String.raw`(?:^|\n)(?:#{1,6}\s*)?${phase} Evidence:?([\s\S]*?)(?=\n(?:#{1,6}\s|(?:RED|GREEN) Evidence)|$)`, "i",
+  ))?.[1] ?? "";
+  const command = /(?:^|\n)\s*-?\s*Command:\s*\S|\x60[^\x60\n]+\x60/i.test(section);
+  const outcome = phase === "RED"
+    ? /(?:Failure:\s*\S|Result:\s*(?:fail|failed)\b|exit(?: code|Code)?\s*[:=]\s*[1-9]\d*\b)/i.test(section)
+    : /(?:Result:\s*(?:pass|passed|success)\b|exit(?: code|Code)?\s*[:=]\s*0\b)/i.test(section);
+  return command && outcome;
+}
+
 export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput = {}): Promise<SliceLifecycleAssessment> {
   const cwd = resolve(input.cwd ?? process.cwd());
   await loadLifecyclePolicy(cwd);
@@ -288,15 +299,15 @@ export async function assessSliceLifecycle(input: SliceLifecycleAssessmentInput 
     (bundle?.planning?.tddSlice && bundle.planning.tddSlice.trim().length > 0),
   );
   const bundleTaskReady = Boolean(bundle?.task?.acceptanceCriteria && bundle.task.acceptanceCriteria.length > 0);
-  const bundleTaskValidated = bundle?.task?.validationDecision === "pass" || bundle?.task?.status === "review" || bundle?.task?.status === "done";
+  const bundleTaskValidated = bundle?.task?.validationDecision === "pass";
   const bundlePrGateClean = Boolean(
     bundle?.prGate?.status && /^(pass|passing|success)$/i.test(bundle.prGate.status) &&
     (!bundle.prGate.mergeStateStatus || /^(CLEAN|pass|passing|success)$/i.test(bundle.prGate.mergeStateStatus)),
   );
 
   const hasPlanningArtifact = Boolean(planningRel && planningText.trim() && /(acceptance criteria|tdd|implementation plan|planning)/i.test(planningText)) || bundlePlanningReady;
-  const red = /RED Evidence|\bRED\b/i.test(codingText) || bundle?.redGreenEvidence?.red === true;
-  const green = /GREEN Evidence|\bGREEN\b/i.test(codingText) || bundle?.redGreenEvidence?.green === true;
+  const red = loggedTestEvidence(codingText, "RED") || bundle?.redGreenEvidence?.red === true;
+  const green = loggedTestEvidence(codingText, "GREEN") || bundle?.redGreenEvidence?.green === true;
   const reviewVerdict = parseReviewVerdict(codingText) ?? bundle?.review?.verdict;
   const prUrl = parsePrUrl(combinedText) ?? bundle?.pr?.url;
   const prState = parsePrState(combinedText) ?? bundle?.pr?.state?.toUpperCase();

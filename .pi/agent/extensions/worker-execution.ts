@@ -671,7 +671,7 @@ async function ensureLinkedTask(repoRoot: string, run: WorkerExecutionRun, job: 
   });
 }
 
-async function recordTaskEvidence(repoRoot: string, taskId: string | null, evidence: string[], reviewReady: boolean, validationReady = false): Promise<void> {
+async function recordTaskEvidence(repoRoot: string, taskId: string | null, evidence: string[], reviewReady: boolean): Promise<void> {
   if (!taskId) return;
   const policy = await loadCompletionGatePolicy(repoRoot);
   await mutateTaskState(repoRoot, (state) => {
@@ -682,20 +682,6 @@ async function recordTaskEvidence(repoRoot: string, taskId: string | null, evide
     }
     if (reviewReady) {
       applyTaskUpdateAction(state, { action: "review", id: taskId, note: "Phase C worker execution reached review-ready boundary." }, policy);
-      if (validationReady) {
-        applyTaskUpdateAction(state, {
-          action: "validate",
-          id: taskId,
-          validationSource: "validator",
-          validationDecision: "pass",
-          validationChecklist: {
-            acceptance: "met",
-            tests: "met",
-            diff_review: "met",
-            evidence: "met",
-          },
-        }, policy);
-      }
     }
   });
 }
@@ -785,12 +771,12 @@ async function assessMixedDomainSalvage(input: {
   }
   if (!preservedDiff) return null;
 
-  const reviewable = validationPassed(validationResults, input.validationCommands) && input.reviewVerdict !== "changes_required";
+  const reviewable = validationPassed(validationResults, input.validationCommands) && input.reviewVerdict === "no_required_fixes";
   const stageLabel = input.stage === "implementation_failure" ? "implementation interruption" : "runtime interruption";
   const failureDetail = input.failureReason.replace(/^implementation command failed:\s*/i, "").trim();
   const reason = reviewable
     ? `Salvaged preserved mixed-domain diff after ${stageLabel}; trigger=${failureDetail}; local validation proof passed and the lane was promoted to review_ready.`
-    : `Salvaged preserved mixed-domain diff after ${stageLabel}; trigger=${failureDetail}; local validation proof is still missing so the lane remains resumable.`;
+    : `Salvaged preserved mixed-domain diff after ${stageLabel}; trigger=${failureDetail}; passing review or local validation proof is still missing so the lane remains resumable.`;
 
   return {
     salvage: {
@@ -806,12 +792,13 @@ async function assessMixedDomainSalvage(input: {
 }
 
 function reviewStepForVerdict(verdict: WorkerReviewVerdict, salvageReason?: string): WorkerExecutionRun["steps"]["review"] {
+  if (verdict === "not_run") return { status: "pending", verdict, findings: [], evidence: [] };
   return {
     status: verdict === "no_required_fixes" ? "passed" : "blocked",
     verdict,
     findings: verdict === "no_required_fixes" ? [] : ["Configured review verdict was changes_required."],
     evidence: [
-      "g-check review verdict recorded by Phase C worker execution artifact.",
+      `Explicit operator-supplied review verdict: ${verdict}.`,
       ...(salvageReason ? [`Salvage path: ${salvageReason}`] : []),
     ],
   };
@@ -855,7 +842,7 @@ async function finalizeReviewReadyRun(
     `Review Verdict: ${verdict}`,
     ...salvageTaskEvidence(salvage),
     "Unresolved risks: Phase C stops before PR/merge by design.",
-  ], true, run.steps.validation.status === "passed" && verdict === "no_required_fixes");
+  ], true);
   return run;
 }
 
@@ -1035,7 +1022,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
     run.steps.coding.evidence = workerExecutionPlan
       ? [`workerExecutionPlan: ${describeWorkerExecutionPlan(workerExecutionPlan)}`, commandSummary(implementation)]
       : [commandSummary(implementation)];
-    const verdict = input.reviewVerdict ?? "no_required_fixes";
+    const verdict = input.reviewVerdict ?? "not_run";
     if (implementation.exitCode !== 0) {
       const failureReason = `implementation command failed: ${commandSummary(implementation)}`;
       const salvage = await assessMixedDomainSalvage({
@@ -1062,7 +1049,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
           evidence: salvage.validationResults.map(commandSummary),
         };
         run.steps.review = reviewStepForVerdict(verdict, salvage.salvage.reason);
-        if (salvage.salvage.outcome === "reviewable") {
+        if (salvage.salvage.outcome === "reviewable" && verdict === "no_required_fixes") {
           return finalizeReviewReadyRun(repoRoot, run, salvage.salvage.preservedDiff, verdict, salvage.salvage);
         }
         return blockRun(repoRoot, run, salvage.salvage.reason, "blocked");
@@ -1086,7 +1073,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
       }
     }
     run.steps.validation = { status: "passed", commands: run.steps.validation.commands, results: validationResults, evidence: validationResults.map(commandSummary) };
-    if (input.redCommand && validationResults[0]) {
+    if (validationResults[0]) {
       run.steps.coding.greenCommand = validationResults[0].command;
       run.steps.coding.greenResult = validationResults[0];
     }
@@ -1097,10 +1084,12 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
 
     run.steps.review = reviewStepForVerdict(verdict);
     if (verdict === "changes_required") return blockRun(repoRoot, run, "review changes required");
+    if (verdict === "not_run") return blockRun(repoRoot, run, "review evidence pending; run g-check and record an explicit verdict");
 
     return finalizeReviewReadyRun(repoRoot, run, finalChangedFiles, verdict);
   } catch (error) {
     const failureReason = (error as Error).message;
+    const verdict = input.reviewVerdict ?? "not_run";
     const salvage = await assessMixedDomainSalvage({
       job: context.job,
       worktreePath: run.worktree.path,
@@ -1109,7 +1098,7 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
       timeoutSeconds: input.maxRuntimeSeconds ?? 1,
       stage: "runtime_interruption",
       failureReason,
-      reviewVerdict: input.reviewVerdict ?? "no_required_fixes",
+      reviewVerdict: verdict,
     });
     if (salvage) {
       run.salvage = salvage.salvage;
@@ -1124,9 +1113,9 @@ export async function runWorkerExecution(input: WorkerExecutionInput): Promise<W
         results: salvage.validationResults,
         evidence: salvage.validationResults.map(commandSummary),
       };
-      run.steps.review = reviewStepForVerdict(input.reviewVerdict ?? "no_required_fixes", salvage.salvage.reason);
-      if (salvage.salvage.outcome === "reviewable") {
-        return finalizeReviewReadyRun(repoRoot, run, salvage.salvage.preservedDiff, input.reviewVerdict ?? "no_required_fixes", salvage.salvage);
+      run.steps.review = reviewStepForVerdict(verdict, salvage.salvage.reason);
+      if (salvage.salvage.outcome === "reviewable" && verdict === "no_required_fixes") {
+        return finalizeReviewReadyRun(repoRoot, run, salvage.salvage.preservedDiff, verdict, salvage.salvage);
       }
       return blockRun(repoRoot, run, salvage.salvage.reason, "blocked");
     }

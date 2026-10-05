@@ -133,7 +133,7 @@ test("create accepts untracked directory entries when expected changed files liv
           greenResult: { command: "node -e \"process.exit(0)\"", exitCode: 0, stdout: "", stderr: "", durationMs: 1 },
         },
         validation: { status: "passed", evidence: ["ok"], results: [{ command: "ok", exitCode: 0, stdout: "", stderr: "", durationMs: 1 }] },
-        review: { status: "passed", verdict: "no_required_fixes" },
+        review: { status: "passed", verdict: "no_required_fixes", evidence: ["Explicit review performed: no_required_fixes"] },
       },
     },
     taskEvidence,
@@ -315,4 +315,39 @@ test('canonical task failure cannot borrow a passing worker-worktree task', asyn
   const result=await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-green'},{runner:fakeRunner([]),dirtyFiles:async()=>[]});
   assert.equal(result.lifecycle.taskReady,false);
   assert.equal(result.lifecycle.createReady,false);
+});
+
+test('PR readiness requires both failing RED and passing GREEN results',async()=>{
+ for(const [red,green] of [[undefined,undefined],[undefined,0],[0,0],[1,1]]) {
+  const {cwd,workerPath}=await writeFixture();
+  const worker=JSON.parse(await readFile(workerPath,'utf8'));
+  worker.steps.coding.redResult=red===undefined?null:{exitCode:red};
+  worker.steps.coding.greenResult=green===undefined?null:{exitCode:green};
+  await writeFile(workerPath,JSON.stringify(worker));
+  const result=await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-green'},{runner:fakeRunner([]),dirtyFiles:async()=>[]});
+  assert.equal(result.lifecycle.redGreenEvidence,false);
+  assert.equal(result.lifecycle.createReady,false);
+ }
+});
+
+test('missing validation outcomes stay pending while recorded failures stay failed',async()=>{
+ for(const [validation,expected] of [[undefined,'pending'],[{status:'passed',evidence:['passed']},'pending'],[{status:'passed',results:[{exitCode:1}]},'fail']]) {
+  const {cwd,workerPath}=await writeFixture();
+  const worker=JSON.parse(await readFile(workerPath,'utf8'));
+  worker.steps.validation=validation;
+  await writeFile(workerPath,JSON.stringify(worker));
+  const result=await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-green'},{runner:fakeRunner([]),dirtyFiles:async()=>[]});
+  assert.equal(result.lifecycle.validationDecision,expected);
+  assert.equal(result.lifecycle.createReady,false);
+ }
+});
+
+test('PR readiness does not infer review from a verdict on an unperformed review step',async()=>{
+ const {cwd,workerPath}=await writeFixture();
+ const worker=JSON.parse(await readFile(workerPath,'utf8'));
+ worker.steps.review={status:'pending',verdict:'no_required_fixes',evidence:[]};
+ await writeFile(workerPath,JSON.stringify(worker));
+ const result=await runPrLifecycle({repoRoot:cwd,command:'dry-run',initiativeId:'greenfield-scaffold',workerRunId:'worker-green'},{runner:fakeRunner([]),dirtyFiles:async()=>[]});
+ assert.equal(result.lifecycle.reviewVerdict,null);
+ assert.equal(result.lifecycle.createReady,false);
 });

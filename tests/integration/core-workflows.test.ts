@@ -588,7 +588,7 @@ test("slice lifecycle helper derives create_ready from existing planning, coding
   await copyFixtureRepoFile(cwd, ".pi/agent/lifecycle/slice-lifecycle-policy.json");
   await writeFile(join(cwd, "logs", "CURRENT.md"), "# Current Harness Logs\n\n## Current coding log\n- `logs/coding/current.md`\n\n## Current planning log\n- `reports/planning/current-plan.md`\n");
   await writeFile(join(cwd, "reports", "planning", "current-plan.md"), "# Plan\n\n## Acceptance Criteria\n- Lifecycle evidence is assessable.\n\n## TDD Slice\n- tracer behavior.\n");
-  await writeFile(join(cwd, "logs", "coding", "current.md"), "# Coding\n\n### RED Evidence\n- Command: fail first.\n\n### GREEN Evidence\n- Command: pass now.\n\n## Review (2026-05-07) - working-tree\n\n### Findings\nCRITICAL\n- none\n\nHIGH\n- none\n\nReview Verdict: no_required_fixes\n");
+  await writeFile(join(cwd, "logs", "coding", "current.md"), "# Coding\n\n### RED Evidence\n- Command: node --test tests/lifecycle.test.ts\n- Exit code: 1\n\n### GREEN Evidence\n- Command: node --test tests/lifecycle.test.ts\n- Exit code: 0\n\n## Review (2026-05-07) - working-tree\n\n### Findings\nCRITICAL\n- none\n\nHIGH\n- none\n\nReview Verdict: no_required_fixes\n");
   await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "tasks.json"), JSON.stringify({
     activeTaskId: "task-lifecycle",
     tasks: [{ id: "task-lifecycle", status: "review", taskClass: "implementation", acceptance: ["Lifecycle evidence is assessable"], validation: { decision: "pass", source: "validator" } }],
