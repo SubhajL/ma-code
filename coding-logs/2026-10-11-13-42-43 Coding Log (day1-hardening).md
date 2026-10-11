@@ -104,3 +104,34 @@ having no hooks, as today); nested runtime `*.json` not ignored (noted: nothing 
 
 Hook behaviour verified in scratch with a fake `npm`: clean push runs the check with `GIT_DIR` unset; untracked file and
 non-HEAD pushes warn; delete-only push skips; failing check blocks. Real-suite push from a linked worktree: base repo unchanged.
+
+## Landing record
+
+Each slice was rebased onto the latest `main`, re-gated, and admin-merged (CI: "The job was not started because your account is
+locked due to a billing issue", 0 steps — standing operator authorization for admin merge).
+
+| Slice | PR | Gate on its own rebased tree |
+|---|---|---|
+| S1 | #258 | typecheck · unit 702/702 · static OK |
+| S2 | #259 | typecheck · unit 703/703 · static OK |
+| S3 | #260 | typecheck · unit 704/704 · orchestrator-run integration 7/7 · static OK |
+| S4 | #261 | typecheck · unit 704/704 · **integration 187/187** (STITCH_API_KEY set) · static OK |
+| S5 | #262 | fresh `npm ci` (203 pkgs) + **`npm run check` exit 0** (27 s) |
+| S6 | this PR | `npm run check` exit 0; pushed through the installed pre-push hook from a linked worktree |
+
+Hook installed after #262: local `core.hooksPath` changed from `/Users/subhajlimanond/dev/ma-code/.git/hooks` (samples only) to
+`.githooks`. Rollback: `git config core.hooksPath /Users/subhajlimanond/dev/ma-code/.git/hooks`.
+
+## Open items
+
+- **Escalated — real-pi tool conflicts on main.** pi's loader reports three conflicts (`resolve_recovery_policy`,
+  `resolve_recovery_runtime_decision`, `generate_task_packet`) because the facade files are auto-loaded alongside their split
+  modules and in-module guards cannot see across pi's per-file module instances. Needs an operator decision (explicit extension
+  list vs. no-op facades vs. moving facades), coordinated with the H3b worktrees that edit `core-workflows.test.ts`.
+- **Routing owner:** frontend "stronger" override goes Opus → gpt-5.5; phase-lane vs role fallback disagree after an Opus outage.
+- **Packaging parity:** `harness:install` does not ship `check`/`.githooks`; templates (`package.template.json`,
+  `models.template.json`) lag.
+- **Hook scope:** the check runs against the working tree, not an isolated checkout of the pushed commit (warnings cover the gap).
+- **Operator checkout** `fix/pi-extension-conflicts` (dirty, based on 493bb70): every tracked change is now on main or superseded
+  (table above); switching it to `main` is left to the operator (no agent stash/reset).
+- Node 22 not validated locally (Node 26 only).

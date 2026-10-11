@@ -1566,7 +1566,7 @@ phase_profiles = models_json.get("phase_routing_profiles", {})
 assert set(phase_profiles) == {"screen_design", "frontend_implementation", "backend_implementation"}
 for lane, expected_target, expected_model, expected_fallback in [
     ("screen_design", "gpt-5.5", "openai-codex/gpt-5.5", "openai-codex/gpt-5.5"),
-    ("frontend_implementation", "gpt-5.3-codex-spark", "openai-codex/gpt-5.3-codex-spark", "openai-codex/gpt-5.5"),
+    ("frontend_implementation", "claude-opus-4-7", "anthropic/claude-opus-4-7", "openai-codex/gpt-5.3-codex-spark"),
     ("backend_implementation", "gpt-5.3-codex-spark", "openai-codex/gpt-5.3-codex-spark", "openai-codex/gpt-5.5"),
 ]:
     profile = phase_profiles[lane]

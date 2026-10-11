@@ -35,6 +35,7 @@ function clone<T>(value: T): T {
 }
 
 const DEFAULT_HIGH_MODEL = "openai-codex/gpt-5.5";
+const FRONTEND_WORKER_MODEL = "anthropic/claude-opus-4-7";
 const CODING_WORKER_MODEL = "openai-codex/gpt-5.3-codex-spark";
 
 test("default g-check and subsequent routes use gpt-5.5 high", async () => {
@@ -47,9 +48,18 @@ test("default g-check and subsequent routes use gpt-5.5 high", async () => {
   }
 });
 
-test("g-coding implementation workers use codex spark high by default", async () => {
+test("frontend implementation worker uses Claude Opus high by default", async () => {
   const config = await repoConfig();
-  for (const role of ["frontend_worker", "backend_worker", "infra_worker"] as const) {
+  const result = resolveHarnessRoute(config, { role: "frontend_worker" });
+  assert.equal(result.selectedModelId, FRONTEND_WORKER_MODEL, "frontend_worker default model");
+  assert.equal(result.selectedProvider, "anthropic", "frontend_worker provider");
+  assert.equal(result.thinking, "high", "frontend_worker thinking");
+  assert.equal(result.source, "default", "frontend_worker source");
+});
+
+test("backend and infra implementation workers keep codex spark high by default", async () => {
+  const config = await repoConfig();
+  for (const role of ["backend_worker", "infra_worker"] as const) {
     const result = resolveHarnessRoute(config, { role });
     assert.equal(result.selectedModelId, CODING_WORKER_MODEL, `${role} default model`);
     assert.equal(result.selectedProvider, "openai-codex", `${role} provider`);
@@ -83,7 +93,7 @@ test("backend phase lane uses verified g-coding spark high", async () => {
   assert.equal(result.thinking, "high");
 });
 
-test("screen phase uses default gpt-5.5 while frontend implementation uses spark", async () => {
+test("screen phase uses default gpt-5.5 while frontend implementation uses Claude Opus", async () => {
   const config = await repoConfig();
   const screen = resolveHarnessRoute(config, { role: "planning_lead", phaseLane: "screen_design" });
   const frontend = resolveHarnessRoute(config, { role: "frontend_worker", phaseLane: "frontend_implementation" });
@@ -92,7 +102,7 @@ test("screen phase uses default gpt-5.5 while frontend implementation uses spark
   assert.equal(screen.selectedModelId, DEFAULT_HIGH_MODEL);
   assert.equal(screen.thinking, "high");
   assert.equal(frontend.phaseRoutingSource, "verified_model");
-  assert.equal(frontend.selectedModelId, CODING_WORKER_MODEL);
+  assert.equal(frontend.selectedModelId, FRONTEND_WORKER_MODEL);
   assert.equal(frontend.thinking, "high");
 });
 
@@ -124,7 +134,7 @@ test("unavailable phase profile falls back with warning", async () => {
 
   assert.equal(result.phaseRoutingSource, "fallback_unavailable");
   assert.equal(result.requestedModelVerificationStatus, "unavailable");
-  assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(result.selectedModelId, CODING_WORKER_MODEL);
   assert.match(result.policyNotes.join("\n"), /unavailable/);
 });
 
@@ -333,14 +343,16 @@ test("parseHarnessRoutingConfig keeps every role's allowed_overrides identical t
     "docs_worker",
     "recovery_worker",
   ] as const;
-  const implementationRoles = ["frontend_worker", "backend_worker", "infra_worker"] as const;
+  const codexImplementationRoles = ["backend_worker", "infra_worker"] as const;
   const reasoningExpected = ["openai-codex/gpt-5.3-codex-spark", "anthropic/claude-opus-4-7", "anthropic/claude-sonnet-4-6"];
-  const implementationExpected = ["openai-codex/gpt-5.5", "anthropic/claude-sonnet-4-6", "anthropic/claude-opus-4-7"];
+  const codexImplementationExpected = ["openai-codex/gpt-5.5", "anthropic/claude-sonnet-4-6", "anthropic/claude-opus-4-7"];
+  const frontendExpected = ["openai-codex/gpt-5.3-codex-spark", "openai-codex/gpt-5.5", "anthropic/claude-sonnet-4-6"];
   for (const role of reasoningRoles) {
     assert.deepEqual(config.routing_defaults[role].allowed_overrides, reasoningExpected, `${role} allowed_overrides`);
   }
-  for (const role of implementationRoles) {
-    assert.deepEqual(config.routing_defaults[role].allowed_overrides, implementationExpected, `${role} allowed_overrides`);
+  assert.deepEqual(config.routing_defaults.frontend_worker.allowed_overrides, frontendExpected, "frontend_worker allowed_overrides");
+  for (const role of codexImplementationRoles) {
+    assert.deepEqual(config.routing_defaults[role].allowed_overrides, codexImplementationExpected, `${role} allowed_overrides`);
   }
 });
 

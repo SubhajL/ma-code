@@ -272,9 +272,9 @@ const cases = [
     expected: { selectedModelId: "openai-codex/gpt-5.5", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
   },
   {
-    name: "frontend phase fallback",
+    name: "frontend phase profile",
     input: { role: "frontend_worker", phaseLane: "frontend_implementation" },
-    expected: { selectedModelId: "openai-codex/gpt-5.3-codex-spark", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
+    expected: { selectedModelId: "anthropic/claude-opus-4-7", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
   },
   {
     name: "backend phase fallback",

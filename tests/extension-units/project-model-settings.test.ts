@@ -25,8 +25,8 @@ test("project Pi settings scope /model to anthropic opus and codex gpt-5 choices
   const settings = await readProjectSettings();
 
   assert.deepEqual(settings.enabledModels, [
-    "anthropic/claude-opus-4.7",
-    "anthropic/claude-opus-4.6",
+    "anthropic/claude-opus-4-7",
+    "anthropic/claude-opus-4-6",
     "openai-codex/gpt-5.3-codex",
     "openai-codex/gpt-5.3-codex-spark",
     "openai-codex/gpt-5.4",

@@ -314,6 +314,7 @@ model_weights = {
     "gpt-5.4": 1.0,
     "claude-sonnet-4-6": 1.3,
     "claude-opus-4-5": 1.8,
+    "claude-opus-4-7": 1.8,
 }
 thinking_weights = {
     "off": 0.45,
