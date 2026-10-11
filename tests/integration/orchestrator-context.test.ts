@@ -9,9 +9,8 @@ import { promisify } from "node:util";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const rootRepoForDeps = process.env.HARNESS_SOURCE_ROOT ?? "/Users/subhajlimanond/dev/ma-code";
-const rootRequire = createRequire(join(rootRepoForDeps, "package.json"));
-const tsxImport = process.env.TSX_IMPORT_PATH ?? process.env.HARNESS_TSX_IMPORT ?? rootRequire.resolve("tsx/dist/loader.mjs");
+const rootRepoForDeps = process.env.HARNESS_SOURCE_ROOT ?? repoRoot;
+const tsxImport = process.env.TSX_IMPORT_PATH ?? process.env.HARNESS_TSX_IMPORT ?? createRequire(join(rootRepoForDeps, "package.json")).resolve("tsx");
 
 async function runOrchestrate(args: string[]) {
   return execFile("node", ["--import", tsxImport, "scripts/harness-orchestrate.ts", ...args], { cwd: repoRoot, env: { ...process.env, TSX_IMPORT_PATH: tsxImport, HARNESS_TSX_IMPORT: tsxImport }, maxBuffer: 1024 * 1024 });

@@ -1,19 +1,29 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { promisify } from "node:util";
 import test from "node:test";
 
+import { readTasksState, writeTasksState } from "../../.pi/agent/extensions/lib/tasks-state.ts";
+
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 const tsxImport = process.env.TSX_IMPORT_PATH ?? join(repoRoot, "node_modules", "tsx", "dist", "loader.mjs");
 
+interface ReconcileTask {
+  id: string;
+  status: string;
+  validation: { decision: string };
+  evidence: string[];
+  notes: string[];
+}
+
 async function writeFixture(): Promise<string> {
   const cwd = await mkdtemp(join(tmpdir(), "task-reconcile-"));
-  await mkdir(join(cwd, ".pi/agent/state/runtime"), { recursive: true });
-  await writeFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({
+  // Seed the canonical SQLite task store (ADR-0001), not the legacy tasks.json export.
+  await writeTasksState(cwd, {
     version: 1,
     activeTaskId: "task-active",
     tasks: [
@@ -44,7 +54,7 @@ async function writeFixture(): Promise<string> {
         timestamps: { createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" },
       },
     ],
-  }, null, 2)}\n`, "utf8");
+  });
   return cwd;
 }
 
@@ -68,8 +78,9 @@ test("harness task reconcile supersedes a blocked historical task without distur
   assert.equal(payload.previousStatus, "blocked");
   assert.equal(payload.status, "done");
 
-  const state = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8"));
-  const task = state.tasks.find((candidate: { id: string }) => candidate.id === "task-blocked");
+  const state = await readTasksState<ReconcileTask>(cwd);
+  const task = state.tasks.find((candidate) => candidate.id === "task-blocked");
+  assert.ok(task);
   assert.equal(state.activeTaskId, "task-active");
   assert.equal(task.status, "done");
   assert.equal(task.validation.decision, "overridden");
@@ -90,7 +101,8 @@ test("harness task reconcile refuses when evidence fails", async () => {
     "--evidence-command", "node -e \"process.exit(9)\"",
   ], { cwd }), /evidence command failed/);
 
-  const state = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), "utf8"));
-  const task = state.tasks.find((candidate: { id: string }) => candidate.id === "task-blocked");
+  const state = await readTasksState<ReconcileTask>(cwd);
+  const task = state.tasks.find((candidate) => candidate.id === "task-blocked");
+  assert.ok(task);
   assert.equal(task.status, "blocked");
 });

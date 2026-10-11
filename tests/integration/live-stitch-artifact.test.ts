@@ -89,10 +89,11 @@ async function writeFakeProvider(repoPath: string): Promise<string> {
 }
 
 async function runLiveStitch(repoPath: string, args: string[], env: NodeJS.ProcessEnv = {}) {
+  const { STITCH_API_KEY: _ambientStitchKey, ...ambientEnv } = process.env;
   return execFile(process.execPath, ["--import", tsxImportPath, scriptPath, ...args], {
     cwd: repoPath,
     encoding: "utf8",
-    env: { ...process.env, ...env },
+    env: { ...ambientEnv, ...env },
   });
 }
 

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
-import { mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+
+import { writeTasksState } from "../../.pi/agent/extensions/lib/tasks-state.ts";
 
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
@@ -35,7 +37,7 @@ async function fixture(): Promise<string> {
     worktree: { path: cwd, branch: "worker/worker-green-issue-002", baseRef: "main", leaseId: null },
     steps: {
       planning: { status: "passed", evidence: ["planned"] },
-      coding: { status: "passed", changedFiles: ["docs/initiatives/greenfield-scaffold/change.md"], redResult: { exitCode: 1 }, greenResult: { exitCode: 0 } },
+      coding: { status: "passed", changedFiles: ["docs/initiatives/greenfield-scaffold/change.md"], redCommand: "node -e \"process.exit(1)\"", redResult: { exitCode: 1 }, greenCommand: "node", greenResult: { exitCode: 0 } },
       validation: { status: "passed", evidence: ["node passed"], results: [{ command: "node", exitCode: 0 }] },
       review: { status: "passed", verdict: "no_required_fixes", evidence: ["Review Verdict: no_required_fixes"], findings: [] }
     },
@@ -47,7 +49,7 @@ async function fixture(): Promise<string> {
     updatedAt: "2026-05-09T00:00:00.000Z"
   };
   await writeFile(join(cwd, "docs/initiatives/greenfield-scaffold/worker-runs/worker-green.json"), `${JSON.stringify(worker, null, 2)}\n`, "utf8");
-  await writeFile(join(cwd, ".pi/agent/state/runtime/tasks.json"), `${JSON.stringify({ version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: ["Changed files: docs/initiatives/greenfield-scaffold/change.md", "Validation: node passed", "Review Verdict: no_required_fixes"], validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] }, null, 2)}\n`, "utf8");
+  await writeTasksState(cwd, { version: 1, activeTaskId: "task-1", tasks: [{ id: "task-1", title: "Task", owner: "docs_worker", status: "review", taskClass: "implementation", acceptance: ["ok"], evidence: ["Changed files: docs/initiatives/greenfield-scaffold/change.md", "Validation: node passed", "Review Verdict: no_required_fixes"], validation: { decision: "pass" }, notes: [], timestamps: { createdAt: "now", updatedAt: "now" } }] });
   return cwd;
 }
 

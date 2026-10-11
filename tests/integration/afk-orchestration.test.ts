@@ -6,6 +6,8 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
+import { readQueueState } from "../../.pi/agent/extensions/lib/queue-state.ts";
+
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 const tsxImport = process.env.TSX_IMPORT_PATH ?? join(repoRoot, "node_modules", "tsx", "dist", "loader.mjs");
@@ -21,6 +23,8 @@ async function writeFixture(cwd: string): Promise<void> {
   await writeFile(join(root, "issues.json"), `${JSON.stringify({ version: 1, initiativeId: "greenfield-scaffold", issues }, null, 2)}\n`, "utf8");
   await writeFile(join(root, "slice-plan.json"), "{\"version\":1}\n", "utf8");
   await writeFile(join(root, "pipeline.json"), "{\"version\":1}\n", "utf8");
+  // A done HITL dependency only resolves once the artifacts it declares exist on disk.
+  await writeFile(join(cwd, "docs", "foundation.md"), "# Approved foundation\n", "utf8");
   for (const issue of issues) {
     await writeFile(join(root, "slices", `${issue.issueId}.summary.json`), `${JSON.stringify({ version: 1, issueId: issue.issueId, summary: { sliceId: issue.issueId, filesToModify: issue.filesToModify, allowedPaths: issue.allowedPaths } }, null, 2)}\n`, "utf8");
   }
@@ -50,11 +54,11 @@ test("CLI apply --queue-only writes queue and run artifact while status reports 
   await writeFixture(cwd);
 
   await runCli(cwd, ["apply", "--queue-only", "--initiative", "greenfield-scaffold", "--run-id", "afk-cli-run", "--json"]);
-  const queue = JSON.parse(await readFile(join(cwd, ".pi/agent/state/runtime/queue.json"), "utf8"));
+  const queue = await readQueueState<{ queueJobSource?: { kind?: string } }>(cwd);
   const status = JSON.parse((await runCli(cwd, ["status", "--initiative", "greenfield-scaffold", "--explain", "issue-003", "--json"])).stdout);
 
   assert.equal(queue.jobs.length, 2);
-  assert.ok(queue.jobs.every((job: { queueJobSource?: { kind?: string } }) => job.queueJobSource?.kind === "issue-materialization"));
+  assert.ok(queue.jobs.every((job) => job.queueJobSource?.kind === "issue-materialization"));
   assert.equal(JSON.parse(await readFile(join(cwd, "docs/initiatives/greenfield-scaffold/afk-runs/afk-cli-run.json"), "utf8")).runId, "afk-cli-run");
   assert.match(status.explainIssue.reasons.join(" "), /Current queue job status: queued/);
 });
