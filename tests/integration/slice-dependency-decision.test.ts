@@ -48,7 +48,14 @@ test("harness-slice-dependencies returns JSON decision for valid disjoint artifa
   assert.equal(decision.decision, "allowed");
   assert.deepEqual(decision.sliceIds, ["slice-001", "slice-002"]);
   assert.equal(decision.recommendedExecution, "parallel_candidate");
-  assert.match(result.stderr, /^$/);
+  // Newer Node releases print a runtime deprecation notice for the tsx loader
+  // hook; that two-line notice is the only stderr the CLI may produce.
+  const unexpectedStderr = result.stderr
+    .split("\n")
+    .filter((line) => line.trim()
+      && !/^\(node:\d+\) \[DEP0205\] DeprecationWarning: /.test(line)
+      && !/^\(Use `node --trace-deprecation \.\.\.` to show where the warning was created\)$/.test(line));
+  assert.deepEqual(unexpectedStderr, []);
   await assert.rejects(readFile(join(tempRoot, ".pi", "agent", "state", "runtime", "queue.json")), /ENOENT/);
 });
 

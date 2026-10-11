@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
 
+import { writeQueueState } from "../../.pi/agent/extensions/lib/queue-state.ts";
+
 const execFile = promisify(execFileCallback);
 const repoRoot = resolve(new URL("../..", import.meta.url).pathname);
 
@@ -59,7 +61,7 @@ async function writeFixture(): Promise<string> {
   // backfill (which archives the JSON after import) doesn't leave the worktree
   // dirty for git-status checks.
   await writeFile(join(cwd, ".gitignore"), ".pi/agent/state/runtime/\n", "utf8");
-  await writeFile(join(cwd, ".pi/agent/state/runtime/queue.json"), `${JSON.stringify({ version: 1, paused: false, activeJobId: null, jobs: [{
+  await writeQueueState(cwd, { version: 1, paused: false, activeJobId: null, jobs: [{
     id: "afk-greenfield-scaffold-issue-002",
     goal: "Update docs",
     priority: "medium",
@@ -74,7 +76,7 @@ async function writeFixture(): Promise<string> {
     assignedRole: "docs_worker",
     implementationCommand: "node -e \"require('fs').writeFileSync('docs/initiatives/greenfield-scaffold/notes.md','phase-c-proof\\n')\"",
     queueJobSource: { kind: "issue-materialization", initiativeId: "greenfield-scaffold", issueId: "issue-002" }
-  }] }, null, 2)}\n`, "utf8");
+  }] });
   await git(cwd, ["init", "-b", "main"]);
   await git(cwd, ["config", "user.email", "test@example.com"]);
   await git(cwd, ["config", "user.name", "Test User"]);
@@ -103,9 +105,14 @@ test("CLI dry-run/status/explain-run and run enforce Phase C boundaries", async 
   const run = JSON.parse((await runCli(cwd, [
     "run", "--initiative", "greenfield-scaffold", "--job-id", "afk-greenfield-scaffold-issue-002", "--run-id", "worker-cli",
     "--base-ref", "main", "--max-steps", "4", "--max-runtime-seconds", "10",
-    "--validation-command", "node -e \"process.exit(0)\"", "--json",
+    "--validation-command", "node -e \"process.exit(0)\"",
+    // A run only reaches review_ready with an explicit review verdict; a missing
+    // review stays pending and blocks the run (#257).
+    "--review-verdict", "no_required_fixes", "--json",
   ])).stdout);
   assert.equal(run.status, "review_ready");
+  assert.equal(run.steps.review.status, "passed");
+  assert.equal(run.steps.review.verdict, "no_required_fixes");
   assert.equal(run.prBoundary.prCreated, false);
 
   const status = JSON.parse((await runCli(cwd, ["status", "--initiative", "greenfield-scaffold", "--run-id", "worker-cli", "--json"])).stdout);

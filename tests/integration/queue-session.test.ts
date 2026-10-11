@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { execFile as execFileWithCallback } from "node:child_process";
 import { promisify } from "node:util";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import queueRunner, { runBoundedQueueSession } from "../../.pi/agent/extensions/queue-runner.ts";
@@ -14,6 +14,8 @@ import {
   parseHarnessQueueSessionArgs,
   renderHarnessQueueSession,
 } from "../../scripts/harness-queue-session.ts";
+import { writeExecutionLeaseState } from "../../.pi/agent/extensions/execution-leases.ts";
+import { readQueueState, writeQueueState, type QueueStateShape } from "../../.pi/agent/extensions/lib/queue-state.ts";
 import { FakePi, copyFixtureRepoFile, makeCtx, makeTempRepo } from "../extension-units/test-utils.ts";
 
 const execFile = promisify(execFileWithCallback);
@@ -38,10 +40,8 @@ async function setupQueueSessionRepo(prefix: string) {
     await copyFixtureRepoFile(cwd, relativePath);
   }
 
-  await writeFile(
-    join(cwd, ".pi", "agent", "state", "runtime", "queue.json"),
-    JSON.stringify({ version: 1, paused: false, activeJobId: null, jobs: [] }, null, 2),
-  );
+  // Queue state lives in the canonical SQLite store (ADR-0001), not the legacy queue.json export.
+  await writeQueueState(cwd, { version: 1, paused: false, activeJobId: null, jobs: [] });
 
   const pi = new FakePi("feat/queue-session-tests");
   tillDone(pi as any);
@@ -97,23 +97,21 @@ function withImplementationQueueTddSlices(queue: unknown): unknown {
   };
 }
 
-async function writeQueue(cwd: string, queue: unknown) {
-  await writeFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), `${JSON.stringify(withImplementationQueueTddSlices(queue), null, 2)}\n`);
+interface QueueSessionJob {
+  id: string;
+  status: string;
+  linkedTaskId?: string | null;
+  scheduledWorkflowId?: string | null;
+  scheduledRunKey?: string | null;
+  lastRecoveryAction?: string | null;
 }
 
-async function readQueue(cwd: string) {
-  return JSON.parse(await readFile(join(cwd, ".pi", "agent", "state", "runtime", "queue.json"), "utf8")) as {
-    activeJobId: string | null;
-    paused: boolean;
-    jobs: Array<{
-      id: string;
-      status: string;
-      linkedTaskId?: string | null;
-      scheduledWorkflowId?: string | null;
-      scheduledRunKey?: string | null;
-      lastRecoveryAction?: string | null;
-    }>;
-  };
+async function writeQueue(cwd: string, queue: unknown) {
+  await writeQueueState(cwd, withImplementationQueueTddSlices(queue) as QueueStateShape<Record<string, unknown>>);
+}
+
+async function readQueue(cwd: string): Promise<QueueStateShape<QueueSessionJob>> {
+  return readQueueState<QueueSessionJob>(cwd);
 }
 
 async function finalizeTaskPass(taskUpdate: (params: Record<string, unknown>) => Promise<any>, taskId: string, note: string) {
@@ -451,27 +449,19 @@ test("bounded queue session stops immediately when a queue-session lease is alre
       },
     ],
   });
-  await writeFile(
-    join(cwd, ".pi", "agent", "state", "runtime", "leases.json"),
-    `${JSON.stringify(
+  await writeExecutionLeaseState(cwd, {
+    version: 1,
+    leases: [
       {
-        version: 1,
-        leases: [
-          {
-            id: "lease-existing-queue-session",
-            scope: "queue-session",
-            owner: "other-runner",
-            acquiredAt: "2026-05-06T00:00:00.000Z",
-            expiresAt: "2999-01-01T00:00:00.000Z",
-            heartbeatAt: null,
-          },
-        ],
+        id: "lease-existing-queue-session",
+        scope: "queue-session",
+        owner: "other-runner",
+        acquiredAt: "2026-05-06T00:00:00.000Z",
+        expiresAt: "2999-01-01T00:00:00.000Z",
+        heartbeatAt: null,
       },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
+    ],
+  });
 
   const view = await buildHarnessQueueSession({ cwd, maxSteps: 5, maxRuntimeSeconds: 60, recentLimit: 5 });
   const queueState = await readQueue(cwd);

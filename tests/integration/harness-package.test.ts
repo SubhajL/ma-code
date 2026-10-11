@@ -4,7 +4,9 @@ import test from "node:test";
 import { createRequire } from "node:module";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import {
@@ -17,9 +19,14 @@ import {
 const execFile = promisify(execFileCallback);
 const tsxImportPath = process.env.TSX_IMPORT_PATH ?? createRequire(import.meta.url).resolve("tsx");
 
+// validate-harness-package.sh runs these tests from a scratch runtime and points
+// HARNESS_SOURCE_ROOT at the real checkout; a direct run uses this checkout.
 function requireSourceRoot(): string {
-  const sourceRoot = process.env.HARNESS_SOURCE_ROOT;
-  assert(sourceRoot, "HARNESS_SOURCE_ROOT must be set for harness-package integration tests.");
+  const sourceRoot = process.env.HARNESS_SOURCE_ROOT ?? fileURLToPath(new URL("../..", import.meta.url));
+  assert(
+    existsSync(join(sourceRoot, ".pi", "agent", "package", "harness-package.json")),
+    `HARNESS_SOURCE_ROOT must point at a harness checkout with .pi/agent/package/harness-package.json (got ${sourceRoot}).`,
+  );
   return sourceRoot;
 }
 
