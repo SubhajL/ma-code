@@ -374,7 +374,7 @@ Use that scan order to answer three operator questions quickly:
 ## When to run validation
 Run the validator script when:
 - changing `.pi/settings.json`
-- changing `.pi/SYSTEM.md`
+- changing `.pi/APPEND_SYSTEM.md`
 - changing `AGENTS.md`
 - changing task schema or runtime task state shape
 - changing queue schema or runtime queue state shape
