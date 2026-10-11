@@ -7,6 +7,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run test:extensions && npm run test:integration && npm run check:schema-types && ./scripts/check-repo-static.sh",
+    "hooks:install": "git config core.hooksPath .githooks",
     "codegen:schema-types": "node --import tsx scripts/codegen-schema-types.ts",
     "check:schema-types": "node --import tsx scripts/codegen-schema-types.ts --check",
     "harness:doctor": "node --import tsx scripts/harness-doctor.ts",
@@ -146,6 +148,9 @@
     "harness:task-queue-materialize": "node --import tsx scripts/harness-task-queue-materialize.ts",
     "test:task-queue-materialization": "node --import tsx --test tests/extension-units/task-queue-materialization.test.ts",
     "validate:greenfield-phase-c": "node scripts/validate-greenfield-phase-c.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

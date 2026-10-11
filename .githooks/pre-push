@@ -1,0 +1,42 @@
+#!/bin/sh
+# Pre-push gate: CI cannot be relied on, so the full local suite must pass
+# before anything leaves this machine. Install once per clone with
+# `npm run hooks:install`; bypass a single push with `git push --no-verify`.
+set -eu
+
+# git exports repo-local variables (GIT_DIR, GIT_INDEX_FILE, ...) to hooks. In a
+# linked worktree GIT_DIR is absolute, so test fixtures that run
+# `git -C <tmpdir> init/commit` would act on this repository instead of their
+# temp repos. Clear them so the suite only ever sees its own fixtures.
+unset $(git rev-parse --local-env-vars)
+
+# stdin: "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref.
+# A local sha of all zeros is a deletion; deletions alone need no test run.
+head_sha=$(git rev-parse HEAD)
+pushes_commits=false
+pushes_other_ref=false
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*)
+      pushes_commits=true
+      [ "$local_sha" = "$head_sha" ] || pushes_other_ref=true
+      ;;
+  esac
+done
+if [ "$pushes_commits" = false ]; then
+  exit 0
+fi
+
+# The check runs against this working tree, so say when that differs from what is pushed.
+if [ "$pushes_other_ref" = true ]; then
+  echo "pre-push: warning: pushing a commit other than HEAD; the check runs against the checked-out tree." >&2
+fi
+if [ -n "$(git status --porcelain --untracked-files=normal)" ]; then
+  echo "pre-push: warning: uncommitted or untracked files present; the check runs against the working tree, not only the pushed commits." >&2
+fi
+
+echo "pre-push: running npm run check (typecheck, unit, integration, schema, static)..."
+if ! npm run --silent check; then
+  echo "pre-push: blocked. Fix the failures above, or bypass once with: git push --no-verify" >&2
+  exit 1
+fi
