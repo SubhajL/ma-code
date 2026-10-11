@@ -230,6 +230,7 @@ tracked_runtime = subprocess.check_output(
         "ls-files",
         "--",
         ".pi/agent/state/runtime/*.json",
+        ":(glob)**/.pi/agent/state/runtime/pi.db*",
         "logs/harness-actions.jsonl*",
     ],
     text=True,
