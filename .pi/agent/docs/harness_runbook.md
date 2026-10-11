@@ -56,6 +56,18 @@ npm run harness:status      # queue + tasks + leases summary
 npm run harness:leases      # who holds which scope
 ```
 
+### Before you push (once per clone of the harness source repo)
+
+These scripts and `.githooks/` exist in the harness source repo (`ma-code`); `harness:install` does not yet ship them into consuming repos.
+
+```bash
+npm ci                   # install exactly what package-lock.json pins
+npm run hooks:install    # point git at the tracked .githooks/ (pre-push runs npm run check)
+npm run check            # the one "is everything green?" command
+```
+
+CI may not run (billing), so the pre-push hook is the gate. Bypass a single push only deliberately: `git push --no-verify`.
+
 ### "What command does X?"
 
 | You want to… | Run |
@@ -428,12 +440,11 @@ cp docs/initiatives/TEMPLATE/*.md docs/initiatives/<my-cleanup>/
 #    Consequences / Notes. Update docs/adr/README.md index.
 #    See docs/adr/0001 through 0009 for exemplars.
 
-# 7. Validate before commit
-npm run typecheck
-bash scripts/check-repo-static.sh
-# Run only the validators affected by your change:
+# 7. Validate before commit (the pre-push hook runs the same gate)
+npm run check
+# typecheck + unit + integration + schema drift + static checks, fail-fast.
+# Add the validators affected by your change when you need their reports:
 npm run validate:harness-package          # if you touched harness-package
-npm run validate:extension-unit-tests
 # ... etc.
 
 # 8. Land via standard PR + admin-merge
