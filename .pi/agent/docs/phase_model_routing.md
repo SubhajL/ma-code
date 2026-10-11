@@ -24,9 +24,10 @@ Supported `phaseLane` values:
 ## Current defaults
 - Global non-g-coding defaults use `openai-codex/gpt-5.5` with `high` thinking.
 - `screen_design` uses verified `openai-codex/gpt-5.5` with `high` thinking.
-- `frontend_implementation` uses verified `openai-codex/gpt-5.3-codex-spark` with `high` thinking.
+- `frontend_implementation` uses verified `anthropic/claude-opus-4-7` with `high` thinking.
 - `backend_implementation` uses verified `openai-codex/gpt-5.3-codex-spark` with `high` thinking.
-- Build worker defaults (`frontend_worker`, `backend_worker`, `infra_worker`) use `openai-codex/gpt-5.3-codex-spark` with `high` thinking for g-coding/implementation work.
+- `frontend_worker` defaults to `anthropic/claude-opus-4-7` with `high` thinking for g-coding/implementation work.
+- `backend_worker` and `infra_worker` default to `openai-codex/gpt-5.3-codex-spark` with `high` thinking for g-coding/implementation work.
 - Reviewer, validator, lead, research, docs, and recovery defaults use `openai-codex/gpt-5.5` with `high` thinking unless an explicit allowed override is requested.
 
 ## Future use

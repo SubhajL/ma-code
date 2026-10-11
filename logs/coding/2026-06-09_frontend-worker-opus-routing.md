@@ -1,0 +1,92 @@
+# Coding Log — frontend-worker-opus-routing
+
+## 2026-06-09T10:18:00+07:00
+- Goal: update harness routing so `frontend_worker` uses `anthropic/claude-opus-4-7` with `high` thinking.
+- Lifecycle: direct-implementation exemption; user requested a bounded routing config update, no separate planning artifact required.
+- Discovery path:
+  - Read `AGENTS.md`, `packages/pi-g-skills/skills/g-coding/SKILL.md`, `logs/CURRENT.md`, and Pi log convention.
+  - Auggie attempted first and timed out; continued with local `rg`, `read`, and targeted source/test inspection.
+- First tracer-bullet behavior:
+  - Public interface: `resolveHarnessRoute(config, { role: "frontend_worker" })` / `resolve_harness_route` tool.
+  - Expected behavior: selected model is `anthropic/claude-opus-4-7`, provider `anthropic`, thinking `high`.
+  - Boundary dependencies: no external provider call; test uses local routing config and resolver.
+  - Out of scope: live Anthropic probe/auth validation and changing backend/infra defaults.
+- Files changed and why:
+  - `.pi/agent/models.json`: set `frontend_worker` provider/default/fallback order to Claude Opus 4.7; set `frontend_implementation` phase profile to verified Claude Opus 4.7 with Spark fallback.
+  - `tests/extension-units/harness-routing.test.ts`: added/updated expectations for frontend default, phase route, allowed overrides, and unavailable phase fallback.
+  - `scripts/validate-harness-routing.sh`: updated helper validation expectation for frontend phase profile.
+  - `.pi/agent/routing/worker_routing_matrix.md`, `.pi/agent/routing/routing_notes.md`, `.pi/agent/docs/phase_model_routing.md`, `.pi/agent/docs/team_orchestration_architecture.md`: updated routing docs to mirror executable policy.
+- Tests added/changed:
+  - Split implementation-worker default test so frontend asserts Claude Opus while backend/infra remain Spark.
+  - Updated phase-aware frontend test to assert verified Claude Opus.
+  - Updated allowed-overrides expectation because frontend now excludes its new default from override list.
+- RED command:
+  - `node --import tsx --test --test-name-pattern "frontend implementation worker uses Claude Opus high by default" tests/extension-units/harness-routing.test.ts`
+  - Failed for the right reason: actual `openai-codex/gpt-5.3-codex-spark`; expected `anthropic/claude-opus-4-7`.
+  - Additional RED after phase expectation: `node --import tsx --test --test-name-pattern "frontend|screen phase" tests/extension-units/harness-routing.test.ts` failed on frontend default and frontend phase still selecting Spark.
+- GREEN commands:
+  - `node --import tsx --test tests/extension-units/harness-routing.test.ts` → pass, 39 tests.
+  - `npm run validate:harness-routing` → pass.
+  - Flake check: `for i in 1 2 3; do node --import tsx --test tests/extension-units/harness-routing.test.ts ...; done` → 3 consecutive passes, 39 tests each.
+  - Repeated `npm run validate:harness-routing` twice more after first pass → pass each time.
+- Wiring verification evidence:
+  - `resolve_harness_route` for `frontend_worker` returns `selectedModelId: anthropic/claude-opus-4-7`, `selectedProvider: anthropic`, `thinking: high`, `source: default`.
+  - `resolve_harness_route` for `frontend_worker` with `phaseLane: frontend_implementation` returns `source: phase_profile`, `phaseRoutingSource: verified_model`, `selectedModelId: anthropic/claude-opus-4-7`.
+  - `resolve_harness_route` for `backend_worker` still returns `openai-codex/gpt-5.3-codex-spark` high.
+- Behavior changes:
+  - Frontend worker default and frontend implementation phase now select Claude Opus 4.7.
+  - Backend/infra Spark defaults are unchanged.
+- Risk notes:
+  - This validates routing metadata only; it does not perform a live Anthropic provider/auth call.
+  - Worktree has unrelated pre-existing modified/untracked files outside this change set; not touched except generated validation report artifacts.
+- Follow-ups / known gaps:
+  - If live proof is required, run one bounded `run_same_runtime_probe` using `anthropic/claude-opus-4-7` after operator approval/need is explicit.
+
+## 2026-06-09T10:24:00+07:00 — QCHECK / g-check handoff
+- Review scope:
+  - `.pi/agent/models.json`
+  - `tests/extension-units/harness-routing.test.ts`
+  - `scripts/validate-harness-routing.sh`
+  - routing docs under `.pi/agent/routing/` and `.pi/agent/docs/`
+  - `logs/CURRENT.md` and this coding log
+- Findings:
+  - Critical: none.
+  - High: none.
+  - Medium: none.
+  - Low: no live Anthropic provider/auth probe was run; local routing validation is sufficient for this bounded metadata/config change unless operator wants live proof.
+- Skeptical checks performed:
+  - Confirmed default `frontend_worker` route resolves to `anthropic/claude-opus-4-7` high through the executable resolver/tool.
+  - Confirmed `frontend_implementation` phase route also resolves to verified `anthropic/claude-opus-4-7` high, so phase-aware frontend packets do not silently stay on Spark.
+  - Confirmed `backend_worker` remains on `openai-codex/gpt-5.3-codex-spark` high.
+  - Confirmed `.pi/settings.json` already lists `anthropic/claude-opus-4-7` as enabled; no settings mutation required.
+  - Confirmed validation script and unit tests encode the new expected route.
+- Required tests:
+  - `node --import tsx --test tests/extension-units/harness-routing.test.ts` — pass.
+  - `validate:harness-routing` — pass.
+- g-check decision: pass for the intended change set, with the known gap that no live provider call was made.
+
+## Review (2026-10-03, local runtime date) — whole-harness architecture and flexibility
+- Task: `task-1791022172747`; research-only architecture review requested by the human.
+- Scope: current working tree of the entire harness on `fix/pi-extension-conflicts`, including pre-existing uncommitted work. This is not a change to the earlier bounded frontend-routing verdict.
+- Report: `reports/reviews/2026-10-03_harness-architecture-and-flexibility.md`.
+- Skills/discovery: loaded g-review/g-planning/g-check; docs/ADRs first; Auggie returned no relevant files; Graphify freshness/preflight checked but no scan/query or Graphify-backed claim; RepoPrompt and local source verification used. One second-model advisory planning critique, not a validator run.
+- Authored files: the review report and this appended log section only. Existing log pointer, implementation/configuration/ADRs and prior entries left intact. No protected runtime file directly edited.
+- Commands Run:
+  - `npm run typecheck` — PASS, exit 0; baseline currently 0.
+  - `npm run test:extensions` — PASS, exit 0; full summary hidden by result envelope, no unsupported total count claimed.
+  - `npm run test:operator-control-plane` — PASS, 8/8.
+  - `npm run test:worker-execution` — PASS, 23/23.
+  - `npm run test:pr-lifecycle` — PASS, 14/14.
+  - `npm run test:core-workflows` — FAIL, 9/10; missing `resolve_recovery_runtime_decision` registration in fixture setup.
+  - `rg -n 'runControlPlaneCommand|defineControlPlaneCommand|lib/control-plane' .pi/agent/extensions scripts` — definitions only, no production callers found.
+  - `rg -n 'getActiveTaskId|setActiveTaskId' .pi/agent/extensions scripts` — definitions only.
+  - `find logs/.pi logs/coding/.pi scripts/.pi tests/extension-units/.pi -name pi.db -print 2>/dev/null | head -8` — four existing nested runtime DBs observed.
+  - Two `node --import tsx --input-type=module -e ...` probes retained in session transcript: plain-object compaction/AFK plan/skill/task-validation checks; in-memory SQLite relationship checks. Neither mutated protected runtime state.
+  - `mkdir -p reports/reviews` — normal task-linked directory creation after the write guard rejected a nonexistent parent; no safety bypass.
+- Findings (severity; exact source references and fix/test directions in report):
+  - CRITICAL: none established; no exploit/live provider coding was attempted.
+  - HIGH: directory-relative runtime identity and nested DBs; remaining JSON readiness readers; synthesized review/validator assurance and unbound proof; AFK coding children lacking parent hooks; cumulative timeout/lease mismatch; queue FK not populated and cleared by task snapshots; current core integration registration failure.
+  - MEDIUM: 12-line source compaction, shell false positives, skill misrouting, fixed UI-centric recipe, AFK global-model versus role-policy mismatch, planned-as-actual model reporting, dormant kernel adoption, baseline-check exit-code masking, docs/global-log proof drift.
+- Review Verdict: changes_required for whole-harness production assurance. Review task itself can complete because findings/evidence were delivered; implementation defects remain unresolved follow-up work.
+- Recommendation: preserve bounded autonomy/SQLite/worktrees/approval boundaries; fix state/proof/budget correctness first, then pilot proportional profiles and optional dependency-driven workflow recipes. No wholesale rewrite or safety-off mode.
+- Known gaps: current working tree rather than deployed/main; no live provider validator/coding/GitHub/sandbox proof; no quantitative cost/latency baseline; external sandbox/approval authority and cross-worktree state identity remain open questions.

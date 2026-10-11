@@ -4,7 +4,7 @@
     "This file is not Pi's provider registry models.json.",
     "Exact provider and model IDs below were verified against `pi --list-models`.",
     "HARNESS-017 executable routing reads this file as the machine-readable routing policy source.",
-    "Current default harness route is openai-codex/gpt-5.5 with high thinking; implementation/g-coding worker roles route to openai-codex/gpt-5.3-codex-spark with high thinking."
+    "Current default harness route is openai-codex/gpt-5.5 with high thinking; frontend_worker routes to anthropic/claude-opus-4-7 with high thinking; backend_worker and infra_worker route to openai-codex/gpt-5.3-codex-spark with high thinking."
   ],
   "routing_policy": {
     "critical_roles": [
@@ -150,12 +150,21 @@
       ]
     },
     "routing_implementation_first": {
-      "description": "Role fallback profile for implementation roles (frontend/backend/infra workers). Coding spark first, then reasoning models, then anthropic frontier. Update this list once when a new frontier model lands and all 3 implementation roles pick it up.",
+      "description": "Role fallback profile for the backend and infra implementation workers. Coding spark first, then reasoning models, then anthropic frontier. Update this list once when a new frontier model lands and both roles pick it up (frontend_worker uses routing_frontend_first).",
       "model_ids": [
         "openai-codex/gpt-5.3-codex-spark",
         "openai-codex/gpt-5.5",
         "anthropic/claude-sonnet-4-6",
         "anthropic/claude-opus-4-7"
+      ]
+    },
+    "routing_frontend_first": {
+      "description": "Role fallback profile for frontend_worker. Anthropic Opus first for UI implementation, then reasoning, coding spark, and Sonnet. Update this list when a new frontier model lands.",
+      "model_ids": [
+        "anthropic/claude-opus-4-7",
+        "openai-codex/gpt-5.5",
+        "openai-codex/gpt-5.3-codex-spark",
+        "anthropic/claude-sonnet-4-6"
       ]
     },
     "budget_implementation": {
@@ -261,8 +270,8 @@
       "budget_guidance": "low"
     },
     "frontend_worker": {
-      "provider": "openai-codex",
-      "default_model": "gpt-5.3-codex-spark",
+      "provider": "anthropic",
+      "default_model": "claude-opus-4-7",
       "thinking": "high",
       "allowed_overrides": [
         {
@@ -272,7 +281,7 @@
       ],
       "fallback_order": [
         {
-          "capability": "routing_implementation_first"
+          "capability": "routing_frontend_first"
         }
       ],
       "budget_overrides": [
@@ -474,10 +483,10 @@
     },
     "frontend_implementation": {
       "intendedUse": "Frontend implementation planning and UI coding for approved product slices",
-      "targetModelRequest": "gpt-5.3-codex-spark",
+      "targetModelRequest": "claude-opus-4-7",
       "verificationStatus": "verified",
-      "verifiedModelId": "openai-codex/gpt-5.3-codex-spark",
-      "fallbackModelId": "openai-codex/gpt-5.5",
+      "verifiedModelId": "anthropic/claude-opus-4-7",
+      "fallbackModelId": "openai-codex/gpt-5.3-codex-spark",
       "thinking": "high",
       "allowedThinking": [
         "high"
