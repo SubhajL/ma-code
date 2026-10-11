@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -195,6 +195,27 @@ test("enabled default auto-land policy injects approved worker-job PR merge sync
   assert.equal(result.autoLand?.syncedMain, true);
   assert.equal(calls[0].command, "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id job-1 --max-steps 3 --max-runtime-seconds 300 --no-stop-before-pr --allow-pr-create --approval-ref policy-approval-123 --json");
   assert.equal(calls[4].command, "npm run harness:pr-lifecycle -- merge --initiative greenfield-scaffold --run-id pr-worker-policy --allow-merge --approval-ref policy-approval-123 --method squash --json");
+});
+
+test("repo default auto-land policy keeps worker jobs stopped before PR (ADR-0002 human merge gate)", async () => {
+  // Exercise the policy file this repository actually ships, not a fixture policy.
+  const shippedPolicy = JSON.parse(await readFile(new URL("../../.pi/agent/routing/orchestrator-auto-land-policy.json", import.meta.url), "utf8")) as Record<string, unknown>;
+  const repoRoot = await makeRepoWithAutoLandPolicy(shippedPolicy);
+  const { runner, calls } = makeRunner(jsonResult({ runId: "worker-default", status: "review_ready", queueJobId: "job-1" }));
+
+  const result = await runOrchestratorRun({
+    repoRoot,
+    lane: "worker_job",
+    initiative: "greenfield-scaffold",
+    jobId: "job-1",
+    maxSteps: 3,
+    maxRuntimeSeconds: 300,
+  }, runner, cleanPreflight);
+
+  assert.equal(result.autoLand, undefined);
+  assert.equal(result.status, "stopped");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].command, "npm run harness:worker-execute -- run --initiative greenfield-scaffold --job-id job-1 --max-steps 3 --max-runtime-seconds 300 --stop-before-pr --json");
 });
 
 test("default auto-land policy can be disabled for conservative worker job runs", async () => {

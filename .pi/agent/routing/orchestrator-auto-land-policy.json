@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "enabled": true,
+  "enabled": false,
   "lanes": ["worker_job"],
   "approvalRef": "user-approved-always-auto-land-2026-05-10",
   "syncMain": true,
