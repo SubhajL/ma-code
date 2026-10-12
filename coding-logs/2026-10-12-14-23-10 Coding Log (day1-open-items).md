@@ -278,3 +278,79 @@ Tier 2 (Codex `gpt-5.6-sol` xhigh, R2 confirm): no CRITICAL. It confirmed eight 
 
 Gates after: focused tests 3× (19/19), `validate-harness-package.sh` PASS, `npm run check` exit 0. P2 lands with the
 descendant-symlink HIGH split out to P2b.
+
+## P2b — installs never write through a symlink (`fix/harness-install-no-symlink-writes`)
+
+Split out of P2 at its R2 (Codex HIGH C1). The installer followed symlinked path components while copying assets: with
+`.pi/agent -> /external`, a bootstrap wrote about 100 harness files into `/external`. This predates P2 (`copyAsset` and
+`copyFileIfAbsent` on `main`).
+
+**Change:** `listAssetFiles` now yields an asset's installed paths, used by both `copyAsset` and planning.
+`assertNoSymlinkedWrites` runs before any write over every planned path: asset files, generated targets, `package.json`,
+the version record, and `.pi/settings.json` when it will be written. It refuses when a path, or any directory on the way
+to it inside the target, is a symlink (that includes dangling links). The target root itself may be a symlink.
+
+**Stop line:** Q0 fires (writes outside the target). Claude implemented it. RED first: the test (symlinked `.pi/agent`,
+symlinked `scripts/`, dangling link at `AGENTS.md`) failed because harness files landed in the external dir. Green after.
+The RED run's external temp dirs were deleted.
+**Gates:** focused tests 3× (20/20), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 198/198).
+
+### QCHECK R1 — P2b
+
+Tier 1 (`/code-review high`), with 10 findings:
+
+| # | Sev | Finding | Disposition |
+|---|---|---|---|
+| 1 | HIGH | Regression: a generated target linked to an existing file (`AGENTS.md -> CLAUDE.md`) now failed the install, where before it was kept. | **Fixed:** generated targets are marked `keptIfPresent`. A link at the leaf is refused only when dangling; parents still get the full check. Test (symlinked target root plus linked `AGENTS.md` kept); mutation-verified. |
+| 2 | MED | A regular-file component (e.g. a file named `scripts`) gave a raw ENOTDIR. | **Fixed:** clear "exists but is not a directory" error. RED first. |
+| 3 | MED | An asset directory with no files would be created without a check. | **Fixed:** each directory asset's own path is planned and checked. |
+| 4 | MED | The planned-path list could drift from the actual writers. | **Fixed with a guard:** exported `listBootstrapWrites`, plus a test that every file a bootstrap creates was in the checked plan (leaving the version record out of the plan fails it). |
+| 5 | LOW | TOCTOU between the check and later writes. | **Accepted:** a local, operator-run CLI; the check guards the honest-mistake case (a symlinked shared dir), not a racing adversary. Noted in the docs scope. |
+| 6 | MED | `npm install` and the validators after bootstrap still use the target's symlinks. | **Claim narrowed:** docs and log say the guarantee covers the bootstrap step. A symlinked `node_modules` is legitimate and is used by our own tests. |
+| 7 | LOW | Each asset tree was walked twice, and the checked set could differ from the copied one. | **Fixed:** one plan (`planBootstrap`) feeds both the check and `copyAsset`. |
+| 8 | LOW | Two `.pi` symlink guards with different messages. | **Kept:** `planPiSettings` runs first with the more specific message; the general check covers everything else. |
+| 9 | LOW | No passing-case tests (symlinked root, kept linked file, file component). | **Fixed:** three tests added. |
+| 10 | LOW | Operator docs didn't explain the new refusal. | **Fixed:** `harness_package_install.md` and `operator_install_guide.md`. |
+
+Gates: focused tests 3× (23/23), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 201/201).
+
+Tier 2 (Codex `gpt-5.6-sol` xhigh, R1 on the staged index), with 34 lines:
+
+| # | Sev | Finding | Disposition |
+|---|---|---|---|
+| H1 | HIGH | An absolute manifest path (generated target or version record) was checked as `<target>/abs/…` but written at `/abs/…`. | **Fixed:** `containedWritePath` normalizes every planned path exactly as the writers resolve it and refuses anything outside the target. RED first: `absolute.md` landed in the external dir. |
+| H2 | HIGH | `missing/../escape/file` stopped the walk at `missing` and never checked `escape`, which the writer then followed. | **Fixed** by the same normalization: the walk now sees `escape/…`. Test case. |
+| M1 | MED | A directory asset with no files was `mkdir`-ed without a check. | **Fixed in the T1 batch** (#3). |
+| M2 | MED | The old "Destination path exists and is not a directory" message changed for a file at a directory asset. | **Rejected:** the new message names the path and stops before any write; the old one came after earlier assets had been copied. Pinned by the "file, not a directory" test. |
+| L1 | LOW | TOCTOU. | **Accepted** (same as T1 #5). |
+| — | — | Coverage of `package.json`, the version record and a preserved generated file. | **Added:** symlinked `package.json` case (shared file untouched); version record via the plan-coverage guard; preserved linked `AGENTS.md` test. |
+
+### QCHECK R2 — P2b (confirm, scoped to the R1 fix diff)
+
+Tier 1 (`/code-review high`): no CRITICAL or HIGH. It confirmed `listBootstrapWrites` has no side effects and the directory
+cache is correct after normalization. All findings were fixed:
+
+| # | Sev | Finding | Disposition |
+|---|---|---|---|
+| 1 | MED | The final path was never checked for kind (a directory at `package.json`, a file at an empty directory asset), so the install failed late. | **Fixed:** each planned write carries `kind`, and the leaf must match. RED first (directory at `package.json` → "is not a file"; nothing written). |
+| 2 | MED | A looping link at a generated file gave a raw ELOOP. | **Fixed:** any stat failure behind a leaf link counts as dangling, so it gets the clear refusal. RED first (`AGENTS.md -> AGENTS.md`). |
+| 3 | MED | Tests took "no `package.json`" to mean nothing was written, though it is the last write. | **Fixed:** they assert the target holds only the arranged entries. |
+| 4 | LOW | The `../escaped.md` case wrote beside the target, where the assertion couldn't see it. | **Fixed:** the target is nested in a dedicated parent, and the parent's contents are asserted. |
+| 5 | LOW | A path naming the target root reported "outside the target". | **Fixed:** its own message. |
+| 6 | LOW | Each asset was stat'ed twice. | **Fixed:** `listAssetFiles` returns `{ isDirectory, files }` from one stat. |
+| 7 | LOW | Redundant `normalizeRelPath` in the check. | **Fixed:** removed; inputs are already contained. |
+| 8 | LOW | The other refusals were undocumented. | **Fixed:** install guide. |
+| 9 | LOW | `listBootstrapWrites` is a public export used only by a test. | **Fixed:** commented as exported for tests, noting that it reads and may throw but never writes. |
+
+Gates: focused tests 3× (24/24), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 202/202).
+
+Tier 2 (Codex `gpt-5.6-sol` xhigh, R2 confirm): no CRITICAL or HIGH. It confirmed T1#1, Codex H1/H2, T1#2/M2, T1#3/M1, T1#4,
+T1#7, the tests and the docs.
+
+| # | Sev | Finding | Disposition |
+|---|---|---|---|
+| C1 | MED | `reusableAssets: ["."]` (the whole source root) is schema-valid and used to install, but now aborted with "names the target root". | **Fixed:** a directory asset that resolves to the target root is not planned as a directory write; the root may exist or be a symlink. RED first with a fake manifest. |
+| C2 | LOW | The "nothing written inside" check allowed two entries. | **Fixed:** exact recursive before/after snapshot. |
+
+Gates: focused tests 3× (25/25), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 203/203).
+Land: no CRITICAL or HIGH in R2 (both tiers), all MEDIUMs fixed, two-round cap respected.

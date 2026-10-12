@@ -39,7 +39,10 @@ npm run harness:install:json -- --dest /path/to/target-repo
 
 Useful flags: `--json`, `--skip-install`, `--skip-validators`. The wrapper does not set provider API keys, edit `AGENTS.md`/`SYSTEM.md`, or start live workflows.
 
-After it returns, review the files it lists under `filesToReview` (typically `AGENTS.md`, `SYSTEM.md`, `.pi/APPEND_SYSTEM.md`, `.pi/settings.json`, `.pi/agent/models.json`, `docs/product/intake-policy.md`) and set any missing provider env vars before live runs. `.pi/settings.json` decides which harness extensions pi loads; the output line `pi settings` says whether it was generated, merged into an existing file, or skipped (a symlinked file is left alone).
+After it returns, review the files it lists under `filesToReview` (typically `AGENTS.md`, `SYSTEM.md`, `.pi/APPEND_SYSTEM.md`, `.pi/settings.json`, `.pi/agent/models.json`, `docs/product/intake-policy.md`) and set any missing provider env vars before live runs. `.pi/settings.json` decides which harness extensions pi loads; the output line `pi settings` says whether it was generated, merged into an existing file, or skipped (a symlinked file is left alone). If the install stops with "goes through a symlink", a directory or file it would write
+inside the target is a symlink; replace it with a real directory (or remove a dangling link) and run again. It also
+stops, before writing anything, when a path it needs exists as the wrong kind ("exists but is not a directory" / "is not
+a file") or when a harness package path resolves outside the target.
 
 ## Option C — manual bootstrap into another repo
 Use this path when you want to inspect each step before continuing.

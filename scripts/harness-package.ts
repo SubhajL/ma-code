@@ -253,30 +253,123 @@ async function copyFileIfAbsent(source: string, destination: string): Promise<bo
   return true;
 }
 
-async function copyAsset(sourceRoot: string, destinationRoot: string, manifest: HarnessPackageManifest, asset: string): Promise<string[]> {
+// Whether an asset is a directory, and the repo-relative files it installs after excludedPaths.
+async function listAssetFiles(
+  sourceRoot: string,
+  manifest: HarnessPackageManifest,
+  asset: string,
+): Promise<{ isDirectory: boolean; files: string[] }> {
   const sourceAbsolute = resolve(sourceRoot, asset);
-  const destinationAbsolute = resolve(destinationRoot, asset);
-  const sourceStat = await stat(sourceAbsolute);
+  if ((await stat(sourceAbsolute)).isFile()) return { isDirectory: false, files: shouldExclude(manifest, asset) ? [] : [asset] };
+  const files = (await collectFiles(sourceAbsolute))
+    .map((file) => normalizeRelPath(relative(sourceRoot, file)))
+    .filter((relPath) => !shouldExclude(manifest, relPath));
+  return { isDirectory: true, files };
+}
+
+interface PlannedAsset {
+  asset: string;
+  isDirectory: boolean;
+  files: string[];
+}
+
+async function copyAsset(sourceRoot: string, destinationRoot: string, planned: PlannedAsset): Promise<string[]> {
+  if (planned.isDirectory) await ensurePathAbsentOrDirectory(resolve(destinationRoot, planned.asset));
   const copied: string[] = [];
-
-  if (sourceStat.isFile()) {
-    if (shouldExclude(manifest, asset)) return copied;
-    const didCopy = await copyFileIfAbsent(sourceAbsolute, destinationAbsolute);
-    if (!didCopy) throw new Error(`Destination already contains managed file: ${asset}`);
-    copied.push(asset);
-    return copied;
-  }
-
-  await ensurePathAbsentOrDirectory(destinationAbsolute);
-  for (const file of await collectFiles(sourceAbsolute)) {
-    const relPath = normalizeRelPath(relative(sourceRoot, file));
-    if (shouldExclude(manifest, relPath)) continue;
-    const destinationFile = resolve(destinationRoot, relPath);
-    const didCopy = await copyFileIfAbsent(file, destinationFile);
+  for (const relPath of planned.files) {
+    const didCopy = await copyFileIfAbsent(resolve(sourceRoot, relPath), resolve(destinationRoot, relPath));
     if (!didCopy) throw new Error(`Destination already contains managed file: ${relPath}`);
     copied.push(relPath);
   }
   return copied;
+}
+
+interface PlannedWrite {
+  relPath: string;
+  kind: "file" | "directory";
+  // Generated files that already exist are kept, never written.
+  keptIfPresent: boolean;
+}
+
+// The bootstrap must only write inside the target, so it refuses when a path it writes, or a
+// directory on the way to it, is a symlink. A generated file that already exists through a link is
+// kept, so only a dangling link there is refused. Runs before anything is written; the target root
+// itself may be a symlink.
+async function assertNoSymlinkedWrites(destinationRoot: string, writes: PlannedWrite[]): Promise<void> {
+  const checkedDirectories = new Set<string>();
+  for (const write of writes) {
+    const parts = write.relPath.split("/");
+    let current = destinationRoot;
+    for (const [index, part] of parts.entries()) {
+      current = join(current, part);
+      const leaf = index === parts.length - 1;
+      if (!leaf && checkedDirectories.has(current)) continue;
+      const stats = await lstatOrNull(current);
+      if (!stats) break;
+      const shown = normalizeRelPath(relative(destinationRoot, current));
+      if (stats.isSymbolicLink()) {
+        // A link that resolves to an existing file is kept; a dangling or looping one would be written through.
+        if (leaf && write.keptIfPresent && (await stat(current).then((target) => target.isFile(), () => false))) break;
+        throw new Error(`Target path ${write.relPath} goes through a symlink (${shown}); the install stopped before writing anything.`);
+      }
+      const expected = leaf ? write.kind : "directory";
+      if (expected === "directory" ? !stats.isDirectory() : !stats.isFile()) {
+        throw new Error(`Target path ${write.relPath}: ${shown} exists but is not a ${expected}; the install stopped before writing anything.`);
+      }
+      if (!leaf) checkedDirectories.add(current);
+    }
+  }
+}
+
+// The repo-relative form of a path the bootstrap writes, exactly as the writers resolve it. A path
+// that is absolute or uses .. to leave the target is refused, so the symlink check walks the real path.
+function containedWritePath(destinationRoot: string, relPath: string): string {
+  const inside = relative(destinationRoot, resolve(destinationRoot, relPath));
+  if (!inside) {
+    throw new Error(`Harness package path "${relPath}" names the target root itself; the install stopped before writing anything.`);
+  }
+  if (inside === ".." || inside.startsWith(`..${sep}`) || isAbsolute(inside)) {
+    throw new Error(`Harness package path ${relPath} resolves outside the target; the install stopped before writing anything.`);
+  }
+  return inside.split(sep).join("/");
+}
+
+interface BootstrapPlan {
+  manifest: HarnessPackageManifest;
+  piSettingsPlan: PiSettingsPlan;
+  assets: PlannedAsset[];
+  writes: PlannedWrite[];
+}
+
+async function planBootstrap(sourceRoot: string, destinationRoot: string): Promise<BootstrapPlan> {
+  const manifest = await loadHarnessPackageManifest(sourceRoot);
+  const piSettingsPlan = await planPiSettings(destinationRoot, manifest);
+  const assets: PlannedAsset[] = [];
+  for (const asset of manifest.reusableAssets) {
+    assets.push({ asset, ...(await listAssetFiles(sourceRoot, manifest, asset)) });
+  }
+  const file = (relPath: string, keptIfPresent = false): PlannedWrite => ({ relPath, kind: "file", keptIfPresent });
+  const writes: PlannedWrite[] = [
+    ...assets.flatMap((planned) => [
+      // An asset that is the whole source root lands on the target root, which may exist (or be a symlink).
+      ...(planned.isDirectory && relative(destinationRoot, resolve(destinationRoot, planned.asset)) !== ""
+        ? [{ relPath: planned.asset, kind: "directory" as const, keptIfPresent: false }]
+        : []),
+      ...planned.files.map((relPath) => file(relPath)),
+    ]),
+    ...manifest.generatedFiles.map((rule) => file(rule.target, true)),
+    file("package.json"),
+    file(manifest.versionRecordTarget),
+    ...(piSettingsPlan.kind === "write" ? [file(PI_SETTINGS_TARGET)] : []),
+  ].map((write) => ({ ...write, relPath: containedWritePath(destinationRoot, write.relPath) }));
+  return { manifest, piSettingsPlan, assets, writes };
+}
+
+// Exported for tests: every repo-relative path a bootstrap into this target may write, i.e. the paths
+// its symlink check covers. It reads the target (and throws as the bootstrap would) but writes nothing.
+export async function listBootstrapWrites(options: HarnessPackageBootstrapOptions): Promise<string[]> {
+  const plan = await planBootstrap(resolve(options.sourceRoot ?? process.cwd()), resolve(options.destinationRoot));
+  return plan.writes.map((write) => write.relPath);
 }
 
 async function generateRepoLocalFiles(
@@ -517,13 +610,13 @@ async function writeVersionRecord(
 export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOptions): Promise<HarnessPackageBootstrapResult> {
   const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
   const destinationRoot = resolve(options.destinationRoot);
-  const manifest = await loadHarnessPackageManifest(sourceRoot);
-  const piSettingsPlan = await planPiSettings(destinationRoot, manifest);
+  const { manifest, piSettingsPlan, assets, writes } = await planBootstrap(sourceRoot, destinationRoot);
+  await assertNoSymlinkedWrites(destinationRoot, writes);
   await mkdir(destinationRoot, { recursive: true });
 
   const copiedAssets: string[] = [];
-  for (const asset of manifest.reusableAssets) {
-    copiedAssets.push(...(await copyAsset(sourceRoot, destinationRoot, manifest, asset)));
+  for (const planned of assets) {
+    copiedAssets.push(...(await copyAsset(sourceRoot, destinationRoot, planned)));
   }
 
   const generatedResult = await generateRepoLocalFiles(sourceRoot, destinationRoot, manifest);
