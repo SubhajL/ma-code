@@ -2,6 +2,21 @@
 
 This guide explains the main runtime/helper surfaces from an operator point of view.
 
+## How pi loads these extensions
+`.pi/settings.json` lists every extension file explicitly in its `extensions` array. A new top-level module under
+`.pi/agent/extensions/` is not loaded until it is added there.
+
+The composite facades `recovery.ts` and `packets.ts` are deliberately left out. They re-register tools owned by
+`recovery-policy.ts`, `recovery-runtime.ts` and `task-packets.ts`. pi loads each file as its own module with its own
+`ExtensionAPI`, so loading a facade next to its split modules registers those tools twice; pi reports that as a tool
+conflict. The facades exist for TypeScript imports and re-exports; do not load them into pi. Their tools already come
+from the split modules. (`pi -e <facade>` adds to the settings list and brings the conflicts back, and
+`pi --no-extensions -e <facade>` drops every other extension, including `safe-bash` and `till-done`.)
+
+`tests/extension-units/pi-extension-loading.test.ts` runs pi's real resource loader against the project settings and
+fails on a load error, a tool, flag or command registered by two extensions, a listed entry that does not load (for
+example a renamed file), or an extension entry point under `.pi/agent/extensions/` that the list leaves out.
+
 ## Runtime control extensions
 Two flavors live here. **Hard enforcement** (lease conflicts, completion gates, protected-path writes via the typed `write` tool, dirty-repo blockers) genuinely cannot be bypassed at runtime. **Guardrails** (the `safe-bash` regex layer) catch common-shape mistakes but are not sandboxes and can be bypassed by `bash -c`, `eval`, command substitution, etc. Both are useful; conflating them is not.
 

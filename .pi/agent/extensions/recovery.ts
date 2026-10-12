@@ -11,8 +11,10 @@ export { loadRecoveryPolicy, parseRecoveryPolicy, resolveRecoveryPolicy } from "
 export { findRecoveryRuntimeTask, loadRecoveryRuntimeTaskState, resolveRecoveryRuntimeDecision } from "./recovery-runtime.ts";
 
 /**
- * Composite entry point for explicit recovery loading. The split factories are
- * idempotent because top-level extension discovery also loads them directly.
+ * Composite module for imports and re-exports. pi loads the split modules from
+ * `.pi/settings.json` and must not load this file as well: pi gives each file its
+ * own module instance and ExtensionAPI, so the split factories' idempotency guard
+ * (which covers composing them on one API) cannot see a registration made here.
  */
 export default function recoveryExtension(pi: ExtensionAPI): void {
   recoveryPolicyExtension(pi);

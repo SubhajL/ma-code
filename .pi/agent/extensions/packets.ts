@@ -12,6 +12,11 @@ export { generateTaskPacket, loadPacketPolicy, validateTaskPacketShape } from ".
 export { generateFrontendImplementationPacket, writeFrontendPacketPreview } from "./frontend-packet-generator.ts";
 export { generateBackendImplementationPacket, writeBackendPacketPreview } from "./backend-packet-generator.ts";
 
+/**
+ * Composite module for imports and re-exports. pi loads `task-packets.ts` from
+ * `.pi/settings.json` and must not load this file as well, so that
+ * `generate_task_packet` is registered once.
+ */
 export default function packetsExtension(pi: ExtensionAPI): void {
   taskPacketsExtension(pi);
 }
