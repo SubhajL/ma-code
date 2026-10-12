@@ -7,6 +7,7 @@ import {
   ROLE_IDS,
   type HarnessRole,
   defaultModelId,
+  failedModelMatcher,
   loadHarnessRoutingConfig,
   normalizeModelId,
   splitModelId,
@@ -536,19 +537,19 @@ function resolveRoutingCandidates(config: HarnessRoutingConfig, input: Required<
   const roleConfig = config.routing_defaults[input.role];
   const currentModelId = normalizeModelId(input.currentModelId ?? defaultModelId(roleConfig), roleConfig.provider);
   const currentProvider = splitModelId(currentModelId).provider;
-  const failedModels = uniqueStrings(input.failedModels ?? []).map((modelId) => normalizeModelId(modelId, roleConfig.provider));
+  const isFailed = failedModelMatcher(input.failedModels ?? [], roleConfig.provider);
   const fallbackOrder = uniqueStrings(roleConfig.fallback_order.map((modelId) => normalizeModelId(modelId, roleConfig.provider)));
 
-  const strongerModelCandidate = fallbackOrder.find((modelId) => modelId !== currentModelId && !failedModels.includes(modelId)) ?? null;
+  const strongerModelCandidate = fallbackOrder.find((modelId) => modelId !== currentModelId && !isFailed(modelId)) ?? null;
   const sameProviderStrongerCandidate =
     fallbackOrder.find((modelId) => {
       const provider = splitModelId(modelId).provider;
-      return provider === currentProvider && modelId !== currentModelId && !failedModels.includes(modelId);
+      return provider === currentProvider && modelId !== currentModelId && !isFailed(modelId);
     }) ?? null;
   const providerSwitchCandidate =
     fallbackOrder.find((modelId) => {
       const provider = splitModelId(modelId).provider;
-      return provider !== currentProvider && !failedModels.includes(modelId);
+      return provider !== currentProvider && !isFailed(modelId);
     }) ?? null;
 
   return {

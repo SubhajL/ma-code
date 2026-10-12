@@ -50,6 +50,9 @@ export interface RoutingDefault {
   budget_guidance: string;
   fallback_order: string[];
   budget_overrides: string[];
+  // false when the default is already the role's strongest model, so a "prefer stronger"
+  // reason keeps it instead of moving to the second fallback.
+  allow_stronger_override: boolean;
 }
 
 export interface OverrideRule {
@@ -145,7 +148,13 @@ export interface RouteResolution {
     | "phase_profile"
     | "phase_fallback";
   phaseLane: PhaseLane | null;
-  phaseRoutingSource: "none" | "verified_model" | "fallback_until_verified" | "fallback_unavailable" | "explicit_override_precedence";
+  phaseRoutingSource:
+    | "none"
+    | "verified_model"
+    | "fallback_until_verified"
+    | "fallback_unavailable"
+    | "explicit_override_precedence"
+    | "failed_model_fallback";
   requestedModelVerificationStatus: PhaseModelVerificationStatus | null;
   requestedModelTarget: string | null;
   fallbackOrder: string[];
@@ -356,6 +365,14 @@ export function splitModelId(modelId: string): { provider: string; model: string
   return { provider: modelId.slice(0, slash), model: modelId.slice(slash + 1) };
 }
 
+// Matches a model against reported failures. Ids are normalized with the role's provider, and a
+// bare failed id (no provider) matches that model under any provider.
+export function failedModelMatcher(failedModels: readonly string[], roleProvider: string): (modelId: string) => boolean {
+  const qualified = failedModels.map((modelId) => normalizeModelId(modelId, roleProvider)).filter(Boolean);
+  const bare = failedModels.map((modelId) => modelId.trim()).filter((modelId) => modelId && !modelId.includes("/"));
+  return (modelId) => qualified.includes(modelId) || bare.includes(splitModelId(modelId).model);
+}
+
 export function defaultModelId(route: RoutingDefault): string {
   return `${route.provider}/${route.default_model}`;
 }
@@ -426,6 +443,9 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
     if (!provider || !default_model || !thinking || !budget_guidance || fallback_order.length === 0) {
       throw new Error(`Incomplete routing default for role: ${role}`);
     }
+    if (entryRaw.allow_stronger_override !== undefined && typeof entryRaw.allow_stronger_override !== "boolean") {
+      throw new Error(`allow_stronger_override for role ${role} must be a boolean.`);
+    }
 
     routing_defaults[role] = {
       provider,
@@ -435,6 +455,7 @@ export function parseHarnessRoutingConfig(raw: unknown): HarnessRoutingConfig {
       budget_guidance,
       fallback_order,
       budget_overrides,
+      allow_stronger_override: entryRaw.allow_stronger_override !== false,
     };
   }
 
@@ -602,8 +623,9 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
   const failedModels = uniqueStrings(
     (input.failedModels ?? []).map((modelId) => normalizeModelId(modelId, roleConfig.provider)),
   );
-  const availableFallbacks = fallbackOrder.filter((modelId) => !failedModels.includes(modelId));
-  const availableBudgetOverrides = budgetOverrides.filter((modelId) => !failedModels.includes(modelId));
+  const isFailed = failedModelMatcher(input.failedModels ?? [], roleConfig.provider);
+  const availableFallbacks = fallbackOrder.filter((modelId) => !isFailed(modelId));
+  const availableBudgetOverrides = budgetOverrides.filter((modelId) => !isFailed(modelId));
 
   if (availableFallbacks.length === 0) {
     throw new Error(`No viable routing candidates remain for ${input.role} after filtering failed models.`);
@@ -624,8 +646,9 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
   }
 
   const budgetOverridesAllowed = !blockedByReason && allowedByReason && reasonRule.may_use_budget_overrides && budgetRule.allow_budget_overrides;
-  const strongerOverridesPreferred =
+  const strongerRequested =
     !blockedByReason && reasonRule.may_use_fallback_order && (reasonRule.prefer_stronger_override || budgetRule.prefer_stronger_override);
+  const strongerOverridesPreferred = strongerRequested && roleConfig.allow_stronger_override;
 
   if (input.modelOverride) {
     const normalizedOverride = normalizeModelId(input.modelOverride, roleConfig.provider);
@@ -660,6 +683,15 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
     source = "fallback";
     policyNotes.push(`Applied fallback route ${selectedModelId} after filtering failed models.`);
   }
+  if (
+    strongerRequested &&
+    !roleConfig.allow_stronger_override &&
+    !explicitOverrideApplied &&
+    source !== "budget_override" &&
+    availableFallbacks.length > 1
+  ) {
+    policyNotes.push(`${input.role} takes no stronger override under ${reason}: allow_stronger_override is false for this role.`);
+  }
 
   if (!allowedByReason && reason !== "default") {
     blockedAdjustments.push(`${input.role} is not eligible for ${reason} adjustments; kept ${defaultRoute}.`);
@@ -688,16 +720,42 @@ export function resolveHarnessRoute(config: HarnessRoutingConfig, input: RouteRe
     if (explicitOverrideApplied) {
       phaseRoutingSource = "explicit_override_precedence";
       policyNotes.push(`Explicit model override takes precedence over phase lane ${phaseLane}.`);
-    } else if (phaseProfile.verificationStatus === "verified" && phaseProfile.verifiedModelId) {
-      selectedModelId = normalizeModelId(phaseProfile.verifiedModelId, roleConfig.provider);
-      source = "phase_profile";
-      phaseRoutingSource = "verified_model";
-      policyNotes.push(`Applied verified phase routing profile ${phaseLane} with ${selectedModelId}.`);
     } else {
-      selectedModelId = normalizeModelId(phaseProfile.fallbackModelId, roleConfig.provider);
-      source = "phase_fallback";
-      phaseRoutingSource = phaseProfile.verificationStatus === "unavailable" ? "fallback_unavailable" : "fallback_until_verified";
-      policyNotes.push(`Phase lane ${phaseLane} requested ${phaseProfile.targetModelRequest} (${phaseProfile.verificationStatus}); using verified fallback ${selectedModelId}.`);
+      const verified = phaseProfile.verificationStatus === "verified" && phaseProfile.verifiedModelId;
+      const laneCandidates = uniqueStrings(
+        [...(verified ? [phaseProfile.verifiedModelId as string] : []), phaseProfile.fallbackModelId].map((modelId) =>
+          normalizeModelId(modelId, roleConfig.provider),
+        ),
+      );
+      const laneModelId = laneCandidates.find((modelId) => !isFailed(modelId));
+      if (laneModelId !== undefined && laneModelId === laneCandidates[0] && verified) {
+        selectedModelId = laneModelId;
+        source = "phase_profile";
+        phaseRoutingSource = "verified_model";
+        policyNotes.push(`Applied verified phase routing profile ${phaseLane} with ${selectedModelId}.`);
+      } else if (laneModelId !== undefined && laneModelId === laneCandidates[0]) {
+        selectedModelId = laneModelId;
+        source = "phase_fallback";
+        phaseRoutingSource = phaseProfile.verificationStatus === "unavailable" ? "fallback_unavailable" : "fallback_until_verified";
+        policyNotes.push(`Phase lane ${phaseLane} requested ${phaseProfile.targetModelRequest} (${phaseProfile.verificationStatus}); using verified fallback ${selectedModelId}.`);
+      } else if (laneModelId) {
+        // A lane never re-selects a failed model: it moves to its own fallback first.
+        selectedModelId = laneModelId;
+        source = "phase_fallback";
+        phaseRoutingSource = "failed_model_fallback";
+        policyNotes.push(`Phase lane ${phaseLane} model ${laneCandidates[0]} is reported failed; using lane fallback ${selectedModelId}.`);
+      } else {
+        // Every lane model failed: take the role's fallback order, keeping an unverified lane target off-limits.
+        const unverifiedTarget = verified ? null : splitModelId(phaseProfile.targetModelRequest).model;
+        const roleModelId = availableFallbacks.find((modelId) => splitModelId(modelId).model !== unverifiedTarget);
+        if (!roleModelId) {
+          throw new Error(`No viable routing candidates remain for ${input.role} on phase lane ${phaseLane} after filtering failed models.`);
+        }
+        selectedModelId = roleModelId;
+        source = roleModelId === fallbackOrder[0] ? "default" : "fallback";
+        phaseRoutingSource = "failed_model_fallback";
+        policyNotes.push(`Phase lane ${phaseLane} models ${laneCandidates.join(", ")} are reported failed; using role fallback ${selectedModelId}.`);
+      }
     }
     baseThinking = phaseProfile.thinking;
   }

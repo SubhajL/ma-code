@@ -53,11 +53,13 @@ Used only for eligible non-critical roles.
 Allows cheaper handling for bounded simpler work.
 
 ### task_harder
-Raises reasoning depth and may prefer a stronger override.
-This is how the harness keeps harder work from becoming too cheap.
+Raises reasoning depth and may prefer a stronger override (the second model in the role's fallback order).
+This is how the harness keeps harder work from becoming too cheap. A role whose default is already its strongest model
+sets `allow_stronger_override: false` and keeps it; `frontend_worker` (Claude Opus) does.
 
 ### provider_failure
-Filters failed models and falls back conservatively.
+Filters failed models and falls back conservatively. A phase lane skips a failed model too: it moves to its own fallback,
+then to the role's fallback order (`phaseRoutingSource: failed_model_fallback`).
 
 ## How to inspect routing locally
 ```bash

@@ -61,7 +61,7 @@ test("harness-routing keeps critical roles at high thinking under cost pressure"
 test("harness-routing raises cheaper build-worker defaults back to high thinking for harder tasks", async () => {
   const config = parseHarnessRoutingConfig(JSON.parse(await readFixture(".pi/agent/models.json")));
   const result = resolveHarnessRoute(config, {
-    role: "frontend_worker",
+    role: "backend_worker",
     reason: "task_harder",
     budgetMode: "high",
   });
