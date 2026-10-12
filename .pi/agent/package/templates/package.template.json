@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "harness:check": "tsc --noEmit -p tsconfig.harness.json && TSX_TSCONFIG_PATH=\"$PWD/tsconfig.harness.json\" node --experimental-sqlite --import tsx --test tests/extension-units/*.test.ts && TSX_TSCONFIG_PATH=\"$PWD/tsconfig.harness.json\" node scripts/run-integration-tests.mjs",
+    "harness:hooks:install": "node scripts/harness-hooks-install.mjs",
     "harness:status": "node --import tsx scripts/harness-operator-status.ts",
     "harness:status:json": "node --import tsx scripts/harness-operator-status.ts --json",
     "harness:worktree": "node --import tsx scripts/harness-worktree.ts",
@@ -17,7 +19,7 @@
     "harness:product-intake": "node --import tsx scripts/harness-product-intake.ts",
     "harness:orchestrate": "node --import tsx scripts/harness-orchestrate.ts",
     "harness:stitch-prompt": "node --import tsx scripts/harness-stitch-prompt.ts",
-    "test:extensions": "node --import tsx --test tests/extension-units/*.test.ts",
+    "test:extensions": "node --experimental-sqlite --import tsx --test tests/extension-units/*.test.ts",
     "test:queue-runner": "node --import tsx --test tests/extension-units/queue-runner.test.ts",
     "test:core-workflows": "node --import tsx --test tests/integration/core-workflows.test.ts",
     "test:operator-surface": "node --import tsx --test tests/integration/operator-surface.test.ts",
@@ -71,8 +73,11 @@
     "validate:orchestrator-continue": "./scripts/validate-orchestrator-continue.sh",
     "test:orchestrator-evidence": "node --import tsx --test tests/extension-units/orchestrator-evidence.test.ts tests/integration/orchestrator-evidence.test.ts",
     "validate:orchestrator-evidence": "./scripts/validate-orchestrator-evidence.sh",
-    "test:orchestrator-context": "node --import tsx --test tests/extension-units/orchestrator-context.test.ts tests/integration/orchestrator-context.test.ts",
+    "test:orchestrator-context": "node --import tsx --test tests/extension-units/orchestrator-context.test.ts",
     "validate:orchestrator-context": "bash scripts/validate-orchestrator-context.sh"
+  },
+  "engines": {
+    "node": ">=22.13 <23 || >=23.4"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

@@ -894,6 +894,8 @@ for needle in [
 ]:
     assert needle in graphify_adapter_doc
 assert ".pi/agent/artifacts/" in gitignore_doc
+harness_tsconfig_template = json.loads((root / ".pi/agent/package/templates/tsconfig.harness.template.json").read_text(encoding="utf-8"))
+assert harness_tsconfig_template["compilerOptions"] == json.loads((root / "tsconfig.json").read_text(encoding="utf-8"))["compilerOptions"], "tsconfig.harness.template.json compilerOptions drifted from tsconfig.json"
 for needle in [
     ".pi/agent/state/runtime/*.json",
     ".pi/agent/state/runtime/*.lock",

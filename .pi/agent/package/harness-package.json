@@ -13,8 +13,11 @@
     ".pi/agent/extensions",
     ".pi/agent/handoffs",
     ".pi/agent/governance",
+    ".pi/agent/intake",
+    ".pi/agent/lifecycle",
     ".pi/agent/package",
     ".pi/agent/packets",
+    ".pi/agent/release",
     ".pi/agent/prompts",
     ".pi/agent/recovery",
     ".pi/agent/routing",
@@ -143,6 +146,24 @@
       "notes": [
         "Decision log template for major feature initiative folders."
       ]
+    },
+    {
+      "target": "tsconfig.harness.json",
+      "template": ".pi/agent/package/templates/tsconfig.harness.template.json",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "TypeScript settings for the harness's own code, used by `npm run harness:check`; independent of the target repo's tsconfig.json."
+      ]
+    },
+    {
+      "target": ".githooks/pre-push",
+      "template": ".githooks/pre-push",
+      "mode": "create_if_missing",
+      "requiredReview": false,
+      "notes": [
+        "Runs `npm run harness:check` before every push once enabled with `npm run harness:hooks:install`. A target's own pre-push hook is kept."
+      ]
     }
   ],
   "packageJsonTemplate": ".pi/agent/package/templates/package.template.json",
@@ -153,6 +174,15 @@
     "prompts",
     "enableSkillCommands"
   ],
+  "gitignoreEntries": [
+    ".pi/agent/pi-session-*.html",
+    ".pi/agent/artifacts/",
+    ".pi/agent/state/runtime/*.json",
+    ".pi/agent/state/runtime/*.lock",
+    "**/.pi/agent/state/runtime/pi.db*",
+    "logs/harness-actions.jsonl*",
+    "**/logs/harness-actions.jsonl*"
+  ],
   "versionRecordTarget": ".pi/agent/package/installed-package.json",
   "excludedPaths": [
     ".git",
@@ -162,6 +192,14 @@
     ".pi/agent/state/runtime",
     ".pi/agent/artifacts",
     ".pi/agent/package/installed-package.json",
-    ".pi/agent/pi-session-*.html"
+    ".pi/agent/pi-session-*.html",
+    "tests/integration/auth-boundary.test.ts",
+    "tests/integration/health-handshake.test.ts",
+    "tests/integration/observability.test.ts",
+    "tests/integration/greenfield-phase-b-queue-readiness.test.ts",
+    "tests/integration/greenfield-phase-c-worker-proof.test.ts",
+    "tests/integration/orchestrator-context.test.ts",
+    "tests/extension-units/second-model-opus.test.ts",
+    "tests/extension-units/project-model-settings.test.ts"
   ]
 }

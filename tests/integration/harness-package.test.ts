@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
 import test from "node:test";
 import { createRequire } from "node:module";
-import { mkdtemp, mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
 import { join, relative, sep } from "node:path";
@@ -207,6 +207,164 @@ test("harness package bootstrap copies reusable assets and generates fresh repo-
   assert.equal(await exists(join(destinationRoot, "docs", "frontend", "README.md")), true);
   assert.equal(await exists(join(destinationRoot, "logs", "harness-actions.jsonl")), false);
   assert.equal(await exists(join(destinationRoot, "reports", "validation")), false);
+});
+
+const SOURCE_ONLY_TESTS = [
+  "tests/integration/auth-boundary.test.ts",
+  "tests/integration/health-handshake.test.ts",
+  "tests/integration/observability.test.ts",
+  "tests/integration/greenfield-phase-b-queue-readiness.test.ts",
+  "tests/integration/greenfield-phase-c-worker-proof.test.ts",
+  "tests/integration/orchestrator-context.test.ts",
+  "tests/extension-units/second-model-opus.test.ts",
+  "tests/extension-units/project-model-settings.test.ts",
+];
+const RUNTIME_IGNORE_LINES = [
+  ".pi/agent/pi-session-*.html",
+  ".pi/agent/artifacts/",
+  ".pi/agent/state/runtime/*.json",
+  ".pi/agent/state/runtime/*.lock",
+  "**/.pi/agent/state/runtime/pi.db*",
+  "logs/harness-actions.jsonl*",
+  "**/logs/harness-actions.jsonl*",
+];
+// The tsx config path is absolute because integration tests spawn harness scripts from temp directories.
+const HARNESS_CHECK =
+  'tsc --noEmit -p tsconfig.harness.json && TSX_TSCONFIG_PATH="$PWD/tsconfig.harness.json" node --experimental-sqlite --import tsx --test tests/extension-units/*.test.ts && TSX_TSCONFIG_PATH="$PWD/tsconfig.harness.json" node scripts/run-integration-tests.mjs';
+
+test("an installed repo gets what npm run check and the pre-push hook need", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-check-");
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  const packageJson = JSON.parse(await readFile(join(destinationRoot, "package.json"), "utf8")) as {
+    scripts: Record<string, string>;
+    engines?: Record<string, string>;
+  };
+  // Harness-owned names only, so a target's own check/typecheck/test scripts are never shadowed or reused.
+  assert.equal(packageJson.scripts["harness:check"], HARNESS_CHECK);
+  assert.equal(packageJson.scripts["harness:hooks:install"], "node scripts/harness-hooks-install.mjs");
+  for (const generic of ["check", "typecheck", "test:integration", "hooks:install"]) {
+    assert.equal(packageJson.scripts[generic], undefined, `the template must not claim the generic ${generic} script`);
+  }
+  assert.equal(packageJson.engines?.node, ">=22.13 <23 || >=23.4");
+  assert.ok(((await stat(join(destinationRoot, ".githooks", "pre-push"))).mode & 0o111) !== 0, "pre-push must be executable");
+  assert.match(await readFile(join(destinationRoot, ".githooks", "pre-push"), "utf8"), /npm run --silent harness:check/);
+  assert.ok(result.generatedFiles.includes(".githooks/pre-push"));
+  assert.ok(result.generatedFiles.includes("tsconfig.harness.json"));
+  for (const policy of [
+    ".pi/agent/intake/intake-trigger-policy.json",
+    ".pi/agent/lifecycle/slice-lifecycle-policy.json",
+    ".pi/agent/release/merge-release-policy.json",
+  ]) {
+    assert.equal(await exists(join(destinationRoot, policy)), true, `${policy} should ship`);
+  }
+  for (const sourceOnly of SOURCE_ONLY_TESTS) {
+    assert.equal(await exists(join(destinationRoot, sourceOnly)), false, `${sourceOnly} tests this repo's own fixtures and must not ship`);
+  }
+  // Every test file a shipped script names must exist in the target.
+  for (const [name, command] of Object.entries(packageJson.scripts)) {
+    for (const testFile of command.match(/tests\/[\w./-]+\.test\.ts/g) ?? []) {
+      assert.equal(await exists(join(destinationRoot, testFile)), true, `script ${name} names missing ${testFile}`);
+    }
+  }
+  const gitignore = (await readFile(join(destinationRoot, ".gitignore"), "utf8")).split("\n");
+  for (const line of RUNTIME_IGNORE_LINES) assert.ok(gitignore.includes(line), `.gitignore should contain ${line}`);
+});
+
+test("harness package bootstrap appends only the missing runtime ignore lines to an existing .gitignore", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-gitignore-");
+  await writeFile(join(destinationRoot, ".gitignore"), `node_modules/\r\n${RUNTIME_IGNORE_LINES[4]}\r\n`, "utf8");
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  const content = await readFile(join(destinationRoot, ".gitignore"), "utf8");
+  assert.equal(content.replace(/\r\n/g, "").includes("\n"), false, "a CRLF .gitignore keeps CRLF line endings");
+  const lines = content.split("\r\n");
+  assert.equal(lines[0], "node_modules/");
+  for (const line of RUNTIME_IGNORE_LINES) assert.equal(lines.filter((entry) => entry === line).length, 1, line);
+  assert.deepEqual(result.gitignoreEntriesAdded, RUNTIME_IGNORE_LINES.filter((line) => line !== RUNTIME_IGNORE_LINES[4]));
+});
+
+test("harness package bootstrap leaves a .gitignore alone when it un-ignores harness paths or already has every line", async () => {
+  const sourceRoot = requireSourceRoot();
+  // A negation for runtime state skips only the runtime-state lines; other harness lines still go in.
+  const negated = await makeTempDir("harness-package-gitignore-negated-");
+  const negation = "!.pi/agent/state/runtime/scheduled-workflows.json\n";
+  await writeFile(join(negated, ".gitignore"), negation, "utf8");
+  const negatedResult = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: negated });
+  // Only the lines whose scope holds the negated file are skipped; the pi.db line still goes in.
+  assert.deepEqual(
+    negatedResult.gitignoreEntriesAdded,
+    RUNTIME_IGNORE_LINES.filter((line) => !line.startsWith(".pi/agent/state/runtime/*")),
+  );
+  assert.match(negatedResult.warnings.join("\n"), /un-ignores paths under \.pi\/agent\/state\/runtime\/\*\.json/);
+
+  // A broad `!.pi/agent/` (as in a `.pi/*` + `!.pi/agent/` pair) does not stop the specific runtime lines.
+  const broad = await makeTempDir("harness-package-gitignore-broad-");
+  await writeFile(join(broad, ".gitignore"), ".pi/*\n!.pi/agent/\n", "utf8");
+  const broadResult = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: broad });
+  assert.deepEqual(broadResult.gitignoreEntriesAdded, RUNTIME_IGNORE_LINES);
+
+  // Git treats leading spaces as part of a pattern, so " **/...pi.db*" does not count as present.
+  const leadingSpace = await makeTempDir("harness-package-gitignore-space-");
+  await writeFile(join(leadingSpace, ".gitignore"), ` ${RUNTIME_IGNORE_LINES[4]}\n`, "utf8");
+  const leadingSpaceResult = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: leadingSpace });
+  assert.ok(leadingSpaceResult.gitignoreEntriesAdded.includes(RUNTIME_IGNORE_LINES[4]));
+
+  // A symlinked .gitignore that already has every line needs no write, so it does not stop the install.
+  const complete = await makeTempDir("harness-package-gitignore-complete-");
+  const shared = join(await makeTempDir("harness-package-gitignore-shared-"), "gitignore");
+  await writeFile(shared, `${RUNTIME_IGNORE_LINES.join("\n")}\n`, "utf8");
+  await symlink(shared, join(complete, ".gitignore"));
+  const completeResult = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: complete });
+  assert.deepEqual(completeResult.gitignoreEntriesAdded, []);
+});
+
+test("harness package bootstrap keeps a target's own pre-push hook and package scripts, and refuses managed-file collisions up front", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-own-hook-");
+  await mkdir(join(destinationRoot, ".githooks"), { recursive: true });
+  await writeFile(join(destinationRoot, ".githooks", "pre-push"), "#!/bin/sh\nexit 0\n", "utf8");
+  await writeFile(
+    join(destinationRoot, "package.json"),
+    `${JSON.stringify({ name: "target", scripts: { check: "eslint ." }, engines: { node: ">=18" } }, null, 2)}\n`,
+    "utf8",
+  );
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  assert.ok(result.preservedFiles.includes(".githooks/pre-push"));
+  assert.equal(await readFile(join(destinationRoot, ".githooks", "pre-push"), "utf8"), "#!/bin/sh\nexit 0\n");
+  const packageJson = JSON.parse(await readFile(join(destinationRoot, "package.json"), "utf8")) as {
+    scripts: Record<string, string>;
+    engines: Record<string, string>;
+  };
+  assert.equal(packageJson.scripts.check, "eslint .");
+  assert.equal(packageJson.scripts["harness:check"], HARNESS_CHECK);
+  assert.equal(packageJson.engines.node, ">=18");
+  assert.match(result.warnings.join("\n"), /Preserved existing package\.json engines\.node/);
+
+  const commonjs = await makeTempDir("harness-package-commonjs-");
+  await writeFile(join(commonjs, "package.json"), `${JSON.stringify({ name: "t", type: "commonjs" })}\n`, "utf8");
+  const commonjsResult = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: commonjs });
+  assert.match(commonjsResult.warnings.join("\n"), /"type": "commonjs".*ES modules/);
+
+  const npmOnly = await makeTempDir("harness-package-engines-npm-");
+  await writeFile(join(npmOnly, "package.json"), `${JSON.stringify({ name: "t", engines: { npm: ">=10" } })}\n`, "utf8");
+  const npmOnlyResult = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: npmOnly });
+  const npmOnlyJson = JSON.parse(await readFile(join(npmOnly, "package.json"), "utf8")) as { engines: Record<string, string> };
+  assert.deepEqual(npmOnlyJson.engines, { npm: ">=10", node: ">=22.13 <23 || >=23.4" });
+  assert.doesNotMatch(npmOnlyResult.warnings.join("\n"), /engines/);
+
+  const collision = await makeTempDir("harness-package-collision-");
+  await mkdir(join(collision, "scripts"), { recursive: true });
+  await writeFile(join(collision, "scripts", "harness-package.ts"), "// the target's own file\n", "utf8");
+  const before = (await readdir(collision, { recursive: true })).sort();
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: collision }), /already contains .*scripts\/harness-package\.ts/);
+  assert.deepEqual((await readdir(collision, { recursive: true })).sort(), before, "nothing written before the refusal");
 });
 
 test("harness package bootstrap preserves existing repo-local files instead of overwriting them", async () => {
@@ -691,6 +849,7 @@ test("harness package install wraps bootstrap, records skipped npm install + val
     assert.ok(result.filesToReview.includes("docs/product/intake-policy.md"));
 
     assert.ok(result.nextSteps.some((line) => line.includes("harness:product-intake")));
+    assert.ok(result.nextSteps.some((line) => line.includes("npm run harness:hooks:install")));
 
     const rendered = renderHarnessPackageInstall(result);
     assert.match(rendered, /Harness Package Install/);

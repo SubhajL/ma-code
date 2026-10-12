@@ -354,3 +354,96 @@ T1#7, the tests and the docs.
 
 Gates: focused tests 3× (25/25), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 203/203).
 Land: no CRITICAL or HIGH in R2 (both tiers), all MEDIUMs fixed, two-round cap respected.
+
+## P3 — installed repos get `npm run check` and the pre-push hook (`chore/harness-install-check-and-hook`)
+
+**Measured before (after P2):** an installed repo's own shipped suite failed:
+- **typecheck:** greenfield fixture tests import `apps/` and `services/`;
+- **unit:** 14 failures;
+- **integration:** 29 failures.
+
+Root causes:
+- three policy dirs were never shipped (`.pi/agent/{intake,lifecycle,release}`; 34 failures);
+- eight source-only tests exercise this repo's own fixtures (greenfield apps, its initiatives, its model settings,
+  `packages/pi-g-skills`);
+- no runtime lines in `.gitignore`.
+
+**Change:**
+- Manifest:
+  - ships `.pi/agent/{intake,lifecycle,release}` and `.githooks/`;
+  - generates `tsconfig.json` (create_if_missing, review);
+  - excludes the eight source-only tests;
+  - adds `gitignoreEntries` (the three runtime-state lines), appended when missing and planned and checked like every
+    other write.
+- `package.template.json`:
+  - adds `typecheck`, `check` (typecheck + unit + integration; the schema-codegen and repo-static checks are
+    source-repo-only), `hooks:install` and `test:integration`;
+  - `test:extensions` gains `--experimental-sqlite`, like the source;
+  - `test:orchestrator-context` drops the excluded integration test;
+  - `engines.node >=22.13` (now merged into an existing `package.json` when missing).
+- Install output and next steps say to run `npm run hooks:install`, and the version record lists the added ignore lines.
+  The hook message no longer lists source-only stages.
+
+**Stop line:** Q2 (several files, manifest shape). Not delegated: manifest and template edits plus about 30 lines in the
+installer; a brief would cost more than the work. RED first: 3 tests (scripts, hook, policies, exclusions, ignore lines;
+`.gitignore` dedupe; next step).
+
+**End-to-end proof (fresh install from this branch into a temp repo, `node_modules` symlinked because `npm install` needs
+the network):**
+- `npm run check` → exit 0 in 23 s: typecheck clean, unit 709/709, integration 193/193.
+- `npm run hooks:install` sets `core.hooksPath=.githooks`.
+- A push to a local bare remote ran the hook's `npm run check` and succeeded.
+- After committing a deliberately failing test, the next push was **blocked** ("pre-push: blocked…"), and the remote's
+  `main` stayed on the first commit.
+
+**Gates:** focused tests 3× (27/27), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 205/205).
+**Not changed (noted):** `validate:orchestrator-context` is wholly source-specific (it asserts this repo's
+`greenfield-scaffold` initiative), so it fails in installed repos as before. It is not part of `check` or the install
+validators.
+
+### QCHECK R1 — P3 (framings in parallel)
+
+Tier 1 (`/code-review high`): 10 findings. Tier 2 (Codex `gpt-5.6-sol` xhigh): 1 HIGH, 2 MED, 1 LOW. Both reviewed the staged
+pre-batch diff.
+
+| # | Tier | Sev | Finding | Disposition |
+|---|---|---|---|---|
+| 1 | T1+T2 | HIGH | The template's generic `check`/`typecheck`/`test:integration`/`hooks:install` lost to a target's existing scripts in the merge, and the hook ran the target's `check`, so the harness gate was bypassed. | **Fixed:** the template adds only `harness:check` (self-contained: typecheck with its own config, then unit and integration tests) and `harness:hooks:install`. The hook runs `npm run harness:check` from its own directory. The source maps `harness:check` to its full `check`. Test: a target with `check: "eslint ."` keeps it and still gets `harness:check`. |
+| 2 | T1 | HIGH | `typecheck` used the target's own `tsconfig.json` (fails, or silently skips the harness). | **Fixed:** a dedicated `tsconfig.harness.json` from a new template (the source compiler options, harness paths only). This also covers T1#10: the template no longer copies the source's root tsconfig. |
+| 3 | T1 | HIGH | `.githooks` as an asset collided mid-install with a target's own `pre-push`. | **Fixed:** the hook is a generated file and a target's own hook is kept. Asset collisions in general are now refused up front (`assertNoManagedFileCollisions`) instead of half-way through the copy. Tests. |
+| 4 | T1 | MED | `hooks:install` silently replaced husky or other hooks setups, and broke subdirectory installs. | **Fixed:** new `scripts/harness-hooks-install.mjs`. It refuses an existing non-default `core.hooksPath` (local or global; the message names the scope) unless `--force`, treats git's default `.git/hooks` as unset (compared by real path; macOS `/var` is a symlink), and prefixes the path for subdirectory installs. 4 tests in isolated git config. The source's `hooks:install` uses it too. |
+| 5 | T1+T2 | MED | `.gitignore`: missing runtime outputs, CRLF, `!` negations, a write even when nothing was missing, and leading-space lines counted as present. | **Fixed:** 7 lines (sessions, artifacts, runtime JSON/lock/db, audit log); CRLF kept; a `.gitignore` that un-ignores harness paths is left alone with a warning; no write (and no symlink refusal) when nothing is missing; only trailing whitespace is trimmed. Tests (RED first). |
+| 6 | T1 | MED | `engines` was set only when absent, with no warning, and `>=22.13` admitted 23.0–23.3 (`node:sqlite` still flagged there). | **Fixed:** `>=22.13 <23 \|\| >=23.4` in the template and the source, plus a warning when a target keeps a different `engines`. Test. |
+| 7 | T1+T2 | MED | Shipped scripts reference excluded tests: the `run-integration-tests` aliases and `validate:orchestrator-context`. | **Noted:** both run only when invoked explicitly, neither is part of `harness:check`, and `validate:orchestrator-context` is pinned in the template by `check-repo-static.sh` (and is wholly source-specific). |
+| 8 | T1 | MED | The harness gate runs any other `node:test` files in the target's `tests/integration/`. | **Deferred (documented limit):** the package layout ships the harness's tests into `tests/`; changing that layout is out of scope. |
+| 9 | T1 | LOW | The docs called it "the same gate as this repo". | **Fixed:** the docs describe `harness:check` and its limits. |
+
+**End-to-end after the batch (fresh install, isolated git config):** `harness:check` exit 0 (unit 709/709, integration
+199/199). `harness:hooks:install` sets `.githooks`. A green push ran `harness:check` and succeeded; a push with a deliberately
+failing test was blocked, and the remote stayed on the first commit.
+
+### QCHECK R2 — P3 (confirm, scoped to the R1 fix diff)
+
+Tier 1 (`/code-review high`; it ran real pushes from a subdirectory and a linked worktree): no CRITICAL. Tier 2 (Codex
+`gpt-5.6-sol` xhigh, on the pre-batch tree): no CRITICAL, 2 HIGH. It confirmed the `.gitignore` and engines fixes.
+
+| # | Tier | Sev | Finding | Disposition |
+|---|---|---|---|---|
+| 1 | T1 | MED | The negation guard was too broad: a common `!.pi/agent/` dropped all 7 lines. | **Fixed:** an entry is skipped only when a negation falls inside its literal scope (`!.pi/agent/state/runtime/x.json` skips the `*.json`/`*.lock` lines, not `pi.db*`). Tests: precise and broad cases. |
+| 2 | T1 | MED | A kept target `.githooks/pre-push` meant the gate was never wired, and the hooks install still claimed success. | **Fixed:** `harness-hooks-install.mjs` warns when the enabled hook does not run `harness:check`. Test. |
+| 3 | T1+T2 | MED | Git before 2.26 rejects `--show-scope`, and the catch treated that as unset, overwriting husky. | **Fixed:** only exit status 1 means unset; other failures fall back to `--get`. Test with a fake `git` that rejects `--show-scope`. |
+| 4 | T1 | MED | A hook reached through `.git/hooks` (symlink or chain) `cd`-ed into `.git`. | **Fixed:** the hook resolves its own symlinks before `cd`. Discriminating test: harness in a subdirectory plus a root `package.json`; only the harness's script may run (the first version of the test was vacuous because npm walks up from `.git`, so it was rewritten). |
+| 5 | T1 | MED | `tsconfig.harness.json` includes `scripts/**` and `tests/integration/**`, so the target's own TS there is typechecked. | **Deferred (documented limit, same layout as P3 R1 #8).** |
+| 6 | T1 | MED | tsx ran the tests with the target's `tsconfig.json`. | **Fixed:** `TSX_TSCONFIG_PATH`. The first version used a relative path and broke 92 installed integration tests (children run from temp dirs). The manual end-to-end run caught it and it is now absolute (`$PWD/…`); see #8. |
+| 7 | T1 | MED | Path comparisons: `--git-common-dir` resolved against the wrong base, and the target compared as a string. | **Fixed:** cwd-relative common dir; real-path comparison that resolves the nearest existing parent (macOS `/var`). Tests: own target written absolutely; default hooks path from a subdirectory. |
+| 8 | T1 | MED | Nothing automated ran `harness:check` in an installed repo; tests compared script text. | **Fixed:** new `scripts/validate-harness-install-e2e.sh` (`npm run validate:harness-install-e2e`, about 45 s, not part of `check`). It installs into a temp repo, runs `harness:check`, enables the hook, pushes green (must pass) and pushes a failing test (must be blocked). Mutation: reintroducing the relative tsconfig path makes it FAIL. |
+| 9 | T1 | LOW | `engines` compared as a whole object. | **Fixed:** per key (`node` added if missing, a warning only when a key differs). Test. |
+| 10 | T1+T2 | LOW | Stale hook comment; no tsconfig template parity check. | **Fixed:** the comment names both commands; `check-repo-static.sh` asserts the template's `compilerOptions` equal `tsconfig.json`'s. |
+| C1 | T2 | HIGH→MED | A target that already defines `harness:check` or `tsconfig.harness.json` keeps its own. | **Dispositioned:** those exist beforehand only after a previous install, and re-installs are now refused up front, or because the target defined `harness:*` itself, in which case the install prints "Preserved existing package.json script entry for harness:check". Documented as a reserved namespace. Downgraded with this evidence, not looped to R3. |
+| C2 | T2 | HIGH→pre-existing | A `"type": "commonjs"` target can't typecheck or run the harness. | **Predates P3:** the harness is ESM throughout (`import.meta`), so a CJS target never ran its scripts. P3 adds an install warning (RED-first test) and documents the requirement. |
+| C3 | T2 | MED | A re-install is always refused. | **Predates P3:** `copyAsset` already threw on the first existing asset, mid-copy. P3 refuses up front instead. In-place update is a follow-up (documented). |
+
+Gates: focused tests 3× (37/37), `validate-harness-package.sh` PASS, `validate-harness-install-e2e.sh` PASS, `npm run check` exit 0
+(unit 720/720, integration 215/215, static including the new parity check).
+Escalation note: the two Tier-2 HIGHs were dispositioned with evidence (unreachable without a prior install or user-defined
+`harness:*` names; pre-existing ESM requirement), not by a third review round.
