@@ -85,6 +85,12 @@ This will:
 - copy reusable harness assets
 - generate repo-local templates/placeholders only when missing
 - merge harness scripts/devDependencies into `package.json`
+- refuse to start if anything it would write inside the target goes through a symlink (a symlinked `.pi/agent`,
+  `scripts/` or `tests/`, or a dangling link at a generated file), so it never writes outside the target. The target root
+  may itself be a symlink, and a generated file that already exists through a link (for example `AGENTS.md -> CLAUDE.md`)
+  is kept. Replace such a link with a real directory, or remove it, and run again. This covers the bootstrap step;
+  `npm install` and the validators that `harness:install` runs afterwards use the target as it is (a symlinked
+  `node_modules` is fine).
 - write or merge pi's project settings, `.pi/settings.json`. This file lists the harness extensions one by one; without it
   pi loads none of them (no `safe-bash`, no `till-done`). Existing settings are kept: the harness entries are appended
   to `extensions`/`skills`/`prompts`, other keys are only added when missing, and entries whose path is not in the target

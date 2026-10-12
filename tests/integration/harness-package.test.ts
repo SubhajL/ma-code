@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { mkdtemp, mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -14,6 +14,7 @@ import { DefaultResourceLoader } from "@mariozechner/pi-coding-agent";
 import {
   bootstrapHarnessPackage,
   installHarnessPackage,
+  listBootstrapWrites,
   loadHarnessPackageManifest,
   parseHarnessPackageManifest,
   renderHarnessPackageInstall,
@@ -360,6 +361,157 @@ test("harness package bootstrap refuses a dangling .pi symlink, a .pi file and a
   await mkdir(join(settingsDir, ".pi", "settings.json"), { recursive: true });
   await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: settingsDir }), /settings\.json is not a file/);
   assert.equal(await exists(join(settingsDir, "package.json")), false);
+});
+
+test("harness package bootstrap refuses to write through any symlink inside the target", async () => {
+  const sourceRoot = requireSourceRoot();
+  const cases: Array<[string, (destinationRoot: string, external: string) => Promise<void>]> = [
+    ["symlinked .pi/agent", async (destinationRoot, external) => {
+      await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+      await symlink(external, join(destinationRoot, ".pi", "agent"));
+    }],
+    ["symlinked scripts directory", async (destinationRoot, external) => {
+      await symlink(external, join(destinationRoot, "scripts"));
+    }],
+    ["dangling symlink at a generated file", async (destinationRoot, external) => {
+      await symlink(join(external, "AGENTS.md"), join(destinationRoot, "AGENTS.md"));
+    }],
+    ["symlinked package.json", async (destinationRoot, external) => {
+      await mkdir(join(external, "shared"));
+      await writeFile(join(external, "shared", "package.json"), "{}\n", "utf8");
+      await symlink(join(external, "shared", "package.json"), join(destinationRoot, "package.json"));
+    }],
+  ];
+  for (const [label, arrange] of cases) {
+    const destinationRoot = await makeTempDir("harness-package-symlink-write-");
+    const external = await makeTempDir("harness-package-symlink-external-");
+    await arrange(destinationRoot, external);
+    const before = (await readdir(destinationRoot, { recursive: true })).sort();
+
+    await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot }), /goes through a symlink/, label);
+    const externalEntries = (await readdir(external)).filter((entry) => entry !== "shared");
+    assert.deepEqual(externalEntries, [], `${label}: nothing written outside the target`);
+    assert.deepEqual((await readdir(destinationRoot, { recursive: true })).sort(), before, `${label}: nothing written inside the target`);
+    if (label === "symlinked package.json") {
+      assert.equal(await readFile(join(external, "shared", "package.json"), "utf8"), "{}\n", `${label}: shared file untouched`);
+    }
+  }
+});
+
+test("harness package bootstrap refuses manifest paths that resolve outside the target or hide a symlink behind ..", async () => {
+  const external = await makeTempDir("harness-package-manifest-external-");
+  for (const [label, target] of [
+    ["absolute generated target", join(external, "absolute.md")],
+    ["escaping generated target", "../escaped.md"],
+    ["symlink hidden behind ..", "missing/../escape/pwn.md"],
+  ] as const) {
+    const sourceRoot = await makeTempDir("harness-package-manifest-source-");
+    const parent = await makeTempDir("harness-package-manifest-parent-");
+    const destinationRoot = join(parent, "repo");
+    await mkdir(destinationRoot);
+    await symlink(external, join(destinationRoot, "escape"));
+    await mkdir(join(sourceRoot, ".pi", "agent", "package"), { recursive: true });
+    await writeFile(join(sourceRoot, "AGENTS.template.md"), "# rules\n", "utf8");
+    await writeFile(join(sourceRoot, "package.template.json"), "{}\n", "utf8");
+    await writeFile(
+      join(sourceRoot, ".pi", "agent", "package", "harness-package.json"),
+      JSON.stringify({
+        version: 1,
+        packageName: "fake",
+        packageVersion: "0.0.0",
+        reusableAssets: [],
+        generatedFiles: [{ target, template: "AGENTS.template.md", mode: "create_if_missing" }],
+        packageJsonTemplate: "package.template.json",
+        versionRecordTarget: ".pi/agent/package/installed-package.json",
+        excludedPaths: [],
+      }),
+      "utf8",
+    );
+
+    await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot }), /outside the target|goes through a symlink/, label);
+    assert.deepEqual(await readdir(external), [], `${label}: nothing written outside the target`);
+    assert.deepEqual(await readdir(parent), ["repo"], `${label}: nothing written beside the target`);
+  }
+});
+
+test("a manifest whose reusable asset is the whole source root still installs", async () => {
+  const sourceRoot = await makeTempDir("harness-package-root-asset-source-");
+  const destinationRoot = await makeTempDir("harness-package-root-asset-dest-");
+  await mkdir(join(sourceRoot, ".pi", "agent", "package"), { recursive: true });
+  await writeFile(join(sourceRoot, "hello.txt"), "hello\n", "utf8");
+  await writeFile(join(sourceRoot, "AGENTS.template.md"), "# rules\n", "utf8");
+  await writeFile(join(sourceRoot, "package.template.json"), "{}\n", "utf8");
+  await writeFile(
+    join(sourceRoot, ".pi", "agent", "package", "harness-package.json"),
+    JSON.stringify({
+      version: 1,
+      packageName: "fake",
+      packageVersion: "0.0.0",
+      reusableAssets: ["."],
+      generatedFiles: [{ target: "AGENTS.md", template: "AGENTS.template.md", mode: "create_if_missing" }],
+      packageJsonTemplate: "package.template.json",
+      versionRecordTarget: ".pi/agent/package/installed-package.json",
+      excludedPaths: [".pi", "AGENTS.template.md", "package.template.json"],
+    }),
+    "utf8",
+  );
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  assert.ok(result.copiedAssets.includes("hello.txt"));
+  assert.equal(await readFile(join(destinationRoot, "hello.txt"), "utf8"), "hello\n");
+});
+
+test("harness package bootstrap allows a symlinked target root and keeps a generated file linked to a real one", async () => {
+  const sourceRoot = requireSourceRoot();
+  const realRoot = await makeTempDir("harness-package-real-root-");
+  const linkedRoot = join(await makeTempDir("harness-package-link-parent-"), "repo");
+  await symlink(realRoot, linkedRoot);
+  await writeFile(join(realRoot, "CLAUDE.md"), "# shared rules\n", "utf8");
+  await symlink("CLAUDE.md", join(realRoot, "AGENTS.md"));
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot: linkedRoot });
+
+  assert.ok(result.preservedFiles.includes("AGENTS.md"));
+  assert.equal(await readFile(join(realRoot, "CLAUDE.md"), "utf8"), "# shared rules\n");
+  assert.equal(await exists(join(realRoot, ".pi", "settings.json")), true);
+});
+
+test("harness package bootstrap names a target path component that is a file, not a directory", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-file-component-");
+  await writeFile(join(destinationRoot, "scripts"), "not a directory\n", "utf8");
+
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot }), /scripts exists but is not a directory/);
+  assert.deepEqual(await readdir(destinationRoot), ["scripts"], "nothing written before the refusal");
+
+  const dirAtFile = await makeTempDir("harness-package-dir-at-file-");
+  await mkdir(join(dirAtFile, "package.json"));
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: dirAtFile }), /package\.json exists but is not a file/);
+  assert.deepEqual(await readdir(dirAtFile), ["package.json"], "nothing written before the refusal");
+
+  const loop = await makeTempDir("harness-package-link-loop-");
+  await symlink("AGENTS.md", join(loop, "AGENTS.md"));
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: loop }), /goes through a symlink/);
+});
+
+test("every file a bootstrap creates was in the plan its symlink check covered", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-plan-coverage-");
+  const planned = new Set(await listBootstrapWrites({ sourceRoot, destinationRoot }));
+
+  await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  const unplanned: string[] = [];
+  const walk = async (dir: string): Promise<void> => {
+    for (const entry of await readdir(dir, { withFileTypes: true })) {
+      const absolute = join(dir, entry.name);
+      if (entry.isDirectory()) await walk(absolute);
+      else if (!planned.has(relative(destinationRoot, absolute).split(sep).join("/"))) unplanned.push(absolute);
+    }
+  };
+  await walk(destinationRoot);
+  assert.deepEqual(unplanned, []);
 });
 
 test("harness package bootstrap leaves symlinked pi settings alone and says so", async () => {
