@@ -8,7 +8,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run test:extensions && npm run test:integration && npm run check:schema-types && ./scripts/check-repo-static.sh",
-    "hooks:install": "git config core.hooksPath .githooks",
+    "harness:check": "npm run check",
+    "hooks:install": "node scripts/harness-hooks-install.mjs",
+    "harness:hooks:install": "node scripts/harness-hooks-install.mjs",
     "codegen:schema-types": "node --import tsx scripts/codegen-schema-types.ts",
     "check:schema-types": "node --import tsx scripts/codegen-schema-types.ts --check",
     "harness:doctor": "node --import tsx scripts/harness-doctor.ts",
@@ -65,6 +67,7 @@
     "validate:prompt-semantics": "./scripts/validate-prompt-semantics.sh",
     "validate:prompt-semantics:live": "bash scripts/validate-prompt-semantics-live.sh",
     "validate:harness-package": "./scripts/validate-harness-package.sh",
+    "validate:harness-install-e2e": "./scripts/validate-harness-install-e2e.sh",
     "validate:tuning-data": "./scripts/collect-harness-tuning-data.sh",
     "test:graphify-adapter": "node --import tsx --test tests/extension-units/graphify-adapter.test.ts tests/integration/graphify-adapter.test.ts",
     "test:discovery-policy": "node --import tsx --test tests/extension-units/discovery-policy.test.ts",
@@ -150,7 +153,7 @@
     "validate:greenfield-phase-c": "node scripts/validate-greenfield-phase-c.mjs"
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.13 <23 || >=23.4"
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "0.67.6",

@@ -91,6 +91,22 @@ This will:
   is kept. Replace such a link with a real directory, or remove it, and run again. This covers the bootstrap step;
   `npm install` and the validators that `harness:install` runs afterwards use the target as it is (a symlinked
   `node_modules` is fine).
+- give the target a pre-push gate for the harness: `npm run harness:check` (typecheck with `tsconfig.harness.json`, plus
+  the harness unit and integration tests), the hook `.githooks/pre-push` (a target's own hook there is kept), and the
+  harness runtime-state lines in `.gitignore` (missing lines are appended; a `.gitignore` that un-ignores harness paths is
+  left alone). The harness only adds `harness:*` script names, so a target's own `check` or `test:integration` stays as
+  it is. Enable the hook once per clone with `npm run harness:hooks:install`; it refuses to replace another hooks setup
+  (husky, a global `core.hooksPath`, ...) unless run with `-- --force`. Tests that only exercise this repo's own fixtures
+  (greenfield app fixtures, its initiatives, its model settings) are not shipped.
+
+Limits of the installed gate:
+- `harness:*` script names and `tsconfig.harness.json` belong to the harness. If a target already defines them, the
+  install keeps the target's version and warns, and the gate then runs that version.
+- The harness is ES modules: the target's `package.json` needs `"type": "module"`. The install warns if it says otherwise.
+- The harness's code and tests share the target's `scripts/` and `tests/` folders, so `harness:check` also typechecks
+  TypeScript there and runs any other `node:test` files in `tests/integration/`.
+- Installing over an existing install is refused before anything is written (its files already exist); there is no
+  in-place update yet.
 - write or merge pi's project settings, `.pi/settings.json`. This file lists the harness extensions one by one; without it
   pi loads none of them (no `safe-bash`, no `till-done`). Existing settings are kept: the harness entries are appended
   to `extensions`/`skills`/`prompts`, other keys are only added when missing, and entries whose path is not in the target

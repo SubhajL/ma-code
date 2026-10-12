@@ -32,6 +32,8 @@ export interface HarnessPackageManifest {
   piSettingsTemplate: string | null;
   // Only these keys are taken from the template; provider/model defaults stay the target user's.
   piSettingsKeys: string[];
+  // Lines the target's .gitignore must contain (e.g. the live runtime database); missing ones are appended.
+  gitignoreEntries: string[];
   versionRecordTarget: string;
   excludedPaths: string[];
 }
@@ -55,6 +57,7 @@ export interface HarnessPackageBootstrapResult {
   piSettings: PiSettingsStatus;
   // Why .pi/settings.json was skipped, phrased as the operator's next step; null otherwise.
   piSettingsSkipReason: string | null;
+  gitignoreEntriesAdded: string[];
   preservedFiles: string[];
   warnings: string[];
   versionRecordPath: string;
@@ -179,6 +182,7 @@ export function parseHarnessPackageManifest(input: unknown): HarnessPackageManif
     piSettingsTemplate:
       input.piSettingsTemplate === undefined ? null : normalizeRelPath(assertString(input.piSettingsTemplate, "piSettingsTemplate")),
     piSettingsKeys: input.piSettingsKeys === undefined ? [...DEFAULT_PI_SETTINGS_KEYS] : assertStringArray(input.piSettingsKeys, "piSettingsKeys"),
+    gitignoreEntries: input.gitignoreEntries === undefined ? [] : assertStringArray(input.gitignoreEntries, "gitignoreEntries"),
     versionRecordTarget: normalizeRelPath(assertString(input.versionRecordTarget, "versionRecordTarget")),
     excludedPaths: assertStringArray(input.excludedPaths, "excludedPaths").map(normalizeRelPath),
   };
@@ -337,6 +341,7 @@ function containedWritePath(destinationRoot: string, relPath: string): string {
 interface BootstrapPlan {
   manifest: HarnessPackageManifest;
   piSettingsPlan: PiSettingsPlan;
+  gitignorePlan: GitignorePlan;
   assets: PlannedAsset[];
   writes: PlannedWrite[];
 }
@@ -344,6 +349,7 @@ interface BootstrapPlan {
 async function planBootstrap(sourceRoot: string, destinationRoot: string): Promise<BootstrapPlan> {
   const manifest = await loadHarnessPackageManifest(sourceRoot);
   const piSettingsPlan = await planPiSettings(destinationRoot, manifest);
+  const gitignorePlan = await planGitignore(destinationRoot, manifest);
   const assets: PlannedAsset[] = [];
   for (const asset of manifest.reusableAssets) {
     assets.push({ asset, ...(await listAssetFiles(sourceRoot, manifest, asset)) });
@@ -360,9 +366,10 @@ async function planBootstrap(sourceRoot: string, destinationRoot: string): Promi
     ...manifest.generatedFiles.map((rule) => file(rule.target, true)),
     file("package.json"),
     file(manifest.versionRecordTarget),
+    ...(gitignorePlan.add.length > 0 ? [file(".gitignore")] : []),
     ...(piSettingsPlan.kind === "write" ? [file(PI_SETTINGS_TARGET)] : []),
   ].map((write) => ({ ...write, relPath: containedWritePath(destinationRoot, write.relPath) }));
-  return { manifest, piSettingsPlan, assets, writes };
+  return { manifest, piSettingsPlan, gitignorePlan, assets, writes };
 }
 
 // Exported for tests: every repo-relative path a bootstrap into this target may write, i.e. the paths
@@ -434,6 +441,22 @@ async function mergePackageJson(sourceRoot: string, destinationRoot: string, man
     output.devDependencies = mergeUniqueStringMap(existingDeps, templateDeps, warnings, "package.json devDependency");
 
     if (!("type" in output) && typeof template.type === "string") output.type = template.type;
+    if (typeof template.type === "string" && output.type !== template.type) {
+      warnings.push(
+        `Preserved existing package.json "type": ${JSON.stringify(output.type)}; the harness is ES modules and needs "type": ${JSON.stringify(template.type)}, so its scripts and harness:check will not run until that changes.`,
+      );
+    }
+    if (isRecord(template.engines)) {
+      const engines: Record<string, unknown> = isRecord(output.engines) ? { ...output.engines } : {};
+      for (const [name, range] of Object.entries(template.engines)) {
+        if (!(name in engines)) {
+          engines[name] = range;
+        } else if (engines[name] !== range) {
+          warnings.push(`Preserved existing package.json engines.${name} ${JSON.stringify(engines[name])}; the harness needs ${JSON.stringify(range)} (node:sqlite).`);
+        }
+      }
+      output.engines = engines;
+    }
     if (!("private" in output) && typeof template.private === "boolean") output.private = template.private;
   } else {
     output = {
@@ -442,6 +465,7 @@ async function mergePackageJson(sourceRoot: string, destinationRoot: string, man
       type: template.type ?? "module",
       scripts: template.scripts ?? {},
       devDependencies: template.devDependencies ?? {},
+      ...(isRecord(template.engines) ? { engines: template.engines } : {}),
     };
   }
 
@@ -576,6 +600,72 @@ async function mergePiSettings(
   return { status: plan.existing ? "merged" : "generated", skipReason: null, warnings };
 }
 
+interface GitignorePlan {
+  existing: string;
+  add: string[];
+  warning: string | null;
+}
+
+// The literal prefix every path an ignore line matches starts with (before any glob, without a leading
+// `**/`), e.g. `.pi/agent/state/runtime/` for `.pi/agent/state/runtime/*.json`.
+function gitignoreScope(pattern: string): string {
+  return pattern.replace(/^\//, "").replace(/^\*\*\//, "").split(/[*?[]/)[0];
+}
+
+// Works out which of the manifest's ignore lines the target's .gitignore lacks. A line is skipped when
+// the target un-ignores something inside its scope (a `!` line), since the appended line would override it.
+async function planGitignore(destinationRoot: string, manifest: HarnessPackageManifest): Promise<GitignorePlan> {
+  if (manifest.gitignoreEntries.length === 0) return { existing: "", add: [], warning: null };
+  const destination = resolve(destinationRoot, ".gitignore");
+  const existing = (await pathExists(destination)) ? await readFile(destination, "utf8") : "";
+  // Git ignores trailing spaces in a pattern but not leading ones, so only the end is trimmed.
+  const lines = existing.split(/\r?\n/).map((line) => line.replace(/\s+$/, ""));
+  // A negation inside an entry's scope (e.g. `!.pi/agent/state/runtime/x.json` for `.pi/agent/state/runtime/*.json`)
+  // means the user tracks something that entry would ignore. A broader negation such as `!.pi/agent/` does not.
+  const negations = lines.filter((line) => line.startsWith("!")).map((line) => gitignoreScope(line.slice(1)));
+  const present = new Set(lines);
+  const add: string[] = [];
+  const blocked: string[] = [];
+  for (const entry of manifest.gitignoreEntries) {
+    if (present.has(entry)) continue;
+    const scope = gitignoreScope(entry);
+    if (negations.some((negated) => negated.startsWith(scope))) {
+      blocked.push(entry);
+      continue;
+    }
+    add.push(entry);
+  }
+  const warning =
+    blocked.length > 0
+      ? `.gitignore un-ignores paths under ${blocked.join(", ")}, so ${blocked.length === 1 ? "that line was" : "those lines were"} not added; add what you want by hand.`
+      : null;
+  return { existing, add, warning };
+}
+
+async function writeGitignore(destinationRoot: string, plan: GitignorePlan): Promise<string[]> {
+  if (plan.add.length === 0) return [];
+  const eol = plan.existing.includes("\r\n") ? "\r\n" : "\n";
+  const separator = plan.existing.length === 0 || plan.existing.endsWith("\n") ? "" : eol;
+  const block = ["# pi harness runtime state", ...plan.add].join(eol);
+  await writeFile(resolve(destinationRoot, ".gitignore"), `${plan.existing}${separator}${block}${eol}`, "utf8");
+  return plan.add;
+}
+
+// Assets never overwrite a target's file, so a collision is refused before anything is written
+// instead of half-way through the copy.
+async function assertNoManagedFileCollisions(destinationRoot: string, assets: PlannedAsset[]): Promise<void> {
+  const collisions: string[] = [];
+  for (const relPath of assets.flatMap((planned) => planned.files)) {
+    if (await lstatOrNull(resolve(destinationRoot, relPath))) collisions.push(relPath);
+  }
+  if (collisions.length > 0) {
+    const shown = collisions.slice(0, 5).join(", ");
+    throw new Error(
+      `Destination already contains ${collisions.length} harness-managed file(s): ${shown}${collisions.length > 5 ? ", ..." : ""}; the install stopped before writing anything.`,
+    );
+  }
+}
+
 async function writeVersionRecord(
   sourceRoot: string,
   destinationRoot: string,
@@ -596,6 +686,7 @@ async function writeVersionRecord(
         copiedAssets: result.copiedAssets,
         generatedFiles: result.generatedFiles,
         piSettings: result.piSettings,
+        gitignoreEntriesAdded: result.gitignoreEntriesAdded,
         preservedFiles: result.preservedFiles,
         warnings: result.warnings,
       },
@@ -610,8 +701,9 @@ async function writeVersionRecord(
 export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOptions): Promise<HarnessPackageBootstrapResult> {
   const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
   const destinationRoot = resolve(options.destinationRoot);
-  const { manifest, piSettingsPlan, assets, writes } = await planBootstrap(sourceRoot, destinationRoot);
+  const { manifest, piSettingsPlan, gitignorePlan, assets, writes } = await planBootstrap(sourceRoot, destinationRoot);
   await assertNoSymlinkedWrites(destinationRoot, writes);
+  await assertNoManagedFileCollisions(destinationRoot, assets);
   await mkdir(destinationRoot, { recursive: true });
 
   const copiedAssets: string[] = [];
@@ -622,6 +714,7 @@ export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOp
   const generatedResult = await generateRepoLocalFiles(sourceRoot, destinationRoot, manifest);
   const packageJsonResult = await mergePackageJson(sourceRoot, destinationRoot, manifest);
   const piSettingsResult = await mergePiSettings(sourceRoot, destinationRoot, manifest, piSettingsPlan);
+  const gitignoreEntriesAdded = await writeGitignore(destinationRoot, gitignorePlan);
 
   const result: HarnessPackageBootstrapResult = {
     version: 1,
@@ -634,8 +727,14 @@ export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOp
     mergedPackageJson: packageJsonResult.merged,
     piSettings: piSettingsResult.status,
     piSettingsSkipReason: piSettingsResult.skipReason,
+    gitignoreEntriesAdded,
     preservedFiles: generatedResult.preservedFiles.sort(),
-    warnings: [...generatedResult.warnings, ...packageJsonResult.warnings, ...piSettingsResult.warnings],
+    warnings: [
+      ...generatedResult.warnings,
+      ...packageJsonResult.warnings,
+      ...piSettingsResult.warnings,
+      ...(gitignorePlan.warning ? [gitignorePlan.warning] : []),
+    ],
     versionRecordPath: "",
   };
 
@@ -711,6 +810,7 @@ function buildNextSteps(filesToReview: string[], providerEnv: ProviderEnvProbe):
   if (providerEnv.openaiApiKey === "missing" || providerEnv.anthropicApiKey === "missing") {
     lines.push("Set missing provider environment variables (OPENAI_API_KEY and/or ANTHROPIC_API_KEY) before live runs.");
   }
+  lines.push("Enable the pre-push gate once per clone: npm run harness:hooks:install (every push then runs npm run harness:check).");
   lines.push("Start the first major feature with: npm run harness:product-intake -- --slug <name> --description '...' --dry-run");
   lines.push("Then inspect harness state with: npm run harness:status");
   return lines;
@@ -813,6 +913,7 @@ export function renderHarnessPackageInstall(result: HarnessPackageInstallResult)
     `generated repo-local files: ${result.bootstrap.generatedFiles.length}`,
     `preserved repo-local files: ${result.bootstrap.preservedFiles.length}`,
     `pi settings (${PI_SETTINGS_TARGET}): ${result.bootstrap.piSettings}`,
+    `.gitignore lines added: ${result.bootstrap.gitignoreEntriesAdded.length}`,
     `npm install: ${result.npmInstall.status}${
       result.npmInstall.skipped ? "" : ` (exit ${result.npmInstall.exitCode ?? "?"}, ${result.npmInstall.durationMs}ms)`
     }`,
@@ -881,6 +982,7 @@ export function renderHarnessPackageBootstrap(result: HarnessPackageBootstrapRes
     `preserved repo-local files: ${result.preservedFiles.length}`,
     `package.json merged: ${result.mergedPackageJson ? "yes" : "no"}`,
     `pi settings (${PI_SETTINGS_TARGET}): ${result.piSettings}`,
+    `.gitignore lines added: ${result.gitignoreEntriesAdded.length}`,
     `version record: ${result.versionRecordPath}`,
   ];
   if (result.warnings.length > 0) {
