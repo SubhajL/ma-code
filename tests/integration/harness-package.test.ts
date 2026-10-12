@@ -2,17 +2,20 @@ import assert from "node:assert/strict";
 import { execFile as execFileCallback } from "node:child_process";
 import test from "node:test";
 import { createRequire } from "node:module";
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
+import { DefaultResourceLoader } from "@mariozechner/pi-coding-agent";
+
 import {
   bootstrapHarnessPackage,
   installHarnessPackage,
   loadHarnessPackageManifest,
+  parseHarnessPackageManifest,
   renderHarnessPackageInstall,
 } from "../../scripts/harness-package.ts";
 
@@ -224,6 +227,258 @@ test("harness package bootstrap preserves existing repo-local files instead of o
   assert.match(models, /"custom": true/);
 });
 
+// The harness's own extension entries: every source entry under agent/extensions/. All of them
+// must ship. (The source may itself be an installed repo with entries of its own elsewhere.)
+async function harnessExtensionEntries(sourceRoot: string): Promise<string[]> {
+  const sourceSettings = JSON.parse(await readFile(join(sourceRoot, ".pi", "settings.json"), "utf8")) as { extensions: string[] };
+  return sourceSettings.extensions.filter((entry) => entry.startsWith("agent/extensions/"));
+}
+
+test("harness package bootstrap gives the target pi's project config, so pi loads the harness extensions there", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-pi-config-");
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  assert.equal(result.piSettings, "generated");
+  assert.ok(result.generatedFiles.includes(".pi/APPEND_SYSTEM.md"));
+  const shipped = await harnessExtensionEntries(sourceRoot);
+  assert.ok(shipped.includes("agent/extensions/safe-bash.ts"));
+  for (const entry of shipped) {
+    assert.equal(await exists(join(destinationRoot, ".pi", entry)), true, `${entry} should ship to the target`);
+  }
+  const settings = JSON.parse(await readFile(join(destinationRoot, ".pi", "settings.json"), "utf8")) as Record<string, unknown>;
+  assert.deepEqual(settings.extensions, shipped);
+  for (const key of ["skills", "prompts"]) {
+    for (const entry of (settings[key] as string[] | undefined) ?? []) {
+      assert.equal(await exists(join(destinationRoot, ".pi", entry)), true, `pi settings ${key} entry ${entry} should exist in the target`);
+    }
+  }
+  for (const key of ["defaultProvider", "defaultModel", "enabledModels"]) {
+    assert.equal(key in settings, false, `${key} is the source operator's choice and must not override the target's`);
+  }
+  assert.equal(
+    await readFile(join(destinationRoot, ".pi", "agent", "models.json"), "utf8"),
+    await readFile(join(sourceRoot, ".pi", "agent", "models.json"), "utf8"),
+    "the target should get the live routing map, not a stale template",
+  );
+  const record = JSON.parse(await readFile(join(destinationRoot, result.versionRecordPath), "utf8")) as { piSettings?: string };
+  assert.equal(record.piSettings, "generated");
+
+  // pi's own loader, run in the target with the source's dependencies.
+  await symlink(join(sourceRoot, "node_modules"), join(destinationRoot, "node_modules"), "dir");
+  const loader = new DefaultResourceLoader({
+    cwd: destinationRoot,
+    agentDir: await makeTempDir("harness-package-pi-agent-"),
+    noSkills: true,
+    noPromptTemplates: true,
+    noThemes: true,
+    noContextFiles: true,
+  });
+  await loader.reload();
+  const loaded = loader.getExtensions();
+  assert.deepEqual(loaded.errors.map((entry) => `${entry.path}: ${entry.error}`), []);
+  assert.equal(loaded.extensions.length, shipped.length);
+  assert.match(loader.getAppendSystemPrompt().join("\n"), /^# Pi Project System Guidance$/m);
+});
+
+test("harness package bootstrap merges harness entries into existing pi settings without overwriting the repo's values", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-pi-merge-");
+  await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+  await writeFile(
+    join(destinationRoot, ".pi", "settings.json"),
+    `${JSON.stringify({ defaultModel: "repo-model", enableSkillCommands: false, extensions: ["repo-extension.ts"] }, null, 2)}\n`,
+    "utf8",
+  );
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  assert.equal(result.piSettings, "merged");
+  const settings = JSON.parse(await readFile(join(destinationRoot, ".pi", "settings.json"), "utf8")) as Record<string, unknown>;
+  assert.equal(settings.defaultModel, "repo-model");
+  assert.equal(settings.enableSkillCommands, false);
+  assert.equal("defaultProvider" in settings, false);
+  assert.deepEqual(settings.extensions, ["repo-extension.ts", ...(await harnessExtensionEntries(sourceRoot))]);
+  assert.match(result.warnings.join("\n"), /Preserved existing pi setting enableSkillCommands/);
+});
+
+test("harness package bootstrap rejects malformed pi settings before copying anything", async () => {
+  const sourceRoot = requireSourceRoot();
+  for (const [label, content] of [
+    ["array", "[]\n"],
+    ["invalid JSON", "{ \"extensions\": [], }\n"],
+  ] as const) {
+    const destinationRoot = await makeTempDir("harness-package-pi-malformed-");
+    await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+    await writeFile(join(destinationRoot, ".pi", "settings.json"), content, "utf8");
+
+    await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot }), /\.pi\/settings\.json/, label);
+    assert.equal(await exists(join(destinationRoot, ".pi", "agent")), false, `${label}: nothing should be copied`);
+    assert.equal(await readFile(join(destinationRoot, ".pi", "settings.json"), "utf8"), content, `${label}: settings untouched`);
+  }
+});
+
+test("harness package bootstrap keeps a resource value that is not a list, such as pi's legacy skills object", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-pi-legacy-");
+  const legacySkills = { enableSkillCommands: false, customDirectories: ["repo-skills"] };
+  await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+  await writeFile(join(destinationRoot, ".pi", "settings.json"), `${JSON.stringify({ skills: legacySkills })}\n`, "utf8");
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  const settings = JSON.parse(await readFile(join(destinationRoot, ".pi", "settings.json"), "utf8")) as Record<string, unknown>;
+  assert.deepEqual(settings.skills, legacySkills);
+  assert.equal("enableSkillCommands" in settings, false, "a top-level key would override the legacy skills.enableSkillCommands");
+  assert.deepEqual(settings.extensions, await harnessExtensionEntries(sourceRoot));
+  assert.match(result.warnings.join("\n"), /Kept existing pi setting skills/);
+});
+
+test("harness package bootstrap refuses a symlinked .pi directory before writing anything", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-pi-dir-symlink-");
+  const external = await makeTempDir("harness-package-pi-external-");
+  await symlink(external, join(destinationRoot, ".pi"));
+
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot }), /\.pi is a symlink/);
+  assert.deepEqual(await readdir(external), []);
+  assert.equal(await exists(join(destinationRoot, "package.json")), false);
+});
+
+test("harness package bootstrap refuses a dangling .pi symlink, a .pi file and a settings directory", async () => {
+  const sourceRoot = requireSourceRoot();
+  const dangling = await makeTempDir("harness-package-pi-dangling-");
+  await symlink(join(dangling, "missing-dir"), join(dangling, ".pi"));
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: dangling }), /\.pi is a symlink/);
+
+  const piFile = await makeTempDir("harness-package-pi-file-");
+  await writeFile(join(piFile, ".pi"), "not a directory\n", "utf8");
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: piFile }), /\.pi exists but is not a directory/);
+
+  const settingsDir = await makeTempDir("harness-package-pi-settings-dir-");
+  await mkdir(join(settingsDir, ".pi", "settings.json"), { recursive: true });
+  await assert.rejects(bootstrapHarnessPackage({ sourceRoot, destinationRoot: settingsDir }), /settings\.json is not a file/);
+  assert.equal(await exists(join(settingsDir, "package.json")), false);
+});
+
+test("harness package bootstrap leaves symlinked pi settings alone and says so", async () => {
+  const sourceRoot = requireSourceRoot();
+  const destinationRoot = await makeTempDir("harness-package-pi-symlink-");
+  const shared = join(await makeTempDir("harness-package-pi-shared-"), "settings.json");
+  await writeFile(shared, "{\n  \"extensions\": []\n}\n", "utf8");
+  await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+  await symlink(shared, join(destinationRoot, ".pi", "settings.json"));
+
+  const result = await installHarnessPackage({ sourceRoot, destinationRoot, skipNpmInstall: true, skipValidators: true });
+
+  assert.equal(result.bootstrap.piSettings, "skipped");
+  assert.equal(await readFile(shared, "utf8"), "{\n  \"extensions\": []\n}\n");
+  assert.match(result.nextSteps.join("\n"), /symlink/);
+});
+
+test("harness package bootstrap keeps pi pattern entries and skips machine-specific or unshipped paths", async () => {
+  const sourceRoot = await makeTempDir("harness-package-fake-source-");
+  // Target and an "outside" file share one temp parent, so the test leaves nothing in the shared tmpdir.
+  const parent = await makeTempDir("harness-package-fake-target-");
+  const destinationRoot = join(parent, "repo");
+  await mkdir(destinationRoot);
+  await mkdir(join(sourceRoot, ".pi", "agent", "package"), { recursive: true });
+  await writeFile(join(sourceRoot, "AGENTS.template.md"), "# rules\n", "utf8");
+  await writeFile(join(sourceRoot, "package.template.json"), "{}\n", "utf8");
+  // An existing file outside the target, reached with ../ from the target's .pi directory.
+  const outsideName = "outside.ts";
+  await writeFile(join(parent, outsideName), "export default function outside() {}\n", "utf8");
+  await writeFile(
+    join(sourceRoot, ".pi", "settings.json"),
+    JSON.stringify({
+      extensions: [
+        "!agent/extensions/packets.ts",
+        "/abs/extension.ts",
+        "~/extension.ts",
+        "agent/extensions/unshipped.ts",
+        `../../${outsideName}`,
+        "+/abs/forced.ts",
+        "!../../outside/**/*.ts",
+        "C:\\Users\\alice\\*.ts",
+        "\\\\server\\share\\extension.ts",
+      ],
+    }),
+    "utf8",
+  );
+  await writeFile(
+    join(sourceRoot, ".pi", "agent", "package", "harness-package.json"),
+    JSON.stringify({
+      version: 1,
+      packageName: "fake",
+      packageVersion: "0.0.0",
+      reusableAssets: [],
+      generatedFiles: [{ target: "AGENTS.md", template: "AGENTS.template.md", mode: "create_if_missing" }],
+      packageJsonTemplate: "package.template.json",
+      piSettingsTemplate: ".pi/settings.json",
+      piSettingsKeys: ["extensions"],
+      versionRecordTarget: ".pi/agent/package/installed-package.json",
+      excludedPaths: [],
+    }),
+    "utf8",
+  );
+
+  const result = await bootstrapHarnessPackage({ sourceRoot, destinationRoot });
+
+  const settings = JSON.parse(await readFile(join(destinationRoot, ".pi", "settings.json"), "utf8")) as { extensions: string[] };
+  assert.deepEqual(settings.extensions, ["!agent/extensions/packets.ts"]);
+  const warnings = result.warnings.join("\n");
+  assert.match(warnings, /\/abs\/extension\.ts: a machine-specific path/);
+  assert.match(warnings, /~\/extension\.ts: a machine-specific path/);
+  assert.match(warnings, /agent\/extensions\/unshipped\.ts: not shipped to the target repo/);
+  assert.match(warnings, /\.\.\/\.\.\/outside\.ts: outside the target repo/);
+  assert.match(warnings, /\+\/abs\/forced\.ts: a machine-specific path/);
+  assert.match(warnings, /!\.\.\/\.\.\/outside\/\*\*\/\*\.ts: outside the target repo/);
+  assert.match(warnings, /C:\\Users\\alice\\\*\.ts: a machine-specific path/);
+  assert.match(warnings, /\\\\server\\share\\extension\.ts: a machine-specific path/);
+});
+
+test("an older manifest without pi settings support leaves the target's settings alone, even malformed ones", async () => {
+  const sourceRoot = await makeTempDir("harness-package-old-source-");
+  const destinationRoot = await makeTempDir("harness-package-old-dest-");
+  await mkdir(join(sourceRoot, ".pi", "agent", "package"), { recursive: true });
+  await writeFile(join(sourceRoot, "AGENTS.template.md"), "# rules\n", "utf8");
+  await writeFile(join(sourceRoot, "package.template.json"), "{}\n", "utf8");
+  await writeFile(
+    join(sourceRoot, ".pi", "agent", "package", "harness-package.json"),
+    JSON.stringify({
+      version: 1,
+      packageName: "old",
+      packageVersion: "0.0.0",
+      reusableAssets: [],
+      generatedFiles: [{ target: "AGENTS.md", template: "AGENTS.template.md", mode: "create_if_missing" }],
+      packageJsonTemplate: "package.template.json",
+      versionRecordTarget: ".pi/agent/package/installed-package.json",
+      excludedPaths: [],
+    }),
+    "utf8",
+  );
+  await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+  await writeFile(join(destinationRoot, ".pi", "settings.json"), "{ not json\n", "utf8");
+
+  const result = await installHarnessPackage({ sourceRoot, destinationRoot, skipNpmInstall: true, skipValidators: true });
+
+  assert.equal(result.bootstrap.piSettings, "skipped");
+  assert.equal(await readFile(join(destinationRoot, ".pi", "settings.json"), "utf8"), "{ not json\n");
+  assert.match(result.nextSteps.join("\n"), /no piSettingsTemplate/);
+  assert.doesNotMatch(result.nextSteps.join("\n"), /symlink/);
+});
+
+test("harness package manifests from before pi settings support still load", async () => {
+  const manifest = await loadHarnessPackageManifest(requireSourceRoot());
+  const { piSettingsTemplate: _template, piSettingsKeys: _keys, ...older } = manifest;
+
+  const parsed = parseHarnessPackageManifest(older);
+
+  assert.equal(parsed.piSettingsTemplate, null);
+  assert.deepEqual(parsed.piSettingsKeys, ["extensions", "skills", "prompts", "enableSkillCommands"]);
+});
+
 test("harness package install wraps bootstrap, records skipped npm install + validators, and enumerates files-to-review from manifest", async () => {
   const sourceRoot = requireSourceRoot();
   const manifest = await loadHarnessPackageManifest(sourceRoot);
@@ -235,6 +490,8 @@ test("harness package install wraps bootstrap, records skipped npm install + val
     delete process.env.OPENAI_API_KEY;
     process.env.ANTHROPIC_API_KEY = "test-token-fixture";
 
+    await mkdir(join(destinationRoot, ".pi"), { recursive: true });
+    await writeFile(join(destinationRoot, ".pi", "settings.json"), "{\n  \"enableSkillCommands\": false\n}\n", "utf8");
     const result = await installHarnessPackage({
       sourceRoot,
       destinationRoot,
@@ -269,12 +526,15 @@ test("harness package install wraps bootstrap, records skipped npm install + val
     assert.equal(result.providerEnv.openaiApiKey, "missing");
     assert.equal(result.providerEnv.anthropicApiKey, "set");
 
-    const expectedReviewFiles = manifest.generatedFiles
-      .filter((rule) => rule.requiredReview)
-      .map((rule) => rule.target);
+    const expectedReviewFiles = [
+      ...manifest.generatedFiles.filter((rule) => rule.requiredReview).map((rule) => rule.target),
+      ".pi/settings.json",
+    ];
     assert.deepEqual(result.filesToReview.slice().sort(), expectedReviewFiles.slice().sort());
     assert.ok(result.filesToReview.includes("AGENTS.md"));
     assert.ok(result.filesToReview.includes("SYSTEM.md"));
+    assert.ok(result.filesToReview.includes(".pi/APPEND_SYSTEM.md"));
+    assert.ok(result.filesToReview.includes(".pi/settings.json"));
     assert.ok(result.filesToReview.includes(".pi/agent/models.json"));
     assert.ok(result.filesToReview.includes("docs/product/intake-policy.md"));
 
@@ -288,6 +548,8 @@ test("harness package install wraps bootstrap, records skipped npm install + val
     assert.match(rendered, /ANTHROPIC_API_KEY: set/);
     assert.match(rendered, /AGENTS\.md/);
     assert.match(rendered, /harness:product-intake/);
+    assert.match(rendered, /pi settings \(\.pi\/settings\.json\): merged/);
+    assert.match(rendered, /warnings:\n(- .*\n)*- Preserved existing pi setting enableSkillCommands/);
   } finally {
     if (previousOpenai === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = previousOpenai;
@@ -347,6 +609,7 @@ test("harness package install CLI emits JSON when --json is passed and includes 
 
   const installJson = JSON.parse(installResult.stdout) as {
     version: number;
+    bootstrap: { piSettings: string };
     npmInstall: { status: string; skipped: boolean };
     validators: Array<{ name: string; status: string }>;
     providerEnv: { openaiApiKey: string; anthropicApiKey: string };
@@ -361,6 +624,8 @@ test("harness package install CLI emits JSON when --json is passed and includes 
   assert.equal(installJson.providerEnv.anthropicApiKey, "missing");
   assert.ok(installJson.filesToReview.includes("AGENTS.md"));
   assert.ok(installJson.filesToReview.includes("SYSTEM.md"));
+  assert.ok(installJson.filesToReview.includes(".pi/settings.json"));
+  assert.equal(installJson.bootstrap.piSettings, "generated");
   assert.ok(installJson.filesToReview.includes(".pi/agent/models.json"));
   assert.ok(installJson.nextSteps.some((line) => line.includes("harness:product-intake")));
 });

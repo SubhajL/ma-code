@@ -7,8 +7,6 @@
 #
 #   - .pi/agent/models.json: the canonical source of truth for capabilities
 #     and per-role defaults.
-#   - .pi/agent/package/templates/models.template.json: scaffold copy;
-#     queued for separate migration.
 #   - .pi/settings.json: repo-local Pi provider/default model config.
 #   - .pi/agent/docs/**, .pi/agent/routing/**: routing guide docs that name
 #     current models for human context.
@@ -65,7 +63,6 @@ is_allowed_path() {
   local rel="$1"
   case "$rel" in
     .pi/agent/models.json) return 0 ;;
-    .pi/agent/package/templates/models.template.json) return 0 ;;
     .pi/settings.json) return 0 ;;
     .pi/agent/docs/*) return 0 ;;
     .pi/agent/routing/*) return 0 ;;

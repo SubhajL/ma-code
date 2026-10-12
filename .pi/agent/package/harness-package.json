@@ -46,12 +46,21 @@
       ]
     },
     {
-      "target": ".pi/agent/models.json",
-      "template": ".pi/agent/package/templates/models.template.json",
+      "target": ".pi/APPEND_SYSTEM.md",
+      "template": ".pi/agent/package/templates/SYSTEM.template.md",
       "mode": "create_if_missing",
       "requiredReview": true,
       "notes": [
-        "Routing defaults are a starting point and may need repo/provider adjustments."
+        "pi appends this file to its default system prompt; a root SYSTEM.md is not read by pi."
+      ]
+    },
+    {
+      "target": ".pi/agent/models.json",
+      "template": ".pi/agent/models.json",
+      "mode": "create_if_missing",
+      "requiredReview": true,
+      "notes": [
+        "Copied from the source harness's live routing map; routing defaults are a starting point and may need repo/provider adjustments."
       ]
     },
     {
@@ -137,6 +146,13 @@
     }
   ],
   "packageJsonTemplate": ".pi/agent/package/templates/package.template.json",
+  "piSettingsTemplate": ".pi/settings.json",
+  "piSettingsKeys": [
+    "extensions",
+    "skills",
+    "prompts",
+    "enableSkillCommands"
+  ],
   "versionRecordTarget": ".pi/agent/package/installed-package.json",
   "excludedPaths": [
     ".git",

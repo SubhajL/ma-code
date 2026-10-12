@@ -41,6 +41,10 @@ test("pi-harness-install bin shim copies reusable harness assets into --dest", a
     await exists(join(dest, ".pi", "agent", "docs")),
     "harness docs should land under .pi/agent/docs",
   );
+  // pi's project config: without .pi/settings.json pi loads none of the harness extensions.
+  const destSettings = JSON.parse(await readFile(join(dest, ".pi", "settings.json"), "utf8"));
+  assert.ok(destSettings.extensions?.includes("agent/extensions/safe-bash.ts"), ".pi/settings.json should list the harness extensions");
+  assert.ok(await exists(join(dest, ".pi", "APPEND_SYSTEM.md")), ".pi/APPEND_SYSTEM.md should be generated");
 
   // package.json template should carry the harness:* script aliases
   // (any one is sufficient — the template's exact list is owned by
