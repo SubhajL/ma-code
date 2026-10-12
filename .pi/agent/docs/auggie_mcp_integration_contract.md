@@ -23,7 +23,8 @@ Yes.
 
 This repo already uses project-local Pi extensions via:
 - `.pi/settings.json`
-- `extensions: ["agent/extensions"]`
+- an `extensions` array that lists the extension entry points under `agent/extensions` one by one (the composite facades
+  `recovery.ts` and `packets.ts` are left out; see `operator_extension_guide.md`)
 
 And it already has working extensions under:
 - `.pi/agent/extensions/safe-bash.ts`
@@ -56,7 +57,7 @@ Relevant Pi documentation points:
 
 ## Current repo state
 Current relevant project wiring:
-- `.pi/settings.json` enables project-local extensions from `agent/extensions`
+- `.pi/settings.json` lists the project-local extension entry points under `agent/extensions` (see `operator_extension_guide.md`)
 - `.pi/agent/extensions/till-done.ts` already registers a custom tool: `task_update`
 - `.pi/agent/extensions/safe-bash.ts` already intercepts built-in tool calls
 
