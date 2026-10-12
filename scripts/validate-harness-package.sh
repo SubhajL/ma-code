@@ -187,10 +187,15 @@ JSON
   cp "$REPO_ROOT/tests/integration/harness-package.test.ts" "$workdir/tests/integration/harness-package.test.ts"
   cp "$REPO_ROOT/tests/integration/harness-init-feature.test.ts" "$workdir/tests/integration/harness-init-feature.test.ts"
   cp "$REPO_ROOT/tests/integration/harness-product-intake.test.ts" "$workdir/tests/integration/harness-product-intake.test.ts"
-  (
-    cd "$workdir"
-    "$NPM_BIN" install --silent >/dev/null 2>&1
-  )
+  # The bootstrap tests run pi's own loader, so they need the harness's installed packages;
+  # reuse them instead of a second, network-bound install. A missing package fails checks 1-2
+  # with this message instead of stopping the script before its report is written.
+  RUNTIME_DEPS_MISSING=""
+  local dep
+  for dep in typescript tsx @mariozechner/pi-coding-agent; do
+    [[ -d "$REPO_ROOT/node_modules/$dep" ]] || RUNTIME_DEPS_MISSING="$RUNTIME_DEPS_MISSING $dep"
+  done
+  ln -s "$REPO_ROOT/node_modules" "$workdir/node_modules"
 }
 
 check_1_compile_package_helper() {
@@ -198,6 +203,14 @@ check_1_compile_package_helper() {
   local out="$TMP_ROOT/check_1_compile_package_helper.txt"
   local runtime_dir="$TMP_ROOT/package-runtime"
   local cmd="cd $runtime_dir && npx tsc --noEmit --skipLibCheck --allowImportingTsExtensions --moduleResolution nodenext --module nodenext --target es2022 --lib es2022,dom --types node scripts/harness-package.ts scripts/harness-init-feature.ts scripts/harness-product-intake.ts tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts tests/integration/harness-product-intake.test.ts"
+
+  if [[ -n "${RUNTIME_DEPS_MISSING:-}" ]]; then
+    local detail="run npm install in $REPO_ROOT first (missing:${RUNTIME_DEPS_MISSING})."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- $detail"
+    return
+  fi
 
   if (
     cd "$runtime_dir" &&
@@ -226,6 +239,14 @@ check_2_bootstrap_integration() {
   local out="$TMP_ROOT/check_2_bootstrap_integration.txt"
   local runtime_dir="$TMP_ROOT/package-runtime"
   local cmd="cd $runtime_dir && HARNESS_SOURCE_ROOT=$REPO_ROOT $NODE_BIN --import tsx --test tests/integration/harness-package.test.ts tests/integration/harness-init-feature.test.ts tests/integration/harness-product-intake.test.ts"
+
+  if [[ -n "${RUNTIME_DEPS_MISSING:-}" ]]; then
+    local detail="run npm install in $REPO_ROOT first (missing:${RUNTIME_DEPS_MISSING})."
+    record_result "$name" "FAIL" "$detail"
+    append_summary_row "$name" "FAIL" "$detail"
+    append_check_section "$name" "FAIL" "$cmd" "- $detail"
+    return
+  fi
 
   if (
     cd "$runtime_dir" &&

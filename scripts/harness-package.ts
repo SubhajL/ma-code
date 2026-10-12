@@ -1,9 +1,16 @@
 import { spawn } from "node:child_process";
-import { cp, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import { cp, lstat, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MANIFEST_PATH = ".pi/agent/package/harness-package.json";
+// pi reads project settings (extensions, skills, prompts) from here; without it an installed
+// repo loads none of the harness extensions.
+const PI_SETTINGS_TARGET = ".pi/settings.json";
+// pi settings resource lists; entries are paths relative to .pi/.
+const PI_SETTINGS_RESOURCE_KEYS = ["extensions", "skills", "prompts", "themes"];
+// Used when a manifest predates piSettingsKeys.
+const DEFAULT_PI_SETTINGS_KEYS = ["extensions", "skills", "prompts", "enableSkillCommands"];
 
 export interface GeneratedFileRule {
   target: string;
@@ -21,6 +28,10 @@ export interface HarnessPackageManifest {
   reusableAssets: string[];
   generatedFiles: GeneratedFileRule[];
   packageJsonTemplate: string;
+  // null for manifests that predate pi settings support; the bootstrap then leaves .pi/settings.json alone.
+  piSettingsTemplate: string | null;
+  // Only these keys are taken from the template; provider/model defaults stay the target user's.
+  piSettingsKeys: string[];
   versionRecordTarget: string;
   excludedPaths: string[];
 }
@@ -29,6 +40,8 @@ export interface HarnessPackageBootstrapOptions {
   sourceRoot?: string;
   destinationRoot: string;
 }
+
+export type PiSettingsStatus = "generated" | "merged" | "skipped";
 
 export interface HarnessPackageBootstrapResult {
   version: 1;
@@ -39,6 +52,9 @@ export interface HarnessPackageBootstrapResult {
   copiedAssets: string[];
   generatedFiles: string[];
   mergedPackageJson: boolean;
+  piSettings: PiSettingsStatus;
+  // Why .pi/settings.json was skipped, phrased as the operator's next step; null otherwise.
+  piSettingsSkipReason: string | null;
   preservedFiles: string[];
   warnings: string[];
   versionRecordPath: string;
@@ -160,6 +176,9 @@ export function parseHarnessPackageManifest(input: unknown): HarnessPackageManif
     reusableAssets: reusableAssets.map(normalizeRelPath),
     generatedFiles,
     packageJsonTemplate: normalizeRelPath(assertString(input.packageJsonTemplate, "packageJsonTemplate")),
+    piSettingsTemplate:
+      input.piSettingsTemplate === undefined ? null : normalizeRelPath(assertString(input.piSettingsTemplate, "piSettingsTemplate")),
+    piSettingsKeys: input.piSettingsKeys === undefined ? [...DEFAULT_PI_SETTINGS_KEYS] : assertStringArray(input.piSettingsKeys, "piSettingsKeys"),
     versionRecordTarget: normalizeRelPath(assertString(input.versionRecordTarget, "versionRecordTarget")),
     excludedPaths: assertStringArray(input.excludedPaths, "excludedPaths").map(normalizeRelPath),
   };
@@ -337,6 +356,133 @@ async function mergePackageJson(sourceRoot: string, destinationRoot: string, man
   return { merged: true, warnings };
 }
 
+type PiSettingsPlan =
+  | { kind: "write"; existing: Record<string, unknown> | null }
+  | { kind: "skip"; reason: string };
+
+// Reads and checks the target's pi settings before anything is copied, so a malformed file stops
+// the install instead of leaving a half-installed repo behind.
+async function lstatOrNull(pathValue: string): Promise<Awaited<ReturnType<typeof lstat>> | null> {
+  try {
+    return await lstat(pathValue);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function planPiSettings(destinationRoot: string, manifest: HarnessPackageManifest): Promise<PiSettingsPlan> {
+  const piDir = resolve(destinationRoot, ".pi");
+  const piDirStats = await lstatOrNull(piDir);
+  if (piDirStats?.isSymbolicLink()) {
+    throw new Error(`Target .pi is a symlink (${piDir}); the harness would write through it, so the install stopped. Replace it with a directory first.`);
+  }
+  if (piDirStats && !piDirStats.isDirectory()) {
+    throw new Error(`Target .pi exists but is not a directory (${piDir}); the install stopped.`);
+  }
+  if (manifest.piSettingsTemplate === null) {
+    return {
+      kind: "skip",
+      reason: `The harness package manifest has no piSettingsTemplate, so ${PI_SETTINGS_TARGET} was left alone; install from a current harness source to get the harness extensions list.`,
+    };
+  }
+  const destination = resolve(destinationRoot, PI_SETTINGS_TARGET);
+  const settingsStats = piDirStats ? await lstatOrNull(destination) : null;
+  if (!settingsStats) return { kind: "write", existing: null };
+  if (!settingsStats.isSymbolicLink() && !settingsStats.isFile()) {
+    throw new Error(`Existing ${PI_SETTINGS_TARGET} is not a file; the install stopped.`);
+  }
+  if (settingsStats.isSymbolicLink()) {
+    return {
+      kind: "skip",
+      reason: `${PI_SETTINGS_TARGET} is a symlink, so it was not changed. Add the harness extensions, skills and prompts entries to it by hand; until then pi loads none of the harness extensions.`,
+    };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(destination, "utf8"));
+  } catch (error) {
+    throw new Error(`Existing ${PI_SETTINGS_TARGET} is not valid JSON (${(error as Error).message}); fix it before installing.`);
+  }
+  if (!isRecord(parsed)) throw new Error(`Existing ${PI_SETTINGS_TARGET} must be a JSON object; fix it before installing.`);
+  return { kind: "write", existing: parsed };
+}
+
+// Paths that only make sense on the machine that wrote them, including Windows drive and UNC paths
+// on any host.
+function isMachineSpecificPath(pathValue: string): boolean {
+  return isAbsolute(pathValue) || pathValue.startsWith("~") || /^[A-Za-z]:[\\/]/.test(pathValue) || pathValue.startsWith("\\\\");
+}
+
+// pi settings entries may be patterns (`!`, `+`, `-` prefixes or globs). Their path part gets the
+// same location checks as a plain entry, but no existence check.
+function isPiSettingsPattern(entry: string): boolean {
+  return /^[!+-]/.test(entry) || /[*?]/.test(entry);
+}
+
+// Existing settings are kept: resource lists gain the harness entries shipped to the target,
+// and other template keys are only added when missing.
+async function mergePiSettings(
+  sourceRoot: string,
+  destinationRoot: string,
+  manifest: HarnessPackageManifest,
+  plan: PiSettingsPlan,
+): Promise<{ status: PiSettingsStatus; skipReason: string | null; warnings: string[] }> {
+  if (plan.kind === "skip" || manifest.piSettingsTemplate === null) {
+    const reason = plan.kind === "skip" ? plan.reason : `${PI_SETTINGS_TARGET} was not written.`;
+    return { status: "skipped", skipReason: reason, warnings: [reason] };
+  }
+  const template = JSON.parse(await readFile(resolve(sourceRoot, manifest.piSettingsTemplate), "utf8")) as Record<string, unknown>;
+  const destination = resolve(destinationRoot, PI_SETTINGS_TARGET);
+  const output: Record<string, unknown> = { ...(plan.existing ?? {}) };
+  const warnings: string[] = [];
+
+  for (const key of manifest.piSettingsKeys) {
+    if (!(key in template)) continue;
+    const value = template[key];
+    if (PI_SETTINGS_RESOURCE_KEYS.includes(key) && Array.isArray(value)) {
+      const existing = output[key];
+      if (existing !== undefined && !Array.isArray(existing)) {
+        // e.g. pi's legacy `skills: { enableSkillCommands, customDirectories }` object.
+        warnings.push(`Kept existing pi setting ${key} (not a list); add the harness ${key} entries to it by hand.`);
+        continue;
+      }
+      const merged = [...((existing as unknown[] | undefined) ?? [])];
+      for (const entry of value) {
+        if (typeof entry !== "string" || merged.includes(entry)) continue;
+        const pattern = isPiSettingsPattern(entry);
+        const pathPart = pattern ? entry.replace(/^[!+-]/, "") : entry;
+        if (isMachineSpecificPath(pathPart)) {
+          warnings.push(`Skipped pi settings ${key} entry ${entry}: a machine-specific path.`);
+          continue;
+        }
+        const fromTarget = relative(destinationRoot, resolve(dirname(destination), pathPart));
+        if (fromTarget === ".." || fromTarget.startsWith(`..${sep}`) || isAbsolute(fromTarget)) {
+          warnings.push(`Skipped pi settings ${key} entry ${entry}: outside the target repo.`);
+          continue;
+        }
+        if (!pattern && !(await pathExists(resolve(dirname(destination), entry)))) {
+          warnings.push(`Skipped pi settings ${key} entry ${entry}: not shipped to the target repo.`);
+          continue;
+        }
+        merged.push(entry);
+      }
+      output[key] = merged;
+    } else if (key === "enableSkillCommands" && isRecord(output.skills) && "enableSkillCommands" in output.skills) {
+      // pi migrates a legacy skills.enableSkillCommands only while the top-level key is absent.
+      warnings.push("Kept the legacy skills.enableSkillCommands; the harness enableSkillCommands value was not added.");
+    } else if (!(key in output)) {
+      output[key] = value;
+    } else if (JSON.stringify(output[key]) !== JSON.stringify(value)) {
+      warnings.push(`Preserved existing pi setting ${key}; package template value was not applied.`);
+    }
+  }
+
+  await ensureParent(destination);
+  await writeFile(destination, `${JSON.stringify(output, null, 2)}\n`, "utf8");
+  return { status: plan.existing ? "merged" : "generated", skipReason: null, warnings };
+}
+
 async function writeVersionRecord(
   sourceRoot: string,
   destinationRoot: string,
@@ -356,6 +502,7 @@ async function writeVersionRecord(
         sourceRoot,
         copiedAssets: result.copiedAssets,
         generatedFiles: result.generatedFiles,
+        piSettings: result.piSettings,
         preservedFiles: result.preservedFiles,
         warnings: result.warnings,
       },
@@ -371,6 +518,7 @@ export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOp
   const sourceRoot = resolve(options.sourceRoot ?? process.cwd());
   const destinationRoot = resolve(options.destinationRoot);
   const manifest = await loadHarnessPackageManifest(sourceRoot);
+  const piSettingsPlan = await planPiSettings(destinationRoot, manifest);
   await mkdir(destinationRoot, { recursive: true });
 
   const copiedAssets: string[] = [];
@@ -380,6 +528,7 @@ export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOp
 
   const generatedResult = await generateRepoLocalFiles(sourceRoot, destinationRoot, manifest);
   const packageJsonResult = await mergePackageJson(sourceRoot, destinationRoot, manifest);
+  const piSettingsResult = await mergePiSettings(sourceRoot, destinationRoot, manifest, piSettingsPlan);
 
   const result: HarnessPackageBootstrapResult = {
     version: 1,
@@ -390,8 +539,10 @@ export async function bootstrapHarnessPackage(options: HarnessPackageBootstrapOp
     copiedAssets: copiedAssets.sort(),
     generatedFiles: generatedResult.generatedFiles.sort(),
     mergedPackageJson: packageJsonResult.merged,
+    piSettings: piSettingsResult.status,
+    piSettingsSkipReason: piSettingsResult.skipReason,
     preservedFiles: generatedResult.preservedFiles.sort(),
-    warnings: [...generatedResult.warnings, ...packageJsonResult.warnings],
+    warnings: [...generatedResult.warnings, ...packageJsonResult.warnings, ...piSettingsResult.warnings],
     versionRecordPath: "",
   };
 
@@ -455,7 +606,8 @@ function collectFilesToReview(bootstrap: HarnessPackageBootstrapResult, manifest
     .filter((rule) => rule.requiredReview)
     .filter((rule) => generatedSet.has(rule.target) || preservedSet.has(rule.target))
     .map((rule) => rule.target);
-  return Array.from(new Set(matches)).sort();
+  // pi settings decide which harness extensions load; generated, merged or skipped, they need a look.
+  return Array.from(new Set([...matches, PI_SETTINGS_TARGET])).sort();
 }
 
 function buildNextSteps(filesToReview: string[], providerEnv: ProviderEnvProbe): string[] {
@@ -545,6 +697,7 @@ export async function installHarnessPackage(options: HarnessPackageInstallOption
   const providerEnv = probeProviderEnv(env);
   const filesToReview = collectFilesToReview(bootstrap, manifest);
   const nextSteps = buildNextSteps(filesToReview, providerEnv);
+  if (bootstrap.piSettingsSkipReason) nextSteps.unshift(bootstrap.piSettingsSkipReason);
 
   return {
     version: 1,
@@ -566,6 +719,7 @@ export function renderHarnessPackageInstall(result: HarnessPackageInstallResult)
     `copied assets: ${result.bootstrap.copiedAssets.length}`,
     `generated repo-local files: ${result.bootstrap.generatedFiles.length}`,
     `preserved repo-local files: ${result.bootstrap.preservedFiles.length}`,
+    `pi settings (${PI_SETTINGS_TARGET}): ${result.bootstrap.piSettings}`,
     `npm install: ${result.npmInstall.status}${
       result.npmInstall.skipped ? "" : ` (exit ${result.npmInstall.exitCode ?? "?"}, ${result.npmInstall.durationMs}ms)`
     }`,
@@ -589,6 +743,10 @@ export function renderHarnessPackageInstall(result: HarnessPackageInstallResult)
     `OPENAI_API_KEY: ${result.providerEnv.openaiApiKey}`,
     `ANTHROPIC_API_KEY: ${result.providerEnv.anthropicApiKey}`,
   );
+  if (result.bootstrap.warnings.length > 0) {
+    lines.push("warnings:");
+    for (const warning of result.bootstrap.warnings) lines.push(`- ${warning}`);
+  }
   if (result.filesToReview.length > 0) {
     lines.push("files to review:");
     for (const file of result.filesToReview) lines.push(`- ${file}`);
@@ -629,6 +787,7 @@ export function renderHarnessPackageBootstrap(result: HarnessPackageBootstrapRes
     `generated repo-local files: ${result.generatedFiles.length}`,
     `preserved repo-local files: ${result.preservedFiles.length}`,
     `package.json merged: ${result.mergedPackageJson ? "yes" : "no"}`,
+    `pi settings (${PI_SETTINGS_TARGET}): ${result.piSettings}`,
     `version record: ${result.versionRecordPath}`,
   ];
   if (result.warnings.length > 0) {

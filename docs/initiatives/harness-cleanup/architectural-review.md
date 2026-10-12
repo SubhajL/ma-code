@@ -268,11 +268,11 @@ cleanup pass were `safe-bash.ts`, `execution-leases.ts`, `queue-runner.ts`,
      unavailable safety distinction the schema is built around.
      Verification records must remain explicit model IDs by design.
 
-   - `.pi/agent/package/templates/models.template.json` is a scaffold
+   - `.pi/agent/package/templates/models.template.json` was a scaffold
      copy (Pi-package init template) on a separate release cycle from
-     the live harness routing config. Allowlisted in
-     `check-no-frontier-literals.sh` and queued for migration when the
-     templates package is next refreshed; not blocking Tier 2 §8.
+     the live harness routing config. **Removed 2026-10-12:** the
+     harness package now generates `.pi/agent/models.json` from the live
+     file, and the allowlist entry is gone.
 
 ### Tier 3 — when convenient
 

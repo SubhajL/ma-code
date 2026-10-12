@@ -180,3 +180,101 @@ xhigh: F2, F3, F5, F7 and L1 confirmed; F1 "not confirmed" because of item 2 bel
 Gates: routing tests 3× (71/71), `validate-harness-routing.sh` PASS, `validate-recovery-policy.sh` PASS, `npm run check` exit 0
 (unit 720/720, integration 187/187, schema, static). Land: no CRITICAL/HIGH in R2, MEDIUMs fixed or deferred with evidence,
 two-round cap respected.
+
+## P2 — installs get pi's project config (`fix/harness-install-pi-project-config`)
+
+**Problem (measured):** a fresh `harness-package.ts bootstrap` gave the target no `.pi/settings.json`, so pi's real loader
+loaded **0** harness extensions there: no `safe-bash`, no `till-done`. The target got a root `SYSTEM.md`, which pi never reads,
+but no `.pi/APPEND_SYSTEM.md`. Its `models.json` came from `models.template.json`, which had no `capabilities`, no
+`phase_routing_profiles` and stale role models. Of the installed repo's own 697 shipped unit tests, 53 failed; 35 of those
+came from the stale routing map.
+
+**Change:**
+- New manifest field `piSettingsTemplate` (`.pi/settings.json`), with `piSettingsKeys` limited to `extensions`, `skills`,
+  `prompts` and `enableSkillCommands`. The source operator's provider and model defaults stay out, so the target user's
+  global pi settings still apply.
+- `mergePiSettings`:
+  - fresh target: writes the file;
+  - existing target: appends the harness entries to the resource lists, adds other keys only when missing, and warns on
+    every preserved conflict;
+  - keeps a non-list value (pi's legacy `skills` object) and warns.
+- Entry rules:
+  - pattern entries (`!`, `+`, `-`, globs) pass through;
+  - absolute, `~` and target-escaping `../` entries are skipped;
+  - entries the package doesn't ship are skipped (e.g. `../packages/pi-g-skills/skills`).
+- `planPiSettings` runs before any write:
+  - it rejects an array or invalid-JSON settings file and a symlinked `.pi` directory, so nothing is half-installed;
+  - a symlinked settings file is left alone, with a warning and a next step.
+- New generated file `.pi/APPEND_SYSTEM.md` (review). The root `SYSTEM.md` is still generated, per repo convention.
+- `.pi/agent/models.json` is now generated from the live file. `models.template.json` is deleted, along with its allowlist
+  entry.
+- `piSettings` is recorded in `installed-package.json` and shown in the install output, which now also prints bootstrap
+  warnings. `filesToReview` includes `.pi/settings.json`.
+- `validate-harness-package.sh`: the runtime symlinks the repo's `node_modules` (pi's loader is needed), with no network
+  install.
+
+**Stop line:** Q0 fires because this decides whether the safety extensions load in installed repos. Claude implemented it;
+nothing was delegated. Test → RED → implement → GREEN. Fix-batch behaviours were either RED-first or mutation-verified:
+- malformed object accepted;
+- symlinked settings not detected;
+- patterns treated as paths;
+- every template key shipped;
+- settings never written;
+- dropping the existence filter;
+- overwriting existing values;
+- removing the `APPEND_SYSTEM` rule.
+
+Each mutation fails its named test.
+
+**Measured after P2:** an installed repo loads all 55 harness extensions with 0 errors (pi's real loader, in the
+integration test). The installed repo's own unit suite has 14 failures, down from 53; they are P3's scope (see below).
+
+### QCHECK R1 — P2 (framings in parallel)
+
+Tier 1 was `/code-review high`, with 10 findings. Tier 2 was Codex `gpt-5.6-sol` xhigh, with 50 lines and 3 HIGH. Tier 2
+was mandatory (config/install surface; safety extensions).
+
+| # | Tier | Sev | Finding | Disposition |
+|---|---|---|---|---|
+| 1 | T1+T2 | HIGH | An array or invalid-JSON target settings file was "merged" into nothing, or failed after assets and `package.json` were already written. | **Fixed:** preflight before any write; test checks rejection, nothing copied, file untouched. |
+| 2 | T2 | HIGH | Existing `../`-escaping or absolute entries were appended, so pi could load code from outside the target. | **Fixed:** containment check, plus absolute/`~` skip. Fake-source test with a real file outside the target. |
+| 3 | T2 | HIGH | A symlinked `.pi` (e.g. → `~/.pi`) was written through. | **Fixed:** install refuses before any write; test checks the external dir stays empty and no `package.json` is written. |
+| 4 | T1 | HIGH | The source's provider/model defaults overrode the target user's global settings. | **Fixed:** `piSettingsKeys`; test asserts `defaultProvider`/`defaultModel`/`enabledModels` are absent. `afk-worker-execution-plan.ts` falls back to pi's defaults when they are absent. |
+| 5 | T1+T2 | MED | A non-list resource value was replaced silently, destroying pi's legacy `skills` object. | **Fixed:** kept, with a warning; test. |
+| 6 | T1+T2 | MED | Pattern entries were treated as paths and dropped. | **Fixed:** pass through; fake-source test. |
+| 7 | T1 | MED | Tests used the source's live settings as the oracle, which fails inside an installed repo with its own entries. | **Fixed:** oracle = shipped source entries. |
+| 8 | T1 | MED | A symlinked `.pi/settings.json` (shared dotfile) would be rewritten. | **Fixed:** skipped, with a warning and a next step; test checks the shared file is unchanged. |
+| 9 | T1 | MED | The validator npm-installed the pi trees on every run and ignored install failure. | **Fixed:** symlink the repo's `node_modules`; fails clearly if pi is missing. |
+| 10 | T1+T2 | MED/LOW | Install text output hid `piSettings` and warnings; the version record lacked `piSettings`; the bin and CLI JSON tests covered the old contract; docs were stale. | **Fixed:** all four (bin assertion mutation-verified). |
+| 11 | T1 | MED | The `../packages/pi-g-skills/skills` skills entry is never shipped, so installed repos lack the g-* skills the docs mention. | **Deferred (packaging follow-up):** predates P2 (`packages/` was never a reusable asset). The warning says so. |
+
+### QCHECK R2 — P2 (confirm, scoped to the R1 fix diff)
+
+Tier 1 (`/code-review high`) raised no new CRITICAL or HIGH. Its findings:
+
+| # | Sev | Finding | Disposition |
+|---|---|---|---|
+| 1 | MED | With a legacy `skills` object, the template's top-level `enableSkillCommands` was added and overrode the legacy value (pi migrates it only while the top-level key is absent). | **Fixed:** the top-level key is skipped when `skills.enableSkillCommands` exists; the test now uses `false`. RED first. |
+| 2 | MED | Pattern entries skipped the absolute, `~` and containment checks (`+/abs/…`, `!../../…/**`). | **Fixed:** the path part (prefix stripped) gets the same checks; only the existence check is skipped. RED first. |
+| 3 | MED | A dangling `.pi` symlink slipped past the guard (`pathExists` follows links). | **Fixed:** `lstat` directly. RED first. |
+| 4 | MED | Symlinked children (`.pi/agent`, …) are written through. | **Deferred (packaging follow-up):** `copyAsset` wrote through any symlinked component before P2. P2 guards the two paths it introduced (`.pi`, `.pi/settings.json`). |
+| 5 | MED | Required `piSettingsKeys`/`piSettingsTemplate` broke manifests from older installs. | **Fixed:** both optional. A missing template means settings are skipped with a warning; missing keys fall back to the default list. RED first. |
+| 6 | MED | The validator's `exit 1` before writing its report left a header-only `.md` and no JSON; only pi was checked. | **Fixed:** missing `typescript`, `tsx` or `pi` fails checks 1–2 with the message, and the report and JSON are still written. Syntax-checked; the missing-dependency path was not exercised, because that would mean removing `node_modules`. |
+| 7 | MED | The extension oracle was nearly circular (exists-in-dest on both sides). | **Fixed:** the oracle is every source entry under `agent/extensions/`, and each must exist in the target. |
+| 8 | LOW | `.pi` as a file gave a raw ENOTDIR; a settings directory was reported as invalid JSON. | **Fixed:** clear errors. RED first. |
+| 9 | LOW | The render assertion depended on a repo-specific skills entry; the pattern test left files in the shared tmpdir. | **Fixed:** a deterministic conflict warning, and one temp parent. The 7 leftover files from earlier runs were deleted. |
+| 10 | LOW | The `node_modules` symlink could be committed; a stale comment. | **Fixed/guarded:** staging excludes it; comment updated. |
+
+Gates: focused tests 3× (18/18), `validate-harness-package.sh` PASS, `npm run check` exit 0 (unit 720/720, integration 196/196).
+
+Tier 2 (Codex `gpt-5.6-sol` xhigh, R2 confirm): no CRITICAL. It confirmed eight of ten fixes.
+
+| # | Sev | Finding | Disposition |
+|---|---|---|---|
+| C1 | HIGH | Symlinked descendants (`.pi/agent -> /external`) are followed while copying assets, so the install writes outside the target. | **Split to slice P2b**, per the g2-qcheck rule that a CRITICAL/HIGH surfacing in R2 means split, not a third round. It predates P2: `copyAsset` and `copyFileIfAbsent` follow links on `main`, and P2 only adds the top-level `.pi` guard. Same item as T1 #4. P2b runs next, with its own R1/R2. |
+| C2 | MED | A manifest without `piSettingsTemplate` still validated the target settings, so invalid JSON aborted an install that was supposed to leave the file alone. | **Fixed:** the template check now comes before any settings validation. Test with an old-manifest fixture and malformed settings: install succeeds and the file is byte-identical. RED first. |
+| C3 | MED | On POSIX, Windows drive and UNC paths were not machine-specific, so a `C:\…\*.ts` glob was copied. | **Fixed:** `isMachineSpecificPath`. Test entries added. RED first. |
+| C4 | LOW | Every "skipped" status produced the symlink next step, even for the old-manifest case. | **Fixed:** the bootstrap result carries `piSettingsSkipReason`, and that reason becomes the next step. Tested. |
+
+Gates after: focused tests 3× (19/19), `validate-harness-package.sh` PASS, `npm run check` exit 0. P2 lands with the
+descendant-symlink HIGH split out to P2b.

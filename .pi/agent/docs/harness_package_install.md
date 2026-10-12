@@ -43,8 +43,9 @@ Examples:
 ### 2. Repo-local assets generated from templates
 Examples:
 - `AGENTS.md`
-- `SYSTEM.md`
-- `.pi/agent/models.json`
+- `SYSTEM.md` (repo governance doc; pi does not read it)
+- `.pi/APPEND_SYSTEM.md` (the project guidance pi appends to its system prompt)
+- `.pi/agent/models.json` (a copy of the source harness's live routing map)
 - fresh runtime placeholders under `.pi/agent/state/runtime/*.json`
 - durable docs scaffold such as:
   - `docs/product/intake-policy.md`
@@ -84,12 +85,18 @@ This will:
 - copy reusable harness assets
 - generate repo-local templates/placeholders only when missing
 - merge harness scripts/devDependencies into `package.json`
+- write or merge pi's project settings, `.pi/settings.json`. This file lists the harness extensions one by one; without it
+  pi loads none of them (no `safe-bash`, no `till-done`). Existing settings are kept: the harness entries are appended
+  to `extensions`/`skills`/`prompts`, other keys are only added when missing, and entries whose path is not in the target
+  are skipped with a warning.
 - write `.pi/agent/package/installed-package.json`
 
 ## After bootstrap
 Review these files before normal use:
 - `AGENTS.md`
 - `SYSTEM.md`
+- `.pi/APPEND_SYSTEM.md`
+- `.pi/settings.json`
 - `.pi/agent/models.json`
 - `package.json`
 - `docs/product/intake-policy.md`
