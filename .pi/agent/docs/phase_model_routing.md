@@ -18,13 +18,17 @@ Supported `phaseLane` values:
 - `phaseLane` is an optional input to `resolve_harness_route` and task-packet generation.
 - If a phase profile is `verified`, its `verifiedModelId` is selected.
 - If a phase profile is not verified, the resolver uses `fallbackModelId` and records the fallback reason.
+- If the lane's model is listed in `failedModels`, the resolver moves to the lane's `fallbackModelId`, then to the role's
+  fallback order (skipping an unverified lane's target), and records `phaseRoutingSource: failed_model_fallback`. A lane
+  never re-selects a failed model.
 - Explicit `modelOverride` still takes precedence when allowed by routing policy.
 - The routing helper only returns model-selection metadata; it does not create task packets, does not create queue jobs, and does not create worker sessions.
 
 ## Current defaults
 - Global non-g-coding defaults use `openai-codex/gpt-5.5` with `high` thinking.
 - `screen_design` uses verified `openai-codex/gpt-5.5` with `high` thinking.
-- `frontend_implementation` uses verified `anthropic/claude-opus-4-7` with `high` thinking.
+- `frontend_implementation` uses verified `anthropic/claude-opus-4-7` with `high` thinking; its fallback is `openai-codex/gpt-5.5`,
+  matching `frontend_worker`'s fallback order.
 - `backend_implementation` uses verified `openai-codex/gpt-5.3-codex-spark` with `high` thinking.
 - `frontend_worker` defaults to `anthropic/claude-opus-4-7` with `high` thinking for g-coding/implementation work.
 - `backend_worker` and `infra_worker` default to `openai-codex/gpt-5.3-codex-spark` with `high` thinking for g-coding/implementation work.

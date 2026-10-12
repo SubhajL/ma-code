@@ -99,3 +99,84 @@ Land: R2 surfaced zero CRITICAL/HIGH, and every MEDIUM is fixed. The two-round c
 
 **H3b note:** after this lands, the H3b worktrees must add `agent/extensions/task-quality.ts` to `.pi/settings.json` when they
 rebase. Otherwise test 2 fails with the actionable message (by design).
+
+## Slice R — frontend routing fallbacks (`fix/frontend-routing-fallbacks`)
+
+**Decision source:** the routing-owner questions were put to the operator, who skipped them and said "continue". The
+recommended answers apply, and each is reversible with a one-line config change:
+1. **Frontend `task_harder` stays on Opus 4.7.** The resolver's "stronger override" takes the second model in a role's
+   fallback order, which moved frontend from Opus to gpt-5.5. New role flag `allow_stronger_override` (default `true`);
+   `frontend_worker` sets it to `false`. Thinking still rises (high → xhigh). To revert, delete the flag from `models.json`.
+2. **An Opus outage falls back to gpt-5.5 everywhere.** The `frontend_implementation` lane's `fallbackModelId` was
+   gpt-5.3-codex-spark, which disagreed with the role order (Opus → gpt-5.5 → spark → Sonnet). It is now gpt-5.5.
+3. **Phase lanes skip failed models (all lanes).** Found while probing: with `phaseLane` set, a verified lane re-selected its
+   model even when it was in `failedModels`, so after an Opus outage the frontend lane picked Opus again. The same was true
+   for spark on `backend_implementation` and gpt-5.5 on `screen_design`. A lane whose model (verified or fallback) is listed
+   as failed now keeps the role's fallback route and reports `phaseRoutingSource: "failed_model_fallback"`. This new value
+   contains "fallback", so the existing consumers (packet generators, `validate-task-packets.sh`) match it unchanged.
+
+**Stop line:** Q2 applies (several files, one config shape). Not delegated: the implementation is about 30 lines inside
+`resolveHarnessRoute` and the config parser, so a brief would cost more than the work (same rationale as Day 1).
+Test → RED → implement → GREEN.
+
+**RED (5 new tests, each for the predicted reason):**
+- frontend `task_harder` got gpt-5.5;
+- frontend lane with Opus failed got Opus;
+- the all-lanes test found `frontend_implementation` re-selecting failed Opus;
+- an unverified lane re-selected its failed spark fallback;
+- the lane fallback (spark) ≠ the role's second model (gpt-5.5).
+
+**Changed expectations (intended):**
+- `orchestration-helpers` "raises cheaper build-worker defaults … for harder tasks" now uses `backend_worker`, the cheap
+  build worker (spark → gpt-5.5, xhigh). Frontend is no longer cheap.
+- `harness-routing` "unavailable phase profile falls back" expects gpt-5.5, the new frontend lane fallback.
+- `validate-harness-routing.sh`: "frontend harder task keeps opus", plus new "backend harder task stronger override" and
+  "frontend phase lane after opus failure" cases.
+- `check-repo-static.sh`: the frontend lane fallback pin.
+
+**Mutation (code written before its test):** the `allow_stronger_override` type check was removed, which fails "must be a
+boolean when present". With the role flag ignored in the resolver, "a harder frontend task stays on Claude Opus" fails.
+
+**Gates:** routing tests 3× (59/59), `validate-harness-routing.sh` PASS, `npm run check` exit 0 (unit 714/714, integration
+187/187, schema, static).
+**Docs:** `routing_notes.md`, `worker_routing_matrix.md`, `phase_model_routing.md`, `operator_model_routing_guide.md`.
+
+### QCHECK R1 — slice R (framings in parallel: contract, adversarial, merged-artifact)
+
+Tier 1 was `/code-review high` (18 tool uses; it probed `resolveHarnessRoute` directly). Tier 2 was Codex `gpt-5.6-sol` xhigh,
+read-only: a 30-line report with `file:line` citations and requirement verdicts. Tier 2 was mandatory (routing-policy
+semantics and config). Neither tier raised a CRITICAL or HIGH.
+
+| # | Tier | Sev | Finding | Disposition |
+|---|---|---|---|---|
+| F1 | T1 | MED | When a verified lane's model failed, the lane kept the role route, which could be a budget or stronger override (frontend + budget_pressure + Opus failed → `gpt-5.4-mini`, low). | **Fixed:** lanes try [verified, fallback] minus failed models, then the first role fallback. Test: "a lane whose model failed uses its own fallback, not a budget or stronger role override". Mutation: dropping the lane fallback fails "agree on gpt-5.5". |
+| F2 / M1 | T1+T2 | MED | A bare failed id was normalized with the role's provider, so `["claude-opus-4-7"]` for backend_worker or `["gpt-5.5"]` for frontend_worker missed the real model. This also let a failed `modelOverride` win under `human_override`. | **Fixed:** `isFailed` matches a bare id against the model part; it is used for role fallbacks, budget overrides and lanes. Two tests; the mutation fails both. |
+| F3 | T1 | MED | An unverified lane whose fallback failed could fall through to its own unverified target. | **Fixed:** that target is skipped on the role path, and the resolver throws if nothing remains. Test strengthened; mutation-verified. |
+| F4 | T1 | LOW | The matrix's frontend "fallback column" is stale. | **Rejected:** the column is "Allowed Overrides" (`worker_routing_matrix.md:5`). `frontend_worker.allowed_overrides` is `routing_implementation_first` minus the default, i.e. spark; gpt-5.5; sonnet, which is what the row shows. |
+| F5 | T1 | LOW | The policy note "keeps X" could contradict the final model (with a phase lane, or after a failure). | **Fixed:** the note names no model and appears only when a stronger move was possible. |
+| F6 | T1 | MED | The stronger override takes `availableFallbacks[1]`, so after a failure backend + task_harder + spark failed picks Sonnet over gpt-5.5. | **Deferred (routing follow-up):** this resolver rule predates the slice. A root fix (per-role stronger list, or no second step after a failure) changes non-frontend routing. |
+| F7 | T1 | LOW | Docs said budget mode `high` raises thinking; it doesn't. | **Fixed** (`routing_notes.md`). |
+| L1 | T2 | LOW | Budget mode `high` was only tested together with `task_harder`. | **Fixed:** new test; mutation (budget stronger ignored) fails it. |
+
+Gates after the batch: routing tests 3× (63/63), `validate-harness-routing.sh` PASS, `npm run check` exit 0 (unit 718/718,
+integration 187/187).
+
+### QCHECK R2 — slice R (confirm, scoped to the R1 fix diff)
+
+Tier 1 (`/code-review high`, 10 tool uses; it confirmed each new test fails on the pre-fix code) and Tier 2 (Codex `gpt-5.6-sol`
+xhigh: F2, F3, F5, F7 and L1 confirmed; F1 "not confirmed" because of item 2 below). Neither raised a CRITICAL or HIGH.
+
+| # | Tier | Sev | Finding | Disposition |
+|---|---|---|---|---|
+| 1 | T1 | MED | A blank `fallbackModelId` (passes the parser) empties the lane candidates; `undefined === undefined` then selects `undefined`. | **Fixed:** both lane branches require `laneModelId !== undefined`. |
+| 2 | T2 | MED | Role-fallback exhaustion throws before lane handling, so a verified lane model outside the role order is rejected when every role fallback failed. | **Deferred (routing follow-up):** this predates the slice. The throw at `origin/main:.pi/agent/extensions/harness-routing.ts:609` comes before lane handling at line 676. It needs a lane model outside the role's order plus every role fallback failed; no current lane has that shape. |
+| 3 | T1 | MED | `recovery-policy` matched failed ids the old way, so for frontend + `["gpt-5.5"]` it recommended `openai-codex/gpt-5.5` while the resolver filtered it out. | **Fixed:** exported `failedModelMatcher` from `harness-routing.ts`, used by both modules. RED first: new `routing-failure-consistency.test.ts` (a separate file because `validate-harness-routing.sh` runs `harness-routing.test.ts` without `recovery-policy`). Mutation-verified. |
+| 4 | T1 | LOW | The all-lane-failed path reported `source: "fallback"` even when the pick is the role's unfailed default. | **Fixed:** `"default"` when the pick is `fallbackOrder[0]`. |
+| 5 | T1+T2 | LOW | Tests asserted only `selectedModelId` or `notEqual`; the F5 note check didn't discriminate; there was no direct test of the exhaustion throw. | **Fixed:** exact models plus `source`/`phaseRoutingSource`; the note must name no model; a new throw test (the mutation allowing the unverified target fails it). |
+| 6 | T1 | LOW | The returned `failedModels` shows only the role-provider normalization, not cross-provider matches. | **Noted:** output metadata only; selection is correct. |
+| 7 | T1 | LOW | The all-lane-failed path ignores allowed budget overrides before throwing. | **Noted:** contrived (unverified lane plus only the target left); throwing is the conservative choice. |
+| 8 | T1 | LOW | "Requested override … kept X" can name a model a lane later replaces. | **Noted:** wording predates the slice; it fires only when an override is refused. |
+
+Gates: routing tests 3× (71/71), `validate-harness-routing.sh` PASS, `validate-recovery-policy.sh` PASS, `npm run check` exit 0
+(unit 720/720, integration 187/187, schema, static). Land: no CRITICAL/HIGH in R2, MEDIUMs fixed or deferred with evidence,
+two-round cap respected.

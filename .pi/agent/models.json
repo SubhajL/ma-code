@@ -289,7 +289,8 @@
           "capability": "budget_implementation"
         }
       ],
-      "budget_guidance": "medium"
+      "budget_guidance": "medium",
+      "allow_stronger_override": false
     },
     "backend_worker": {
       "provider": "openai-codex",
@@ -486,7 +487,7 @@
       "targetModelRequest": "claude-opus-4-7",
       "verificationStatus": "verified",
       "verifiedModelId": "anthropic/claude-opus-4-7",
-      "fallbackModelId": "openai-codex/gpt-5.3-codex-spark",
+      "fallbackModelId": "openai-codex/gpt-5.5",
       "thinking": "high",
       "allowedThinking": [
         "high"

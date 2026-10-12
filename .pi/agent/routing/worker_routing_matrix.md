@@ -18,7 +18,8 @@
 | recovery_worker | openai-codex | gpt-5.5 | high | openai-codex/gpt-5.3-codex-spark; anthropic/claude-opus-4-7; anthropic/claude-sonnet-4-6 | high |
 
 ## Notes
-- `frontend_worker` uses `anthropic/claude-opus-4-7` with high thinking.
+- `frontend_worker` uses `anthropic/claude-opus-4-7` with high thinking. A harder task keeps Opus
+  (`allow_stronger_override: false`); after an Opus failure it falls back to `openai-codex/gpt-5.5`.
 - `backend_worker` and `infra_worker` use `openai-codex/gpt-5.3-codex-spark` with high thinking.
 - g-check/reviewer and subsequent default non-coding roles use `openai-codex/gpt-5.5` with high thinking.
 - Exact enforcement lives in `.pi/agent/models.json`; this table is a human-readable mirror.

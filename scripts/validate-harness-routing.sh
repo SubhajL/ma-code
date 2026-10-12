@@ -252,8 +252,13 @@ const cases = [
     expected: { selectedModelId: "github-copilot/gpt-5.4-mini", source: "budget_override", thinking: "low" },
   },
   {
-    name: "frontend harder task stronger override",
+    name: "frontend harder task keeps opus",
     input: { role: "frontend_worker", reason: "task_harder", budgetMode: "high" },
+    expected: { selectedModelId: "anthropic/claude-opus-4-7", source: "default", thinking: "xhigh" },
+  },
+  {
+    name: "backend harder task stronger override",
+    input: { role: "backend_worker", reason: "task_harder", budgetMode: "high" },
     expected: { selectedModelId: "openai-codex/gpt-5.5", source: "stronger_override", thinking: "xhigh" },
   },
   {
@@ -275,6 +280,11 @@ const cases = [
     name: "frontend phase profile",
     input: { role: "frontend_worker", phaseLane: "frontend_implementation" },
     expected: { selectedModelId: "anthropic/claude-opus-4-7", source: "phase_profile", thinking: "high", phaseRoutingSource: "verified_model", verificationStatus: "verified" },
+  },
+  {
+    name: "frontend phase lane after opus failure",
+    input: { role: "frontend_worker", phaseLane: "frontend_implementation", failedModels: ["anthropic/claude-opus-4-7"] },
+    expected: { selectedModelId: "openai-codex/gpt-5.5", source: "phase_fallback", thinking: "high", phaseRoutingSource: "failed_model_fallback" },
   },
   {
     name: "backend phase fallback",

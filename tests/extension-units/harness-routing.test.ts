@@ -134,7 +134,7 @@ test("unavailable phase profile falls back with warning", async () => {
 
   assert.equal(result.phaseRoutingSource, "fallback_unavailable");
   assert.equal(result.requestedModelVerificationStatus, "unavailable");
-  assert.equal(result.selectedModelId, CODING_WORKER_MODEL);
+  assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL);
   assert.match(result.policyNotes.join("\n"), /unavailable/);
 });
 
@@ -550,4 +550,160 @@ test("mixed frontend/backend ownership selects backend worker before route resol
   });
   assert.equal(result.role, "backend_worker");
   assert.match(result.selectedModelId, /\S/);
+});
+
+test("a harder frontend task stays on Claude Opus instead of moving to the second fallback", async () => {
+  const result = resolveHarnessRoute(await repoConfig(), { role: "frontend_worker", reason: "task_harder", budgetMode: "high" });
+
+  assert.equal(result.selectedModelId, FRONTEND_WORKER_MODEL);
+  assert.equal(result.source, "default");
+  assert.equal(result.thinking, "xhigh");
+  const note = result.policyNotes.find((entry) => entry.includes("allow_stronger_override"));
+  assert.ok(note, result.policyNotes.join("\n"));
+  assert.doesNotMatch(note, /\//, "the note must not name a model; the final selection can still change");
+});
+
+test("a harder backend task still moves from spark to the stronger fallback", async () => {
+  const result = resolveHarnessRoute(await repoConfig(), { role: "backend_worker", reason: "task_harder" });
+
+  assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(result.source, "stronger_override");
+});
+
+test("after an Opus failure the frontend role and the frontend phase lane agree on gpt-5.5", async () => {
+  const config = await repoConfig();
+  const failedModels = [FRONTEND_WORKER_MODEL];
+  const role = resolveHarnessRoute(config, { role: "frontend_worker", failedModels });
+  const lane = resolveHarnessRoute(config, { role: "frontend_worker", phaseLane: "frontend_implementation", failedModels });
+
+  assert.equal(role.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(lane.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(lane.source, "phase_fallback");
+  assert.equal(lane.phaseRoutingSource, "failed_model_fallback");
+});
+
+test("a lane whose model failed uses its own fallback, not a budget or stronger role override", async () => {
+  const config = await repoConfig();
+  const budget = resolveHarnessRoute(config, {
+    role: "frontend_worker",
+    reason: "budget_pressure",
+    budgetMode: "conserve",
+    phaseLane: "frontend_implementation",
+    failedModels: [FRONTEND_WORKER_MODEL],
+  });
+  const harder = resolveHarnessRoute(config, {
+    role: "backend_worker",
+    reason: "task_harder",
+    phaseLane: "backend_implementation",
+    failedModels: [CODING_WORKER_MODEL],
+  });
+
+  for (const result of [budget, harder]) {
+    assert.equal(result.selectedModelId, DEFAULT_HIGH_MODEL);
+    assert.equal(result.source, "phase_fallback");
+    assert.equal(result.phaseRoutingSource, "failed_model_fallback");
+  }
+});
+
+test("a bare failed model id matches that model under any provider", async () => {
+  const config = await repoConfig();
+  const lane = resolveHarnessRoute(config, {
+    role: "backend_worker",
+    phaseLane: "frontend_implementation",
+    failedModels: ["claude-opus-4-7"],
+  });
+  const role = resolveHarnessRoute(config, { role: "frontend_worker", failedModels: ["claude-opus-4-7", "gpt-5.5"] });
+
+  assert.equal(lane.selectedModelId, DEFAULT_HIGH_MODEL, "the lane's own fallback");
+  assert.equal(lane.phaseRoutingSource, "failed_model_fallback");
+  assert.equal(role.selectedModelId, CODING_WORKER_MODEL);
+});
+
+test("a phase lane never re-selects a model reported as failed", async () => {
+  const config = await repoConfig();
+  for (const [role, phaseLane, model] of [
+    ["frontend_worker", "frontend_implementation", FRONTEND_WORKER_MODEL],
+    ["backend_worker", "backend_implementation", CODING_WORKER_MODEL],
+    ["planning_lead", "screen_design", DEFAULT_HIGH_MODEL],
+  ] as const) {
+    const result = resolveHarnessRoute(config, { role, phaseLane, failedModels: [model] });
+    assert.ok(!result.failedModels.includes(result.selectedModelId), `${phaseLane} re-selected failed ${result.selectedModelId}`);
+    assert.equal(result.phaseRoutingSource, "failed_model_fallback", `${phaseLane} routing source`);
+  }
+});
+
+test("an unverified phase lane skips a failed fallback model too", async () => {
+  const raw = clone(JSON.parse(await readFile(".pi/agent/models.json", "utf8")));
+  raw.phase_routing_profiles.frontend_implementation.verificationStatus = "unverified";
+  raw.phase_routing_profiles.frontend_implementation.verifiedModelId = null;
+  const config = parseHarnessRoutingConfig(raw);
+  const fallback = raw.phase_routing_profiles.frontend_implementation.fallbackModelId as string;
+
+  const result = resolveHarnessRoute(config, { role: "frontend_worker", phaseLane: "frontend_implementation", failedModels: [fallback] });
+
+  assert.notEqual(result.selectedModelId, fallback);
+  assert.notEqual(result.selectedModelId, FRONTEND_WORKER_MODEL, "an unverified lane target stays off-limits");
+  assert.equal(result.phaseRoutingSource, "failed_model_fallback");
+});
+
+test("the frontend phase fallback matches the frontend role's first fallback", async () => {
+  const raw = JSON.parse(await readFile(".pi/agent/models.json", "utf8"));
+  const config = await repoConfig();
+
+  assert.equal(
+    raw.phase_routing_profiles.frontend_implementation.fallbackModelId,
+    config.routing_defaults.frontend_worker.fallback_order[1],
+  );
+});
+
+test("allow_stronger_override must be a boolean when present", async () => {
+  const raw = clone(JSON.parse(await readFile(".pi/agent/models.json", "utf8")));
+  raw.routing_defaults.frontend_worker.allow_stronger_override = "no";
+
+  assert.throws(() => parseHarnessRoutingConfig(raw), /allow_stronger_override for role frontend_worker must be a boolean/);
+});
+
+test("a bare failed id also blocks an unverified lane's fallback and an explicit override of that model", async () => {
+  const raw = clone(JSON.parse(await readFile(".pi/agent/models.json", "utf8")));
+  raw.phase_routing_profiles.frontend_implementation.verificationStatus = "unverified";
+  raw.phase_routing_profiles.frontend_implementation.verifiedModelId = null;
+  const lane = resolveHarnessRoute(parseHarnessRoutingConfig(raw), {
+    role: "frontend_worker",
+    phaseLane: "frontend_implementation",
+    failedModels: ["gpt-5.5"],
+  });
+  const override = resolveHarnessRoute(await repoConfig(), {
+    role: "frontend_worker",
+    reason: "human_override",
+    modelOverride: DEFAULT_HIGH_MODEL,
+    failedModels: ["gpt-5.5"],
+  });
+
+  assert.equal(lane.selectedModelId, CODING_WORKER_MODEL, "first role fallback that is neither failed nor the unverified target");
+  assert.equal(override.selectedModelId, FRONTEND_WORKER_MODEL, "the failed override is refused");
+  assert.notEqual(override.source, "explicit_override");
+  assert.match(override.blockedAdjustments.join("\n"), /not permitted/);
+});
+
+test("budget mode high alone keeps frontend on Opus and still moves backend to the stronger fallback", async () => {
+  const config = await repoConfig();
+  const frontend = resolveHarnessRoute(config, { role: "frontend_worker", budgetMode: "high" });
+  const backend = resolveHarnessRoute(config, { role: "backend_worker", budgetMode: "high" });
+
+  assert.equal(frontend.selectedModelId, FRONTEND_WORKER_MODEL);
+  assert.equal(backend.selectedModelId, DEFAULT_HIGH_MODEL);
+  assert.equal(backend.source, "stronger_override");
+});
+
+test("an unverified lane throws rather than fall back to its own unverified target", async () => {
+  const raw = clone(JSON.parse(await readFile(".pi/agent/models.json", "utf8")));
+  raw.phase_routing_profiles.frontend_implementation.verificationStatus = "unverified";
+  raw.phase_routing_profiles.frontend_implementation.verifiedModelId = null;
+  const config = parseHarnessRoutingConfig(raw);
+  const failedModels = config.routing_defaults.frontend_worker.fallback_order.filter((modelId) => modelId !== FRONTEND_WORKER_MODEL);
+
+  assert.throws(
+    () => resolveHarnessRoute(config, { role: "frontend_worker", phaseLane: "frontend_implementation", failedModels }),
+    /on phase lane frontend_implementation/,
+  );
 });
